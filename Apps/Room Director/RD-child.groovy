@@ -3,7 +3,7 @@
  *  Design Usage:
  *  Make your rooms smarter by directing them to do what you want, automatically.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.6 - 01/09/21 - Adjustments to scene handler
  *  1.3.5 - 09/15/20 - More adjustments to Permanent Dim
  *  1.3.4 - 09/13/20 - Adjustments to Permanent Dim
  *  1.3.3 - 09/12/20 - Adjustments to time
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.5"
+	state.version = "1.3.6"
 }
 
 definition(
@@ -654,8 +655,8 @@ def autoSunHandler() {
         if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseString} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
         if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
 
-        // check for new sunset/sunrise times every day at 12:05 am
-        schedule("0 5 0 ? * * *", autoSunHandler)
+        // check for new sunset/sunrise times every day at 12:05 pm
+        schedule("0 5 12 ? * * *", autoSunHandler)
 
         schedule(state.timeSunset, turnOnAtSunset)
         schedule(state.timeSunrise, turnOffAtSunrise)
@@ -1201,72 +1202,222 @@ def setScene() {
     if(state.currentMode == "1"){
         if(logEnable) log.debug "In setScene - 1: currentMode: ${state.currentMode}"
         if(sceneSwitch1) sceneSwitch1.push()
-        if(oSwitchesOn1) oSwitchesOn1.on()
-        if(oSwitchesOff1) oSwitchesOff1.off()
-        if(oDimmers1) oDimmers1.setLevel(dimLevel1)
+        if(oSwitchesOn1) {
+            oSwitchesOn1.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff1) {
+            oSwitchesOff1.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers1) {
+            oDimmers1.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel1) it.setLevel(dimLevel1)
+            }
+        }
         if(timeDelayed1) state.timeDelayed = timeDelayed1
     } else if(state.currentMode == "2"){
         if(logEnable) log.debug "In setScene - 2: currentMode: ${state.currentMode}"
         if(sceneSwitch2) sceneSwitch2.push()
-        if(oSwitchesOn2) oSwitchesOn2.on()
-        if(oSwitchesOff2) oSwitchesOff2.off()
-        if(oDimmers2) oDimmers2.setLevel(dimLevel2)
+        if(oSwitchesOn2) {
+            oSwitchesOn2.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff2) {
+            oSwitchesOff2.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers2) {
+            oDimmers2.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel2) it.setLevel(dimLevel2)
+            }
+        }
         if(timeDelayed2) state.timeDelayed = timeDelayed2
     } else if(state.currentMode == "3"){
         if(logEnable) log.debug "In setScene - 3: currentMode: ${state.currentMode}"
         if(sceneSwitch3) sceneSwitch3.push()
-        if(oSwitchesOn3) oSwitchesOn3.on()
-        if(oSwitchesOff3) oSwitchesOff3.off()
-        if(oDimmers3) oDimmers3.setLevel(dimLevel3)
+        if(oSwitchesOn3) {
+            oSwitchesOn3.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff3) {
+            oSwitchesOff3.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers3) {
+            oDimmers3.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel3) it.setLevel(dimLevel3)
+            }
+        }
         if(timeDelayed3) state.timeDelayed = timeDelayed3
     } else if(state.currentMode == "4"){
         if(logEnable) log.debug "In setScene - 4: currentMode: ${state.currentMode}"
         if(sceneSwitch4) sceneSwitch4.push()
-        if(oSwitchesOn4) oSwitchesOn4.on()
-        if(oSwitchesOff4) oSwitchesOff4.off()
-        if(oDimmers4) oDimmers4.setLevel(dimLevel4)
+        if(oSwitchesOn4) {
+            oSwitchesOn4.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff4) {
+            oSwitchesOff4.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers4) {
+            oDimmers4.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel4) it.setLevel(dimLevel4)
+            }
+        }
         if(timeDelayed4) state.timeDelayed = timeDelayed4
     } else if(state.currentMode == "5"){
         if(logEnable) log.debug "In setScene - 5: currentMode: ${state.currentMode}"
         if(sceneSwitch5) sceneSwitch5.push()
-        if(oSwitchesOn5) oSwitchesOn5.on()
-        if(oSwitchesOff5) oSwitchesOff5.off()
-        if(oDimmers5) oDimmers5.setLevel(dimLevel5)
+        if(oSwitchesOn5) {
+            oSwitchesOn5.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff5) {
+            oSwitchesOff5.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers5) {
+            oDimmers5.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel5) it.setLevel(dimLevel5)
+            }
+        }
         if(timeDelayed5) state.timeDelayed = timeDelayed5
     } else if(state.currentMode == "6"){
         if(logEnable) log.debug "In setScene - 6: currentMode: ${state.currentMode}"
         if(sceneSwitch6) sceneSwitch6.push()
-        if(oSwitchesOn6) oSwitchesOn6.on()
-        if(oSwitchesOff6) oSwitchesOff6.off()
-        if(oDimmers6) oDimmers6.setLevel(dimLevel6)
+        if(oSwitchesOn6) {
+            oSwitchesOn6.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff6) {
+            oSwitchesOff6.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers6) {
+            oDimmers6.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel6) it.setLevel(dimLevel6)
+            }
+        }
         if(timeDelayed6) state.timeDelayed = timeDelayed6
     } else if(state.currentMode == "7"){
         if(logEnable) log.debug "In setScene - 7: currentMode: ${state.currentMode}"
         if(sceneSwitch7) sceneSwitch7.push()
-        if(oSwitchesOn7) oSwitchesOn7.on()
-        if(oSwitchesOff7) oSwitchesOff7.off()
-        if(oDimmers7) oDimmers7.setLevel(dimLevel7)
+        if(oSwitchesOn7) {
+            oSwitchesOn7.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff7) {
+            oSwitchesOff7.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers7) {
+            oDimmers7.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel7) it.setLevel(dimLevel7)
+            }
+        }
         if(timeDelayed7) state.timeDelayed = timeDelayed7
     } else if(state.currentMode == "8"){
         if(logEnable) log.debug "In setScene - 8: currentMode: ${state.currentMode}"
         if(sceneSwitch8) sceneSwitch8.push()
-        if(oSwitchesOn8) oSwitchesOn8.on()
-        if(oSwitchesOff8) oSwitchesOff8.off()
-        if(oDimmers8) oDimmers8.setLevel(dimLevel8)
+        if(oSwitchesOn8) {
+            oSwitchesOn8.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff8) {
+            oSwitchesOff8.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers8) {
+            oDimmers8.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel8) it.setLevel(dimLevel8)
+            }
+        }
         if(timeDelayed8) state.timeDelayed = timeDelayed8
     } else if(state.currentMode == "9"){
         if(logEnable) log.debug "In setScene - 9: currentMode: ${state.currentMode}"
         if(sceneSwitch9) sceneSwitch9.push()
-        if(oSwitchesOn9) oSwitchesOn9.on()
-        if(oSwitchesOff9) oSwitchesOff9.off()
-        if(oDimmers9) oDimmers9.setLevel(dimLevel9)
+        if(oSwitchesOn9) {
+            oSwitchesOn9.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff9) {
+            oSwitchesOff9.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers9) {
+            oDimmers9.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel9) it.setLevel(dimLevel9)
+            }
+        }
         if(timeDelayed9) state.timeDelayed = timeDelayed9
     } else if(state.currentMode == "0"){
         if(logEnable) log.debug "In setScene - 0: currentMode: ${state.currentMode}"
         if(sceneSwitch0) sceneSwitch0.push()
-        if(oSwitchesOn0) oSwitchesOn0.on()
-        if(oSwitchesOff0) oSwitchesOff0.off()
-        if(oDimmers0) oDimmers0.setLevel(dimLevel0)
+        if(oSwitchesOn0) {
+            oSwitchesOn0.each { it ->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "on") it.on()
+            }
+        }
+        if(oSwitchesOff0) {
+            oSwitchesOff0.each { it->
+                switchStatus = it.currentValue("switch")
+                if(switchStatus != "off") it.off()
+            }
+        }
+        if(oDimmers0) {
+            oDimmers0.each { it ->
+                switchStatus = it.currentValue("level")
+                if(switchStatus != dimLevel0) it.setLevel(dimLevel0)
+            }
+        }
         if(timeDelayed0) state.timeDelayed = timeDelayed0
     } else if(state.currentMode == "NONE"){
         if(logEnable) log.debug "In setScene - ${app.label} - Something went wrong, no Mode matched!"
@@ -1549,8 +1700,8 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
         }
     }
 }
@@ -1636,5 +1787,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
