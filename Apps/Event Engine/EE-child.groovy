@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  2.5.1 - 01/03/21 - Cosmetic changes, added option to keep logs on all the time, added options Check Free OS Memory, Hub Stats. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
+*  2.5.2 - 01/10/21 - Added option Sunrise to Sunset or Sunset to Sunrise toggle. Also added a toggle for Modes selected (in or not in selected modes).
+*  2.5.1 - 01/07/21 - Cosmetic changes, added option to keep logs on all the time, added option Check Free OS Memory. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
 *  2.5.0 - 12/21/20 - Fixed a typo
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.1"
+    state.version = "2.5.2"
 }
 
 definition(
@@ -139,7 +140,7 @@ def pageConfig() {
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
                     ["tPeriodic":"Periodic Expression"],
-                    ["tSunsetSunrise":"Sunset to Sunrise"]
+                    ["tSunsetSunrise":"Sunset/Sunrise"]
                 ], required:true, multiple:true, submitOnChange:true, width:6
                 paragraph "<hr>"
             } else {
@@ -189,15 +190,22 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tMode")) {
                 paragraph "<b>By Mode</b>"
-                input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
+                input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true                
+                input "modeCondition", "bool", title: "When in the selected mode(s) (off) - or - When NOT in the selected Mode(s) (on)", description: "mode", defaultValue:false, submitOnChange:true
+                if(modeCondition) {
+                    paragraph "Condition is true when NOT in modes selected."
+                } else {
+                    paragraph "Condition is true when in modes selected."
+                }
                 paragraph "By Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                 input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction", description: "By Mode Restriction", submitOnChange:true
                 input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
+                state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
                 app.removeSetting("modeEvent")
+                app.updateSetting("modeCondition",[value:"false",type:"bool"])
                 app.updateSetting("modeMatchRestriction",[value:"false",type:"bool"])
                 app.updateSetting("modeMatchConditionOnly",[value:"false",type:"bool"])
             }
@@ -270,11 +278,12 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tSunsetSunrise")) {
                 if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
-                    paragraph "<b>'Sunset to Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
+                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
                 } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
-                    paragraph "<b>'Sunset to Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
+                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
                 } else {
-                    paragraph "<b>Sunset to Sunrise</b>" 
+                    paragraph "<b>Sunset/Sunrise</b>"
+                    input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on)", defaultValue:false, submitOnChange:true, width:6
                     paragraph "Sunset"
                     input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunset", "number", title: "Offset (minutes)", width:6
@@ -282,18 +291,18 @@ def pageConfig() {
                     input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
-                    paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
-                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
+                    paragraph "Sunset/Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
+                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction", description: "Sunset/Sunrise Restriction", submitOnChange:true
                     paragraph "<hr>"
-                    state.theCogTriggers += "<b>-</b> Sunset to Sunrise - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
+                    state.theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> Sunset to Sunrise - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
                 app.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
             }
 // -----------
             if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
-                paragraph "<b>Please select 'Sunset to Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
+                paragraph "<b>Please select 'Sunset/Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
             } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
                 // Messge above will show
             } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
@@ -337,6 +346,7 @@ def pageConfig() {
                 app.removeSetting("offsetSunset")
                 app.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
                 app.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
+                app.updateSetting("fromSun",[value:"false",type:"bool"])
             }
 // -----------
             if(triggerType.contains("xAcceleration")) {
@@ -644,10 +654,11 @@ def pageConfig() {
                 paragraph "<b>Hub Check Options</b><br>This can be used to check any hub on your network."
                 input "xhttpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
                 input "xhttpCommand", "enum", title: "Choose Command", options: [
-                    ["/hub/advanced/freeOSMemory":"Check Free OS Memory"],
-                    ["/hub/enableStats":"Enable Stats"]
+                    ["/hub/advanced/freeOSMemory":"Check Free OS Memory"]
                 ], submitOnChange:true
-                input "xhubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
+                paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
+                // "xhubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
+                app.updateSetting("xhubSecurity",[value:"false",type:"bool"])
                 if(xhubSecurity) {
                     input "xhubUsername", "string", title: "Hub Username", required:true
                     input "xhubPassword", "password", title: "Hub Password", required:true
@@ -1458,12 +1469,13 @@ def pageConfig() {
                 paragraph "<b>Send HTTP Command</b><br>This can be used to send a http command to any hub on your network."
                 input "httpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
                 input "httpCommand", "enum", title: "Choose Command", options: [
-                    ["/hub/disableStats":"Disable Stats"],
                     ["/hub/reboot":"Reboot Hub"],
                     ["/hub/restart":"Restart Hub"],
                     ["/hub/zwaveRepair":"Zwave Repair"]
                 ], submitOnChange:true
-                input "hubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
+                paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
+                // "hubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
+                app.updateSetting("hubSecurity",[value:"false",type:"bool"])
                 if(hubSecurity) {
                     input "hubUsername", "string", title: "Hub Username", required:true
                     input "hubPassword", "password", title: "Hub Password", required:true
@@ -1472,9 +1484,7 @@ def pageConfig() {
                     app.removeSetting("hubPassword")
                 }
                 if(httpCommand) {
-                    if(httpCommand.contains("disableStats")) {
-                        paragraph "<b>* Remember to look in the log for the Stats, once the app has finished.</b>"
-                    } else if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
+                    if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
                         paragraph "<b>* Once triggered, this will happen without warnings or other messages.</b>"    
                     } else if(httpCommand.contains("zwaveRepair")) {
                         paragraph "<b>* Remember to look in the log for updates and for the completion message.</b>"
@@ -3633,6 +3643,7 @@ def sendHttpHandler() {
     if(state.httpRAN == null) state.httpRAN = false
     if(logEnable) log.debug "In sendHttpHandler - Sending Command to URL: ${xhttpIP}:8080${xhttpCommand}"
     if(xhubSecurity) {
+        if(logEnable) log.debug "In sendHttpHandler - Hub Security Enabled - Getting Cookie"      
         httpGet(        // Based on code from @dman2306. Thank you!
             [
                 uri: "${xhttpIP}:8080",
@@ -3642,9 +3653,9 @@ def sendHttpHandler() {
                     password: xhubPassword,
                     submit: "Login"
                 ]
-            ]) {
-            resp -> 
+            ]) { resp -> 
             cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+            //log.info "cookie: ${cookie}"
         }
     }
     
@@ -3663,21 +3674,6 @@ def sendHttpHandler() {
         }
         state.theData = theData
         if(logEnable) log.debug "In sendHttpHandler (freeOSMemory) - theCommand: ${xhttpCommand} - theData: ${state.theData}"
-    } else if(state.theCommand.contains("enableStats")) {
-        if(state.httpRAN == false) {
-            theData += "----------------------------------------<br>"
-            httpGet(params) { resp ->
-                if(resp.data != null) {
-                    theData += "${resp.data}<br>"
-                }
-            }
-            theData += "----------------------------------------"
-            state.theData = theData
-            if(logEnable) log.debug "In sendHttpHandler (enableStats) - theCommand: ${xhttpCommand} - theData:<br>${state.theData}"
-            state.httpRAN = true
-        } else {
-            if(logEnable) log.debug "In sendHttpHandler (enableStats) - theCommand: ${xhttpCommand} - Already started, so skipping"
-        }
     }
     
     if(xhttpCommand.contains("freeOSMemory")) {        
@@ -3713,6 +3709,7 @@ def actionHttpHandler() {
     state.httpRAN = false
     if(logEnable) log.debug "In actionHttpHandler - Sending Command to URL: ${httpIP}:8080${httpCommand}"
     if(hubSecurity) {
+        if(logEnable) log.debug "In actionHttpHandler - Hub Security Enabled - Getting Cookie"
         httpGet(        // Based on code from @dman2306. Thank you!
             [
                 uri: "${httpIP}:8080",
@@ -3725,6 +3722,7 @@ def actionHttpHandler() {
             ]) {
             resp -> 
             cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+            //log.info "cookie: ${cookie}"
         }
     }
     
@@ -3735,16 +3733,10 @@ def actionHttpHandler() {
     ]
 
     theData = ""
-    if(httpCommand.contains("disableStats") || httpCommand.contains("zwaveRepair")) {
-        theData = "----------------------------------------<br>"
+    if(httpCommand.contains("zwaveRepair")) {
         httpGet(params) { resp ->
-            if(resp.data != null) {
-                theData += "${resp.data}<br>"
-            }
+            log.info "${app.label} - Zwave repair has started"
         }
-        theData += "----------------------------------------"
-        state.actionData = theData
-        if(logEnable) log.debug "In actionHttpHandler (get) - theCommand: ${httpCommand} - actionData:<br>${state.actionData}"
     }
     
     if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
@@ -3752,8 +3744,6 @@ def actionHttpHandler() {
             if(logEnable) log.debug "In actionHttpHandler (post) - theCommand: ${httpCommand} - actionData:<br>${state.actionData}"
         }
     }
-
-    if(httpCommand.contains("disableStats")) log.info "$app.label - actionData:<br>${state.actionData}"
 }
 
 // ***** Start Cog Copy *****
@@ -4211,7 +4201,11 @@ def checkTimeSun() {
             } 
             //if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
             //if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
-            state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
+            if(fromSun) {    // Sunrise to Sunset
+                state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
+            } else {        // Sunset to Sunrise
+                state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
+            }
             if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
 
             if(state.timeBetweenSun) {
@@ -4268,10 +4262,18 @@ def modeHandler() {
     if(modeEvent) {
         theValue = location.mode
         def modeCheck = modeEvent.contains(theValue)
-        if(modeCheck) {
-            state.modeMatch = true
+        if(modeCondition) {
+            if(modeCheck) {
+                state.modeMatch = false
+            } else {
+                state.modeMatch = true
+            }
         } else {
-            state.modeMatch = false
+            if(modeCheck) {
+                state.modeMatch = true
+            } else {
+                state.modeMatch = false
+            }
         }
     } else {
         state.modeMatch = true
