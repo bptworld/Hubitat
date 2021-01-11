@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.4 - 01/11/21 - Adjustments to 'reverse' settings, fix for Presence 'or'.
 *  2.5.3 - 01/10/21 - Adjustments to 'reverse' settings, cosmetic changes
 *  2.5.2 - 01/10/21 - Added option Sunrise to Sunset or Sunset to Sunrise toggle. Also added a toggle for Modes selected (in or not in selected modes).
 *  2.5.1 - 01/07/21 - Cosmetic changes, added option to keep logs on all the time, added option Check Free OS Memory. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.3"
+    state.version = "2.5.4"
 }
 
 definition(
@@ -908,18 +909,18 @@ def pageConfig() {
                         paragraph "Condition true when Sensor(s) become Present"
                     }
 
-                    input "presentANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
-                    if(presentANDOR) {
+                    input "presenceANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(presenceANDOR) {
                         paragraph "Condition true when <b>any</b> Presence Sensor is true"
                     } else {
                         paragraph "Condition true when <b>all</b> Presence Sensors are true"
                     }
-                    state.theCogTriggers += "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presentANDOR}<br>"
+                    state.theCogTriggers += "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presenceANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presentANDOR}<br>"
+                    state.theCogTriggers -= "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presenceANDOR}<br>"
                     app.removeSetting("presenceEvent")
                     app.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
-                    app.updateSetting("presentANDOR",[value:"false",type:"bool"])
+                    app.updateSetting("presenceANDOR",[value:"false",type:"bool"])
                 }
 
                 input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required:false, multiple:true, submitOnChange:true
@@ -1794,20 +1795,8 @@ def pageConfig() {
         
             // Start Reverse Options
             if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction1 || setOnLC || contactOpenAction || setDimmersPerMode) {
-                 paragraph "<b>Experimental Feature: Being able to choose ONE option from EACH section!<br>If unexpected things happen, be sure to post a Debug Log. Then go back to only picking one option, total.</b>"
-                if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                    paragraph "<small><b>Please only select ONE Reverse option from this section:</b></small>"
-                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
-                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
-                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between", defaultValue:false, submitOnChange:true
-                    paragraph "<hr>"
-                } else {
-                    app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
-                    app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
-                    app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
-                }
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent) {
-                    paragraph "<small><b>Please only select ONE Reverse option from this section:</b></small>"
+                    paragraph "<small><b>Please only select ONE Reverse option</b></small>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
                     if(reverseWithDelay) {
@@ -1828,7 +1817,26 @@ def pageConfig() {
                     if(!reverseWithDelay && !timeReverse) {
                         app.removeSetting("timeToReverse")
                     }
+                    app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
+                } else if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                    paragraph "<small><b>Please only select ONE Reverse option</b></small>"
+                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
+                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
+                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between", defaultValue:false, submitOnChange:true
+                    paragraph "<hr>"
+                    app.updateSetting("reverse",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
+                    app.updateSetting("dimWhileDelayed",[value:"false",type:"bool"])
+                    app.removeSetting("warningDimLvl")
+                    app.updateSetting("timeReverse",[value:"false",type:"bool"])
+                    app.removeSetting("timeToReverse")
                 } else {
+                    app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])              
+ 
                     app.updateSetting("reverse",[value:"false",type:"bool"])
                     app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
                     app.updateSetting("dimWhileDelayed",[value:"false",type:"bool"])
@@ -2455,8 +2463,8 @@ def startTheProcess(evt) {
                     if(dimWhileDelayed && (state.appStatus == "active")) { permanentDimHandler() }
                     runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                 } else {             
-                    if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                     if(actionType) {
+                        if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
@@ -4165,9 +4173,13 @@ def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler (${state.version})"
     if(triggerType.contains("tTimeDays")) {
         if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-            def riseAndSet = getSunriseAndSunset()
-            def sunriseTime = (riseAndSet.sunrise)+1
-            def sunsetTime = riseAndSet.sunset
+            if(fromSun) {
+                sunriseTime = getSunriseAndSunset().sunrise
+            } else {
+                sunriseTime = (getSunriseAndSunset().sunrise)+1
+            }
+            sunsetTime = getSunriseAndSunset().sunset
+            if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
             int theOffsetSunset = offsetSunset ?: 1
             if(setBeforeAfter) {
                 state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
@@ -4180,9 +4192,11 @@ def autoSunHandler() {
             } else {
                 state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
             }
-            if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-            if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-            if(logEnable) log.debug "In autoSunHandler - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
+            if(fromSun) {
+                if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}"
+            } else {
+                if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
+            }
             schedule("0 5 12 ? * * *", autoSunHandler)
             schedule(state.timeSunset, runAtTime1)
             if(!timeBetweenSunRestriction) schedule(state.timeSunrise, runAtTime2)
@@ -4206,9 +4220,12 @@ def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(triggerType.contains("tTimeDays")) {
         if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-            def riseAndSet = getSunriseAndSunset()
-            def nextSunrise = (riseAndSet.sunrise)+1
-            def nextSunset = riseAndSet.sunset
+            if(fromSun) {
+                nextSunrise = getSunriseAndSunset().sunrise
+            } else {
+                nextSunrise = (getSunriseAndSunset().sunrise)+1
+            }
+            nextSunset = getSunriseAndSunset().sunset
             int theOffsetSunset = offsetSunset ?: 1
             if(setBeforeAfter) {
                 use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
@@ -4220,16 +4237,14 @@ def checkTimeSun() {
                 use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
             } else {
                 use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
-            } 
-            //if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
-            //if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+            }
             if(fromSun) {    // Sunrise to Sunset
                 state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
+                if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunriseOffset: ${nextSunriseOffset} - nextSunsetOffset: ${nextSunsetOffset}"
             } else {        // Sunset to Sunrise
                 state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
+                if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
             }
-            if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-
             if(state.timeBetweenSun) {
                 if(logEnable) log.debug "In checkTimeSun - Time within range"
             } else {
