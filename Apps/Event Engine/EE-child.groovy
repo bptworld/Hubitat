@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.3 - 01/10/21 - Adjustments to 'reverse' settings, cosmetic changes
 *  2.5.2 - 01/10/21 - Added option Sunrise to Sunset or Sunset to Sunrise toggle. Also added a toggle for Modes selected (in or not in selected modes).
 *  2.5.1 - 01/07/21 - Cosmetic changes, added option to keep logs on all the time, added option Check Free OS Memory. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
 *  2.5.0 - 12/21/20 - Fixed a typo
@@ -45,7 +46,7 @@
 */
 
 /*
-- Working on Clone Cog - 92
+- Working on Clone Cog
 - Working on making map of settings
 */
 
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.2"
+    state.version = "2.5.3"
 }
 
 definition(
@@ -284,12 +285,21 @@ def pageConfig() {
                 } else {
                     paragraph "<b>Sunset/Sunrise</b>"
                     input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on)", defaultValue:false, submitOnChange:true, width:6
-                    paragraph "Sunset"
-                    input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
-                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
-                    paragraph "Sunrise"
-                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                    input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                    if(fromSun) {
+                        paragraph "Sunrise"
+                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                        input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                        paragraph "Sunset"
+                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                    } else {
+                        paragraph "Sunset"
+                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                        paragraph "Sunrise"
+                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                        input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                    }
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
                     paragraph "Sunset/Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                     input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction", description: "Sunset/Sunrise Restriction", submitOnChange:true
@@ -1782,15 +1792,22 @@ def pageConfig() {
                 app.removeSetting("contactOpenAction")
             }      
         
-            // Reverse Options
+            // Start Reverse Options
             if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction1 || setOnLC || contactOpenAction || setDimmersPerMode) {
+                 paragraph "<b>Experimental Feature: Being able to choose ONE option from EACH section!<br>If unexpected things happen, be sure to post a Debug Log. Then go back to only picking one option, total.</b>"
                 if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                    paragraph "<b><small>Please choose only ONE of the following:</b></small>"
+                    paragraph "<small><b>Please only select ONE Reverse option from this section:</b></small>"
                     input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
                     input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
                     input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between", defaultValue:false, submitOnChange:true
-                    app.updateSetting("reverse",[value:"false",type:"bool"])
+                    paragraph "<hr>"
                 } else {
+                    app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
+                }
+                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent) {
+                    paragraph "<small><b>Please only select ONE Reverse option from this section:</b></small>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
                     if(reverseWithDelay) {
@@ -1808,29 +1825,37 @@ def pageConfig() {
                     if(reverseWithDelay || timeReverse) {
                         input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                     }
-                    paragraph "<small><b>* Please only select ONE Reverse option.</b></small>"
-                    app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
-                    app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
-                    app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
                     if(!reverseWithDelay && !timeReverse) {
                         app.removeSetting("timeToReverse")
                     }
-                }
-                if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween || timeReverse || reverseWithDelay) {
-                    if(reverse) {
-                        state.theCogActions += "<b>-</b> Reverse: ${reverse}<br>"
-                    } else if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-                        state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
-                    } else if(timeReverse) {
-                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
-                    } else if(reverseWithDelay) {
-                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed}<br>"
-                    }
                 } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>"
-                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                    app.updateSetting("reverse",[value:"false",type:"bool"])
+                    app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
+                    app.updateSetting("dimWhileDelayed",[value:"false",type:"bool"])
+                    app.removeSetting("warningDimLvl")
+                    app.updateSetting("timeReverse",[value:"false",type:"bool"])
+                    app.removeSetting("timeToReverse")
+                }
+                // ***** Start Reverse Stuff *****
+                if(reverse) { 
+                    state.theCogActions += "<b>-</b> Reverse: ${reverse}<br>" 
+                } else {
+                    state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>" 
+                }
+                if(timeReverse) {
+                    state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                } else {
                     state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                }        
+                if(reverseWithDelay) {
+                    state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed}<br>"
+                } else {
                     state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed}<br>"
+                }
+                if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                    state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                } else {
+                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || setDimmersPerMode)){
                     paragraph "<hr>"
@@ -2464,9 +2489,6 @@ def startTheProcess(evt) {
 }
 
 // ********** Start Conditions **********
-/* add
-app.removeSetting("myPresence2")
-*/
 def customDeviceHandler() {
     if(customEvent) {
         state.eventName = customEvent
