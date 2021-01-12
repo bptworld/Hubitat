@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.1 - 01/12/21 - Adjustments to Priority processing
  *  2.3.0 - 01/05/21 - Adjustments to Speech Queue, more logging options, cosmetic changes
  *  ---
  *  1.0.0 - 03/17/19 - Initial release.
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.0"   
+	state.version = "2.3.1"   
 }
 
 definition(
@@ -652,8 +653,8 @@ def prioritySpeaker(data) {
         if(theValueCount >= 3) prioritySpeaker = thePriority[2]
 
         if(priorityValue == null) priorityValue = "X"
-        if(priorityVoice == null) priorityVoice = "X"
-        if(prioritySpeaker == null) prioritySpeaker = "X"
+        if(priorityVoice == null || priorityVoice =="0") priorityVoice = "X"
+        if(prioritySpeaker == null || prioritySpeaker == "0") prioritySpeaker = "X"
         if(logEnable) log.debug "In prioritySpeaker - priorityValue: ${priorityValue} - priorityVoice: ${priorityVoice} - prioritySpeaker: ${prioritySpeaker}"
     } catch (e) {
         log.warn "In prioritySpeaker - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1:0]"
@@ -858,6 +859,14 @@ def processQueue() {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk - msg: ${msg}"
     def message =  new JsonSlurper().parseText(msg)
+    if(message.message.contains("]")) {
+        oldMes = message.message
+        splitMes = oldMes.split("]")
+        newMessage = splitMes(1)
+    } else {
+        newMessage = message.message
+    }
+    
     state.speakers = null
 
     prioritySpeaker(message.priority)
@@ -881,7 +890,6 @@ def letsTalk(msg) {
 			speakerStatus = "${app.label}:${state.sStatus}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
             
-            theMessage = message.message
             try {
                 duration = textToSpeech(theText).duration + 3
             } catch (e) {
@@ -891,46 +899,46 @@ def letsTalk(msg) {
             
             if(logEnable) log.debug "In letsTalk - **** Last check **** - speakers: ${state.speakers}"
             state.speakers.each { it ->
-                if(logEnable) log.debug "In letsTalk - Sending to priorityVoicesHandler - it: ${it} - priorityVoice: ${priorityVoice} - theMessage: ${theMessage}" 
-                priorityVoicesHandler(it,priorityVoice,theMessage)
+                if(logEnable) log.debug "In letsTalk - Sending to priorityVoicesHandler - speaker: ${it} - priorityVoice: ${priorityVoice} - newMessage: ${newMessage}" 
+                priorityVoicesHandler(it,priorityVoice,newMessage)
                 
                 if(!defaultSpeak) {    
                     switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
                             beforeVolume(it)
-                            it.speak(message.message)
+                            it.speak(newMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playAnnouncement':
-                            it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                            it.playAnnouncement(newMessage, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${newMessagee}"
                             break;
                         case 'playAnnouncementAll':
-                            it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                            it.playAnnouncementAll(newMessagee, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playText':
                             beforeVolume(it)
-                            it.playText(message.message)
+                            it.playText(newMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - $newMessage}"
                             break;
                         case 'playTextAndRestore':
                             beforeVolume(it)
-                            it.playTextAndRestore(message.message, message.returnLevel)
+                            it.playTextAndRestore(newMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTextAndResume':
                             beforeVolume(it)
-                            it.playTextAndResume(message.message, message.returnLevel)
+                            it.playTextAndResume(newMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTrack':
                             beforeVolume(it)
@@ -943,7 +951,7 @@ def letsTalk(msg) {
                             it.playTrack(state.uriMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTrackAndRestore':
                             beforeVolume(it)
@@ -955,7 +963,7 @@ def letsTalk(msg) {
                             pauseExecution(500)
                             it.playTrackAndRestore(state.uriMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'setVolume':
                             it.setVolume(message.speakLevel)
@@ -963,31 +971,31 @@ def letsTalk(msg) {
                             if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
                             break;
                         case 'setVolumeSpeakAndRestore':
-                            it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
+                            it.setVolumeSpeakAndRestore(newMessage, message.priority, message.speakLevel, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'setVolumeAndSpeak':
-                            it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
+                            it.setVolumeAndSpeak(newMessage, message.priority, message.speakLevel)
                             pauseExecution(theDuration)
                                 afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
+                            if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'speak':
                             if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
                             if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${message.message}"
+                                if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${newMessage}"
                                 def prevVolume = it.currentValue("volume")
-                                it.setVolumeSpeakAndRestore(state.volume, message.message, prevVolume)
+                                it.setVolumeSpeakAndRestore(state.volume, newMessage, prevVolume)
                                 pauseExecution(theDuration)
                             } else if(it.hasCommand('playTextAndRestore')) {   
-                                if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${message.message}"
+                                if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${newMessage}"
                                 def prevVolume = it.currentValue("volume")
                                 beforeVolume(it)
-                                it.playTextAndRestore(message.message, prevVolume)
+                                it.playTextAndRestore(newMessage, prevVolume)
                                 pauseExecution(theDuration)
                             } else if(it.hasCommand('playTrack')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
+                                if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${newMessage}"
                                 beforeVolume(it)
                                 if(state.sound) {
                                     try {
@@ -1007,10 +1015,10 @@ def letsTalk(msg) {
                                     // do nothing 
                                 }                              
                             } else {		        
-                                if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
+                                if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${newMessage}"
                                 beforeVolume(it)
                                 try {
-                                    it.speak(message.message)
+                                    it.speak(newMessage)
                                 } catch(e) {
                                     // do nothing 
                                 }     
@@ -1020,15 +1028,13 @@ def letsTalk(msg) {
                         break; 
                     }
                 } else {
-                    if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${message.message}"
-                    //beforeVolume(it)
+                    if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${newMessage}"
                     try {
-                        it.speak(message.message)
+                        it.speak(newMessage)
                     } catch(e) {
                         // do nothing 
                     }     
                     pauseExecution(theDuration)
-                    //afterVolume(it)
                 }
             }
             speakerStatus = "${app.label}:${atomicState.sZone}"
@@ -1175,6 +1181,7 @@ def checkPriority(priorityValue) {
 def priorityVoicesHandler(speaker,priorityVoice,lastSpoken) {
     if(logEnable) log.debug "In priorityVoicesHandler - Received - speaker: ${speaker} - priorityVoice: ${priorityVoice} - lastSpoken: ${lastSpoken}"
     if(lastSpoken == ".") lastSpoken = ""
+    state.sound = ""
     if(priorityVoice == "0") {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priorityVoice: ${priorityVoice}, so skipping"
 		state.voiceSelected = voiceNorm
@@ -1187,7 +1194,6 @@ def priorityVoicesHandler(speaker,priorityVoice,lastSpoken) {
 	    def uriMessage = "${tts.get('uri')}"
         try {
             if(speaker.hasCommand('playTrack')) {
-                state.sound = ""
                 if(priorityVoice.contains("X")) {
                     state.sound = ""
                     state.sLength = parent.s1Length
@@ -1310,8 +1316,8 @@ def pushOrQueue(evt) {
     
 	if(state.IH1 == "no") {
         if(messageDest == "Push") {
-		    if(logEnable) log.debug "In pushOrQueue - IH1 Sending message: ${theMessage}"
-    	    sendPushMessage1.deviceNotification(pushMsg)
+		    if(logEnable) log.debug "In pushOrQueue - IH1 Sending message: ${pushMsg}"
+            if(sendPushMessage1) sendPushMessage1.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH1"
@@ -1320,8 +1326,8 @@ def pushOrQueue(evt) {
 	}
 	if(state.IH2 == "no") {
         if(messageDest == "Push") {
-		    if(logEnable) log.debug "In pushOrQueue - IH2 Sending message: ${theMessage}"
-    	    sendPushMessage2.deviceNotification(pushMsg)
+		    if(logEnable) log.debug "In pushOrQueue - IH2 Sending message: ${pushMsg}"
+    	    if(sendPushMessage2) sendPushMessage2.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH2"
@@ -1330,8 +1336,8 @@ def pushOrQueue(evt) {
 	}
 	if(state.IH3 == "no") {
         if(messageDest == "Push") {
-		    if(logEnable) log.debug "In pushOrQueue - IH3 Sending message: ${theMessage}"
-    	    sendPushMessage3.deviceNotification(pushMsg)
+		    if(logEnable) log.debug "In pushOrQueue - IH3 Sending message: ${pushMsg}"
+    	    if(sendPushMessage3) sendPushMessage3.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH3"
@@ -1340,8 +1346,8 @@ def pushOrQueue(evt) {
 	}
 	if(state.IH4 == "no") {
         if(messageDest == "Push") {
-		    if(logEnable) log.debug "In pushOrQueue - IH4 Sending message: ${theMessage}"
-    	    sendPushMessage4.deviceNotification(pushMsg)
+		    if(logEnable) log.debug "In pushOrQueue - IH4 Sending message: ${pushMsg}"
+    	    if(sendPushMessage4) sendPushMessage4.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH4"
@@ -1350,12 +1356,12 @@ def pushOrQueue(evt) {
 	}
 	if(state.IH5 == "no") {
         if(messageDest == "Push") {
-		    if(logEnable) log.debug "In pushOrQueue - IH5 Sending message: ${theMessage}"
-    	    sendPushMessage5.deviceNotification(pushMsg)
+		    if(logEnable) log.debug "In pushOrQueue - IH5 Sending message: ${pushMsg}"
+    	    if(sendPushMessage5) sendPushMessage5.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH5"
-            letsQueue(ps,theMessage)
+            letsQueue(ps,pushMsg)
         }
 	}
 }
