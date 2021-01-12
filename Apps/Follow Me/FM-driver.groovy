@@ -4,7 +4,7 @@
  *  Design Usage:
  *  This driver formats Speech data to be displayed on Hubitat's Dashboards and also acts as a proxy speaker to 'Follow Me'.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.6 - 01/12/21 - Adjustments to Priority processing
  *  2.2.5 - 11/27/20 - Adjustments
  *  2.2.4 - 07/21/20 - Adjustments
  *  2.2.3 - 07/10/20 - Added user selectable Priority colors
@@ -113,7 +114,7 @@ metadata {
 
 // Queue's for Home Tracker
 def sendQueue(ps, theMessage, duration) {
-    log.info "Follow Me - NEW Home Tracker - ps: ${ps} - duration: ${duration} - theMessage: ${theMessage}"
+    if(logEnable) log.info "Follow Me - NEW Home Tracker - ps: ${ps} - duration: ${duration} - theMessage: ${theMessage}"
 }
 
 def sendPush(data) {
@@ -271,9 +272,9 @@ def populateMap(priority,speech) {
         if(theValueCount >= 2) priorityVoice = thePriority[1]
         if(theValueCount >= 3) prioritySpeaker = thePriority[2]
         
-        if(priorityValue == null) priorityValue = "X"
-        if(priorityVoice == null) priorityVoice = "X"
-        if(prioritySpeaker == null) prioritySpeaker = "X"
+        if(priorityValue == null || priorityValue == "0") priorityValue = "X"
+        if(priorityVoice == null || priorityVoice == "0") priorityVoice = "X"
+        if(prioritySpeaker == null || prioritySpeaker == "0") prioritySpeaker = "X"
         
         if(logEnable) log.debug "In populateMap - priorityValue: ${priorityValue} - priorityVoice: ${priorityVoice} - prioritySpeaker: ${prioritySpeaker}"
     } catch (e) {
