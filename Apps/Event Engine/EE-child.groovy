@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.7 - 01/13/21 - Quick fix, part 2
 *  2.5.6 - 01/13/21 - Quick fix
 *  2.5.5 - 01/13/21 - Massive update to 'Switches by Mode'
 *  2.5.4 - 01/11/21 - Adjustments to 'reverse' settings, fix for Presence 'or'.
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.6"
+    state.version = "2.5.7"
 }
 
 definition(
@@ -3317,7 +3318,7 @@ def switchesPerModeReverseActionHandler() {
                 }
             }
             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Removing ${it} from oldMapPer."
-            if(name) state.oldMapPer.remove(name)
+            if(name && state.oldMapPer) state.oldMapPer.remove(name)
         }
     }
     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - oldMapPer: ${state.oldMapPer}"
@@ -3483,7 +3484,7 @@ def dimmerOnReverseActionHandler() {
                         it.off()
                     }
                 }
-                if(name) state.oldMapPer.remove(name)
+                if(name && state.oldMapPer) state.oldMapPer.remove(name)
             } else {
                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - ${it} was already off - Nothing to do"
             }
