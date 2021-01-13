@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Group just about anything. Even groups of groups!
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 01/13/21 - Adjustments
  *  1.0.3 - 12/31/20 - Fixed boo-boo with switches, Added Shades, Added pause and disable switch
  *  1.0.2 - 08/07/20 - Fixed switchOptions
  *  1.0.1 - 05/21/20 - Added more stuff
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Groups"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -341,10 +342,12 @@ def contactGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In contactGroupHandler - Setting group device to Open"
-                dataDevice.virtualContact("open")
+                theValue = dataDevice.currentValue("contact")
+                if(theValue == "closed") dataDevice.virtualContact("open")
             } else {
                 if(logEnable) log.debug "In contactGroupHandler - Setting group device to Closed"
-                dataDevice.virtualContact("closed")
+                theValue = dataDevice.currentValue("contact")
+                if(theValue == "open") dataDevice.virtualContact("closed")
             }
             if(logEnable) log.debug "     - - - - - End (Contact Grouping) - - - - -     "
         }
@@ -373,10 +376,12 @@ def lockGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In lockGroupHandler - Setting group device to Unlocked"
-                dataDevice.virtualLock("unlocked")
+                theValue = dataDevice.currentValue("lock")
+                if(theValue == "locked") dataDevice.virtualLock("unlocked")
             } else {
                 if(logEnable) log.debug "In lockGroupHandler - Setting group device to Locked"
-                dataDevice.virtualLock("locked")
+                theValue = dataDevice.currentValue("lock")
+                if(theValue == "unlocked") dataDevice.virtualLock("locked")
             }
             if(logEnable) log.debug "     - - - - - End (Lock Grouping) - - - - -     "
         }
@@ -405,10 +410,12 @@ def motionGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In motionGroupHandler - Setting group device to Active"
-                dataDevice.virtualMotion("active")
+                theValue = dataDevice.currentValue("motion")
+                if(theValue == "inactive") dataDevice.virtualMotion("active")
             } else {
                 if(logEnable) log.debug "In motionGroupHandler - Setting group device to Inactive"
-                dataDevice.virtualMotion("inactive")
+                theValue = dataDevice.currentValue("motion")
+                if(theValue == "active") dataDevice.virtualMotion("inactive")
             }
             if(logEnable) log.debug "     - - - - - End (Motion Grouping) - - - - -     "
         }
@@ -437,10 +444,12 @@ def shadeGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In shadeGroupHandler - Setting group device to Open"
-                dataDevice.virtualShade("open")
+                theValue = dataDevice.currentValue("switch")
+                if(theValue == "closed") dataDevice.virtualShade("open")
             } else {
                 if(logEnable) log.debug "In shadeGroupHandler - Setting group device to Closed"
-                dataDevice.virtualShade("closed")
+                theValue = dataDevice.currentValue("switch")
+                if(theValue == "open") dataDevice.virtualShade("closed")
             }
             if(logEnable) log.debug "     - - - - - End (Shade Grouping) - - - - -     "
         }
@@ -469,10 +478,12 @@ def switchGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In switchGroupHandler - Setting group device to On"
-                dataDevice.virtualSwitch("on")
+                theValue = dataDevice.currentValue("switch")
+                if(theValue == "off") dataDevice.virtualSwitch("on")
             } else {
                 if(logEnable) log.debug "In switchGroupHandler - Setting group device to Off"
-                dataDevice.virtualSwitch("off")
+                theValue = dataDevice.currentValue("switch")
+                if(theValue == "on") dataDevice.virtualSwitch("off")
             }
             if(logEnable) log.debug "     - - - - - End (Switch Grouping) - - - - -     "
         }
@@ -501,10 +512,12 @@ def waterGroupHandler(evt) {
 
             if(data) {
                 if(logEnable) log.debug "In waterGroupHandler - Setting group device to Wet"
-                dataDevice.virtualWater("wet")
+                theValue = dataDevice.currentValue("water")
+                if(theValue == "dry") dataDevice.virtualWater("wet")
             } else {
                 if(logEnable) log.debug "In waterGroupHandler - Setting group device to Dry"
-                dataDevice.virtualWater("dry")
+                theValue = dataDevice.currentValue("water")
+                if(theValue == "wet") dataDevice.virtualWater("dry")
             }
             if(logEnable) log.debug "     - - - - - End (Water Grouping) - - - - -     "
         }
