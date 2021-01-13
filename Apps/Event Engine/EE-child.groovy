@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.6 - 01/13/21 - Quick fix
 *  2.5.5 - 01/13/21 - Massive update to 'Switches by Mode'
 *  2.5.4 - 01/11/21 - Adjustments to 'reverse' settings, fix for Presence 'or'.
 *  2.5.3 - 01/10/21 - Adjustments to 'reverse' settings, cosmetic changes
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.5"
+    state.version = "2.5.6"
 }
 
 definition(
@@ -3316,7 +3317,7 @@ def switchesPerModeReverseActionHandler() {
                 }
             }
             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Removing ${it} from oldMapPer."
-            state.oldMapPer.remove(name)
+            if(name) state.oldMapPer.remove(name)
         }
     }
     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - oldMapPer: ${state.oldMapPer}"
@@ -3405,8 +3406,8 @@ def dimmerOnReverseActionHandler() {
         setOnLC.each { it ->
             currentONOFF = it.currentValue("switch")
             if(currentONOFF == "on") {
+                name = (it.displayName).replace(" ","")
                 if(it.hasCommand("setColor")) {
-                    name = (it.displayName).replace(" ","")
                     try {
                         data = state.oldMapPer.get(name)
                         def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
@@ -3443,7 +3444,6 @@ def dimmerOnReverseActionHandler() {
                         it.off()
                     }
                 } else if(it.hasCommand("setColorTemperature")) {
-                    name = (it.displayName).replace(" ","")
                     try {
                         data = state.oldMapPer.get(name)
                         def (oldStatus, oldLevel, oldTemp) = data.split("::")
@@ -3465,7 +3465,6 @@ def dimmerOnReverseActionHandler() {
                         it.off()
                     }      
                 } else if(it.hasCommand("setLevel")) {
-                    name = (it.displayName).replace(" ","")
                     try {
                         data = state.oldMapPer.get(name)
                         def (oldStatus, oldLevel) = data.split("::")
@@ -3484,10 +3483,10 @@ def dimmerOnReverseActionHandler() {
                         it.off()
                     }
                 }
+                if(name) state.oldMapPer.remove(name)
             } else {
                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - ${it} was already off - Nothing to do"
             }
-            state.oldMapPer.remove(name)
         }
     }
 }
