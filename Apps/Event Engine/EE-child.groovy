@@ -3978,7 +3978,7 @@ def dimStepDown() {
             if(atLeastOneDnOn) {
                 runIn(10,dimStepDown)
             } else {
-                log.info "${app.label} - All devices are turned off"
+                if(logEnable) log.info "${app.label} - All devices are turned off"
             }
         } else {
             if(dimDnOff) slowDimmerDn.off()
@@ -4440,7 +4440,7 @@ def setLevelandColorHandler() {
         if(state.oldMapPer == null) state.oldMapPer = [:]
         theSetOldMapPer = state.oldMapPer.toString().replace("[","").replace("]","")
         oldMap = theSetOldMapPer.split(",")
-        log.info "oldMap: ${oldMap}"
+        if(logEnable) log.info "oldMap: ${oldMap}"
         if(state.oldMapPer == [:]) {
             // Do nothing
         } else {
