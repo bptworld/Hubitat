@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.2 - 01/13/21 - Fixed a typo
  *  2.3.1 - 01/12/21 - Adjustments to Priority processing
  *  2.3.0 - 01/05/21 - Adjustments to Speech Queue, more logging options, cosmetic changes
  *  ---
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.1"   
+	state.version = "2.3.2"   
 }
 
 definition(
@@ -862,7 +863,7 @@ def letsTalk(msg) {
     if(message.message.contains("]")) {
         oldMes = message.message
         splitMes = oldMes.split("]")
-        newMessage = splitMes(1)
+        newMessage = splitMes[1]
     } else {
         newMessage = message.message
     }
