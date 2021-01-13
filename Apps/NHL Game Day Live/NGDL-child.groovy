@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 01/13/21 - Fixed typos
  *  1.1.5 - 01/04/21 - Tons of adjustments
  *  1.1.4 - 08/31/20 - Minor updates
  *  1.1.3 - 08/29/20 - Fixed another typo
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -721,7 +722,7 @@ def checkLiveGameStatsHandler(resp, data) {
             } else {
                 //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScore} VS ${state.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
                 def awayScore = state.awayScore.toInteger()
-                def totalAwayScore = state.totalAwayScore.toInterger()
+                def totalAwayScore = state.totalAwayScore.toInteger()
                 if(awayScore < totalAwayScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Away Team Scores!"
                     if (state.myTeamIs == "away") {
@@ -743,7 +744,7 @@ def checkLiveGameStatsHandler(resp, data) {
                 }
 
                 def homeScore = state.homeScore.toInteger()
-                def totalHomeScore = state.totalHomeScore.toInterger()
+                def totalHomeScore = state.totalHomeScore.toInteger()
                 if(homeScore < totalHomeScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Home Team Scores!"
                     if (state.myTeamIs == "home") {
