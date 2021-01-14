@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.3 - 01/14/21 - Added 'App Description'
  *  2.3.2 - 01/13/21 - Fixed a typo
  *  2.3.1 - 01/12/21 - Adjustments to Priority processing
  *  2.3.0 - 01/05/21 - Adjustments to Speech Queue, more logging options, cosmetic changes
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.2"   
+	state.version = "2.3.3"
 }
 
 definition(
@@ -74,6 +75,7 @@ def pageConfig() {
     dynamicPage(name: "pageConfig", title: "", nextPage: null, install: true, uninstall: true) {
 		display()
 		getVoices()
+        state.appD = ""
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             speakerNotes =  "<b>Speakers:</b><br>"
             speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
@@ -117,6 +119,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message Destination")) {
     		//input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push","Queue"], required: true
             input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push"], required: true
+            state.appD += "<b>Destination</b>: ${messageDest}<br>"
 		}
         
 		// Speakers
@@ -130,19 +133,36 @@ def pageConfig() {
 					input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the speaker", required: true, multiple: true
 					input "contactOption", "enum", title: "Select contact option - If (option), Speaker is On", options: ["Open","Closed"], required: true
 					input "sZoneWaiting", "number", title: "After contact changes, wait X minutes to turn the speaker off", required: true, defaultValue: 5
-				}
+                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myContacts} - Option: ${contactOption} - Minutes to Off: ${sZoneWaiting}<br>"
+                } else {
+                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myContacts} - Option: ${contactOption} - Minutes to Off: ${sZoneWaiting}<br>"
+                    app.removeSetting("myContacts")
+                    app.removeSetting("contactOption")
+                }
 				if(triggerMode == "Motion_Sensor"){
 					input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After motion stops, wait X minutes to turn the speaker off", required: true, defaultValue: 5
-				}
+                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - Minutes to Off: ${sZoneWaiting}"
+				} else {
+                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - Minutes to Off: ${sZoneWaiting}"
+                    app.removeSetting("myMotion")
+                }
                 if(triggerMode == "Presence_Sensor"){
 					input "myPresence", "capability.presenceSensor", title: "Select the presence sensor(s) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After becoming not present, wait X minutes to turn the speaker off", required: true, defaultValue: 5
-				}
+                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myPresence} - Minutes to Off: ${sZoneWaiting}<br>"
+				} else {
+                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myPresence} - Minutes to Off: ${sZoneWaiting}<br>"
+                    app.removeSetting("myPresence")
+                }
 				if(triggerMode == "Switch"){
 					input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
-				}
+                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${mySwitches} - Minutes to Off: ${sZoneWaiting}<br>"
+				} else {
+                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${mySwitches} - Minutes to Off: ${sZoneWaiting}<br>"
+                    app.removeSetting("mySwitches")
+                }
 			}
 			
             section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
@@ -164,7 +184,11 @@ def pageConfig() {
                 if(speakerType == "googleSpeaker") {
                     paragraph "<b>Speaker type is a Google/Nest Device. Google/Nest devices can play custom sounds and change voices.</b>"
                     input "gInitialize", "bool", title: "When using Google/Nest devices sometimes an Initialize is necessary (not always). Initialize Google/Nest devices before sending speech?", required: true, defaultValue: false, submitOnChange:true
-                    if(gInitialize) input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
+                    if(gInitialize) {
+                        input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
+                    } else {
+                        app.updateSetting("gInitRepeat",[value:"false",type:"bool"])
+                    }
                 }
                 if(speakerType == "sonosSpeaker") {
                     paragraph "<b>Speaker type is a Sonos Device. Sonos devices can play custom sounds and change voices.</b>"
@@ -174,6 +198,11 @@ def pageConfig() {
                 }
                 paragraph "<b>Note:</b> Some speakers just don't play nicely with Follow Me. If your speaker is having an issue, please try turning this switch on."
                 input "defaultSpeak", "bool", title: "Use default 'speak'", defaultValue:false, submitOnChange:true
+                if(speakerType == "googleSpeaker") {
+                    state.appD += "<b>Speaker Option</b>: MediaPlayer: ${speakerMP} - SpeechSynthesis: ${speakerSS} - ${speakerType} - Initialize: ${gInitRepeat} - Use Default: ${defaultSpeak}<br>"
+                } else {
+                    state.appD += "<b>Speaker Option</b>: MediaPlayer: ${speakerMP} - SpeechSynthesis: ${speakerSS} - ${speakerType} - Use Default: ${defaultSpeak}<br>"
+                }
             }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Volume Options")) {
@@ -205,6 +234,8 @@ def pageConfig() {
                     app.removeSetting("toTime")
                     app.removeSetting("midnightCheckR")
                 }
+                state.appD += "<b>Volume Options</b>:<br> - Speaker Volume: ${volSpeech} - Quiet Time: ${useQuietTime} - Q Volume: ${volQuiet} - Q From: ${QfromTime} - Q To: ${QtoTime} - Q Midnight: ${midnightCheckQ}<br>"
+                state.appD += " - Speech Restriction: ${useSpeechRestriction} - R From: ${fromTime} - R To: ${toTime} - R Midnight: ${midnightCheckR}<br>"
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Priority (Advanced Options)")) {
@@ -212,6 +243,7 @@ def pageConfig() {
 				input "messagePriority", "bool", defaultValue:false, title: "Use Message Priority features", description: "Message Priority", submitOnChange:true
 				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "priorityVoices", "bool", defaultValue:false, title: "Use different voices for each Priority level", description: "Priority Voices", submitOnChange:true
 				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "messageSounds", "bool", defaultValue:false, title: "Play a sound before message", description: "Message Sounds", submitOnChange:true
+                state.appD += "<b>Message Priority</b>: ${messagePriority} - priorityVoices: ${priorityVoices} - messageSounds: ${messageSounds}<br>"
 			}
             
 			if(messagePriority) {
@@ -238,6 +270,7 @@ def pageConfig() {
 					input "volLow", "number", title: "Speaker volume for Low priority", description: "0-100", required:true, width:4
                     paragraph "Speaker volume for Normal priority<br>${volSpeech}", width:4
 					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required:true, width:4
+                    state.appD += " - Low: ${volLow} - High: ${volHigh}<br>"
 				}
 				if(speakerSS && (speakerType != "echoSpeaksSpeaker")) {
                     if(priorityVoices) {
@@ -255,7 +288,9 @@ def pageConfig() {
 						paragraph "* Priority Voice and Sound options are only available when using Speech Synth option."
 					}
 				}
-			}
+            } else {
+                state.appD -= " - Low: ${volLow} - High: ${volHigh}<br>"
+            }
 		}
         
 		// Push
@@ -322,11 +357,28 @@ def pageConfig() {
                 paragraph "${state.TTSQueue}"
                 paragraph "<small>* Blank [] is good! Mulitple messages is not!</small>"
                 paragraph "<hr>"
+                state.appD += "<b>Speech Queue</b>: ${useQueue}<br>"
+                state.appD += " - logQueue: ${logQueue} - maxQueued: ${maxQueued}<br>"
             } else {
+                state.appD -= " - logQueue: ${logQueue} - maxQueued: ${maxQueued}<br>"
                 app?.updateSetting("logQueue",[value:"false",type:"bool"])
                 clearTheQueue()
             }
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" The App Description")) {
+            paragraph "This will give a short description on how the App will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
+            paragraph "<hr>"
+            paragraph "<b>Follow Me App (${state.version}) - ${app.label}</b>"
+            if(state.appD) paragraph state.appD.replaceAll("null","NA")
+            if(state.pushD) paragraph state.pushD.replaceAll("null","NA")
+            if(state.priorityV) paragraph state.priorityV.replaceAll("null","NA")
+            paragraph "<hr>"
+            paragraph "<small>* If you're not seeing your descriptions from a certain section, please re-visit that section.</small>"
+            input "resetApp", "bool", defaultValue:false, title: "Refresh The App Description <small>(This will happen immediately)</small>", description: "App", submitOnChange:true
+            if(resetApp) {
+                app.updateSetting("resetApp",[value:"false",type:"bool"])
+            }
+        }
 		display2()
 	}
 }
@@ -350,6 +402,13 @@ def pushOptions(){
 			paragraph "<b>Combination 5</b>"
 			input("presenceSensor5", "capability.presenceSensor", title: "Presence Sensor 5", required: false, width: 6)
 			input("sendPushMessage5", "capability.notification", title: "Push Device 5", required: false, width: 6)
+            
+            state.pushD = "<b>Presence and Push Setup</b>:<br>"
+            if(presenceSensor1 || sendPushMessage1) state.pushD += " - presenceSensor1: ${presenceSensor1} - sendPushMessage1: ${sendPushMessage1}<br>"
+            if(presenceSensor2 || sendPushMessage2) state.pushD += " - presenceSensor2: ${presenceSensor2} - sendPushMessage2: ${sendPushMessage2}<br>"
+            if(presenceSensor3 || sendPushMessage3) state.pushD += " - presenceSensor3: ${presenceSensor3} - sendPushMessage3: ${sendPushMessage3}<br>"
+            if(presenceSensor4 || sendPushMessage4) state.pushD += " - presenceSensor4: ${presenceSensor4} - sendPushMessage4: ${sendPushMessage4}<br>"
+            if(presenceSensor5 || sendPushMessage5) state.pushD += " - presenceSensor5: ${presenceSensor5} - sendPushMessage5: ${sendPushMessage5}<br>"
 		}
 	}
 }		
@@ -369,6 +428,13 @@ def voiceOptions(){
             if(voiceNorm && testTheSpeakers) input "testVoiceNorm", "button", title: "Test Voice Normal", width: 5
 		    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false, submitOnChange: true, width: 7
             if(voiceHigh && testTheSpeakers) input "testVoiceHigh", "button", title: "Test Voice High", width: 5
+            
+            state.priorityV = "<b>Voice Option Setup</b>:<br>"
+            if(voiceFun) state.priorityV += " - voiceFun: ${voiceFun}<br>"
+            if(voiceRandom) state.priorityV += " - voiceFun: ${voiceRandom}<br>"
+            if(voiceLow) state.priorityV += " - voiceFun: ${voiceLow}<br>"
+            if(voiceNorm) state.priorityV += " - voiceFun: ${voiceNorm}<br>"
+            if(voiceHigh) state.priorityV += " - voiceFun: ${voiceHigh}<br>"
         }
 	}
 }		
