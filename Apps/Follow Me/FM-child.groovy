@@ -857,6 +857,8 @@ def startHandler(evt) {
         if(logEnable) log.debug "In startHandler (${state.version})"
         if(messageDest == "Speakers") letsTalkQueue(evt)
         if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
+        
+        if(logEnable) log.debug "**********  Follow Me (${state.version}) - End Talking  **********"
     }
 }
 
