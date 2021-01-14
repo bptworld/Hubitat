@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 01/13/21 - Minor adjustment
  *  1.1.5 - 01/05/21 - Fixed an error
  *  1.1.4 - 01/05/21 - Adjustments
  *  1.1.3 - 07/31/20 - Adding level to setColor, other adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -294,9 +295,9 @@ def pageConfig() {
 
             section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
                 input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-                paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 500 to 5000 (.5 to 5 seconds)."
                 input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
-                input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
+                input "delay", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, width: 6
                 if(theSwitch) {
                     if(theSwitch.hasCommand('setColor')) {
                         input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
@@ -471,55 +472,100 @@ def runPresetHandler(evt) {
 }
 
 def accelerationHandler(evt) {
-	if(logEnable) log.debug "In accelerationHandler - Acceleration: $evt.value"
-	if(evt.value == "active" && accelerationValue) flashLights()
-	if(evt.value == "inactive" && !accelerationValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In accelerationHandler - Acceleration: $evt.value"
+        if(evt.value == "active" && accelerationValue) flashLights()
+        if(evt.value == "inactive" && !accelerationValue) flashLights()
+    }
 }
 
 def buttonHandler(evt) {
-	if(logEnable) log.debug "In buttonHandler - Button: $evt.value"
-	flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In buttonHandler - Button: $evt.value"
+        flashLights()
+    }
 }
 
 def contactHandler(evt) {
-	if(logEnable) log.debug "In contactHandler - Contact: $evt.value"
-	if(evt.value == "open" && contactValue) flashLights()
-	if(evt.value == "closed" && !contactValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In contactHandler - Contact: $evt.value"
+        if(evt.value == "open" && contactValue) flashLights()
+        if(evt.value == "closed" && !contactValue) flashLights()
+    }
 }
 
 def lockHandler(evt) {
-	if(logEnable) log.debug "In lockHandler - Lock: $evt.value"
-	if(evt.value == "locked" && lockValue) flashLights()
-	if(evt.value == "unlocked" && !lockValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In lockHandler - Lock: $evt.value"
+        if(evt.value == "locked" && lockValue) flashLights()
+        if(evt.value == "unlocked" && !lockValue) flashLights()
+    }
 }
 
 def motionHandler(evt) {
-	if(logEnable) log.debug "In motionHandler - Motion: $evt.value"
-	if(evt.value == "active" && motionValue) flashLights()
-	if(evt.value == "inactive" && !motionValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In motionHandler - Motion: $evt.value"
+        if(evt.value == "active" && motionValue) flashLights()
+        if(evt.value == "inactive" && !motionValue) flashLights()
+    }
 }
 
 def presenceHandler(evt) {
-	if(logEnable) log.debug "In presenceHandler - Presence: $evt.value"
-    if(evt.value == "present" && presenceValue) flashLights()
-	if(evt.value == "not present" && !presenceValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In presenceHandler - Presence: $evt.value"
+        if(evt.value == "present" && presenceValue) flashLights()
+        if(evt.value == "not present" && !presenceValue) flashLights()
+    }
 }
 
 def switchHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
 	if(logEnable) log.debug "In switchHandler - Switch: $evt.value"
-    if(evt.value == "on" && switchValue) flashLights()
-	if(evt.value == "off" && !switchValue) flashLights()
+        if(evt.value == "on" && switchValue) flashLights()
+        if(evt.value == "off" && !switchValue) flashLights()
+    }
 }
 
 def moistureHandler(evt) {
-	if(logEnable) log.debug "In moistureHandler - Water: $evt.value"
-	if(evt.value == "dry" && waterValue) flashLights()
-	if(evt.value == "wet" && !waterValue) flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In moistureHandler - Water: $evt.value"
+        if(evt.value == "dry" && waterValue) flashLights()
+        if(evt.value == "wet" && !waterValue) flashLights()
+    }
 }
 
 def timeHandler(evt) {
-	if(logEnable) log.debug "In timeHandler - Time: $timeToRun"
-	flashLights()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In timeHandler - Time: $timeToRun"
+        flashLights()
+    }
 }
 
 def checkTime() {
@@ -667,7 +713,11 @@ def flashLights(data) {
                             pauseExecution(500)
                             if(state.oldSwitchState == "on") {
                                 theSwitch.on()
+                                pauseExecution(1000)
+                                theSwitch.on()
                             } else {
+                                theSwitch.off()
+                                pauseExecution(1000)
                                 theSwitch.off()
                             }
                             state.switchSaved = false
