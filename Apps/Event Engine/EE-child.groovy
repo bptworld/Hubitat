@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.9 - 01/15/21 - Code Cleanup, Fix for 'Additional Switches', Adjustments to 'Helper Devices'. Check your cogs!
 *  2.5.8 - 01/14/21 - Started adding in Inovelli LZW45 support to Actions, added 'Addition Switches To Turn Off on Reverse'
 *  2.5.7 - 01/13/21 - Quick fix, part 2
 *  2.5.6 - 01/13/21 - Quick fix
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.8"
+    state.version = "2.5.9"
 }
 
 definition(
@@ -211,9 +212,9 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
                 app.removeSetting("modeEvent")
-                app.updateSetting("modeCondition",[value:"false",type:"bool"])
-                app.updateSetting("modeMatchRestriction",[value:"false",type:"bool"])
-                app.updateSetting("modeMatchConditionOnly",[value:"false",type:"bool"])
+                app.removeSetting("modeCondition")
+                app.removeSetting("modeMatchRestriction")
+                app.removeSetting("modeMatchConditionOnly")
             }
 // -----------
             if(timeDaysType.contains("tDays")) {
@@ -226,7 +227,7 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction}<br>"
                 app.removeSetting("days")
-                app.updateSetting("daysMatchRestriction",[value:"false",type:"bool"])
+                app.removeSetting("daysMatchRestriction")
             }
 // -----------
             if(timeDaysType.contains("tTime")) {
@@ -252,7 +253,7 @@ def pageConfig() {
                 app.removeSetting("startTime")
                 app.removeSetting("repeat")
                 app.removeSetting("repeatType")
-                app.updateSetting("repeat",[value:"false",type:"bool"])
+                app.removeSetting("repeat")
             }
 // -----------
             if(timeDaysType.contains("tBetween")) {
@@ -279,7 +280,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction}<br>"
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
-                app.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
+                app.removeSetting("timeBetweenRestriction")
             }
 // -----------
             if(timeDaysType.contains("tSunsetSunrise")) {
@@ -313,7 +314,7 @@ def pageConfig() {
                 }
             } else {
                 state.theCogTriggers -= "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
-                app.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
+                app.removeSetting("timeBetweenSunRestriction")
             }
 // -----------
             if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
@@ -359,9 +360,9 @@ def pageConfig() {
             if(!timeDaysType.contains("tSunsetSunrise") && !timeDaysType.contains("tSunrise") && !timeDaysType.contains("tSunset")) {
                 app.removeSetting("offsetSunrise")
                 app.removeSetting("offsetSunset")
-                app.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                app.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
-                app.updateSetting("fromSun",[value:"false",type:"bool"])
+                app.removeSetting("setBeforeAfter")
+                app.removeSetting("riseBeforeAfter")
+                app.removeSetting("fromSun")
             }
 // -----------
             if(triggerType.contains("xAcceleration")) {
@@ -384,8 +385,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Acceleration Sensor: ${accelerationEvent} - InactiveActive: ${asInactiveActive}, ANDOR: ${accelerationANDOR}<br>"
                     app.removeSetting("accelerationEvent")
-                    app.updateSetting("asInactiveActive",[value:"false",type:"bool"])
-                    app.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("asInactiveActive")
+                    app.removeSetting("accelerationANDOR")
                 }
 
                 input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
@@ -406,13 +407,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Acceleration Sensor: ${accelerationRestrictionEvent} - InactiveActive: ${arInactiveActive}, ANDOR: ${accelerationRANDOR}<br>"
                     app.removeSetting("accelerationRestrictionEvent")
-                    app.updateSetting("arInactiveActive",[value:"false",type:"bool"])
-                    app.updateSetting("accelerationRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("arInactiveActive")
+                    app.removeSetting("accelerationRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("accelerationEvent")
+                app.removeSetting("asInactiveActive")
+                app.removeSetting("accelerationANDOR")
                 app.removeSetting("accelerationRestrictionEvent")
+                app.removeSetting("arInactiveActive")
+                app.removeSetting("accelerationRANDOR")
             }
 // -----------
             if(triggerType.contains("xBattery")) {
@@ -441,8 +446,8 @@ def pageConfig() {
                 app.removeSetting("batteryEvent")
                 app.removeSetting("beSetPointHigh")
                 app.removeSetting("beSetPointLow")
-                app.updateSetting("setBEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setBEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setBEPointHigh")
+                app.removeSetting("setBEPointLow")
             }
 // -----------
             if(triggerType.contains("xContact")) {
@@ -465,8 +470,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Contact Sensor: ${contactEvent} - ClosedOpen: ${csClosedOpen}, ANDOR: ${contactANDOR}<br>"
                     app.removeSetting("contactEvent")
-                    app.updateSetting("csClosedOpen",[value:"false",type:"bool"])
-                    app.updateSetting("contactANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("csClosedOpen")
+                    app.removeSetting("contactANDOR")
                 }
                 
                 if(contactEvent) {
@@ -499,13 +504,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Contact Sensor: ${contactRestrictionEvent} - ClosedOpen: ${crClosedOpen}, ANDOR: ${contactRANDOR}<br>"
                     app.removeSetting("contactRestrictionEvent")
-                    app.updateSetting("crClosedOpen",[value:"false",type:"bool"])
-                    app.updateSetting("contactRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("crClosedOpen")
+                    app.removeSetting("contactRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("contactEvent")
+                app.removeSetting("csClosedOpen")
+                app.removeSetting("contactANDOR")
                 app.removeSetting("contactRestrictionEvent")
+                app.removeSetting("crClosedOpen")
+                app.removeSetting("contactRANDOR")
             }
 // -----------
             if(triggerType.contains("xEnergy")) {
@@ -534,8 +543,8 @@ def pageConfig() {
                 app.removeSetting("energyEvent")
                 app.removeSetting("eeSetPointHigh")
                 app.removeSetting("eeSetPointLow")
-                app.updateSetting("setEEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setEEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setEEPointHigh")
+                app.removeSetting("setEEPointLow")
             }
 // -----------
             if(triggerType.contains("xGarageDoor")) {
@@ -558,8 +567,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Garage Door: ${garageDoorEvent} - ClosedOpen: ${gdClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                     app.removeSetting("garageDoorEvent")
-                    app.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
-                    app.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("gdClosedOpen")
+                    app.removeSetting("garageDoorANDOR")
                 }
 
                 input "garageDoorRestrictionEvent", "capability.garageDoorControl", title: "Restrict By Garage Door", required:false, multiple:true, submitOnChange:true
@@ -580,13 +589,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Garage Door: ${garageDoorRestrictionEvent} - ClosedOpen: ${gdrClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                     app.removeSetting("garageDoorRestrictionEvent")
-                    app.updateSetting("gdsClosedOpen",[value:"false",type:"bool"])
-                    app.updateSetting("garageDoorRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("gdsClosedOpen")
+                    app.removeSetting("garageDoorRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("garageDoorEvent")
+                app.removeSetting("gdClosedOpen")
+                app.removeSetting("garageDoorANDOR")
                 app.removeSetting("garageDoorRestrictionEvent")
+                app.removeSetting("gdsClosedOpen")
+                app.removeSetting("garageDoorRANDOR")
             }
 // -----------
             if(triggerType.contains("xGVar")) {
@@ -621,8 +634,8 @@ def pageConfig() {
                         input "gvValue", "text", title: "Value", required:false, submitOnChange:true
                         app.removeSetting("gvSetPointHigh")
                         app.removeSetting("gvSetPointLow")
-                        app.updateSetting("setGVPointHigh",[value:"false",type:"bool"])
-                        app.updateSetting("setGVPointLow",[value:"false",type:"bool"])
+                        app.removeSetting("setGVPointHigh")
+                        app.removeSetting("setGVPointLow")
                         state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
                         state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
@@ -637,8 +650,8 @@ def pageConfig() {
                 app.removeSetting("gvValue")
                 app.removeSetting("gvSetPointHigh")
                 app.removeSetting("gvSetPointLow")
-                app.updateSetting("setGVPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setGVPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setGVPointHigh")
+                app.removeSetting("setGVPointLow")
             }
 // -----------
             if(triggerType.contains("xHSMAlert")) {
@@ -673,7 +686,7 @@ def pageConfig() {
                 ], submitOnChange:true
                 paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
                 // "xhubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
-                app.updateSetting("xhubSecurity",[value:"false",type:"bool"])
+                app.removeSetting("xhubSecurity")
                 if(xhubSecurity) {
                     input "xhubUsername", "string", title: "Hub Username", required:true
                     input "xhubPassword", "password", title: "Hub Password", required:true
@@ -726,8 +739,8 @@ def pageConfig() {
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
-                app.updateSetting("setHEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setHEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setHEPointHigh")
+                app.removeSetting("setHEPointLow")
             }
 // -----------
             if(triggerType.contains("xIlluminance")) {
@@ -756,8 +769,8 @@ def pageConfig() {
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
-                app.updateSetting("setIEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setIEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setIEPointHigh")
+                app.removeSetting("setIEPointLow")
             }
 // -----------
             if(triggerType.contains("xLock")) {
@@ -784,8 +797,8 @@ def pageConfig() {
                     state.theCogTriggers -= "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                     app.removeSetting("lockUser")
                     app.removeSetting("lockEvent")
-                    app.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
-                    app.updateSetting("lockANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("lUnlockedLocked")
+                    app.removeSetting("lockANDOR")
                 }
 
                 input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required:false, multiple:false, submitOnChange:true
@@ -810,13 +823,19 @@ def pageConfig() {
                     state.theCogTriggers -= "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
                     app.removeSetting("lockRestrictionUser")
                     app.removeSetting("lockRestrictionEvent")
-                    app.updateSetting("lrUnlockedLocked",[value:"false",type:"bool"])
-                    app.updateSetting("lockRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("lrUnlockedLocked")
+                    app.removeSetting("lockRANDOR")
                 }
                 paragraph "<hr>" 
             } else {
+                app.removeSetting("lockUser")
                 app.removeSetting("lockEvent")
+                app.removeSetting("lUnlockedLocked")
+                app.removeSetting("lockANDOR")
+                app.removeSetting("lockRestrictionUser")
                 app.removeSetting("lockRestrictionEvent")
+                app.removeSetting("lrUnlockedLocked")
+                app.removeSetting("lockRANDOR")
             }
 // -----------
             if(triggerType.contains("xMotion")) {
@@ -839,8 +858,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Motion Sensor: ${motionEvent} - InactiveActive: ${meInactiveActive}, ANDOR: ${motionANDOR}<br>"
                     app.removeSetting("motionEvent")
-                    app.updateSetting("meInactiveActive",[value:"false",type:"bool"])
-                    app.updateSetting("motionANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("meInactiveActive")
+                    app.removeSetting("motionANDOR")
                 }
 
                 input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
@@ -861,13 +880,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Motion Sensor: ${motionRestrictionEvent} - InactiveActive: ${mrInactiveActive}, ANDOR: ${motionRANDOR}<br>"
                     app.removeSetting("motionRestrictionEvent")
-                    app.updateSetting("mrInactiveActive",[value:"false",type:"bool"])
-                    app.updateSetting("motionRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("mrInactiveActive")
+                    app.removeSetting("motionRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("motionEvent")
+                app.removeSetting("meInactiveActive")
+                app.removeSetting("motionANDOR")
                 app.removeSetting("motionRestrictionEvent")
+                app.removeSetting("mrInactiveActive")
+                app.removeSetting("motionRANDOR")
             }
 // -----------
             if(triggerType.contains("xPower")) {
@@ -898,8 +921,8 @@ def pageConfig() {
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
-                app.updateSetting("setPEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setPEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setPEPointHigh")
+                app.removeSetting("setPEPointLow")
             }
 // -----------
             if(triggerType.contains("xPresence")) {
@@ -923,8 +946,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presenceANDOR}<br>"
                     app.removeSetting("presenceEvent")
-                    app.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
-                    app.updateSetting("presenceANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("psPresentNotPresent")
+                    app.removeSetting("presenceANDOR")
                 }
 
                 input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required:false, multiple:true, submitOnChange:true
@@ -946,13 +969,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Presence Sensor: ${presenceRestrictionEvent} - PresentNotPresent: ${prPresentNotPresent}, ANDOR: ${presentRANDOR}<br>"
                     app.removeSetting("presenceRestrictionEvent")
-                    app.updateSetting("prPresentNotPresent",[value:"false",type:"bool"])
-                    app.updateSetting("presentRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("prPresentNotPresent")
+                    app.removeSetting("presentRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("presenceEvent")
+                app.removeSetting("psPresentNotPresent")
+                app.removeSetting("presenceANDOR")
                 app.removeSetting("presenceRestrictionEvent")
+                app.removeSetting("prPresentNotPresent")
+                app.removeSetting("presentRANDOR")
             }
 // -----------
             if(triggerType.contains("xSwitch")) {
@@ -977,10 +1004,10 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}, Physical: ${seType}<br>"
                     app.removeSetting("switchEvent")
-                    app.updateSetting("seOffOn",[value:"false",type:"bool"])
-                    app.updateSetting("switchANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("seOffOn")
+                    app.removeSetting("switchANDOR")
                     app.removeSetting("seStateMin")
-                    app.updateSetting("seInState",[value:"false",type:"bool"])
+                    app.removeSetting("seInState")
                 }
 // -----------
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
@@ -1001,13 +1028,19 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Switch: ${switchRestrictionEvent} - OffOn: ${srOffOn}, ANDOR: ${switchRANDOR}<br>"
                     app.removeSetting("switchRestrictionEvent")
-                    app.updateSetting("srOffOn",[value:"false",type:"bool"])
-                    app.updateSetting("switchRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("srOffOn")
+                    app.removeSetting("switchRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("switchEvent")
+                app.removeSetting("seOffOn")
+                app.removeSetting("switchANDOR")
+                app.removeSetting("seStateMin")
+                app.removeSetting("seInState")
                 app.removeSetting("switchRestrictionEvent")
+                app.removeSetting("srOffOn")
+                app.removeSetting("switchRANDOR")
             }
 // -----------
             if(triggerType.contains("xTemp")) {
@@ -1036,8 +1069,8 @@ def pageConfig() {
                 app.removeSetting("tempEvent")
                 app.removeSetting("teSetPointHigh")
                 app.removeSetting("teSetPointLow")
-                app.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setTEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setTEPointHigh")
+                app.removeSetting("setTEPointLow")
             }
 // -----------            
             if(triggerType.contains("xTherm")) {
@@ -1083,8 +1116,8 @@ def pageConfig() {
                 app.removeSetting("voltageEvent")
                 app.removeSetting("veSetPointHigh")
                 app.removeSetting("veSetPointLow")
-                app.updateSetting("setVEPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setVEPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setVEPointHigh")
+                app.removeSetting("setVEPointLow")
             }
 // -----------
             if(triggerType.contains("xWater")) {
@@ -1107,8 +1140,8 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Water Sensor: ${waterEvent} - DryWet: ${wsDryWet}, ANDOR: ${waterANDOR}<br>"
                     app.removeSetting("waterEvent")
-                    app.updateSetting("wsDryWet",[value:"false",type:"bool"])
-                    app.updateSetting("waterANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("wsDryWet")
+                    app.removeSetting("waterANDOR")
                 }
 
                 input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required:false, multiple:true, submitOnChange:true
@@ -1129,13 +1162,17 @@ def pageConfig() {
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Water Sensor: ${waterRestrictionEvent} - DryWet: ${wrDryWet}, ANDOR: ${waterANDOR}<br>"
                     app.removeSetting("waterRestrictionEvent")
-                    app.updateSetting("wrDryWet",[value:"false",type:"bool"])
-                    app.updateSetting("waterRANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("wrDryWet")
+                    app.removeSetting("waterRANDOR")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("waterEvent")
+                app.removeSetting("wsDryWet")
+                app.removeSetting("waterANDOR")
                 app.removeSetting("waterRestrictionEvent")
+                app.removeSetting("wrDryWet")
+                app.removeSetting("waterRANDOR")
             }
 // -----------
             if(triggerType.contains("xCustom")) {
@@ -1167,8 +1204,8 @@ def pageConfig() {
                         
                         app.removeSetting("custom1")
                         app.removeSetting("custom2")
-                        app.updateSetting("sdCustom1Custom2",[value:"false",type:"bool"])
-                        app.updateSetting("customANDOR",[value:"false",type:"bool"])
+                        app.removeSetting("sdCustom1Custom2")
+                        app.removeSetting("customANDOR")
                     } else {
                         paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
                         input "custom1", "text", title: "Attribute Value 1", required:true, submitOnChange:true
@@ -1190,8 +1227,8 @@ def pageConfig() {
                         state.theCogTriggers += "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
-                        app.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
-                        app.updateSetting("setSDPointLow",[value:"false",type:"bool"])
+                        app.removeSetting("setSDPointHigh")
+                        app.removeSetting("setSDPointLow")
                     }
                 }
             } else {
@@ -1201,12 +1238,12 @@ def pageConfig() {
                 app.removeSetting("specialAtt")
                 app.removeSetting("custom1")
                 app.removeSetting("custom2")
-                app.updateSetting("sdCustom1Custom2",[value:"false",type:"bool"])
-                app.updateSetting("customANDOR",[value:"false",type:"bool"])
+                app.removeSetting("sdCustom1Custom2")
+                app.removeSetting("customANDOR")
                 app.removeSetting("sdSetPointHigh")
                 app.removeSetting("sdSetPointLow")
-                app.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
-                app.updateSetting("setSDPointLow",[value:"false",type:"bool"])
+                app.removeSetting("setSDPointHigh")
+                app.removeSetting("setSDPointLow")
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || state.useRollingAverage || (customEvent && deviceORsetpoint)) {
@@ -1227,8 +1264,8 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>-</b> Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
                 app.removeSetting("spResetTime")
-                app.updateSetting("useWholeNumber",[value:"false",type:"bool"])
-                app.updateSetting("setpointRollingAverage",[value:"false",type:"bool"])
+                app.removeSetting("useWholeNumber")
+                app.removeSetting("setpointRollingAverage")
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
@@ -1266,10 +1303,10 @@ def pageConfig() {
                 }
             } else {
                 app.removeSetting("notifyDelay")
-                app.updateSetting("setDelay",[value:"false",type:"bool"])
+                app.removeSetting("setDelay")
                 app.removeSetting("delayLow")
                 app.removeSetting("delayHigh")
-                app.updateSetting("randomDelay",[value:"false",type:"bool"])
+                app.removeSetting("randomDelay")
             }
         }
 // ***** Condition Helper Start *****
@@ -1278,33 +1315,36 @@ def pageConfig() {
             input "useHelper", "bool", title: "Use Condition Helper", defaultValue:false, submitOnChange:true
             if(useHelper) {
                 input "myContacts2", "capability.contactSensor", title: "Select the Contact sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myContacts2) input "contactOption2", "enum", title: "Select contact option - If (option), conditions are true", options: ["Open","Closed"], required:true
+                if(myContacts2) input "contactOption2", "bool", title: "Condition true when Closed (off) or Open (on)", description: "bool", defaultValue:false, submitOnChange:true
+                
                 input "myMotion2", "capability.motionSensor", title: "Select the Motion sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myMotion2) input "motionOption2", "enum", title: "Select motion option - If (option), conditions are true", options: ["active","inactive"], required:true
+                if(myMotion2) input "motionOption2", "bool", title: "Condition true when Inactive (off) or Active (on)", description: "bool", defaultValue:false, submitOnChange:true
+                
                 input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myPresence2) input "presenceOption2", "enum", title: "Select presence option - If (option), conditions are true", options: ["present","not present"], required:true
+                if(myPresence2) input "presenceOption2", "bool", title: "Condition true when Present (off) or Not Present (on)", description: "bool", defaultValue:false, submitOnChange:true
+                
                 input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(mySwitches2) input "switchesOption2", "enum", title: "Select switch option - If (option), conditions are true", options: ["on","off"], required:true
+                if(mySwitches2) input "switchesOption2", "bool", title: "Condition true when Off (off) or On (on)", description: "bool", defaultValue:false, submitOnChange:true
                 paragraph "<small>* All helpers are considered 'OR'</small>"
                 if(myContacts2) {
-                    state.theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
                 }
                 if(myMotion2) {
-                    state.theCogTriggers += "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Motion: ${myMotion2} - Inactive/Active: ${motionOption2}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Inactive/Active: ${motionOption2}<br>"
                 }
                 if(myPresence2) {
-                    state.theCogTriggers += "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Presence: ${myPresence2} - Present/Not Active: ${presenceOption2}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Present/Not Active: ${presenceOption2}<br>"
                 }
                 if(mySwitches2) {
-                    state.theCogTriggers += "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Off/On: ${switchesOption2}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Off/On: ${switchesOption2}<br>"
                 }
             } else {
                 state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
@@ -1314,11 +1354,11 @@ def pageConfig() {
                 app.removeSetting("myContacts2")
                 app.removeSetting("myMotion2")
                 app.removeSetting("myPresence2")
-                app.removeSetting("mySwitches2")
-                app.updateSetting("contactOption2",[value:"false",type:"bool"])
-                app.updateSetting("motionOption2",[value:"false",type:"bool"])
-                app.updateSetting("presenceOption2",[value:"false",type:"bool"])
-                app.updateSetting("switchesOption2",[value:"false",type:"bool"])
+                app.removeSetting("mySwitches2")                
+                app.removeSetting("contactOption2")
+                app.removeSetting("motionOption2")
+                app.removeSetting("presenceOption2")
+                app.removeSetting("switchesOption2")
             }  
         }
         section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
@@ -1477,7 +1517,7 @@ def pageConfig() {
                 app.removeSetting("message")
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
-                app.updateSetting("useSpeech",[value:"false",type:"bool"])
+                app.removeSetting("useSpeech")
                 app.removeSetting("fmSpeaker")
                 app.removeSetting("sendPushMessage")
             }
@@ -1526,7 +1566,7 @@ def pageConfig() {
                 ], submitOnChange:true
                 paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
                 // "hubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
-                app.updateSetting("hubSecurity",[value:"false",type:"bool"])
+                app.removeSetting("hubSecurity")
                 if(hubSecurity) {
                     input "hubUsername", "string", title: "Hub Username", required:true
                     input "hubPassword", "password", title: "Hub Password", required:true
@@ -1600,7 +1640,7 @@ def pageConfig() {
                         }
                     } else {
                         app.removeSetting("permanentDimLvl2")
-                        app.updateSetting("pdColorTemp2",[value:"false",type:"bool"])
+                        app.removeSetting("pdColorTemp2")
                         app.removeSetting("pdColor2")
                         app.removeSetting("pdTemp2")
                     }
@@ -1610,7 +1650,7 @@ def pageConfig() {
                     app.removeSetting("permanentDimLvl2")
                     app.removeSetting("pdColor2")
                     app.removeSetting("pdTemp2")
-                    app.updateSetting("permanentDim2",[value:"false",type:"bool"])
+                    app.removeSetting("permanentDim2")
                 }
                 
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
@@ -1643,6 +1683,7 @@ def pageConfig() {
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
                     app.removeSetting("colorLC")
+                    app.removeSetting("lcColorTemp")
                 }
                 input "switchedDimUpAction", "bool", defaultValue:false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
                 input "switchedDimDnAction", "bool", defaultValue:false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
@@ -1703,8 +1744,8 @@ def pageConfig() {
                     app.removeSetting("targetLevelLow")
                     app.removeSetting("dimDnOff")
                     app.removeSetting("colorDn")
-                    app.updateSetting("useMaxLevel",[value:"false",type:"bool"])
-                    app.updateSetting("dimDnOff",[value:"false",type:"bool"])
+                    app.removeSetting("useMaxLevel")
+                    app.removeSetting("dimDnOff")
                 }
                 paragraph "<hr>"
             } else {
@@ -1713,9 +1754,9 @@ def pageConfig() {
                 app.removeSetting("switchesOnAction")
                 app.removeSetting("switchesOffAction")
                 app.removeSetting("switchesToggleAction")
-                app.updateSetting("switchedDimUpAction",[value:"false",type:"bool"])
-                app.updateSetting("switchedDimDnAction",[value:"false",type:"bool"])
-                app.updateSetting("lcColorTemp",[value:"false",type:"bool"])
+                app.removeSetting("switchedDimUpAction")
+                app.removeSetting("switchedDimDnAction")
+                app.removeSetting("lcColorTemp")
             }
                          
             if(actionType.contains("aSwitchSequence")) {
@@ -1939,29 +1980,29 @@ def pageConfig() {
                         app.removeSetting("pdTemp")
                     }
                     paragraph "<hr>"
-                    paragraph "<b>Addition Switches To Turn Off on Reverse</b>"
-                    input "additionSwitches", "capability.switch", title: "Additional Switches to turn Off", multiple:true, submitOnChange:true
+                    paragraph "<b>Additional Switches To Turn Off on Reverse</b>"
+                    input "additionalSwitches", "capability.switch", title: "Additional Switches to turn Off", multiple:true, submitOnChange:true
                     if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
-                    if(additionSwitches) state.theCogActions += "<b>-</b> Addtional Switches to Turn Off: ${additionSwitches}<br>"
+                    if(additionalSwitches) state.theCogActions += "<b>-</b> Addtional Switches to Turn Off: ${additionalSwitches}<br>"
                 } else {
                     state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
-                    state.theCogActions -= "<b>-</b> Addtional Switches to Turn Off: ${additionSwitches}<br>"
+                    state.theCogActions -= "<b>-</b> Addtional Switches to Turn Off: ${additionalSwitches}<br>"
                     app.removeSetting("permanentDimLvl")
                     app.removeSetting("pdColor")
                     app.updateSetting("permanentDim",[value:"false",type:"bool"])
                     app.updateSetting("pdColorTemp",[value:"false",type:"bool"])
-                    app.removeSetting("additionSwitches")
+                    app.removeSetting("additionalSwitches")
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("timeToReverse")
-                app.updateSetting("timeReverse",[value:"false",type:"bool"])
+                app.removeSetting("timeReverse")
                 app.removeSetting("permanentDimLvl")
-                app.removeSetting("pdColor")
-                app.updateSetting("pdColorTemp",[value:"false",type:"bool"])
-                app.updateSetting("permanentDim",[value:"false",type:"bool"])
-                app.updateSetting("reverse",[value:"false",type:"bool"])
-                app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
+                app.removeSetting("pdColor")              
+                app.removeSetting("pdColorTemp")
+                app.removeSetting("permanentDim")
+                app.removeSetting("reverse")
+                app.removeSetting("reverseWithDelay")
                 app.removeSetting("warningDimLvl")
                 app.removeSetting("additionSwitches")
             }        
@@ -2112,6 +2153,7 @@ def notificationOptions(){
                 } else {
                     state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
                     app.removeSetting("message")
+                    app.removeSetting("msgList")
                 }
             }
                 
@@ -2154,10 +2196,10 @@ def notificationOptions(){
             app.removeSetting("message")
             app.removeSetting("messageH")
             app.removeSetting("messageL")
-            app.updateSetting("useSpeech",[value:"false",type:"bool"])
+            app.removeSetting("useSpeech")
             app.removeSetting("fmSpeaker")
             app.removeSetting("sendPushMessage")
-            app.updateSetting("msgRepeat",[value:"false",type:"bool"])
+            app.removeSetting("msgRepeat")
             app.removeSetting("msgRepeatMinutes")
             app.removeSetting("msgRepeatContact")
             app.removeSetting("msgRepeatSwitch")
@@ -2602,7 +2644,7 @@ def contact2Handler() {
         state.type = contactOption2
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
-        state.typeAO = true
+        state.typeAO = false
         devicesGoodHandler("helper")
     }
 }
@@ -2657,7 +2699,7 @@ def motion2Handler() {
         state.type = motionOption2
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
-        state.typeAO = true
+        state.typeAO = false
         devicesGoodHandler("helper")
     }
 }
@@ -2679,7 +2721,7 @@ def presence2Handler() {
         state.type = presenceOption2
         state.typeValue1 = "not present"
         state.typeValue2 = "present"
-        state.typeAO = true
+        state.typeAO = false
         devicesGoodHandler("helper")
     }
 }
@@ -2701,7 +2743,7 @@ def switch2Handler() {
         state.type = switchesOption2
         state.typeValue1 = "on"
         state.typeValue2 = "off"
-        state.typeAO = true
+        state.typeAO = false
         devicesGoodHandler("helper")
     }
 }
@@ -2770,6 +2812,7 @@ def devicesGoodHandler(data) {
                     }  
                 } else {
                     deviceTrue1 = deviceTrue1 + 1
+                    if(logEnable) log.trace "In devicesGoodHandler - Adding to deviceTrue1: ${deviceTrue1}"
                 }
             } else if(theValue == state.typeValue2) { 
                 if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
@@ -2802,6 +2845,7 @@ def devicesGoodHandler(data) {
                     }  
                 } else {
                     deviceTrue2 = deviceTrue2 + 1
+                    if(logEnable) log.trace "In devicesGoodHandler - Adding to deviceTrue2: ${deviceTrue2}"
                 }
             } else {
                 if(state.eventType == "thermostatOperatingState") {
@@ -2820,7 +2864,7 @@ def devicesGoodHandler(data) {
     } else {
         state.deviceMatch = state.deviceMatch + deviceTrue2
     }
-    if(logEnable) log.debug "In devicesGoodHandler - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - type: ${state.typeAO}" 
+    if(logEnable) log.debug "In devicesGoodHandler - type: ${state.type} - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - type: ${state.typeAO}" 
     if(state.typeAO) {  // OR (true)
         if(state.deviceMatch >= 1) {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
@@ -3608,6 +3652,7 @@ def devicesToRefreshActionHandler() {
 def additionalSwitchesHandler() {
     if(logEnable) log.debug "In additionalSwitchesHandler (${state.version})"
     additionalSwitches.each { it ->
+        pauseExecution(actionDelay)
         it.off()
     }
 }
@@ -4431,14 +4476,18 @@ def checkingWhatToDo() {
         }
     } else {
         if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
-        if((state.totalMatch == state.totalConditions) && state.setpointOK && state.timeOK) {
-            state.everythingOK = true
-        } else {
-            if(state.totalMatchHelper >= 1) {
+        if(state.timeOK) {
+            if((state.totalMatch == state.totalConditions) && state.setpointOK) {
                 state.everythingOK = true
             } else {
-                state.everythingOK = false
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
             }
+        } else {
+            state.everythingOK = false
         }
     }   
     if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
