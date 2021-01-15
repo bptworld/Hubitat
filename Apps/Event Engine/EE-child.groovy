@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.5.8 - 01/14/21 - Started adding in Inovelli LZW45 support to Actions, added 'Addition Switches To Turn Off on Reverse'
 *  2.5.7 - 01/13/21 - Quick fix, part 2
 *  2.5.6 - 01/13/21 - Quick fix
 *  2.5.5 - 01/13/21 - Massive update to 'Switches by Mode'
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.7"
+    state.version = "2.5.8"
 }
 
 definition(
@@ -1341,6 +1342,7 @@ def pageConfig() {
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
+                ["aLZW45":"Inovelli Light Strip (LZW45)"],
                 ["aLock":"Locks"],
                 ["aMode":"Modes"],
                 ["aNotification":"Notifications (speech/push/flash)"], 
@@ -1400,6 +1402,41 @@ def pageConfig() {
                 app.removeSetting("setHSM")
             }
 
+            if(actionType.contains("aLZW45")) {
+                paragraph "<b>Inovelli Light Strip (LZW45)</b>"
+                paragraph "Help setting up your Light Strip can be found <a href='https://support.inovelli.com/portal/en/kb/articles/how-to-setup-effects-with-the-red-series-smart-led-strip-hubitat' target=_blank>HERE</a>."
+                input "lzw45Action", "capability.switchLevel", title: "Light Strip Device", multiple:false, submitOnChange:true
+                if(lzw45Action) {
+                    input "lzw45Command", "enum", title: "Command (more to come!)", required:false, multiple:false, options: ["on", "off", "Custom Effect Start", "Pixel Effect Start", "Start Notification"], submitOnChange:true
+                    if(lzw45Command == "Custom Effect Start") {
+                        input "cesParam1", "text", title: "Custom Effect", submitOnChange:true
+                        paragraph "<small>Obtain Effect number from <a href='https://nathanfiscus.github.io/inovelli-led-strip-toolbox/' target=_blank>HERE</a>.</small>"
+                    } else {
+                        app.removeSetting("cesParam1")
+                    }
+                    if(lzw45Command == "Pixel Effect Start") {
+                        input "pesParam1", "number", title: "Pixel Effect", submitOnChange:true, width:6
+                        input "pesParam2", "number", title: "Level", submitOnChange:true, width:6
+                        paragraph "<small>Obtain Pixel Effect number from <a href='https://support.inovelli.com/portal/en/kb/articles/pixel-effects-rgbtw-smart-led-strip-controller-kit-lzw45' target=_blank>HERE</a>.</small>"
+                    } else {
+                        app.removeSetting("pesParam1")
+                        app.removeSetting("pesParam2")
+                    }
+                    if(lzw45Command == "Start Notification") {
+                        input "snParam1", "number", title: "Notification Number", submitOnChange:true
+                        paragraph "<small>Obtain Notification number from <a href='https://nathanfiscus.github.io/inovelli-notification-calc/' target=_blank>HERE</a>.</small>"
+                    } else {
+                        app.removeSetting("snParam1")
+                    }
+                }
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Inovelli Light Strip: ${lzw45Action} - command: ${lzw45Command}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Inovelli Light Strip: ${lzw45Action} - command: ${lzw45Command}<br>"
+                app.removeSetting("lzw45Action")
+                app.removeSetting("lzw45Command")
+            }
+            
             if(actionType.contains("aLock")) {
                 paragraph "<b>Lock</b>"
                 input "lockAction", "capability.lock", title: "Lock Devices", multiple:true, submitOnChange:true
@@ -1802,8 +1839,8 @@ def pageConfig() {
             }      
         
             // Start Reverse Options
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction1 || setOnLC || contactOpenAction || setDimmersPerMode) {
-                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent) {
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || setDimmersPerMode || lzw45Action) {
+                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command) {
                     paragraph "<small><b>Please only select ONE Reverse option</b></small>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
@@ -1901,13 +1938,19 @@ def pageConfig() {
                         app.removeSetting("pdColor")
                         app.removeSetting("pdTemp")
                     }
+                    paragraph "<hr>"
+                    paragraph "<b>Addition Switches To Turn Off on Reverse</b>"
+                    input "additionSwitches", "capability.switch", title: "Additional Switches to turn Off", multiple:true, submitOnChange:true
                     if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
+                    if(additionSwitches) state.theCogActions += "<b>-</b> Addtional Switches to Turn Off: ${additionSwitches}<br>"
                 } else {
                     state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
+                    state.theCogActions -= "<b>-</b> Addtional Switches to Turn Off: ${additionSwitches}<br>"
                     app.removeSetting("permanentDimLvl")
                     app.removeSetting("pdColor")
                     app.updateSetting("permanentDim",[value:"false",type:"bool"])
                     app.updateSetting("pdColorTemp",[value:"false",type:"bool"])
+                    app.removeSetting("additionSwitches")
                 }
                 paragraph "<hr>"
             } else {
@@ -1920,6 +1963,7 @@ def pageConfig() {
                 app.updateSetting("reverse",[value:"false",type:"bool"])
                 app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
                 app.removeSetting("warningDimLvl")
+                app.removeSetting("additionSwitches")
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:true, submitOnChange:true
@@ -2425,6 +2469,7 @@ def startTheProcess(evt) {
                             if(logEnable) log.debug "In startTheProcess - actionType: ${actionType}"
                             if(actionType.contains("aFan")) { fanActionHandler() }
                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
                             if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
                             if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
                             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
@@ -2484,6 +2529,7 @@ def startTheProcess(evt) {
                     if(actionType) {
                         if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
+                        if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
@@ -2493,6 +2539,7 @@ def startTheProcess(evt) {
                         if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
                         if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
                         if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
+                        if(additionalSwitches) { additionalSwitchesHandler() }
                         if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                             if(actionType.contains("aNotification")) { 
                                 state.doMessage = true
@@ -3558,6 +3605,13 @@ def devicesToRefreshActionHandler() {
     }
 }
 
+def additionalSwitchesHandler() {
+    if(logEnable) log.debug "In additionalSwitchesHandler (${state.version})"
+    additionalSwitches.each { it ->
+        it.off()
+    }
+}
+
 def fanActionHandler() {
     fanAction.each { it ->
         if(logEnable) log.debug "In fanActionHandler - Changing ${it} to ${fanSpeed}"
@@ -3662,6 +3716,37 @@ def lockUserActionHandler(evt) {
                 }
             }
         }
+    }
+}
+
+def lzw45ActionHandler() {
+    if(logEnable) log.debug "In lzw45ActionHandler - Sending to ${lzw45Action} - command: ${lzw45Command}"
+    // Save current Status
+    state.oldLZW45Switch = lzw45Action.currentValue("switch")
+    state.oldLZW45Level = lzw45Action.currentValue("level")
+
+    pauseExecution(actionDelay)
+    if(lzw45Command == "on") lzw45Action.on()
+    if(lzw45Command == "off") lzw45Action.off()
+    if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStart(cesParam1)
+    if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStart(pesParam1,pesParam2)
+    if(lzw45Command == "Start Notification") lzw45Action.startNotification(snParam1)
+}
+
+def lzw45ReverseHandler() {
+    if(logEnable) log.debug "In lzw45ReverseHandler - Sending to ${lzw45Action}"
+    if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStop()
+    if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStop()
+    if(lzw45Command == "Start Notification") lzw45Action.stopNotification()
+    pauseExecution(actionDelay)
+    if(state.oldLZW45Switch == "on") {
+        lzw45Action.setLevel(state.oldLZW45Level)
+        pauseExecution(actionDelay)
+        lzw45Action.on() 
+    } else {
+        lzw45Action.setLevel(state.oldLZW45Level)
+        pauseExecution(actionDelay)
+        lzw45Action.off()
     }
 }
 
