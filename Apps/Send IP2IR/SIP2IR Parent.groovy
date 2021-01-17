@@ -6,7 +6,7 @@
  *
  *  IR Codes can be found using Global Cache Control Tower IR Database, https://irdb.globalcache.com/
  *
- *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2021 Bryan Turcotte (@bptworld)
  *
  *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based mine off of.
  *  
@@ -37,29 +37,18 @@
  *
  *  Changes:
  *
+ *  2.0.4 - 01/16/21 - Cosmetic changes
  *  2.0.3 - 06/11/20 - Added 'Digit Separator' to Advanced Options
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 10/20/19 - Moved telnetDevice to parent app
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  1.1.7 - 01/15/19 - Updated footer with update check and links
- *  1.1.6 - 12/30/18 - Updated to my new color theme.
- *  1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore. 
- *  1.1.4 - 11/30/18 - Added pause button to child apps. Added an Enable/Disable by switch option. Cleaned up code.
- *  1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
- *                      each push. Also Fixed some typo's.
- *  1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
- *                      Delay between sending digits user specified and added in some instructions.
- *  1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.  
- *  1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
- *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
- *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
- *						me how to send code from parent to child apps.
+ *  ---
  *  1.0.0 - 10/15/18 - Initial release
  */
 
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.2"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -113,7 +102,7 @@ def mainPage() {
 				app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR' child</b>", multiple: true)
 			}
             section(getFormat("header-green", "${getImage("Blank")}"+" Telnet Setup")) {
-                paragraph "Send IP2IR needs a Telnet device to operate. Please make a new 'Virtual Device' using the 'Send IP2IR Driver'"
+                paragraph "Send IP2IR needs a Telnet device to operate. Please make a new 'Virtual Device' using the 'IP2IR Telnet' driver"
                 input "telnetDevice", "capability.telnet", title: "Select the 'IP2IR Telnet' device", required:true
     	    }
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
