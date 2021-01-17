@@ -87,7 +87,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-polle
 <b>Remote Wellness Check</b> - Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-remote-wellness-check/32038" target="_blank">Go Here</a>
 <br><br>
-<b>Room Director</b> - Make your rooms smarter by directing them to do what you want, automatically.<br>
+<b>Room Director</b> - * Replaced with Event Engine * - Make your rooms smarter by directing them to do what you want, automatically.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291" target="_blank">Go Here</a>
 <br><br>
 <b>Send IP2IR</b> - Designed to send commands to an iTach IP2IR device.<br>
