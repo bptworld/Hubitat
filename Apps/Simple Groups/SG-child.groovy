@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.0 - 01/17/21 - Complete rewrite, Added Delay. Other adjustments
  *  1.0.4 - 01/13/21 - Adjustments
  *  1.0.3 - 12/31/20 - Fixed boo-boo with switches, Added Shades, Added pause and disable switch
  *  1.0.2 - 08/07/20 - Fixed switchOptions
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Groups"
-	state.version = "1.0.4"
+	state.version = "2.0.0"
 }
 
 definition(
@@ -68,13 +69,6 @@ definition(
 
 preferences {
     page(name: "pageConfig")
-    page(name: "contactSensorOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "groupOfGroupsOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "lockOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "motionSensorOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "shadeOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "switchOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
-    page(name: "waterSensorOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -82,7 +76,7 @@ def pageConfig() {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Group just about anything. Even groups of groups!"
+    		paragraph "Group just about anything."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
             paragraph "Each child app needs a virtual device to store the grouping results. Each device can hold data for each of the options beleow, no need for multiple devices. This is the device you'll use to control other things."
@@ -101,48 +95,46 @@ def pageConfig() {
             }
         }      
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Grouping Options")) {
-            if(contactSensors) {
-                href "contactSensorOptions", title:"${getImage("optionsGreen")} Setup Contact Sensor Groups", description:"Click here for Options"
-            } else {
-                href "contactSensorOptions", title:"${getImage("optionsRed")} Setup Contact Sensor Groups", description:"Click here for Options"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Group Options")) {
+            paragraph "Select any devices that share a common attribute to group."
+            input "groupEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+            if(groupEvent) {
+                allAttrs1 = []
+                allAttrs1 = groupEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                input "groupAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
+                if(groupAtt == "acceleration") { theAtt1 = "active";theAtt2 = "inactive" }
+                if(groupAtt == "carbonMonoxide") { theAtt1 = "detected";theAtt2 = "clear" }
+                if(groupAtt == "contact") { theAtt1 = "open";theAtt2 = "closed" }
+                if(groupAtt == "door") { theAtt1 = "open";theAtt2 = "closed" }
+                if(groupAtt == "filterStatus") { theAtt1 = "replace";theAtt2 = "normal" }
+                if(groupAtt == "lock") { theAtt1 = "unlocked";theAtt2 = "locked" }
+                if(groupAtt == "motion") { theAtt1 = "active";theAtt2 = "inactive" }
+                if(groupAtt == "windowShade") { theAtt1 = "open";theAtt2 = "closed" }
+                if(groupAtt == "shock") { theAtt1 = "detected";theAtt2 = "clear" }
+                if(groupAtt == "sleeping") { theAtt1 = "not sleeping";theAtt2 = "sleeping" }
+                if(groupAtt == "smoke") { theAtt1 = "detected";theAtt2 = "clear" }
+                if(groupAtt == "sound") { theAtt1 = "detected";theAtt2 = "clear" }
+                if(groupAtt == "switch") { theAtt1 = "on";theAtt2 = "off" }
+                if(groupAtt == "tamper") { theAtt1 = "detected";theAtt2 = "clear" }
+                if(groupAtt == "valve") { theAtt1 = "open";theAtt2 = "closed" }
+                if(groupAtt == "water") { theAtt1 = "wet";theAtt2 = "dry" }
+                
+                if(theAtt1 == null) {
+                    paragraph "The selected attribute isn't supported at this time. Please let me know what attribute you want added and I can see if it's possible. Thanks."
+                } else {
+                    input "att1", "text", title: "Attribute Value 1", required:true, defaultValue:theAtt1, submitOnChange:true
+                    input "att2", "text", title: "Attribute Value 2", required:true, defaultValue:theAtt2, submitOnChange:true
+                    paragraph "Condition is True when ANY device becomes '${att1}'"
+                    paragraph "Condition is False when ALL devices become '${att2}'"
+                    paragraph "<small>* If any Conditions are working backwards, Please let me know!</small>"
+                }
             }
-            
-            if(locks) {
-                href "lockOptions", title:"${getImage("optionsGreen")} Setup Lock Groups", description:"Click here for Options"
-            } else {
-                href "lockOptions", title:"${getImage("optionsRed")} Setup Lock Groups", description:"Click here for Options"
-            }
-            
-            if(motionSensors) {
-                href "motionSensorOptions", title:"${getImage("optionsGreen")} Setup Motion Sensor Groups", description:"Click here for Options"
-            } else {
-                href "motionSensorOptions", title:"${getImage("optionsRed")} Setup Motion Sensor Groups", description:"Click here for Options"
-            }
-            
-            if(shades) {
-                href "shadeOptions", title:"${getImage("optionsGreen")} Setup Shade Groups", description:"Click here for Options"
-            } else {
-                href "shadeOptions", title:"${getImage("optionsRed")} Setup Shade Groups", description:"Click here for Options"
-            }
-            
-            if(switches) {
-                href "switchOptions", title:"${getImage("optionsGreen")} Setup Switch Groups", description:"Click here for Options"
-            } else {
-                href "switchOptions", title:"${getImage("optionsRed")} Setup Switch Groups", description:"Click here for Options"
-            }
-            
-            if(waterSensors) {
-                href "waterSensorOptions", title:"${getImage("optionsGreen")} Setup Water Sensor Groups", description:"Click here for Options"
-            } else {
-                href "waterSensorOptions", title:"${getImage("optionsRed")} Setup Water Sensor Groups", description:"Click here for Options"
-            }
-            
-            if(group1 || group2 || group3) {
-                href "groupOfGroupsOptions", title:"${getImage("optionsGreen")} Setup Goup of Groups", description:"Click here for Options"
-            } else {
-                href "groupOfGroupsOptions", title:"${getImage("optionsRed")} Setup Group of Groups", description:"Click here for Options"
-            }
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
+            input "onDelay", "number", title: "How long to be '${att1}' before triggering a change (in seconds)", required:true, defaultValue:1, submitOnChange:true
+            input "offDelay", "number", title: "How long to be '${att2}' before triggering a change (in seconds)", required:true, defaultValue:120, submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -181,106 +173,6 @@ def pageConfig() {
 	}
 }
 
-def contactSensorOptions() {
-    dynamicPage(name: "contactSensorOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensor Grouping Options")) {
-            paragraph "Setup a group of Contact Sensors to report as one."
-            input "contactSensors", "capability.contactSensor", title: "Select Contact Sensor Device(s)", required:false, multiple:true, submitOnChange:true           
-            paragraph "<hr>"
-        }
-    }
-}
-
-def groupOfGroupsOptions() {
-    dynamicPage(name: "groupOfGroupsOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Groups of Groups Options")) {
-            paragraph "Setup the Groups of Groups to report as one."
-            
-            input "group1", "enum", title: "Select Group 1 Options", options: [
-                "contactGroup":"Contact Sensor Group",
-                "lockGroup":"Lock Group",
-                "motionGroup":"Motion Sensor Group",
-                "switchGroup":"Switch Group",
-                "waterGroup":"Water Group"
-            ], required:false, multiple:true, submitOnChange:true
-            
-            input "group2", "enum", title: "Select Group 2 Options", options: [
-                "contactGroup":"Contact Sensor Group",
-                "lockGroup":"Lock Group",
-                "motionGroup":"Motion Sensor Group",
-                "switchGroup":"Switch Group",
-                "waterGroup":"Water Group"
-            ], required:false, multiple:true, submitOnChange:true
-            
-            input "group3", "enum", title: "Select Group 3 Options", options: [
-                "contactGroup":"Contact Sensor Group",
-                "lockGroup":"Lock Group",
-                "motionGroup":"Motion Sensor Group",
-                "switchGroup":"Switch Group",
-                "waterGroup":"Water Group"
-            ], required:false, multiple:true, submitOnChange:true
-            paragraph "<hr>"
-        }
-    }
-}
-
-def lockOptions() {
-    dynamicPage(name: "lockOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Lock Grouping Options")) {
-            paragraph "Setup a group of Locks to report as one."
-            input "locks", "capability.lock", title: "Select Lock Device(s)", required:false, multiple:true, submitOnChange:true         
-            paragraph "<hr>"
-        }
-    }
-}
-
-def motionSensorOptions() {
-    dynamicPage(name: "motionSensorOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Motion Sensor Grouping Options")) {
-            paragraph "Setup a group of Motion Sensors to report as one."
-            input "motionSensors", "capability.motionSensor", title: "Select Motion Sensor Device(s)", required:false, multiple:true, submitOnChange:true              
-            paragraph "<hr>"
-        }
-    }
-}
-
-def shadeOptions() {
-    dynamicPage(name: "shadeOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Shade Grouping Options")) {
-            paragraph "Setup a group of Shades to report as one."
-            input "shades", "capability.windowShade", title: "Select Shade Device(s)", required:false, multiple:true, submitOnChange:true              
-            paragraph "<hr>"
-        }
-    }
-}
-
-def switchOptions() {
-    dynamicPage(name: "switchOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Switch Grouping Options")) {
-            paragraph "Setup a group of Switches to report as one."
-            input "switches", "capability.switch", title: "Select Switch Device(s)", required:false, multiple:true, submitOnChange:true               
-            paragraph "<hr>"
-        }
-    }
-}
-
-def waterSensorOptions() {
-    dynamicPage(name: "waterSensorOptions", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Water Sensor Grouping Options")) {
-            paragraph "Setup a group of Water Sensors to report as one."
-            input "waterSensors", "capability.waterSensor", title: "Select Water Sensor Device(s)", required:false, multiple:true, submitOnChange:true               
-            paragraph "<hr>"
-        }
-    }
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -304,12 +196,7 @@ def initialize() {
     if(pauseApp) {
         log.info "${app.label} is Paused"
     } else {
-        if(contactSensors) subscribe(contactSensors, "contact", contactGroupHandler)
-        if(locks) subscribe(locks, "lock", lockGroupHandler)
-        if(motionSensors) subscribe(motionSensors, "motion", motionGroupHandler)
-        if(shades) subscribe(shades, "windowShade", shadeGroupHandler)
-        if(switches) subscribe(switches, "switch", switchGroupHandler)
-        if(waterSensors) subscribe(waterSensors, "water", waterGroupHandler)
+        if(groupEvent) subscribe(groupEvent, groupAtt, groupHandler)
     }
 }
 
@@ -321,283 +208,49 @@ private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
-def contactGroupHandler(evt) {
+def groupHandler(evt) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In contactGroupHandler (${state.version})"
-        if(contactSensors) {
-            if(logEnable) log.debug "     - - - - - Start (Contact Grouping) - - - - -     "
+        if(logEnable) log.debug "In groupHandler (${state.version})"
+        if(groupEvent) {
+            if(logEnable) log.debug "     - - - - - Start - - - - -     "
+            activeCount = 0
+            theOnDelay = onDelay ?: 1
+            theOffDelay = offDelay ?: 120
 
-            data = false
-
-            contactSensors.each { it ->
-                if(logEnable) log.debug "In contactGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("contact")
-                if(theValue == "open") {
-                    data = true
+            groupEvent.each { it ->
+                if(logEnable) log.debug "In groupHandler - Working on ${it.displayName}"
+                theValue = it.currentValue(groupAtt)
+                if(theValue == "$att1") {
+                    activeCount += 1 
                 }
             }
-
-            if(data) {
-                if(logEnable) log.debug "In contactGroupHandler - Setting group device to Open"
-                theValue = dataDevice.currentValue("contact")
-                if(theValue == "closed") dataDevice.virtualContact("open")
+            if(logEnable) log.debug "In groupHandler - activeCount: ${activeCount}"
+            if(activeCount >= 1) {
+                if(logEnable) log.debug "In groupHandler - Received ${att1} - waiting ${theOnDelay} seconds"
+                unschedule(sendOffCommand)
+                runIn(theOnDelay, sendOnCommand)
             } else {
-                if(logEnable) log.debug "In contactGroupHandler - Setting group device to Closed"
-                theValue = dataDevice.currentValue("contact")
-                if(theValue == "open") dataDevice.virtualContact("closed")
+                if(logEnable) log.debug "In groupHandler - Received ${att2} - waiting ${theOffDelay} seconds"
+                runIn(theOffDelay, sendOffCommand)
             }
-            if(logEnable) log.debug "     - - - - - End (Contact Grouping) - - - - -     "
+            if(logEnable) log.debug "     - - - - - End - - - - -     "
         }
-        groupOfGroupsHandler()
     }
 }
 
-def lockGroupHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In lockGroupHandler (${state.version})"
-        if(locks) {
-            if(logEnable) log.debug "     - - - - - Start (Lock Grouping) - - - - -     "
+// Send Commands
 
-            data = false
-
-            locks.each { it ->
-                if(logEnable) log.debug "In lockGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("lock")
-                if(theValue == "unlocked") {
-                    data = true
-                }
-            }
-
-            if(data) {
-                if(logEnable) log.debug "In lockGroupHandler - Setting group device to Unlocked"
-                theValue = dataDevice.currentValue("lock")
-                if(theValue == "locked") dataDevice.virtualLock("unlocked")
-            } else {
-                if(logEnable) log.debug "In lockGroupHandler - Setting group device to Locked"
-                theValue = dataDevice.currentValue("lock")
-                if(theValue == "unlocked") dataDevice.virtualLock("locked")
-            }
-            if(logEnable) log.debug "     - - - - - End (Lock Grouping) - - - - -     "
-        }
-        groupOfGroupsHandler()
-    }
+def sendOnCommand() {
+    if(logEnable) log.debug "In sendOnCommand - Setting '${dataDevice}' to ${att1}"
+    dataDevice.sendEvent(name: groupAtt, value: att1, isStateChange: true)
 }
 
-def motionGroupHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In motionGroupHandler (${state.version})"
-        if(motionSensors) {
-            if(logEnable) log.debug "     - - - - - Start (Motion Grouping) - - - - -     "
-
-            data = false
-
-            motionSensors.each { it ->
-                if(logEnable) log.debug "In motionGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("motion")
-                if(theValue == "active") {
-                    data = true
-                }
-            }
-
-            if(data) {
-                if(logEnable) log.debug "In motionGroupHandler - Setting group device to Active"
-                theValue = dataDevice.currentValue("motion")
-                if(theValue == "inactive") dataDevice.virtualMotion("active")
-            } else {
-                if(logEnable) log.debug "In motionGroupHandler - Setting group device to Inactive"
-                theValue = dataDevice.currentValue("motion")
-                if(theValue == "active") dataDevice.virtualMotion("inactive")
-            }
-            if(logEnable) log.debug "     - - - - - End (Motion Grouping) - - - - -     "
-        }
-        groupOfGroupsHandler()
-    }
-}
-
-def shadeGroupHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In shadeGroupHandler (${state.version})"
-        if(shades) {
-            if(logEnable) log.debug "     - - - - - Start (Shade Grouping) - - - - -     "
-
-            data = false
-
-            shades.each { it ->
-                if(logEnable) log.debug "In shadeGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("switch")
-                if(theValue == "on") {
-                    data = true
-                }
-            }
-
-            if(data) {
-                if(logEnable) log.debug "In shadeGroupHandler - Setting group device to Open"
-                theValue = dataDevice.currentValue("switch")
-                if(theValue == "closed") dataDevice.virtualShade("open")
-            } else {
-                if(logEnable) log.debug "In shadeGroupHandler - Setting group device to Closed"
-                theValue = dataDevice.currentValue("switch")
-                if(theValue == "open") dataDevice.virtualShade("closed")
-            }
-            if(logEnable) log.debug "     - - - - - End (Shade Grouping) - - - - -     "
-        }
-        groupOfGroupsHandler()
-    }
-}
-
-def switchGroupHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In switchGroupHandler (${state.version})"
-        if(switches) {
-            if(logEnable) log.debug "     - - - - - Start (Switch Grouping) - - - - -     "
-
-            data = false
-
-            switches.each { it ->
-                if(logEnable) log.debug "In switchGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("switch")
-                if(theValue == "on") {
-                    data = true
-                }
-            }
-
-            if(data) {
-                if(logEnable) log.debug "In switchGroupHandler - Setting group device to On"
-                theValue = dataDevice.currentValue("switch")
-                if(theValue == "off") dataDevice.virtualSwitch("on")
-            } else {
-                if(logEnable) log.debug "In switchGroupHandler - Setting group device to Off"
-                theValue = dataDevice.currentValue("switch")
-                if(theValue == "on") dataDevice.virtualSwitch("off")
-            }
-            if(logEnable) log.debug "     - - - - - End (Switch Grouping) - - - - -     "
-        }
-        groupOfGroupsHandler()
-    }
-}
-
-def waterGroupHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In waterGroupHandler (${state.version})"
-        if(waterSensors) {
-            if(logEnable) log.debug "     - - - - - Start (Water Grouping) - - - - -     "
-
-            data = false
-
-            waterSensors.each { it ->
-                if(logEnable) log.debug "In waterGroupHandler - Working on ${it.displayName}"
-                theValue = it.currentValue("water")
-                if(theValue == "wet") {
-                    data = true
-                }
-            }
-
-            if(data) {
-                if(logEnable) log.debug "In waterGroupHandler - Setting group device to Wet"
-                theValue = dataDevice.currentValue("water")
-                if(theValue == "dry") dataDevice.virtualWater("wet")
-            } else {
-                if(logEnable) log.debug "In waterGroupHandler - Setting group device to Dry"
-                theValue = dataDevice.currentValue("water")
-                if(theValue == "wet") dataDevice.virtualWater("dry")
-            }
-            if(logEnable) log.debug "     - - - - - End (Water Grouping) - - - - -     "
-        }
-        groupOfGroupsHandler()
-    }
-}
-
-
-def groupOfGroupsHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In groupOfGroupsHandler (${state.version})"
-        if(group1) {
-            if(logEnable) log.debug "     - - - - - Start (Group of Groups Grouping) - - - - -     "
-
-            for(x=1;x<4;x++) {
-                data = false
-                if(x == 1) {
-                    groups = group1
-                    virtualGroup = "virtualGroup1"
-                }
-                if(x == 2) {
-                    groups = group2
-                    virtualGroup = "virtualGroup2"
-                }
-                if(x == 3) {
-                    groups = group3
-                    virtualGroup = "virtualGroup3"
-                }
-
-                if(groups == null) {
-                    if(logEnable) log.debug "In groupOfGroupsHandler - Group ${x} is blank so skipping"
-                } else {
-                    groups.each { it ->
-                        if(logEnable) log.debug "In groupOfGroupsHandler - Working on Group ${x} - ${it}"
-                        if(it.contains("contactGroup")) {
-                            theValue = dataDevice.currentValue("contact")
-                            if(theValue == "open") data = true
-                        }
-
-                        if(it.contains("lockGroup")) {
-                            theValue = dataDevice.currentValue("lock")
-                            if(theValue == "unlocked") data = true
-                        }
-
-                        if(it.contains("motionGroup")) {
-                            theValue = dataDevice.currentValue("motion")
-                            if(theValue == "active") data = true
-                        }
-
-                        if(it.contains("shadeGroup")) {
-                            theValue = dataDevice.currentValue("shade")
-                            if(theValue == "on") data = true
-                        }
-
-                        if(it.contains("switchGroup")) {
-                            theValue = dataDevice.currentValue("switch")
-                            if(theValue == "on") data = true
-                        }
-
-                        if(it.contains("waterGroup")) {
-                            theValue = dataDevice.currentValue("water")
-                            if(theValue == "wet") data = true
-                        }
-
-                        if(data) {
-                            if(logEnable) log.debug "In groupOfGroupsHandler - Setting group ${x} device to True"
-                            dataDevice."${virtualGroup}"("true")
-                        } else {
-                            if(logEnable) log.debug "In groupOfGroupsHandler - Setting group ${x} device to False"
-                            dataDevice."${virtualGroup}"("false")
-                        }
-                    }
-                }
-            }
-            if(logEnable) log.debug "     - - - - - End (Group of Groups Grouping) - - - - -     "
-        }
-    }
+def sendOffCommand() {
+    if(logEnable) log.debug "In sendOffCommand - Setting '${dataDevice}' to ${att2}"
+    dataDevice.sendEvent(name: groupAtt, value: att2, isStateChange: true)
 }
 
 def createDataChildDevice() {    
