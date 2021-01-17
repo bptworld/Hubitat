@@ -2,10 +2,10 @@
 	"packageName": "Simple Groups",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"dateReleased": "2020-05-20",
+	"dateReleased": "2021-01-17",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "",
-	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
+	"releaseNotes": "Warning, this is a complete rewrite of this app/driver. Be sure to go into EACH child app and adjust the settings. Thanks.",
 	"apps" : [
 		{
 			"id" : "3819fe1d-20a1-4505-b420-353412635573",
@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/SG-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.4"
+			"version": "2.0.0"
 		}
 	],
 	"drivers" : [
@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/SG-driver.groovy",
 			"required": true,
-			"version": "1.0.2"
+			"version": "2.0.0"
 		}
 	]
 }
