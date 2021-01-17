@@ -2,7 +2,6 @@
 Apps for use with the Hubitat Elevation Hub.<br>
 Offiical Website: www.hubitat.com<br>
 Official Forum: https://community.hubitat.com/<br>
-UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <hr>
 <b>Donations to support development efforts are accepted via:<br>
 Paypal: https://paypal.me/bptworld<br>Venmo: Bryan-Turcotte-MA (8477)</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated.<br><b>I 'Thank You' for your support.</b>
