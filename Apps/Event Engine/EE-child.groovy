@@ -2474,16 +2474,13 @@ def startTheProcess(evt) {
                     customSetpointHandler()
                 } else {
                     customDeviceHandler()
-                }
-                
+                }                
                 if(gvStyle) { 
                     globalVariablesNumberHandler()
                 } else {
                     globalVariablesTextHandler() 
-                }
-                
-                if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
-                
+                }               
+                if(triggerType.contains("xHubCheck")) { sendHttpHandler() }               
                 checkingWhatToDo()            
             }
         }
@@ -2492,6 +2489,7 @@ def startTheProcess(evt) {
             if(logEnable || state.trace) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
+                unschedule(startTheProcess)
                 if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
                     if(logEnable || state.trace) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -2545,7 +2543,6 @@ def startTheProcess(evt) {
                                 if(useTheFlasher) theFlasherHandler()
                             }
                             if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                            unschedule(startTheProcess)
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
