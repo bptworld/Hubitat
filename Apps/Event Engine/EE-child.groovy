@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.1 - 01/17/21 - Minor change
 *  2.6.0 - 01/17/21 - Adjustments, added Time to Reverse Per Mode
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.0"
+    state.version = "2.6.1"
 }
 
 definition(
@@ -2563,13 +2564,36 @@ def startTheProcess(evt) {
             } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
                     if(reverseWithDelay) {
-                        if(timeToReverse) {
-                            timeTo = timeToReverse ?: 1
-                        } else {
-                            timeTo = state.timeToReversePermode ?: 5
+                        if(timePerMode) {
+                            if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode"
+                            masterDimmersPerMode.each { itOne ->
+                                def theData = "${state.sdPerModeMap}".split(",")        
+                                theData.each { itTwo -> 
+                                    def pieces = itTwo.split(":")
+                                    try {
+                                        theMode = pieces[0]
+                                        theTime = pieces[5]
+                                    } catch (e) {
+                                        if(theTime == null) theTime = 3
+                                    }
+                                    if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                                    currentMode = location.mode
+                                    def modeCheck = currentMode.contains(theMode)
+                                    if(modeCheck) {
+                                        timeTo = theTime
+                                        if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+                                    } else {
+                                        if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
+                                    }
+                                }
+                            }
+                        } else {                       
+                            timeTo = timeToReverse ?: 3
+                            if(logEnable) log.debug "In startTheProcess - Reverse-timeToReverse - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+
                         }                      
-                        theDelay = timeTo * 60
-                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s)"
+                        theDelay = timeTo.toInteger() * 60
+                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                     } else {
                         if(logEnable) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
