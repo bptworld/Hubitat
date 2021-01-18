@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.2 - 01/18/21 - More Adjustments
 *  2.6.1 - 01/17/21 - Minor change
 *  2.6.0 - 01/17/21 - Adjustments, added Time to Reverse Per Mode
 *  ---
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.1"
+    state.version = "2.6.2"
 }
 
 definition(
@@ -88,7 +89,7 @@ def pageConfig() {
         section("Instructions:", hideable:true, hidden:true) {
             paragraph "<b>Notes:</b>"
             paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
-            paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of all Event Engine Options. (Google Docs)"
+            paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of Event Engine Options. (Google Docs)"
         }
         /* if(triggerType == null || triggerType == "") {
             section() {
@@ -2544,6 +2545,7 @@ def startTheProcess(evt) {
                                 if(useTheFlasher) theFlasherHandler()
                             }
                             if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
+                            unschedule(startTheProcess)
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -2577,11 +2579,12 @@ def startTheProcess(evt) {
                                         if(theTime == null) theTime = 3
                                     }
                                     if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                                    theTime = theTime.replace("]","")
                                     currentMode = location.mode
                                     def modeCheck = currentMode.contains(theMode)
                                     if(modeCheck) {
                                         timeTo = theTime
-                                        if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+                                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
                                     } else {
                                         if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                     }
@@ -2589,7 +2592,7 @@ def startTheProcess(evt) {
                             }
                         } else {                       
                             timeTo = timeToReverse ?: 3
-                            if(logEnable) log.debug "In startTheProcess - Reverse-timeToReverse - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Reverse-timeToReverse - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
 
                         }                      
                         theDelay = timeTo.toInteger() * 60
