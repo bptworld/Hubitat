@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.5.9 - 01/15/21 - Code Cleanup, Fix for 'Additional Switches', Adjustments to 'Helper Devices'. Check your cogs!
-*  2.5.8 - 01/14/21 - Started adding in Inovelli LZW45 support to Actions, added 'Addition Switches To Turn Off on Reverse'
-*  2.5.7 - 01/13/21 - Quick fix, part 2
-*  2.5.6 - 01/13/21 - Quick fix
-*  2.5.5 - 01/13/21 - Massive update to 'Switches by Mode'
-*  2.5.4 - 01/11/21 - Adjustments to 'reverse' settings, fix for Presence 'or'.
-*  2.5.3 - 01/10/21 - Adjustments to 'reverse' settings, cosmetic changes
-*  2.5.2 - 01/10/21 - Added option Sunrise to Sunset or Sunset to Sunrise toggle. Also added a toggle for Modes selected (in or not in selected modes).
-*  2.5.1 - 01/07/21 - Cosmetic changes, added option to keep logs on all the time, added option Check Free OS Memory. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
-*  2.5.0 - 12/21/20 - Fixed a typo
+*  2.6.0 - 01/17/21 - Adjustments, added Time to Reverse Per Mode
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -63,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.9"
+    state.version = "2.6.0"
 }
 
 definition(
@@ -88,7 +79,9 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
+        state.trace = true
         testLogEnable = false
+        state.spmah = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
         state.theCogTriggers = "<b><u>Conditions</u></b><br>"
         section("Instructions:", hideable:true, hidden:true) {
@@ -1801,6 +1794,11 @@ def pageConfig() {
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
                     app.removeSetting("sdPerModeTemp")
                 }
+                input "timePerMode", "bool", title: "Use Time to Reverse Per Mode", defaultValue:false, submitOnChange:true
+                if(timePerMode) {
+                    app.removeSetting("timeToReverse")                  
+                    input "sdPerModeTime", "number", title: "Time to Reverse (in minutes) - * For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.", submitOnChange:true
+                }
                 // *** Start Mode Map ***
                 input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
                 input "sdPerModeDel", "button", title: "Delete Mode", width: 3
@@ -1809,7 +1807,7 @@ def pageConfig() {
                 if(refreshMap) {
                     app.updateSetting("refreshMap",[value:"false",type:"bool"])
                 }
-                paragraph "<small>* Remember to click outside all fields before pressing a button.</small>"
+                paragraph "<small>* Remember to click outside all fields before pressing a button. Also, most of the time the button needs to be pushed twiced to add/edit. Need to work on that!</small>"
                 paragraph "<hr>"
                 if(state.thePerModeMap == null) {
                     theMap = "No devices are setup"
@@ -1828,6 +1826,7 @@ def pageConfig() {
                 app.removeSetting("sdPerModeLevel")
                 app.removeSetting("sdPerModeTemp")
                 app.removeSetting("sdPerModeColor")
+                app.removeSetting("sdPerModeTime")
                 state.sdPerModeMap = [:]
                 state.thePerModeMap = null
             }
@@ -1898,11 +1897,21 @@ def pageConfig() {
                         app.removeSetting("warningDimLvl")
                     }
                     input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
-                    if(reverseWithDelay || timeReverse) {
-                        paragraph "<hr>"
-                        input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                    if(timeReverse) {
+                        input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                     }
-                    if(!reverseWithDelay && !timeReverse) {
+                    if(reverseWithDelay) {
+                        paragraph "<hr>"
+                        if(timePerMode) {
+                            paragraph "Using Time to Reverse Per Mode."
+                        } else {
+                            input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                        }
+                    }
+                    if(!timeReverse) {
+                        app.removeSetting("timeReverseMinutes")
+                    }
+                    if(!reverseWithDelay) {
                         app.removeSetting("timeToReverse")
                     }
                     app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
@@ -1920,6 +1929,7 @@ def pageConfig() {
                     app.removeSetting("warningDimLvl")
                     app.updateSetting("timeReverse",[value:"false",type:"bool"])
                     app.removeSetting("timeToReverse")
+                    app.removeSetting("timeReverseMinutes")
                 } else {
                     app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
                     app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
@@ -1931,6 +1941,7 @@ def pageConfig() {
                     app.removeSetting("warningDimLvl")
                     app.updateSetting("timeReverse",[value:"false",type:"bool"])
                     app.removeSetting("timeToReverse")
+                     app.removeSetting("timeReverseMinutes")
                 }
                 // ***** Start Reverse Stuff *****
                 if(reverse) { 
@@ -1939,9 +1950,9 @@ def pageConfig() {
                     state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>" 
                 }
                 if(timeReverse) {
-                    state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                    state.theCogActions += "<b>-</b> Reverse: ${timeReverseMinutes} minute(s), even if Conditions are still true<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${timeReverseMinutes} minute(s), even if Conditions are still true<br>"
                 }        
                 if(reverseWithDelay) {
                     state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Level: ${warningDimLvl}<br>"
@@ -1997,6 +2008,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("timeToReverse")
                 app.removeSetting("timeReverse")
+                app.removeSetting("timeReverseMinutes")
                 app.removeSetting("permanentDimLvl")
                 app.removeSetting("pdColor")              
                 app.removeSetting("pdColorTemp")
@@ -2355,8 +2367,8 @@ def startTheProcess(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.trace "*"
-        if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+        if(logEnable || state.trace) log.trace "*"
+        if(logEnable || state.trace) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.totalMatch = 0
         state.totalMatchHelper = 0
         state.totalConditions = 0
@@ -2389,7 +2401,7 @@ def startTheProcess(evt) {
                 } catch(e) {
                     if(logEnable) log.debug "In startTheProcess - Whoops!"
                 }
-                if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
+                if(logEnable || state.trace) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
                 state.whatToDo = "run"
@@ -2475,26 +2487,26 @@ def startTheProcess(evt) {
         }
 
         if(state.whatToDo == "stop") {
-            if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
+            if(logEnable || state.trace) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
                 if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
-                    if(logEnable) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
+                    if(logEnable || state.trace) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                     if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                         if(notifyDelay && minSec) {
                             theDelay = notifyDelay
-                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
                         } else if(notifyDelay && !minSec) {
                             theDelay = notifyDelay * 60
-                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
                         } else if(randomDelay) {
                             newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                             theDelay = newDelay * 60
-                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
                         } else if(targetDelay) {
                             theDelay = minutesUp * 60
-                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
                         } else {
                             if(logEnable) log.warn "In startTheProcess - Something went wrong"
                         }
@@ -2508,7 +2520,7 @@ def startTheProcess(evt) {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
-                            if(logEnable) log.debug "In startTheProcess - actionType: ${actionType}"
+                            if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType}"
                             if(actionType.contains("aFan")) { fanActionHandler() }
                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                             if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
@@ -2539,8 +2551,8 @@ def startTheProcess(evt) {
                         if(setGVname && setGVvalue) setGlobalVariableHandler()
                         state.hasntDelayedYet = true
                         if(timeReverse) {
-                            theDelay = timeToReverse * 60
-                            if(logEnable) log.debug "In startTheProcess - Reverse will run in ${timeToReverse} minutes"
+                            theDelay = timeReverseMinutes * 60
+                            if(logEnable || state.trace) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
                             runIn(theDelay, startTheProcess, [data: "timeReverse"])
                         }
                     }
@@ -2551,9 +2563,13 @@ def startTheProcess(evt) {
             } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
                     if(reverseWithDelay) {
-                        timeToReverse = timeToReverse ?: 1
-                        theDelay = timeToReverse * 60
-                        if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${timeToReverse} minute(s)"
+                        if(timeToReverse) {
+                            timeTo = timeToReverse ?: 1
+                        } else {
+                            timeTo = state.timeToReversePermode ?: 5
+                        }                      
+                        theDelay = timeTo * 60
+                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s)"
                     } else {
                         if(logEnable) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
@@ -2569,7 +2585,7 @@ def startTheProcess(evt) {
                     }
                 } else {             
                     if(actionType) {
-                        if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
+                        if(logEnable || state.trace) log.debug "In startTheProcess - GOING IN REVERSE"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
@@ -2592,14 +2608,14 @@ def startTheProcess(evt) {
                         if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                     }
                     state.hasntDelayedReverseYet = true
+                    state.appStatus = "inactive"
                 }
-                state.appStatus = "inactive"
             } else {
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
-        if(logEnable) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
-        if(logEnable) log.trace "*"
+        if(logEnable || state.trace) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+        if(logEnable || state.trace) log.trace "*"
     }
 }
 
@@ -3296,29 +3312,41 @@ def restrictionHandler() {
 
 // ********** Start Actions **********
 def switchesPerModeActionHandler() {
-    if(logEnable) log.debug "In switchesPerModeActionHandler - (${state.version})"
+    if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - (${state.version})"
     currentMode = location.mode
     masterDimmersPerMode.each { itOne ->
         def theData = "${state.sdPerModeMap}".split(",")        
         theData.each { itTwo -> 
-            def (theMode, theDevice, theLevel, theTemp, theColor) = itTwo.split(":")
+            def pieces = itTwo.split(":")
+            try {
+                if(pieces[0]) theMode = pieces[0]
+                if(pieces[1]) theDevice = pieces[1]
+                if(pieces[2]) theLevel = pieces[2]
+                if(pieces[3]) theTemp = pieces[3]
+                if(pieces[4]) theColor = pieces[4]
+                if(pieces[5]) theTime = pieces[5]
+            } catch (e) {
+                if(theTime == null) theTime = "NA"
+            }
             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             def modeCheck = currentMode.contains(theMode)
-            if(logEnable) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
+            if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
             if(modeCheck) {
-                theColor = theColor.replace("]","")           
+                theColor = theColor.replace("]","")
+                theTime = theTime.replace("]","")
                 def cleanOne = "${itOne}"
                 def cleanTwo = theDevice.replace("[","").replace("]","").split(";")
                 cleanTwo.each { itThree ->
                     if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
-                    if(logEnable) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
+                    if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
                     if(cleanOne == itThree) {
-                        if(logEnable) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
+                        if((logEnable && state.spmah) || state.trace) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
                         state.fromWhere = "switchesPerMode"
                         state.sPDM = itOne
                         state.onColor = "${theColor}"
                         state.onLevel = theLevel
                         state.onTemp = theTemp
+                        state.timeToReversePermode = theTime
                         setLevelandColorHandler()
                     }
                 }
@@ -4847,29 +4875,40 @@ def sdPerModeHandler(data) {
     if(theType == "add") {
         if(sdPerModeLevel == null) sdPerModeLevel = "NA"
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
-        if(sdPerModeColor == null) sdPerModeColor = "NA"  
+        if(sdPerModeColor == null) sdPerModeColor = "NA"
+        if(sdPerModeTime == null) sdPerModeTime = "NA"
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
-        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}"
+        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}"
         state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
         state.sdPerModeMap.remove(theMode)
     }      
     if(logEnable) log.debug "In sdPerModeHandler - ${state.sdPerModeMap}"
     if(state.sdPerModeMap) {
-        thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b>"
+        thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b><td><b><u>TReverse</u></b>"
         def theData = "${state.sdPerModeMap}".split(",")
         theData.each { it -> 
-            log.info "it: ${it}"
-            def (tMode, theDevices, theLevel, theTemp, theColor) = it.split(":")
+            def pieces = it.split(":")
+            try {
+                if(pieces[0]) tMode = pieces[0]
+                if(pieces[1]) theDevices = pieces[1]
+                if(pieces[2]) theLevel = pieces[2]
+                if(pieces[3]) theTemp = pieces[3]
+                if(pieces[4]) theColor = pieces[4]
+                if(pieces[5]) theTime = pieces[5]
+            } catch (e) {
+                if(theTime == null) theTime = "NA"
+            }
             if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
             theColor = theColor.replace("]","")
+            theTime = theTime.replace("]","")
             theDevicesList = ""
             theDs = theDevices.split(";")
             theDs.each { d ->
                 if(d.startsWith(" ") || d.startsWith("[")) d = d.substring(1)
                 theDevicesList += "${d}<br>"
             }
-            thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}"
+            thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}"
         }                
         thePerModeMap += "</table>"
     }
@@ -4879,6 +4918,7 @@ def sdPerModeHandler(data) {
     app.removeSetting("sdPerModeLevel")
     app.removeSetting("sdPerModeTemp")
     app.removeSetting("sdPerModeColor")
+    app.removeSetting("sdPerModeTime")
 }
 
 def appButtonHandler(buttonPressed) {
