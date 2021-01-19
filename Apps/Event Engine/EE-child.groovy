@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.3 - 01/18/21 - Nice improvements to the logic, less traffic
 *  2.6.2 - 01/18/21 - More Adjustments
 *  2.6.1 - 01/17/21 - Minor change
 *  2.6.0 - 01/17/21 - Adjustments, added Time to Reverse Per Mode
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.2"
+    state.version = "2.6.3"
 }
 
 definition(
@@ -2386,6 +2387,7 @@ def startTheProcess(evt) {
             state.totalMatch = 1
             state.totalConditions = 1
         }
+        if(state.wasHereLast == null) state.wasHereLast = "Starting"
         
         if(evt) {
             if(evt == "runAfterDelay") {
@@ -2489,7 +2491,6 @@ def startTheProcess(evt) {
             if(logEnable || state.trace) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
-                unschedule(startTheProcess)
                 if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
                     if(logEnable || state.trace) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -2520,29 +2521,35 @@ def startTheProcess(evt) {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
-                            if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType}"
-                            if(actionType.contains("aFan")) { fanActionHandler() }
-                            if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                            if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                            if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                            if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                            if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                            if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                            if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                            if(actionType.contains("aNotification")) { 
-                                state.doMessage = true
-                                messageHandler() 
-                                if(useTheFlasher) theFlasherHandler()
+                            if(state.wasHereLast == "runAction") {
+                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
+                            } else {
+                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
+                                state.wasHereLast = "runAction"
+                                unschedule(permanentDimHandler)
+                                if(actionType.contains("aFan")) { fanActionHandler() }
+                                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                                if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                                if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                                if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                                if(actionType.contains("aNotification")) { 
+                                    state.doMessage = true
+                                    messageHandler() 
+                                    if(useTheFlasher) theFlasherHandler()
+                                }
+                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                             }
-                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -2560,8 +2567,10 @@ def startTheProcess(evt) {
                 } else {
                     if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
                 }
-            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
+            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {              
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
+                    if(logEnable || state.trace) log.debug "In startTheProcess - SETTING UP DELAY REVERSE - wasHereLast: ${state.wasHereLast}"
+                    state.wasHereLast = "runReverseDelay"
                     if(reverseWithDelay) {
                         if(timePerMode) {
                             if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode"
@@ -2604,12 +2613,14 @@ def startTheProcess(evt) {
                     }
                     if(dimAfterDelayed && (state.appStatus == "active")) { 
                         firstDelay = theDelay - 30
+                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Will warn 30 seconds before Reverse"
                         runIn(firstDelay, permanentDimHandler)
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     }
                 } else {             
                     if(actionType) {
-                        if(logEnable || state.trace) log.debug "In startTheProcess - GOING IN REVERSE"
+                        if(logEnable || state.trace) log.debug "In startTheProcess - GOING IN REVERSE - wasHereLast: ${state.wasHereLast}"
+                        state.wasHereLast = "runReverseNow"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
@@ -3650,6 +3661,7 @@ def permanentDimHandler() {
                 cleandevices.each { cleanD ->
                     if(cleanD == cleanOne) {
                         if(currentMode == theMode) {
+                            if(logEnable || state.trace) log.debug "In permanentDimHandler - Dimming: $it"
                             state.fromWhere = "permanentDimPerHandler"
                             state.dimmerDevices = it
                             state.onColor = theColor
