@@ -82,7 +82,7 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
-        state.trace = true
+        state.trace = false
         testLogEnable = false
         state.spmah = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
