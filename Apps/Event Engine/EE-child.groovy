@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.4 - 01/20/21 - Rolled back changes
 *  2.6.3 - 01/18/21 - Nice improvements to the logic, less traffic
 *  2.6.2 - 01/18/21 - More Adjustments
 *  2.6.1 - 01/17/21 - Minor change
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.3"
+    state.version = "2.6.4"
 }
 
 definition(
@@ -82,7 +83,7 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
-        state.trace = false
+        state.trace = true
         testLogEnable = false
         state.spmah = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
@@ -2521,9 +2522,9 @@ def startTheProcess(evt) {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
-                            if(state.wasHereLast == "runAction") {
-                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
-                            } else {
+                            //if(state.wasHereLast == "runAction") {
+                            //    if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
+                            //} else {
                                 if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
                                 state.wasHereLast = "runAction"
                                 unschedule(permanentDimHandler)
@@ -2549,7 +2550,7 @@ def startTheProcess(evt) {
                                     if(useTheFlasher) theFlasherHandler()
                                 }
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                            }
+                            //}
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
