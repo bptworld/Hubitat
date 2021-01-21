@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.5 - 01/20/21 - Second attempt at improved logic, fix to reverse
 *  2.6.4 - 01/20/21 - Rolled back changes
 *  2.6.3 - 01/18/21 - Nice improvements to the logic, less traffic
 *  2.6.2 - 01/18/21 - More Adjustments
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.4"
+    state.version = "2.6.5"
 }
 
 definition(
@@ -2388,8 +2389,7 @@ def startTheProcess(evt) {
             state.totalMatch = 1
             state.totalConditions = 1
         }
-        if(state.wasHereLast == null) state.wasHereLast = "Starting"
-        
+        if(state.wasHereLast == null) state.wasHereLast = "Starting"        
         if(evt) {
             if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
@@ -2489,6 +2489,7 @@ def startTheProcess(evt) {
         }
 
         if(state.whatToDo == "stop") {
+            state.wasHereLast = "runStop"
             if(logEnable || state.trace) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
@@ -2519,12 +2520,13 @@ def startTheProcess(evt) {
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
+                        state.wasHereLast = "runPause"
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
-                            //if(state.wasHereLast == "runAction") {
-                            //    if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
-                            //} else {
+                            if(state.wasHereLast == "runAction") {
+                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
+                            } else {
                                 if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
                                 state.wasHereLast = "runAction"
                                 unschedule(permanentDimHandler)
@@ -2550,7 +2552,7 @@ def startTheProcess(evt) {
                                     if(useTheFlasher) theFlasherHandler()
                                 }
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                            //}
+                            }
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -2599,23 +2601,22 @@ def startTheProcess(evt) {
                             }
                         } else {                       
                             timeTo = timeToReverse ?: 3
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Reverse-timeToReverse - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
-
                         }                      
                         theDelay = timeTo.toInteger() * 60
                         if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                     } else {
-                        if(logEnable) log.warn "In startTheProcess - Reverse - Something went wrong"
+                        if(logEnable || state.trace) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
                     state.hasntDelayedReverseYet = false
                     if(dimWhileDelayed && (state.appStatus == "active")) { 
                         permanentDimHandler() 
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                    }
-                    if(dimAfterDelayed && (state.appStatus == "active")) { 
+                    } else if(dimAfterDelayed && (state.appStatus == "active")) { 
                         firstDelay = theDelay - 30
                         if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Will warn 30 seconds before Reverse"
                         runIn(firstDelay, permanentDimHandler)
+                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                    } else {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     }
                 } else {             
@@ -2647,6 +2648,7 @@ def startTheProcess(evt) {
                     state.appStatus = "inactive"
                 }
             } else {
+                state.wasHereLast = "runOops"
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
