@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.6 - 01/22/21 - Added option 'use as condition but not trigger' to Humidity, Illum and Temp
 *  2.6.5 - 01/20/21 - Second attempt at improved logic, fix to reverse
 *  2.6.4 - 01/20/21 - Rolled back changes
 *  2.6.3 - 01/18/21 - Nice improvements to the logic, less traffic
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.5"
+    state.version = "2.6.6"
 }
 
 definition(
@@ -727,8 +728,14 @@ def pageConfig() {
                     } else {
                         app.removeSetting("heSetPointLow")
                     }
-                    if(heSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${heSetPointHigh}"
-                    if(heSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${heSetPointLow}"
+                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    if(humidityConditionOnly) {
+                        if(heSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
+                        if(heSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
+                    } else {
+                        if(heSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${heSetPointHigh}"
+                        if(heSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${heSetPointLow}"
+                    }
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
@@ -757,13 +764,19 @@ def pageConfig() {
                     } else {
                         app.removeSetting("ieSetPointLow")
                     }
-                    if(iSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${ieSetPointHigh}"
-                    if(iSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${ieSetPointLow}"
+                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    if(illumConditionOnly) {
+                        if(iSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${ieSetPointHigh}"
+                        if(iSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${ieSetPointLow}"
+                    } else {
+                        if(iSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${ieSetPointHigh}"
+                        if(iSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${ieSetPointLow}"
+                    }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
@@ -1057,8 +1070,14 @@ def pageConfig() {
                     } else {
                         app.removeSetting("setTEPointLow")
                     }
-                    if(teSetPointHigh) paragraph "Cog will trigger when Temperature reading is above or equal to ${teSetPointHigh}"
-                    if(teSetPointLow) paragraph "Cog will trigger when Temperature reading is below ${teSetPointLow}"
+                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    if(tempConditionOnly) {
+                        if(teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
+                        if(teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
+                    } else {
+                        if(teSetPointHigh) paragraph "Cog will trigger when Temperature reading is above or equal to ${teSetPointHigh}"
+                        if(teSetPointLow) paragraph "Cog will trigger when Temperature reading is below ${teSetPointLow}"
+                    }
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
@@ -2291,8 +2310,8 @@ def initialize() {
         if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
         if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
         if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
-        if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
-        if(illuminanceEvent) subscribe(illuminanceEvent, "illuminance", startTheProcess)
+        if(humidityEvent && humidityConditionOnly == false) subscribe(humidityEvent, "humidity", startTheProcess)
+        if(illuminanceEvent && illumConditionOnly == false) subscribe(illuminanceEvent, "illuminance", startTheProcess)
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent && modeMatchConditionOnly == false) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
@@ -2300,7 +2319,7 @@ def initialize() {
         if(presenceEvent) subscribe(presenceEvent, "presence", startTheProcess)
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
-        if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
+        if(tempEvent && tempConditionOnly == false) subscribe(tempEvent, "temperature", startTheProcess)
         if(thermoEvent) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
         
