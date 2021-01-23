@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.7 - 01/23/21 - Added amazing hidden in-app descriptions for each option, just hover!
 *  2.6.6 - 01/22/21 - Added option 'use as condition but not trigger' to Humidity, Illum and Temp
 *  2.6.5 - 01/20/21 - Second attempt at improved logic, fix to reverse
 *  2.6.4 - 01/20/21 - Rolled back changes
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.6"
+    state.version = "2.6.7"
 }
 
 definition(
@@ -93,7 +94,51 @@ def pageConfig() {
         section("Instructions:", hideable:true, hidden:true) {
             paragraph "<b>Notes:</b>"
             paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
-            paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of Event Engine Options. (Google Docs)"
+            paragraph "<abbr title='Look for these little INFO tags to receive more information about the option.'><b>INFO</b></abbr> - Hover over for more!"
+            paragraph "<hr>"
+            cVSr = "<b>Condition versus Restriction:</b><br>"
+            cVSr += "When choosing conditions, it’s important to note the difference between conditions and restrictions.<br><br>"
+            cVSr += "<u>Conditions</u> - This is what the cog looks at to start the whole process. Without conditions nothing at all would happen. When a condition is met, the Cog fires. If the condition is true, everything goes as planned (lights turn on, notifications are sent, etc.). If the condition is false and a ‘reverse’ is set. That portion of the cog will run. (lights turn off, etc.)<br><br>"
+            cVSr += "<u>Restrictions</u> - The is the ignition key of the cog. If ‘xx as Restriction’ is true, and the condition is met, Cog will fire, if the condition is false, nothing will happen at all.<br><br>"
+            cVSr += "Example Cog:<br>"
+            cVSr += "<b>Conditions</b><br>"
+            cVSr += "By Days - [Monday, Tuesday] - as Restriction: false<br>"
+            cVSr += "Certain Time - 2020-09-27T06:40:00.000-0400 - Repeat: false - Schedule: NA<br>"
+            cVSr += "<b>Actions</b><br>"
+            cVSr += "Switches to turn On: [Test Zwave Bulb - Multi Color]<br>"
+            cVSr += "Reverse: true - Delay On Reverse: false<br><br>"
+            cVSr += "In this example:<br>"
+            cVSr += "When days equal Monday or Tuesday @ 6:40am the light will come on.<br>"
+            cVSr += "When days don’t equal Monday or Tuesday, the light will go in ‘reverse’. In this case, they would turn off @ 6:40am.<br><br>"
+            cVSr += "By simply changing the ‘as Restriction’ to true<br>"
+            cVSr += "When days = Monday or Tuesday @ 6:40am the light will come on.<br>"
+            cVSr += "When days don’t equal Monday or Tuesday, Nothing at all will happen."
+            paragraph "${cVSr}"
+            paragraph "<hr>"
+            bTt = "<b>Between Two Times (including Sunrise/Sunset):</b><br>"
+            bTt += "Between two times will look at the other conditions when the first time is reached. Turning on and off devices as specified in the cog. During the in between time, it will then continue to work - turning things on/off/dim/etc - including Reverse if it is chosen.<br>"
+            bTt += "Once the end time is reached, it will once again look at the conditions and (if chosen) Reverse the devices.<br>"
+            bTt += "If ‘Used as Restriction’ is selected, it will not reverse the devices when the end time is reached."
+            paragraph "${bTt}"
+            paragraph "<hr>"
+            rf = "<b>Reverse Feature:</b><br>"
+            rf += "Reverse is a unique feature to Event Engine. It works with ‘Turn Light(s) On, Set Level and Color’.<br><br>"
+            rf += "<u>Basically:</u><br>"
+            rf += "If the level was different, it will revert back to that level<br>"
+            rf += "If the color was different, it will revert back to that color<br>"
+            rf += "If switch was off, it will turn off<br><br>"
+            rf += "<u>Simple Example</u><br>"
+            rf += "A light is off.<br>"
+            rf += "A cog becomes true and turns the light on.<br>"
+            rf += "After a while the cog becomes false.<br>"
+            rf += "The light turns back off.<br><br>"
+            rf += "<u>More advanced Example</u><br>"
+            rf += "A light is off. (last time it was on, it was color: blue - level: 70)<br>"
+            rf += "A cog becomes true and turns the light on (color: red - level: 99).<br>"
+            rf += "After a while the cog becomes false.<br>"
+            rf += "The light goes back to color:blue - level:70, then turns off."
+            paragraph "${rf}"
+            paragraph "<hr>"
         }
         /* if(triggerType == null || triggerType == "") {
             section() {
@@ -102,7 +147,7 @@ def pageConfig() {
         } */
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Conditions")) {
-            input "triggerType", "enum", title: "Condition Type", options: [
+            input "triggerType", "enum", title: "Condition Type <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>", options: [
                 ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
@@ -161,7 +206,7 @@ def pageConfig() {
                 state.conditionsMap.remove("timeDaysType")
             }
           
-            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
+            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types <small><abbr title='‘AND’ requires that all selected conditions are true. ‘OR’ requires that any selected condition is true'><b>- INFO -</b></abbr></small>", description: "andOr", defaultValue:false, submitOnChange:true, width:12
             if(triggerAndOr) {
                 theData = "${triggerAndOr}"
                 state.conditionsMap.put("triggerAndOr",theData)
@@ -182,7 +227,7 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
-                input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression to 'Run the Cog'", required:false, submitOnChange:true
+                input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression to 'Run the Cog' <small><abbr title='Use a Periodic Cron Expression Generator to create powerful schedules.'><b>- INFO -</b></abbr></small>", required:false, submitOnChange:true
                 paragraph "In addtion to setting up an Expression to start the Cog, you can enter in a second Expression to 'Reverse the Cog'. ie. When the Cog is first run, it turns on a light.  When the second expression is triggered, it will turn the light off."
                 input "preMadePeriodic2", "text", title: "Enter in a Periodic Cron Expression to 'Reverse the Cog' (optional)", required:false, submitOnChange:true
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
@@ -196,16 +241,15 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tMode")) {
                 paragraph "<b>By Mode</b>"
-                input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true                
+                input "modeEvent", "mode", title: "By Mode <small><abbr title='Choose the Modes to use with this Cog'><b>- INFO -</b></abbr></small>", multiple:true, submitOnChange:true                
                 input "modeCondition", "bool", title: "When in the selected mode(s) (off) - or - When NOT in the selected Mode(s) (on)", description: "mode", defaultValue:false, submitOnChange:true
                 if(modeCondition) {
                     paragraph "Condition is true when NOT in modes selected."
                 } else {
                     paragraph "Condition is true when in modes selected."
                 }
-                paragraph "By Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
-                input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction", description: "By Mode Restriction", submitOnChange:true
-                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
+                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
@@ -218,9 +262,8 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
-                input "days", "enum", title: "Activate on these days", description: "Days to Activate", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                paragraph "By Days can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
-                input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
+                input "days", "enum", title: "Activate on these days", description: "Days to Activate <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction}<br>"
             } else {
@@ -231,10 +274,10 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tTime")) {
                 paragraph "<b>Certain Time</b>"
-                input "startTime", "time", title: "Time to activate", description: "Time", required:false, width:12
-                input "repeat", "bool", title: "Repeat", description: "Repeat", defaultValue:false, submitOnChange:true
+                input "startTime", "time", title: "Time to activate <small><abbr title='Exact time for the Cog to run'><b>- INFO -</b></abbr></small>", description: "Time", required:false, width:12
+                input "repeat", "bool", title: "Repeat", description: "Repeat <small><abbr title='Choose for the Cog to repeat or not'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(repeat) {
-                    input "repeatType", "enum", title: "Repeat schedule", options: [
+                    input "repeatType", "enum", title: "Repeat schedule <small><abbr title='Choose how often to repeat'><b>- INFO -</b></abbr></small>", options: [
                         ["r1min":"1 Minute"],
                         ["r5min":"5 Minutes"],
                         ["r10min":"10 Minutes"],
@@ -256,11 +299,10 @@ def pageConfig() {
             }
 // -----------
             if(timeDaysType.contains("tBetween")) {
-                paragraph "<b>Between two times</b>"
-                input "fromTime", "time", title: "From", required:false, width: 6, submitOnChange:true
-                input "toTime", "time", title: "To", required:false, width: 6, submitOnChange:true
-                paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
-                input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
+                paragraph "<b>Between two times</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>"
+                input "fromTime", "time", title: "From <small><abbr title='Exact time for the Cog to start'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
+                input "toTime", "time", title: "To <small><abbr title='Exact time for the Cog to End'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
+                input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
                 paragraph "<hr>"
                 if(fromTime && toTime) {
                     theDate1 = toDateTime(fromTime)
@@ -289,16 +331,16 @@ def pageConfig() {
                     paragraph "<b>'Sunset/Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
                 } else {
                     paragraph "<b>Sunset/Sunrise</b>"
-                    input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on)", defaultValue:false, submitOnChange:true, width:6
+                    input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on) <small><abbr title='Choose when the Cog will be active'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
                     if(fromSun) {
-                        paragraph "Sunrise"
+                        paragraph "Sunrise <small><abbr title='Choose whether or not you want to uese offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                         paragraph "Sunset"
                         input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunset", "number", title: "Offset (minutes)", width:6
                     } else {
-                        paragraph "Sunset"
+                        paragraph "Sunset <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
                         input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunset", "number", title: "Offset (minutes)", width:6
                         paragraph "Sunrise"
@@ -306,8 +348,7 @@ def pageConfig() {
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                     }
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
-                    paragraph "Sunset/Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
-                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction", description: "Sunset/Sunrise Restriction", submitOnChange:true
+                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
                     paragraph "<hr>"
                     state.theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
                 }
@@ -323,10 +364,10 @@ def pageConfig() {
             } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
                 // Messge above will show
             } else if(timeDaysType.contains("tSunrise")) {
-                paragraph "<b>Just Sunrise</b>"
+                paragraph "<b>Just Sunrise</b> <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>"
                 input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunrise", "number", title: "Offset (minutes)", width:6
-                input "sunriseToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                input "sunriseToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(sunriseToTime) {
                     input "sunriseEndTime", "time", title: "Time to End", description: "Time", required:false
                     paragraph "<small>* Must be BEFORE midnight.</small>"
@@ -339,9 +380,9 @@ def pageConfig() {
             } else if(timeDaysType.contains("tSunset")) {
                 state.theCogTriggers -= "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
                 paragraph "<b>Just Sunset</b>"
-                input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunset", "number", title: "Offset (minutes)", width:6
-                input "sunsetToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                input "sunsetToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(sunsetToTime) {
                     input "sunsetEndTime", "time", title: "Time to End", description: "Time", required:false
                     paragraph "<small>* Must be BEFORE midnight.</small>"
@@ -368,13 +409,13 @@ def pageConfig() {
                 paragraph "<b>Acceleration Sensor</b>"
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
                 if(accelerationEvent) {
-                    input "asInactiveActive", "bool", title: "Condition when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    input "asInactiveActive", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", defaultValue:false, submitOnChange:true
                     if(asInactiveActive) {
                         paragraph "Condition true when Sensor(s) becomes Active"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Inactive"
                     }
-                    input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationANDOR) {
                         paragraph "Condition true when <b>any</b> Acceleration Sensor is true"
                     } else {
@@ -390,13 +431,13 @@ def pageConfig() {
 
                 input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
                 if(accelerationRestrictionEvent) {
-                    input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", defaultValue:false, submitOnChange:true
                     if(arInactiveActive) {
                         paragraph "Restrict when Sensor(s) becomes Active"
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationRANDOR) {
                         paragraph "Restrict when <b>any</b> Acceleration Sensor is true"
                     } else {
@@ -423,13 +464,13 @@ def pageConfig() {
                 paragraph "<b>Battery</b>"
                 input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
                 if(batteryEvent) {
-                    input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High", description: "Battery High", submitOnChange:true
+                    input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery High", submitOnChange:true
                     if(setBEPointHigh) {
                         input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("beSetPointHigh")
                     }
-                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low", description: "Battery Low", submitOnChange:true
+                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
                         input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
                     } else {
@@ -453,13 +494,13 @@ def pageConfig() {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactEvent) {
-                    input "csClosedOpen", "bool", title: "Condition true when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
+                    input "csClosedOpen", "bool", title: "Condition true when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", defaultValue:false, submitOnChange:true
                     if(csClosedOpen) {
                         paragraph "Condition true when Sensor(s) become Open"
                     } else {
                         paragraph "Condition true when Sensor(s) become Closed"
                     }
-                    input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Condition true when <b>any</b> Contact Sensor is true"
                     } else {
@@ -487,13 +528,13 @@ def pageConfig() {
 
                 input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactRestrictionEvent) {
-                    input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
+                    input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", defaultValue:false, submitOnChange:true
                     if(crClosedOpen) {
                         paragraph "Restrict when Sensor(s) become Open"
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactRANDOR) {
                         paragraph "Restrict when <b>any</b> Contact Sensor is true"
                     } else {
@@ -520,13 +561,13 @@ def pageConfig() {
                 paragraph "<b>Energy</b>"
                 input "energyEvent", "capability.powerMeter", title: "By Energy Setpoints", required:false, multiple:true, submitOnChange:true
                 if(energyEvent) {
-                    input "setEEPointHigh", "bool", defaultValue: "false", title: "Condition true when Energy is too High", description: "Energy High", submitOnChange:true
+                    input "setEEPointHigh", "bool", defaultValue: "false", title: "Condition true when Energy is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy High", submitOnChange:true
                     if(setEEPointHigh) {
                         input "eeSetPointHigh", "number", title: "Energy High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("eeSetPointHigh")
                     }
-                    input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low", description: "Energy Low", submitOnChange:true
+                    input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy Low", submitOnChange:true
                     if(setEEPointLow) {
                         input "eeSetPointLow", "number", title: "Energy Low Setpoint", required:true, submitOnChange:true
                     } else {
@@ -550,13 +591,13 @@ def pageConfig() {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required:false, multiple:true, submitOnChange:true
                 if(garageDoorEvent) {
-                    input "gdClosedOpen", "bool", title: "Condition true when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "gdClosedOpen", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", defaultValue:false, submitOnChange:true
                     if(gdClosedOpen) {
                         paragraph "Condition true when Sensor(s) become Open"
                     } else {
                         paragraph "Condition true when Sensor(s) become Closed"
                     }
-                    input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Condition true when <b>any</b> Garage Door is true"
                     } else {
@@ -572,13 +613,13 @@ def pageConfig() {
 
                 input "garageDoorRestrictionEvent", "capability.garageDoorControl", title: "Restrict By Garage Door", required:false, multiple:true, submitOnChange:true
                 if(garageDoorRestrictionEvent) {
-                    input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", defaultValue:false, submitOnChange:true
                     if(gdrClosedOpen) {
                         paragraph "Restrict when Sensor(s) become Open"
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Restrict when <b>any</b> Garage Door is true"
                     } else {
@@ -611,13 +652,13 @@ def pageConfig() {
                     input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", defaultValue:false, submitOnChange:true
                     if(gvStyle) {
                         if(globalVariableEvent) {
-                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High", description: "Variable High", submitOnChange:true
+                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable High", submitOnChange:true
                             if(setGVPointHigh) {
                                 input "gvSetPointHigh", "number", title: "Variable High Setpoint", required:true, submitOnChange:true
                             } else {
                                 app.removeSetting("gvSetPointHigh")
                             }
-                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low", description: "Variable Low", submitOnChange:true
+                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable Low", submitOnChange:true
                             if(setGVPointLow) {
                                 input "gvSetPointLow", "number", title: "Variable Low Setpoint", required:true, submitOnChange:true
                             } else {
@@ -716,19 +757,19 @@ def pageConfig() {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
                 if(humidityEvent) {
-                    input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High", description: "Humidity High", submitOnChange:true
+                    input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity High", submitOnChange:true
                     if(setHEPointHigh) {
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("heSetPointHigh")
                     }
-                    input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low", description: "Humidity Low", submitOnChange:true
+                    input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity Low", submitOnChange:true
                     if(setHEPointLow) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("heSetPointLow")
                     }
-                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(humidityConditionOnly) {
                         if(heSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
                         if(heSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
@@ -752,19 +793,19 @@ def pageConfig() {
                 paragraph "<b>Illuminance</b>"
                 input "illuminanceEvent", "capability.illuminanceMeasurement", title: "By Illuminance Setpoints", required:false, multiple:true, submitOnChange:true
                 if(illuminanceEvent) {
-                    input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High", description: "High", submitOnChange:true
+                    input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "High", submitOnChange:true
                     if(setIEPointHigh) {
                         input "ieSetPointHigh", "number", title: "Illuminance High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("ieSetPointHigh")
                     }
-                    input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low", description: "Low", submitOnChange:true
+                    input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Low", submitOnChange:true
                     if(setIEPointLow) {
                         input "ieSetPointLow", "number", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("ieSetPointLow")
                     }
-                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(illumConditionOnly) {
                         if(iSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${ieSetPointHigh}"
                         if(iSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${ieSetPointLow}"
@@ -788,20 +829,20 @@ def pageConfig() {
                 paragraph "<b>Lock</b>"
                 input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:true, submitOnChange:true
                 if(lockEvent) {
-                    input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
+                    input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", defaultValue:false, submitOnChange:true
                     if(lUnlockedLocked) {
                         paragraph "Condition true when Sensor(s) become Locked"
                     } else {
                         paragraph "Condition true when Sensor(s) become Unlocked"
                     }
-                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(lockANDOR) {
                         paragraph "Condition true when <b>any</b> Lock is true"
                     } else {
                         paragraph "Condition true when <b>all</b> Locks are true"
                     }
                     theNames = getLockCodeNames(lockEvent)
-                    input "lockUser", "enum", title: "By Lock User", options: theNames, required:false, multiple:true, submitOnChange:true
+                    input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
                     state.theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                 } else {
@@ -814,20 +855,20 @@ def pageConfig() {
 
                 input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required:false, multiple:false, submitOnChange:true
                 if(lockRestrictionEvent) {
-                    input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
+                    input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", defaultValue:false, submitOnChange:true
                     if(lrUnlockedLocked) {
                         paragraph "Restrict when Sensor(s) become Locked"
                     } else {
                         paragraph "Restrict when Sensor(s) become Unlocked"
                     }
-                    input "lockRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "lockRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(lockRANDOR) {
                         paragraph "Restrict when <b>any</b> Lock is true"
                     } else {
                         paragraph "Restrict when <b>all</b> Locks are true"
                     }
                     theNames = getLockCodeNames(lockRestrictionEvent)
-                    input "lockRestrictionUser", "enum", title: "Restrict By Lock User", options: theNames, required:false, multiple:true, submitOnChange:true
+                    input "lockRestrictionUser", "enum", title: "Restrict By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                     state.theCogTriggers += "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
                 } else {
@@ -853,13 +894,13 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)", description: "Motion", submitOnChange:true
+                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
                     if(meInactiveActive) {
                         paragraph "Condition true when Sensor(s) becomes Active"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Inactive"
                     }
-                    input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Condition true when <b>any</b> Motion Sensor is true"
                     } else {
@@ -875,13 +916,13 @@ def pageConfig() {
 
                 input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionRestrictionEvent) {
-                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)", description: "Motion", submitOnChange:true
+                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
                     if(mrInactiveActive) {
                         paragraph "Restrict when Sensor(s) becomes Active"
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionRANDOR) {
                         paragraph "Restrict when <b>any</b> Motion Sensor is true"
                     } else {
@@ -908,14 +949,14 @@ def pageConfig() {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
                 if(powerEvent) {
-                    input "setPEPointHigh", "bool", defaultValue: "false", title: "Condition true when Power is too High", description: "Power High", submitOnChange:true
+                    input "setPEPointHigh", "bool", defaultValue: "false", title: "Condition true when Power is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power High", submitOnChange:true
                     if(setPEPointHigh) {
                         input "peSetPointHigh", "number", title: "Power High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("peSetPointHigh")
                     }
 
-                    input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low", description: "Power Low", submitOnChange:true
+                    input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power Low", submitOnChange:true
                     if(setPEPointLow) {
                         input "peSetPointLow", "number", title: "Power Low Setpoint", required:true, submitOnChange:true
                     } else {
@@ -940,14 +981,14 @@ def pageConfig() {
                 paragraph "<b>Presence</b>"
                 input "presenceEvent", "capability.presenceSensor", title: "By Presence Sensor", required:false, multiple:true, submitOnChange:true
                 if(presenceEvent) {
-                    input "psPresentNotPresent", "bool", title: "Condition true when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
+                    input "psPresentNotPresent", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", defaultValue:false, submitOnChange:true
                     if(psPresentNotPresent) {
                         paragraph "Condition true when Sensor(s) become Not Present"
                     } else {
                         paragraph "Condition true when Sensor(s) become Present"
                     }
 
-                    input "presenceANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "presenceANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presenceANDOR) {
                         paragraph "Condition true when <b>any</b> Presence Sensor is true"
                     } else {
@@ -963,14 +1004,14 @@ def pageConfig() {
 
                 input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required:false, multiple:true, submitOnChange:true
                 if(presenceRestrictionEvent) {
-                    input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
+                    input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", defaultValue:false, submitOnChange:true
                     if(prPresentNotPresent) {
                         paragraph "Restrict when Sensor(s) become Not Present"
                     } else {
                         paragraph "Restrict when Sensor(s) become Present"
                     }
 
-                    input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presentRANDOR) {
                         paragraph "Restrict when <b>any</b> Presence Sensor is true"
                     } else {
@@ -997,15 +1038,15 @@ def pageConfig() {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)", description: "Switch", submitOnChange:true
-                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed", description: "Switch Type", submitOnChange:true
+                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
+                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed <small><abbr title='Choose this to distinguish between a physical push vs Hubitat turning it on.'><b>- INFO -</b></abbr></small>", description: "Switch Type", submitOnChange:true
                     if(seOffOn) {
                         paragraph "Condition true when Sensor(s) becomes On"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Off"
                     }
                     if(seType) { paragraph "<small>* Event 'Description Text' must contain '[physical]' for this to work. HE stock drivers do, others may vary.</small>" }
-                    input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Condition true when <b>any</b> Switch is true"
                     } else {
@@ -1023,13 +1064,13 @@ def pageConfig() {
 // -----------
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchRestrictionEvent) {
-                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)", description: "Switch", submitOnChange:true
+                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
                     if(srOffOn) {
                         paragraph "Restrict when Switch(es) are On"
                     } else {
                         paragraph "Restrict when Switch(es) are Off"
                     }
-                    input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchRANDOR) {
                         paragraph "Restrict when <b>any</b> Switch is true"
                     } else {
@@ -1058,19 +1099,19 @@ def pageConfig() {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
                 if(tempEvent) {
-                    input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High", description: "Temp High", submitOnChange:true
+                    input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
                         input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("setTEPointHigh")
                     }
-                    input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low", description: "Temp Low", submitOnChange:true
+                    input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
                         input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("setTEPointLow")
                     }
-                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
+                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(tempConditionOnly) {
                         if(teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
                         if(teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
@@ -1094,7 +1135,7 @@ def pageConfig() {
                 paragraph "<b>Thermostat</b>"
                 paragraph "Tracks the state of the thermostat. It will react if not in Idle. (ie. heating or cooling)"
                 input "thermoEvent", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
-                input "thermoANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                input "thermoANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                 if(thermoANDOR) {
                     paragraph "Condition true when <b>any</b> Thermostat is true"
                 } else {
@@ -1111,13 +1152,13 @@ def pageConfig() {
                 paragraph "<b>Voltage</b>"
                 input "voltageEvent", "capability.voltageMeasurement", title: "By Voltage Setpoints", required:false, multiple:true, submitOnChange:true
                 if(voltageEvent) {
-                    input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High", description: "Voltage High", submitOnChange:true
+                    input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage High", submitOnChange:true
                     if(setVEPointHigh) {
                         input "veSetPointHigh", "number", title: "Voltage High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("veSetPointHigh")
                     }
-                    input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low", description: "Voltage Low", submitOnChange:true
+                    input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage Low", submitOnChange:true
                     if(setVEPointLow) {
                         input "veSetPointLow", "number", title: "Voltage Low Setpoint", required:true, submitOnChange:true
                     } else {
@@ -1141,13 +1182,13 @@ def pageConfig() {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required:false, multiple:true, submitOnChange:true
                 if(waterEvent) {
-                    input "wsDryWet", "bool", title: "Condition true when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
+                    input "wsDryWet", "bool", title: "Condition true when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", defaultValue:false, submitOnChange:true
                     if(wsDryWet) {
                         paragraph "Condition true when Sensor(s) become Wet"
                     } else {
                         paragraph "Condition true when Sensor(s) become Dry"
                     }
-                    input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(waterANDOR) {
                         paragraph "Condition true when <b>any</b> Water Sensor is true"
                     } else {
@@ -1163,13 +1204,13 @@ def pageConfig() {
 
                 input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required:false, multiple:true, submitOnChange:true
                 if(waterRestrictionEvent) {
-                    input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
+                    input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", defaultValue:false, submitOnChange:true
                     if(wrDryWet) {
                         paragraph "Restrict when Sensor(s) become Wet"
                     } else {
                         paragraph "Restrict when Sensor(s) become Dry"
                     }
-                    input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                     if(waterANDOR) {
                         paragraph "Restrict when <b>any</b> Water Sensor is true"
                     } else {
@@ -1202,13 +1243,13 @@ def pageConfig() {
                     input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
                     input "deviceORsetpoint", "bool", defaultValue:false, title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
                     if(deviceORsetpoint) {
-                        input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High", description: "Custom High", submitOnChange:true
+                        input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom High", submitOnChange:true
                         if(setSDPointHigh) {
                             input "sdSetPointHigh", "number", title: "Custom High Setpoint", required:true, submitOnChange:true
                         } else {
                             app.removeSetting("sdSetPointHigh")
                         }
-                        input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low", description: "Custom Low", submitOnChange:true
+                        input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom Low", submitOnChange:true
                         if(setSDPointLow) {
                             input "sdSetPointLow", "number", title: "Custom Low Setpoint", required:true, submitOnChange:true
                         } else {
@@ -1227,14 +1268,14 @@ def pageConfig() {
                         paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
                         input "custom1", "text", title: "Attribute Value 1", required:true, submitOnChange:true
                         input "custom2", "text", title: "Attribute Value 2", required:true, submitOnChange:true
-                        input "sdCustom1Custom2", "bool", title: "Condition true when ${custom1} (off) or ${custom2} (on)", description: "Custom", defaultValue:false, submitOnChange:true
+                        input "sdCustom1Custom2", "bool", title: "Condition true when ${custom1} (off) or ${custom2} (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Custom", defaultValue:false, submitOnChange:true
                         if(sdCustom1Custom2) {
                             paragraph "Condition true when Custom(s) become ${custom1}"
                         } else {
                             paragraph "Condition true when Custom(s) become ${custom2}"
                         }
                         paragraph "* Remember - If Conditions are working backwards, simply reverse your values above."
-                        input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                        input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
                         if(customANDOR) {
                             paragraph "Condition true when <b>any</b> Custom is true"
                         } else {
@@ -1264,7 +1305,7 @@ def pageConfig() {
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || state.useRollingAverage || (customEvent && deviceORsetpoint)) {
-                input "setpointRollingAverage", "bool", title: "Use a rolling Average", description: "average", defaultValue:false, submitOnChange:true
+                input "setpointRollingAverage", "bool", title: "Use a rolling Average for setpoints <small><abbr title='Use multiple readings instead of a single instance to control the Cog.'><b>- INFO -</b></abbr></small>", description: "average", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) {
                     paragraph "<small>*All values are rounded for this option</small>"
                     input "numOfPoints", "number", title: "Number of points to average", required:true, submitOnChange:true
@@ -1286,11 +1327,10 @@ def pageConfig() {
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
-                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay</b>", description: "Delay Time", submitOnChange:true, width:6
-                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay</b>", description: "Random Delay", submitOnChange:true, width:6
+                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Delay Time", submitOnChange:true, width:6
+                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Random Delay", submitOnChange:true, width:6
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
-                    paragraph "Delay the actions until all devices have been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required:true, multiple:false, range: '1..60', width:6
                     input "minSec", "bool", title: "Use Minutes (off) or Seconds (on)", description: "minSec", defaultValue:false, submitOnChange:true, width:6
                     paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the actions will be cancelled.</small>"
@@ -1306,7 +1346,6 @@ def pageConfig() {
                     app.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
                 if(randomDelay) {
-                    paragraph "Delay the actions until all devices have been in state for XX minutes."
                     input "delayLow", "number", title: "Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', submitOnChange:true
                     input "delayHigh", "number", title: "Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', submitOnChange:true
                     if(delayHigh <= delayLow) paragraph "<b>Delay High must be greater than Delay Low.</b>"
@@ -1327,21 +1366,34 @@ def pageConfig() {
             }
         }
 // ***** Condition Helper Start *****
-        section(getFormat("header-green", "${getImage("Blank")}"+" Condition Helper (optional)")) {
-            paragraph "This will help the conditions stay true but not trigger the conditions on its own. Examples below!"
-            input "useHelper", "bool", title: "Use Condition Helper", defaultValue:false, submitOnChange:true
+        section(getFormat("header-green", "${getImage("Blank")}"+" Condition Helper (optional)")) {}
+        section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
+            paragraph "Examples of Primary and Secondary Condition use"
+            paragraph "<b>Bathroom</b><br>Walk into bathroom and trigger the 'Ceiling Motions Sensor' (primary), lights come on. Stay still too long and lights will turn off."
+            paragraph "Close the door to trigger the 'contact sensor' (secondary). Even if the motion becomes inactive, (it can't see you when in the shower), the lights will not turn off until that door is opened and the motion is inactive."
+            paragraph "<hr>"
+            paragraph "<b>Kitchen</b><br>Lights are off - 'Kitchen Ceiling Motion Sensor' (primary) triggers room to be occupied, lights come on.  'Motion sensor under table' (secondary) helps lights to stay on even if 'Kitchen Ceiling Motion Sensor' becomes inactive."
+            paragraph "Dog walks under table and triggers the 'Motion sensor under table' (secondary) but the lights were off, lights stay off."
+            paragraph "<hr>"
+            paragraph "<b>Living Room</b><br>Walk into the room and trigger the 'Ceiling Motion Sensor' (primary), lights come on. If sensor becomes inactive, lights will turn off"
+            paragraph "Place phone on 'charger' (secondary). Lights will stay on even if 'Ceiling Motion Sensor' becomes inactive."
+            paragraph "<hr>"
+            paragraph "<i>Have something neat that you do with primary and secondary triggers? Please post it on the forums and I just might add it here! Thanks</i>"
+        }
+        section() {
+            input "useHelper", "bool", title: "Use Condition Helper <small><abbr title='This will help the conditions stay true but not trigger the conditions on its own.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
             if(useHelper) {
                 input "myContacts2", "capability.contactSensor", title: "Select the Contact sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myContacts2) input "contactOption2", "bool", title: "Condition true when Closed (off) or Open (on)", description: "bool", defaultValue:false, submitOnChange:true
+                if(myContacts2) input "contactOption2", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
                 
                 input "myMotion2", "capability.motionSensor", title: "Select the Motion sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myMotion2) input "motionOption2", "bool", title: "Condition true when Inactive (off) or Active (on)", description: "bool", defaultValue:false, submitOnChange:true
+                if(myMotion2) input "motionOption2", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
                 
                 input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myPresence2) input "presenceOption2", "bool", title: "Condition true when Present (off) or Not Present (on)", description: "bool", defaultValue:false, submitOnChange:true
+                if(myPresence2) input "presenceOption2", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
                 
                 input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(mySwitches2) input "switchesOption2", "bool", title: "Condition true when Off (off) or On (on)", description: "bool", defaultValue:false, submitOnChange:true
+                if(mySwitches2) input "switchesOption2", "bool", title: "Condition true when Off (off) or On (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
                 paragraph "<small>* All helpers are considered 'OR'</small>"
                 if(myContacts2) {
                     state.theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
@@ -1378,24 +1430,11 @@ def pageConfig() {
                 app.removeSetting("switchesOption2")
             }  
         }
-        section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
-            paragraph "Examples of Primary and Secondary Condition use"
-            paragraph "<b>Bathroom</b><br>Walk into bathroom and trigger the 'Ceiling Motions Sensor' (primary), lights come on. Stay still too long and lights will turn off."
-            paragraph "Close the door to trigger the 'contact sensor' (secondary). Even if the motion becomes inactive, (it can't see you when in the shower), the lights will not turn off until that door is opened and the motion is inactive."
-            paragraph "<hr>"
-            paragraph "<b>Kitchen</b><br>Lights are off - 'Kitchen Ceiling Motion Sensor' (primary) triggers room to be occupied, lights come on.  'Motion sensor under table' (secondary) helps lights to stay on even if 'Kitchen Ceiling Motion Sensor' becomes inactive."
-            paragraph "Dog walks under table and triggers the 'Motion sensor under table' (secondary) but the lights were off, lights stay off."
-            paragraph "<hr>"
-            paragraph "<b>Living Room</b><br>Walk into the room and trigger the 'Ceiling Motion Sensor' (primary), lights come on. If sensor becomes inactive, lights will turn off"
-            paragraph "Place phone on 'charger' (secondary). Lights will stay on even if 'Ceiling Motion Sensor' becomes inactive."
-            paragraph "<hr>"
-            paragraph "<i>Have something neat that you do with primary and secondary triggers? Please post it on the forums and I just might add it here! Thanks</i>"
-        }
 // ***** Condition Helper End *****        
         // ********** Start Actions **********
         state.theCogActions = "<b><u>Actions</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
-            input "actionType", "enum", title: "Actions to Perform", options: [
+            input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -1638,9 +1677,8 @@ def pageConfig() {
                 if(switchesOnAction) state.theCogActions += "<b>-</b> Switches to turn On: ${switchesOnAction}<br>"
                 if(switchesOffAction) state.theCogActions += "<b>-</b> Switches to turn Off: ${switchesOffAction}<br>"
                 if(switchesOffAction){
-                    input "permanentDim2", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                    input "permanentDim2", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     if(permanentDim2) {
-                        paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl2", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
                         input "pdColorTemp2", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
                         if(pdColorTemp2) {
@@ -1799,7 +1837,7 @@ def pageConfig() {
 // ***** Start Switches per Mode *****   
             if(actionType.contains("aSwitchesPerMode")) {
                 paragraph "<b>Switches Per Mode</b>"
-                input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog", required:false, multiple:true, submitOnChange:true
+                input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
                 masterList = masterDimmersPerMode.toString().replace("[","").replace("]","").split(",")
                 paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
                 input "sdPerModeName", "mode", title: "Mode", required:false, width:6                 
@@ -1818,7 +1856,7 @@ def pageConfig() {
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
                     app.removeSetting("sdPerModeTemp")
                 }
-                input "timePerMode", "bool", title: "Use Time to Reverse Per Mode", defaultValue:false, submitOnChange:true
+                input "timePerMode", "bool", title: "Use Time to Reverse Per Mode <small><abbr title='Switches and Virtual Contact Sensor can also be Reversed! More info below in the Reverse Feature section.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(timePerMode) {
                     app.removeSetting("timeToReverse")                  
                     input "sdPerModeTime", "number", title: "Time to Reverse (in minutes) - * For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.", submitOnChange:true
@@ -1905,6 +1943,7 @@ def pageConfig() {
             // Start Reverse Options
             if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || setDimmersPerMode || lzw45Action) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command) {
+                    paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     paragraph "<small><b>Please only select ONE Reverse option</b></small>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
@@ -1965,7 +2004,7 @@ def pageConfig() {
                     app.removeSetting("warningDimLvl")
                     app.updateSetting("timeReverse",[value:"false",type:"bool"])
                     app.removeSetting("timeToReverse")
-                     app.removeSetting("timeReverseMinutes")
+                    app.removeSetting("timeReverseMinutes")
                 }
                 // ***** Start Reverse Stuff *****
                 if(reverse) { 
@@ -1990,10 +2029,8 @@ def pageConfig() {
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || setDimmersPerMode)){
                     paragraph "<hr>"
-                    paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!"
-                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     if(permanentDim) {
-                        paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
                         input "pdColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
                         if(pdColorTemp) {
