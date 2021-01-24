@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.9 - 01/23/21 - 'Switches On' and 'Switches Off' now save previous state and reverse to that state (if reverse is selected)
 *  2.6.8 - 01/23/21 - Changes to switches per mode - when mode doesn't have a match lights go into reverse
 *  2.6.7 - 01/23/21 - Added amazing hidden in-app descriptions for each option, just hover!
 *  2.6.6 - 01/22/21 - Added option 'use as condition but not trigger' to Humidity, Illum and Temp
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.8"
+    state.version = "2.6.9"
 }
 
 definition(
@@ -4080,35 +4081,52 @@ def doTheCogCopy(newSettings) {    // and finally the parent app sends the setti
 // ***** End Cog Copy *****
 
 def switchesOnActionHandler() {
+    state.switchesOnMap = [:]
     switchesOnAction.each { it ->
         if(logEnable) log.debug "In switchesOnActionHandler - Turning on ${it}"
+        cStatus = it.currentValue('switch')
+        name = (it.displayName).replace(" ","")
+        state.switchesOnMap.put(name,cStatus)
         pauseExecution(actionDelay)
-        it.on()
+        if(cStatus == "off") it.on()
     }
 }
 
 def switchesOnReverseActionHandler() {
+    log.info "switchesOnMap: ${state.switchesOnMap}"
     switchesOnAction.each { it ->
-        if(logEnable) log.debug "In switchesOnReverseActionHandler - Turning off ${it}"
+        name = (it.displayName).replace(" ","")
+        data = state.switchesOnMap.get(name)
+        if(logEnable) log.debug "In switchesOnReverseActionHandler - Reversing ${it} - Previous status: ${data}"        
         pauseExecution(actionDelay)
-        it.off()
+        if(data == "off") it.off()
+        if(data == "on") it.on()
     }
+    state.switchesOnMap = [:]
 }
 
 def switchesOffActionHandler() {
+    state.switchesOffMap = [:]
     switchesOffAction.each { it ->
         if(logEnable) log.debug "In switchesOffActionHandler - Turning off ${it}"
+        cStatus = it.currentValue('switch')
+        name = (it.displayName).replace(" ","")
+        state.switchesOffMap.put(name,cStatus)
         pauseExecution(actionDelay)
-        it.off()
+        if(cStatus == "on") it.off()
     }
 }
 
 def switchesOffReverseActionHandler() {
     switchesOffAction.each { it ->
-        if(logEnable) log.debug "In switchesOffReverseActionHandler - Turning on ${it}"
+        name = (it.displayName).replace(" ","")
+        data = state.switchesOffMap.get(name)
+        if(logEnable) log.debug "In switchesOffReverseActionHandler - Reversing ${it} - Previous status: ${data}"
         pauseExecution(actionDelay)
-        it.on()
+        if(data == "off") it.off()
+        if(data == "on") it.on()
     }
+    state.switchesOffMap = [:]
 }
 
 def switchesToggleActionHandler() {
