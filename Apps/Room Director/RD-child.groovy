@@ -1274,7 +1274,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel2}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel2)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel2}."
                 }
             }
@@ -1314,7 +1314,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel3}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel3)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel3}."
                 }
             }
@@ -1354,7 +1354,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel4}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel4)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel4}."
                 }
             }
@@ -1394,7 +1394,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel5}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel5)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel5}."
                 }
             }
@@ -1434,7 +1434,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel6}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel6)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel6}."
                 }
             }
@@ -1474,7 +1474,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel7}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel7)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel7}."
                 }
             }
@@ -1514,7 +1514,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel8}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel8)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel8}."
                 }
             }
@@ -1554,7 +1554,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel9}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel9)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel9}."
                 }
             }
@@ -1594,7 +1594,7 @@ def setScene() {
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel0}, turning on."
                 } else {
-                    it.setLevel(dimLevel1)
+                    it.setLevel(dimLevel0)
                     if(logEnable) log.debug "In setScene - Dimming ${it.displayName} to ${dimLevel0}."
                 }
             }
