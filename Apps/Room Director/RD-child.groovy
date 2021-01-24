@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.8 - 01/24/21 - Improved dimming logic by @vladzaharia
  *  1.3.7 - 01/11/21 - Added logging
  *  1.3.6 - 01/09/21 - Adjustments to scene handler
  *  1.3.5 - 09/15/20 - More adjustments to Permanent Dim
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.7"
+	state.version = "1.3.8"
 }
 
 definition(
