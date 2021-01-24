@@ -6,7 +6,7 @@
  *
  *  IR Codes can be found using Global Cache Control Tower IR Database, https://irdb.globalcache.com/
  *
- *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2021 Bryan Turcotte (@bptworld)
  *
  *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
  *  
@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 01/24/21 - Changes to Send command, cosmetic changes
  *  2.0.4 - 06/13/20 - Changes to Digit Separator
  *  2.0.3 - 06/11/20 - Added 'Digit Separator' option, fixed problem with auto created device
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -139,8 +140,17 @@ def pageConfig() {
 				input "EnterCode", "bool", title: "Send Enter Code after Digits", required: true, defaultValue: false
 			}
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false, submitOnChange:true
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
   	    }
 		display2()
 	}
@@ -169,12 +179,18 @@ def updated() {
 	log.debug "Installed with settings: ${settings}"
 	unsubscribe()
 	unschedule()
-    if(logEnable) runIn(1800,logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
 def initialize(){
 	if(logEnable) log.debug "Inside Initialize..."
+    checkEnableHandler()
     setDefaults()
     if(triggerMode == "Switch - on/off") subscribe(switch1, "switch", switchHandlerOnOff) 
     if(triggerMode == "Switch - auto off") subscribe(switch1, "switch", switchHandlerAuto)    
@@ -184,45 +200,55 @@ def initialize(){
 }
 
 def switchHandlerOnOff (evt) {
-	def switching = evt.value
-    if(switching == "on"){
-        if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
-		if(!mCommands) { 
-            parent.telnetDevice.speak(msgToSendOn)
-        } else {
-            for (i = 0; i < xTimesOn; i++) {
-                parent.telnetDevice.speak(msgToSendOn)
-			    pauseExecution(Delay)
+    checkEnableHandler()
+    if(state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        def switching = evt.value
+        if(switching == "on"){
+            if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
+            if(!mCommands) { 
+                parent.telnetDevice.deviceNotification(msgToSendOn)
+            } else {
+                for (i = 0; i < xTimesOn; i++) {
+                    parent.telnetDevice.deviceNotification(msgToSendOn)
+                    pauseExecution(Delay)
+                }
             }
         }
-	}
-        
-    if(switching == "off"){
-        if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned off - msg: ${msgToSendOff}"
-		if(!mCommands) {
-            parent.telnetDevice.speak(msgToSendOff)
-        } else {
-		    for (i = 0; i < xTimesOff; i++) {
-                parent.telnetDevice.speak(msgToSendOff)
-			    pauseExecution(Delay)
+
+        if(switching == "off"){
+            if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned off - msg: ${msgToSendOff}"
+            if(!mCommands) {
+                parent.telnetDevice.deviceNotification(msgToSendOff)
+            } else {
+                for (i = 0; i < xTimesOff; i++) {
+                    parent.telnetDevice.deviceNotification(msgToSendOff)
+                    pauseExecution(Delay)
+                }
             }
         }
     }
 }
 
 def switchHandlerAuto (evt) {
-	def switching = evt.value
-    if(switching == "on"){
-        if(logEnable) log.debug "In switchHandlerAuto - telnet Device: ${parent.telnetDevice}  - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
-		if(!mCommands) {
-            parent.telnetDevice.speak(msgToSendOn)
-        } else {
-            for (i = 0; i < xTimesOn; i++) {
-                parent.telnetDevice.speak(msgToSendOn)
-			    pauseExecution(Delay)
+    checkEnableHandler()
+    if(state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        def switching = evt.value
+        if(switching == "on"){
+            if(logEnable) log.debug "In switchHandlerAuto - telnet Device: ${parent.telnetDevice}  - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
+            if(!mCommands) {
+                parent.telnetDevice.deviceNotification(msgToSendOn)
+            } else {
+                for (i = 0; i < xTimesOn; i++) {
+                    parent.telnetDevice.deviceNotification(msgToSendOn)
+                    pauseExecution(Delay)
+                }
             }
         }
-	}
+    }
 }
 
 def PresetToSend1(){
@@ -292,77 +318,82 @@ def PresetToSendDS() {
 }
 
 def channelHandlerSwitch(evt) {
-	def switching = evt.value
-    if(switching == "on"){
-        if(logEnable) log.debug "You pressed Channel Switch On"
-    	PresetToSend1()
-    	PresetToSend2()
-		PresetToSend3()
-		PresetToSend4()
-   		PresetToSendE()
-        PresetToSendDS()
-    
-		if(logEnable) log.debug "In channelHandlerSwitch - Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
-	
-		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
-		parent.telnetDevice.speak(msgToSend1)
-    	pauseExecution(Delay)
-        
-        if(dSeparator1) {
-            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator1} - ${msgToSendDS}"
-			parent.telnetDevice.speak(msgToSendDS)
-			pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Digit Separator"
-		}
+    checkEnableHandler()
+    if(state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        def switching = evt.value
+        if(switching == "on"){
+            if(logEnable) log.debug "You pressed Channel Switch On"
+            PresetToSend1()
+            PresetToSend2()
+            PresetToSend3()
+            PresetToSend4()
+            PresetToSendE()
+            PresetToSendDS()
 
-		if(Digit2 != "null") {
-    		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
-			parent.telnetDevice.speak(msgToSend2)
-			pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Channel Digit 2"
-		}
-        
-        if(dSeparator2) {
-            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator2} - ${msgToSendDS}"
-			parent.telnetDevice.speak(msgToSendDS)
-			pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Digit Separator"
-		}
-        
-		if(Digit3 != "null") {
-    		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
-			parent.telnetDevice.speak(msgToSend3)
-    		pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Channel Digit 3"
-		}
-        
-        if(dSeparator3) {
-            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator3} - ${msgToSendDS}"
-			parent.telnetDevice.speak(msgToSendDS)
-			pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Digit Separator"
-		}
-        
-		if(Digit4 != "null") {
-    		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
-			parent.telnetDevice.speak(msgToSend4)
-    		pauseExecution(Delay)
-		} else{
-			if(logEnable) log.debug "Did not send Channel Digit 4"
-		}
-		if(logEnable) log.debug "${EnterCode}"
-		if(EnterCode) {
-    		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
-    		parent.telnetDevice.speak(msgToSendE)
-		} else{
-			if(logEnable) log.debug "Did not send Channel Enter"
-		}
-	}
+            if(logEnable) log.debug "In channelHandlerSwitch - Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
+
+            if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
+            parent.telnetDevice.deviceNotification(msgToSend1)
+            pauseExecution(Delay)
+
+            if(dSeparator1) {
+                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator1} - ${msgToSendDS}"
+                parent.telnetDevice.deviceNotification(msgToSendDS)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Digit Separator"
+            }
+
+            if(Digit2 != "null") {
+                if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
+                parent.telnetDevice.deviceNotification(msgToSend2)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Channel Digit 2"
+            }
+
+            if(dSeparator2) {
+                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator2} - ${msgToSendDS}"
+                parent.telnetDevice.deviceNotification(msgToSendDS)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Digit Separator"
+            }
+
+            if(Digit3 != "null") {
+                if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
+                parent.telnetDevice.deviceNotification(msgToSend3)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Channel Digit 3"
+            }
+
+            if(dSeparator3) {
+                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator3} - ${msgToSendDS}"
+                parent.telnetDevice.deviceNotification(msgToSendDS)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Digit Separator"
+            }
+
+            if(Digit4 != "null") {
+                if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
+                parent.telnetDevice.deviceNotification(msgToSend4)
+                pauseExecution(Delay)
+            } else{
+                if(logEnable) log.debug "Did not send Channel Digit 4"
+            }
+            if(logEnable) log.debug "${EnterCode}"
+            if(EnterCode) {
+                if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
+                parent.telnetDevice.deviceNotification(msgToSendE)
+            } else{
+                if(logEnable) log.debug "Did not send Channel Enter"
+            }
+        }
+    }
 }
 
 def checkVirtualChild(){
@@ -394,8 +425,18 @@ def logsOff(){
     device.updateSetting("logEnable",[value:"false",type:"bool"])
 }
 
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
+        }
+    }
+}
+
 def setDefaults(){
-	if(logEnable == null){logEnable = false}
     if(state.uniqueIdentifier == null || state.uniqueIdentifier == "") state.uniqueIdentifier = 0
 }
 
@@ -473,5 +514,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
