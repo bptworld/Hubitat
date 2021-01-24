@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 01/24/21 - Lots of changes for easier first time setup
  *  2.0.4 - 01/16/21 - Cosmetic changes
  *  2.0.3 - 06/11/20 - Added 'Digit Separator' to Advanced Options
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -48,7 +49,7 @@
 
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -97,19 +98,33 @@ def mainPage() {
         		paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
 				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
 				}
+            section(getFormat("header-green", "${getImage("Blank")}"+" Telnet Setup")) {
+                paragraph "Send IP2IR needs a Telnet device to operate. This is the device you'll use to control other things."
+                input "useExistingDevice", "bool", title: "Use existing device (off) or have Send IP2IR create a new one for you (on)", defaultValue:false, submitOnChange:true
+                if(useExistingDevice) {
+                    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Send IP2IR - Telnet')", required:true, submitOnChange:true
+                    paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                    if(dataName) createDataChildDevice()
+                    if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                    paragraph "${statusMessageD}"
+                }
+                input "telnetDevice", "capability.switch", title: "Virtual Device created for Send IP2IR", required:true, multiple:false
+                if(!useExistingDevice) {
+                    app.removeSetting("dataName")
+                    paragraph "<small>* Device must use the 'IP2IR Telnet' Driver.</small>"
+                }
+                if(telnetDevice) {
+                    paragraph "<b>Be sure to go into the the Telnet Device and finish setting it up BEFORE continuing with this app.</b>"
+                }
+    	    }
+            
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>"
+                paragraph "<b>Please enter in the Preset Values in 'Advanced Config' BEFORE creating Child Apps</b>"
 				app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR' child</b>", multiple: true)
 			}
-            section(getFormat("header-green", "${getImage("Blank")}"+" Telnet Setup")) {
-                paragraph "Send IP2IR needs a Telnet device to operate. Please make a new 'Virtual Device' using the 'IP2IR Telnet' driver"
-                input "telnetDevice", "capability.telnet", title: "Select the 'IP2IR Telnet' device", required:true
-    	    }
-			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-       			label title: "Enter a name for parent app (optional)", required:false
- 			}
+            
 			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
-            	paragraph "<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>"
+            	paragraph "<b>Please enter in the Preset Values in 'Advanced Config' BEFORE creating Child Apps</b>"
 			}
             section("Advanced Config:", hideable: true, hidden: true) {
             	input "msgDigit1", "text", required: true, title: "IR Code to Send - 1", defaultValue: ""
@@ -125,6 +140,10 @@ def mainPage() {
                 input "msgDigitE", "text", required: false, title: "IR Code to Send - Enter", defaultValue: ""
                 input "msgDigitDS", "text", required: false, title: "IR Code to Send - Digit Separator (-)", defaultValue: ""
             }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required:false
+ 			}
 		}
 		display2()
 	}
@@ -139,6 +158,22 @@ def installCheck(){
   	else{
     	log.info "Parent Installed OK"
   	}
+}
+
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "IP2IR Telnet", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Send IP2IR unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
 }
 
 def getImage(type) {					// Modified from @Stephack Code
