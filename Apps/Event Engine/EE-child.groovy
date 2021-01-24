@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.6.8 - 01/23/21 - Changes to switches per mode - when mode doesn't have a match lights go into reverse
 *  2.6.7 - 01/23/21 - Added amazing hidden in-app descriptions for each option, just hover!
 *  2.6.6 - 01/22/21 - Added option 'use as condition but not trigger' to Humidity, Illum and Temp
 *  2.6.5 - 01/20/21 - Second attempt at improved logic, fix to reverse
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.7"
+    state.version = "2.6.8"
 }
 
 definition(
@@ -333,7 +334,7 @@ def pageConfig() {
                     paragraph "<b>Sunset/Sunrise</b>"
                     input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on) <small><abbr title='Choose when the Cog will be active'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
                     if(fromSun) {
-                        paragraph "Sunrise <small><abbr title='Choose whether or not you want to uese offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
+                        paragraph "Sunrise <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                         paragraph "Sunset"
@@ -3408,6 +3409,7 @@ def restrictionHandler() {
 def switchesPerModeActionHandler() {
     if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - (${state.version})"
     currentMode = location.mode
+    state.modeMatch = false
     masterDimmersPerMode.each { itOne ->
         def theData = "${state.sdPerModeMap}".split(",")        
         theData.each { itTwo -> 
@@ -3426,6 +3428,7 @@ def switchesPerModeActionHandler() {
             def modeCheck = currentMode.contains(theMode)
             if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
             if(modeCheck) {
+                state.modeMatch = true
                 theColor = theColor.replace("]","")
                 theTime = theTime.replace("]","")
                 def cleanOne = "${itOne}"
@@ -3447,6 +3450,7 @@ def switchesPerModeActionHandler() {
             }
         }
     }
+    if(state.modeMatch == false) switchesPerModeReverseActionHandler()
 }
 
 def switchesPerModeReverseActionHandler() {
