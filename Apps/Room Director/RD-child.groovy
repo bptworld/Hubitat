@@ -1227,10 +1227,11 @@ def setScene() {
         }
         if(oDimmers1) {
             oDimmers1.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel1) {
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel1 && switchStatus == "on") {
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel1}."
-                } else if (it.currentValue("switch") == "off")
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel1}, turning on."
                 } else {
@@ -1267,10 +1268,11 @@ def setScene() {
         }
         if(oDimmers2) {
             oDimmers2.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel2) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel2}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel2 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel2} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel2}, turning on."
                 } else {
@@ -1307,10 +1309,11 @@ def setScene() {
         }
         if(oDimmers3) {
             oDimmers3.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel3) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel3}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel3 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel3} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel3}, turning on."
                 } else {
@@ -1347,10 +1350,11 @@ def setScene() {
         }
         if(oDimmers4) {
             oDimmers4.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel4) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel4}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel4 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel4} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel4}, turning on."
                 } else {
@@ -1387,10 +1391,11 @@ def setScene() {
         }
         if(oDimmers5) {
             oDimmers5.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel5) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel5}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel5 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel5} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel5}, turning on."
                 } else {
@@ -1427,10 +1432,11 @@ def setScene() {
         }
         if(oDimmers6) {
             oDimmers6.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel6) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel6}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel6 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel6} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel6}, turning on."
                 } else {
@@ -1467,10 +1473,11 @@ def setScene() {
         }
         if(oDimmers7) {
             oDimmers7.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel7) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel7}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel7 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel7} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel7}, turning on."
                 } else {
@@ -1507,10 +1514,11 @@ def setScene() {
         }
         if(oDimmers8) {
             oDimmers8.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel8) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel8}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel8 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel8} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel8}, turning on."
                 } else {
@@ -1547,10 +1555,11 @@ def setScene() {
         }
         if(oDimmers9) {
             oDimmers9.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel9) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel9}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel9 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel9} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel9}, turning on."
                 } else {
@@ -1587,10 +1596,11 @@ def setScene() {
         }
         if(oDimmers0) {
             oDimmers0.each { it ->
-                switchStatus = it.currentValue("level")
-                if(switchStatus == dimLevel0) {
-                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel0}."
-                } else if (it.currentValue("switch") == "off")
+                levelStatus = it.currentValue("level")
+                switchStatus = it.currentValue("switch")
+                if(levelStatus == dimLevel0 && switchStatus == "on") {
+                    if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel0} and on."
+                } else if (switchStatus == "off")
                     it.on();
                     if(logEnable) log.debug "In setScene - ${it.displayName} is already dimmed to ${dimLevel0}, turning on."
                 } else {
