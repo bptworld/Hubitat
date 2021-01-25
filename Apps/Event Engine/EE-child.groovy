@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.6.9 - 01/23/21 - 'Switches On' and 'Switches Off' now save previous state and reverse to that state (if reverse is selected)
-*  2.6.8 - 01/23/21 - Changes to switches per mode - when mode doesn't have a match lights go into reverse
-*  2.6.7 - 01/23/21 - Added amazing hidden in-app descriptions for each option, just hover!
-*  2.6.6 - 01/22/21 - Added option 'use as condition but not trigger' to Humidity, Illum and Temp
-*  2.6.5 - 01/20/21 - Second attempt at improved logic, fix to reverse
-*  2.6.4 - 01/20/21 - Rolled back changes
-*  2.6.3 - 01/18/21 - Nice improvements to the logic, less traffic
-*  2.6.2 - 01/18/21 - More Adjustments
-*  2.6.1 - 01/17/21 - Minor change
-*  2.6.0 - 01/17/21 - Adjustments, added Time to Reverse Per Mode
+*  2.7.0 - 01/24/21 - Adjustments to Time based conditions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -63,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.6.9"
+    state.version = "2.7.0"
 }
 
 definition(
@@ -4486,11 +4477,13 @@ def autoSunHandler() {
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - Starting"
+    state.wasHereLast = "runAtTime1"
     startTheProcess("run")
 }
 
 def runAtTime2() {
     if(logEnable) log.debug "In runAtTime2 (${state.version}) - Starting"
+    state.wasHereLast = "runAtTime2"
     startTheProcess("reverse")
 }
 
@@ -4551,6 +4544,7 @@ def endTimeBetween() {
 
 def certainTime() {
     if(logEnable) log.debug "In certainTime (${state.version})"  
+    state.wasHereLast = "runCertainTime"
     startTheProcess()
 }
 
@@ -4973,6 +4967,7 @@ def sendSettingsToParentHandler() {
 
 def globalVariablesHandler(data) {
     if(data) { state.gvMap = data }
+    state.wasHereLast = "runGV"
     if(globalVariableEvent) startTheProcess()
 }
 
