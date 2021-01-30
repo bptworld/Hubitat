@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.2 - 01/29/21 - Adjustments to maps
 *  2.7.1 - 01/27/21 - Adjustments to Reverse
 *  2.7.0 - 01/24/21 - Adjustments to Time based conditions
 *  ---
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.1"
+    state.version = "2.7.2"
 }
 
 definition(
@@ -80,7 +81,6 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
-        state.trace = true
         testLogEnable = false
         state.spmah = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
@@ -2074,7 +2074,8 @@ def pageConfig() {
                 app.removeSetting("additionSwitches")
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
-            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:true, submitOnChange:true
+            actionDelayValue = parent.pActionDelay ?: 100            
+            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:true, submitOnChange:true
             state.theCogActions += "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
             if(actionDelay == null || actionDelay == "") {
                 state.theCogActions -= "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
@@ -2111,18 +2112,26 @@ def pageConfig() {
                 label title: "Enter a name for this automation", required:false
             }
             input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", defaultValue:false, submitOnChange:true
-            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-            if(logEnable) {
-                input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
+            input "logOptions", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logOptions) {
+                input "logEnable", "bool", title: "Enable Debug Logging - THIS is the option you want to turn on, most of the time.", description: "Debug Log", defaultValue:false, submitOnChange:true
+                input "shortLog", "bool", title: "Short Logs - Please only post short logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
+                input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-            }
-            if(setpointRollingAverage) {
-                input "clearRollingAverage", "bool", title: "Clear Rolling Average right now", description: "Clear Average", defaultValue:false, submitOnChange:true
-                if(clearRollingAverage) {
-                    state.readings = null
-                    app.updateSetting("clearRollingAverage",[value:"false",type:"bool"])
+                input "clearMaps", "bool", title: "Clear oldMaps", description: "clear", defaultValue:false, submitOnChange:true
+                if(clearMaps) {
+                    state.oldMap = [:]
+                    state.oldMapPer = [:]
+                    app.updateSetting("clearMaps",[value:"false",type:"bool"])
                 }
-                paragraph "<small>* Rolling Average will be cleared immediately and the switch will turned back off.<br>Current Rolling Average: ${state.readings}</small>"
+                if(setpointRollingAverage) {
+                    input "clearRollingAverage", "bool", title: "Clear Rolling Average right now", description: "Clear Average", defaultValue:false, submitOnChange:true
+                    if(clearRollingAverage) {
+                        state.readings = null
+                        app.updateSetting("clearRollingAverage",[value:"false",type:"bool"])
+                    }
+                    paragraph "<small>* Rolling Average will be cleared immediately and the switch will turned back off.<br>Current Rolling Average: ${state.readings}</small>"
+                }
             }
         }
         
@@ -2422,8 +2431,8 @@ def startTheProcess(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable || state.trace) log.trace "*"
-        if(logEnable || state.trace) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+        if(logEnable || shortLog) log.trace "*"
+        if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.totalMatch = 0
         state.totalMatchHelper = 0
         state.totalConditions = 0
@@ -2456,7 +2465,7 @@ def startTheProcess(evt) {
                 } catch(e) {
                     if(logEnable) log.debug "In startTheProcess - Whoops!"
                 }
-                if(logEnable || state.trace) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
+                if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
                 state.whatToDo = "run"
@@ -2540,26 +2549,26 @@ def startTheProcess(evt) {
 
         if(state.whatToDo == "stop") {
             state.wasHereLast = "runStop"
-            if(logEnable || state.trace) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
+            if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
                 if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
-                    if(logEnable || state.trace) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
+                    if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                     if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                         if(notifyDelay && minSec) {
                             theDelay = notifyDelay
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
                         } else if(notifyDelay && !minSec) {
                             theDelay = notifyDelay * 60
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
                         } else if(randomDelay) {
                             newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                             theDelay = newDelay * 60
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
                         } else if(targetDelay) {
                             theDelay = minutesUp * 60
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
                         } else {
                             if(logEnable) log.warn "In startTheProcess - Something went wrong"
                         }
@@ -2575,9 +2584,9 @@ def startTheProcess(evt) {
                     } else {
                         if(actionType) {
                             if(state.wasHereLast == "runAction") {
-                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
+                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
                             } else {
-                                if(logEnable || state.trace) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
+                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
                                 state.wasHereLast = "runAction"
                                 unschedule(permanentDimHandler)
                                 if(actionType.contains("aFan")) { fanActionHandler() }
@@ -2612,7 +2621,7 @@ def startTheProcess(evt) {
                         state.hasntDelayedYet = true
                         if(timeReverse) {
                             theDelay = timeReverseMinutes * 60
-                            if(logEnable || state.trace) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
                             runIn(theDelay, startTheProcess, [data: "timeReverse"])
                         }
                     }
@@ -2622,7 +2631,7 @@ def startTheProcess(evt) {
                 }
             } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {              
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
-                    if(logEnable || state.trace) log.debug "In startTheProcess - SETTING UP DELAY REVERSE - wasHereLast: ${state.wasHereLast}"
+                    if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE - wasHereLast: ${state.wasHereLast}"
                     state.wasHereLast = "runReverseDelay"
                     if(reverseWithDelay) {
                         if(timePerMode) {
@@ -2643,7 +2652,7 @@ def startTheProcess(evt) {
                                     def modeCheck = currentMode.contains(theMode)
                                     if(modeCheck) {
                                         timeTo = theTime
-                                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
                                     } else {
                                         if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                     }
@@ -2653,9 +2662,9 @@ def startTheProcess(evt) {
                             timeTo = timeToReverse ?: 3
                         }                      
                         theDelay = timeTo.toInteger() * 60
-                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                     } else {
-                        if(logEnable || state.trace) log.warn "In startTheProcess - Reverse - Something went wrong"
+                        if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
                     state.hasntDelayedReverseYet = false
                     if(dimWhileDelayed && (state.appStatus == "active")) { 
@@ -2663,7 +2672,7 @@ def startTheProcess(evt) {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else if(dimAfterDelayed && (state.appStatus == "active")) { 
                         firstDelay = theDelay - 30
-                        if(logEnable || state.trace) log.debug "In startTheProcess - Reverse - Will warn 30 seconds before Reverse"
+                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn 30 seconds before Reverse"
                         runIn(firstDelay, permanentDimHandler)
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
@@ -2671,7 +2680,7 @@ def startTheProcess(evt) {
                     }
                 } else {             
                     if(actionType) {
-                        if(logEnable || state.trace) log.debug "In startTheProcess - GOING IN REVERSE - wasHereLast: ${state.wasHereLast}"
+                        if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - wasHereLast: ${state.wasHereLast}"
                         state.wasHereLast = "runReverseNow"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
@@ -2702,8 +2711,8 @@ def startTheProcess(evt) {
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
-        if(logEnable || state.trace) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
-        if(logEnable || state.trace) log.trace "*"
+        if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+        if(logEnable || shortLog) log.trace "*"
     }
 }
 
@@ -2925,9 +2934,9 @@ def devicesGoodHandler(data) {
                         if(lockUser) {
                             state.whoUnlocked = it.currentValue("lastCodeName")
                             lockUser.each { us ->
-                                if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                                if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                                 if(us == state.whoUnlocked) { 
-                                    if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                                    if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
                                     deviceTrue2 = deviceTrue2 + 1
                                 }
                             }
@@ -2955,7 +2964,7 @@ def devicesGoodHandler(data) {
                 if(state.eventType == "thermostatOperatingState") {
                     if(theValue != "idle") {
                         deviceTrue2 = deviceTrue2 + 1
-                        if(logEnable && logSize) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
+                        if(logEnable && extraLogs) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
                     }
                 } else {
                     // next option
@@ -2994,7 +3003,7 @@ def hsmAlertHandler(data) {
         if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
         String theValue = data
         hsmAlertEvent.each { it ->
-            if(logEnable && logSize) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
+            if(logEnable && extraLogs) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.totalMatch = 1
                 state.totalConditions = 1
@@ -3009,7 +3018,7 @@ def hsmStatusHandler(data) {
         if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
         String theValue = data
         hsmStatusEvent.each { it ->
-            if(logEnable && logSize) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
+            if(logEnable && extraLogs) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.totalMatch = 1
                 state.totalConditions = 1
@@ -3347,45 +3356,45 @@ def restrictionHandler() {
     state.rCount = state.rCount + theCount
     state.rEventName.each { it ->
         theValue = it.currentValue("${state.rEventType}")
-        if(logEnable && logSize) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
+        if(logEnable && extraLogs) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
         if(theValue == state.rTypeValue1) { 
             if(state.rEventType == "lock") {
-                if(logEnable && logSize) log.debug "In restrictionHandler - Lock"
+                if(logEnable && extraLogs) log.debug "In restrictionHandler - Lock"
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockRestrictionUser.each { us ->
-                    if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                        if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
                         restrictionMatch1 = restrictionMatch1 + 1
                     }
                 }
             } else {
-                if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 1"
+                if(logEnable && extraLogs) log.debug "In restrictionHandler - Everything Else 1"
                 restrictionMatch1 = restrictionMatch1 + 1
             }
         } else if(theValue == state.rTypeValue2) { 
             if(state.rEventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockRestrictionUser.each { us ->
-                    if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                        if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
                         restrictionMatch2 = restrictionMatch2 + 1
                     }
                 }
             } else {
-                if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 2"
+                if(logEnable && extraLogs) log.debug "In restrictionHandler - Everything Else 2"
                 restrictionMatch2 = restrictionMatch2 + 1
             }
         }
     }
-    if(logEnable && logSize) log.debug "In restrictionHandler - theCount: ${theCount} - theValue: ${theValue} vs 1: ${state.restrictionMatch1} or 2: ${state.restrictionMatch2}"
+    if(logEnable && extraLogs) log.debug "In restrictionHandler - theCount: ${theCount} - theValue: ${theValue} vs 1: ${state.restrictionMatch1} or 2: ${state.restrictionMatch2}"
     if(state.rType) {
         state.restrictionMatch = state.restrictionMatch + restrictionMatch1
     } else {
         state.restrictionMatch = state.restrictionMatch + restrictionMatch2
     }
-    if(logEnable && logSize) log.debug "In devicesGoodHandler - restrictionMatch: ${state.restrictionMatch} - rCount: ${state.rCount} - type: ${state.rTypeAO}" 
+    if(logEnable && extraLogs) log.debug "In devicesGoodHandler - restrictionMatch: ${state.restrictionMatch} - rCount: ${state.rCount} - type: ${state.rTypeAO}" 
     if(state.rTypeAO) {  // OR (true)
         if(state.restrictionMatch >= 1) {
             state.areRestrictions = true
@@ -3430,7 +3439,7 @@ def switchesPerModeActionHandler() {
                     if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
                     if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
                     if(cleanOne == itThree) {
-                        if((logEnable && state.spmah) || state.trace) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
+                        if((logEnable && state.spmah) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
                         state.fromWhere = "switchesPerMode"
                         state.sPDM = itOne
                         state.onColor = "${theColor}"
@@ -3453,7 +3462,7 @@ def switchesPerModeReverseActionHandler() {
             name = (it.displayName).replace(" ","")
             if(it.hasCommand("setColor")) {
                 try {
-                    data = state.oldMapPer.get(name)
+                    data = state.oldMap.get(name)
                     def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
                     int hueColor = oldHueColor.toInteger()
                     int saturation = oldSaturation.toInteger()
@@ -3489,7 +3498,7 @@ def switchesPerModeReverseActionHandler() {
                 }
             } else if(it.hasCommand("setColorTemperature") && theColor == "NA") {
                 try {
-                    data = state.oldMapPer.get(name)
+                    data = state.oldMap.get(name)
                     def (oldStatus, oldLevel, oldTemp) = data.split("::")
                     int level = oldLevel.toInteger()
                     int cTemp = oldTemp.toInteger()
@@ -3510,7 +3519,7 @@ def switchesPerModeReverseActionHandler() {
                 }      
             } else if(it.hasCommand("setLevel")) {
                 try {
-                    data = state.oldMapPer.get(name)
+                    data = state.oldMap.get(name)
                     def (oldStatus, oldLevel) = data.split("::")
                     int level = oldLevel.toInteger()
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level}"
@@ -3527,11 +3536,11 @@ def switchesPerModeReverseActionHandler() {
                     it.off()
                 }
             }
-            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Removing ${it} from oldMapPer."
-            if(name && state.oldMapPer) state.oldMapPer.remove(name)
+            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Removing ${it} from oldMap."
+            if(name && state.oldMap) state.oldMap.remove(name)
         }
     }
-    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - oldMapPer: ${state.oldMapPer}"
+    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - oldMap: ${state.oldMap}"
 }
 
 def switchesInSequenceHandler() {
@@ -3616,13 +3625,13 @@ def dimmerOnReverseActionHandler() {
     if(logEnable) log.debug "In dimmerOnReverseActionHandler (${state.version})"
     if(setOnLC) {
         setOnLC.each { it ->
-            currentONOFF = it.currentValue('switch')
+            currentONOFF = it.currentValue("switch")
             if(logEnable) log.debug "In dimmerOnReverseActionHandler - ${it.displayName} - ${currentONOFF}"
+            if(logEnable) log.debug "In dimmerOnReverseActionHandler - oldMap: ${state.oldMap}"
             if(currentONOFF == "on") {
                 name = (it.displayName).replace(" ","")
                 if(it.hasCommand("setColor")) {
                     try {
-                        log.info "oldMap: ${state.oldMap}"
                         data = state.oldMap.get(name)
                         def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
                         int hueColor = oldHueColor.toInteger()
@@ -3721,7 +3730,7 @@ def permanentDimHandler() {
                 cleandevices.each { cleanD ->
                     if(cleanD == cleanOne) {
                         if(currentMode == theMode) {
-                            if(logEnable || state.trace) log.debug "In permanentDimHandler - Dimming: $it"
+                            if(logEnable || shortLog) log.debug "In permanentDimHandler - Dimming: $it"
                             state.fromWhere = "permanentDimPerHandler"
                             state.dimmerDevices = it
                             state.onColor = theColor
@@ -4200,15 +4209,15 @@ def dimStepUp() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable && logSize) log.debug "-------------------- dimStepUp --------------------"
-        if(logEnable && logSize) log.debug "In dimStepUp (${state.version})"
+        if(logEnable && extraLogs) log.debug "-------------------- dimStepUp --------------------"
+        if(logEnable && extraLogs) log.debug "In dimStepUp (${state.version})"
         if(state.currentLevel < targetLevelHigh) {
             state.currentLevel = state.currentLevel + state.dimStep
             if(state.currentLevel > targetLevelHigh) { state.currentLevel = targetLevelHigh }
-            if(logEnable && logSize) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+            if(logEnable && extraLogs) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
             slowDimmerUp.each { it->
                 deviceOn = it.currentValue("switch")
-                if(logEnable && logSize) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
+                if(logEnable && extraLogs) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
                 if(deviceOn == "on") {
                     atLeastOneUpOn = true
                     it.setLevel(state.currentLevel)
@@ -4220,7 +4229,7 @@ def dimStepUp() {
                 log.info "${app.label} - All devices are turned off"
             }
         } else {
-            if(logEnable && logSize) log.debug "-------------------- End dimStepUp --------------------"
+            if(logEnable && extraLogs) log.debug "-------------------- End dimStepUp --------------------"
             if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelHigh}"
         }
     }
@@ -4231,17 +4240,17 @@ def dimStepDown() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable && logSize) log.debug "-------------------- dimStepDown --------------------"
-        if(logEnable && logSize) log.debug "In dimStepDown (${state.version})"
+        if(logEnable && extraLogs) log.debug "-------------------- dimStepDown --------------------"
+        if(logEnable && extraLogs) log.debug "In dimStepDown (${state.version})"
         if(state.highestLevel > targetLevelLow) {
             state.highestLevel = state.highestLevel - state.dimStep1
             if(state.highestLevel < targetLevelLow) { state.highestLevel = targetLevelLow }
-            if(logEnable && logSize) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
+            if(logEnable && extraLogs) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
             slowDimmerDn.each { it->
                 deviceOn = it.currentValue("switch")
                 int cLevel = it.currentValue("level")
                 int wLevel = state.highestLevel
-                if(logEnable && logSize) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
+                if(logEnable && extraLogs) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
                 if(deviceOn == "on") {
                     atLeastOneDnOn = true
                     if(wLevel <= cLevel) { it.setLevel(wLevel) }
@@ -4254,7 +4263,7 @@ def dimStepDown() {
             }
         } else {
             if(dimDnOff) slowDimmerDn.off()
-            if(logEnable && logSize) log.debug "-------------------- End dimStepDown --------------------"
+            if(logEnable && extraLogs) log.debug "-------------------- End dimStepDown --------------------"
             if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
         } 
     }
@@ -4355,19 +4364,19 @@ def messageHandler() {
     if(state.doMessage) {   
         if(triggerType) {
             if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-                if(logEnable && logSize) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
+                if(logEnable && extraLogs) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
                 if(state.setpointHighOK == "no") theMessage = "${messageH}"
                 if(state.setpointLowOK == "no") theMessage = "${messageL}"
             } else {
                 theMessage = message
             }
-            if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${theMessage}"
+            if(logEnable && extraLogs) log.debug "In messageHandler - Random - raw message: ${theMessage}"
             def values = "${theMessage}".split(";")
             vSize = values.size()
             count = vSize.toInteger()
             def randomKey = new Random().nextInt(count)
             msg1 = values[randomKey]
-            if(logEnable && logSize) log.debug "In messageHandler - Random - msg1: ${msg1}" 
+            if(logEnable && extraLogs) log.debug "In messageHandler - Random - msg1: ${msg1}" 
         }
         state.message = msg1
         if(state.message) { 
@@ -4432,7 +4441,7 @@ def theFlasherHandler() {
 }
 
 def currentDateTime() {
-    if(logEnable && logSize) log.debug "In currentDateTime (${state.version})"
+    if(logEnable && extraLogs) log.debug "In currentDateTime (${state.version})"
     Date date = new Date()
     String datePart = date.format("dd/MM/yyyy")
     String timePart = date.format("HH:mm")
@@ -4710,17 +4719,16 @@ def setLevelandColorHandler() {
     }
     onLevel = state.onLevel.toInteger()
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
-
+    value = [hue: hueColor, saturation: saturation, level: onLevel]
+    if(state.oldMap == null) state.oldMap = [:]
+    theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
+    oldMap = theSetOldMap.split(",")
+    if(logEnable) log.info "In setLevelandColorHandler - oldMap: ${oldMap}"
+    
     if(state.fromWhere == "switchesPerMode") {
-        alreadyThere = false
         if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - Working on: ${state.sPDM}"
-        theSDPM = state.sPDM.toString().replace(" ","")
-        def value = [hue: hueColor, saturation: saturation, level: onLevel]
-        if(state.oldMapPer == null) state.oldMapPer = [:]
-        theSetOldMapPer = state.oldMapPer.toString().replace("[","").replace("]","")
-        oldMap = theSetOldMapPer.split(",")
-        if(logEnable) log.info "oldMap: ${oldMap}"
-        if(state.oldMapPer == [:]) {
+        theSDPM = state.sPDM.toString().replace(" ","")      
+        if(state.oldMap == [:]) {
             // Do nothing
         } else {
             oldMap.each { it ->
@@ -4733,45 +4741,54 @@ def setLevelandColorHandler() {
                 }
             }
         }
-        theDevice = state.sPDM
+        if(logEnable) log.debug "In setLevelandColorHandler - alreadyThere: ${alreadyThere}"
+        theDevice = state.sPDM     
         if(theDevice.hasCommand('setColor') && state.onTemp == "NA" && state.onColor != "No Change") {
-            oldHueColor = theDevice.currentValue("hue")
-            oldSaturation = theDevice.currentValue("saturation")
-            oldLevel = theDevice.currentValue("level")
-            oldColorTemp = theDevice.currentValue("colorTemperature")
-            oldColorMode = theDevice.currentValue("colorMode")
-            name = (theDevice.displayName).replace(" ","")
-            status = theDevice.currentValue("switch")
-            oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
-            state.oldMapPer.put(name,oldStatus) 
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"           
+            if(alreadyThere == false) {
+                oldHueColor = theDevice.currentValue("hue")
+                oldSaturation = theDevice.currentValue("saturation")
+                oldLevel = theDevice.currentValue("level")
+                oldColorTemp = theDevice.currentValue("colorTemperature")
+                oldColorMode = theDevice.currentValue("colorMode")
+                name = (theDevice.displayName).replace(" ","")
+                status = theDevice.currentValue("switch")
+                oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
+                state.oldMap.put(name,oldStatus) 
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+            }
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
             pauseExecution(actionDelay)
             theDevice.setColor(value)
         } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA" && state.onColor != "No Change") {
-            oldLevel = theDevice.currentValue("level")
-            oldColorTemp = theDevice.currentValue("colorTemperature")
-            name = (theDevice.displayName).replace(" ","")
-            status = theDevice.currentValue("switch")
-            oldStatus = "${status}::${oldLevel}::${oldColorTemp}"
-            state.oldMapPer.put(name,oldStatus)
+            if(alreadyThere == false) {
+                oldLevel = theDevice.currentValue("level")
+                oldColorTemp = theDevice.currentValue("colorTemperature")
+                name = (theDevice.displayName).replace(" ","")
+                status = theDevice.currentValue("switch")
+                oldStatus = "${status}::${oldLevel}::${oldColorTemp}"
+                state.oldMap.put(name,oldStatus)
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+            }
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
             pauseExecution(actionDelay)
             theDevice.setLevel(onLevel as Integer ?: 99)
             pauseExecution(actionDelay)
             theDevice.setColorTemperature(state.onTemp)
         } else if(theDevice.hasCommand('setLevel')) {
-            oldLevel = theDevice.currentValue("level")
-            name = (theDevice.displayName).replace(" ","")
-            status = theDevice.currentValue("switch")
-            oldStatus = "${status}::${oldLevel}"
-            state.oldMapPer.put(name,oldStatus)
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
-            if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
+            if(alreadyThere == false) {
+                setColorTemp
+                oldLevel = theDevice.currentValue("level")
+                name = (theDevice.displayName).replace(" ","")
+                status = theDevice.currentValue("switch")
+                oldStatus = "${status}::${oldLevel}"
+                state.oldMap.put(name,oldStatus)
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+            }
+            if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
             pauseExecution(actionDelay)
             theDevice.setLevel(onLevel as Integer ?: 99)
         } else {
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - $theDevice.displayName, on()"
+            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - ${theDevice.displayName}, on()"
             pauseExecution(actionDelay)
             theDevice.on()
         }
@@ -4779,50 +4796,69 @@ def setLevelandColorHandler() {
     
     if(state.fromWhere == "dimmerOn") {
         if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn/switchesPerMode"
-        if(state.oldMap == null) state.oldMap = [:]
-        state.dimmerDevices.each {
-            if(logEnable) log.debug "In setLevelandColorHandler - Working on ${state.dimmerDevices}"
-            def value = [hue: hueColor, saturation: saturation, level: onLevel] 
+        state.dimmerDevices.each { it ->
+            alreadyThere = false
+            if(state.oldMap == [:]) {
+                // Do nothing
+            } else {
+
+                oldMap.each { olds ->
+                    itValue = olds.split(":")
+                    tDevice = itValue[0]
+                    if(tDevice.startsWith(" ") || tDevice.startsWith("[")) tDevice = tDevice.substring(1)
+                    if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn/switchesPerMode - it: ${it} - tDevice: ${tDevice}"
+                    if(it == tDevice) {
+                        alreadyThere = true
+                    }
+                }
+            }
+            if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn/switchesPerMode - Working on ${it} - alreadyThere: ${alreadyThere}"
             if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
             if(it.hasCommand('setColor') && state.onColor != "No Change") {
-                oldHueColor = it.currentValue("hue")
-                oldSaturation = it.currentValue("saturation")
-                oldLevel = it.currentValue("level")
-                oldColorTemp = it.currentValue("colorTemperature")
-                oldColorMode = it.currentValue("colorMode")
-                name = (it.displayName).replace(" ","")
-                status = it.currentValue("switch")
-                oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
-                state.oldMap.put(name,oldStatus) 
-                if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - ${name} - ${oldStatus}"
+                if(alreadyThere == false) {
+                    oldHueColor = it.currentValue("hue")
+                    oldSaturation = it.currentValue("saturation")
+                    oldLevel = it.currentValue("level")
+                    oldColorTemp = it.currentValue("colorTemperature")
+                    oldColorMode = it.currentValue("colorMode")
+                    name = (it.displayName).replace(" ","")
+                    status = it.currentValue("switch")
+                    oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
+                    state.oldMap.put(name,oldStatus) 
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - ${name} - ${oldStatus}"
+                }
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - NEW VALUE - ${it.displayName} - setColor: ${value}"
                 pauseExecution(actionDelay)
                 it.setColor(value)
             } else if(it.hasCommand('setColorTemperature') && state.onColor != "No Change") {
-                oldLevel = it.currentValue("level")
-                oldColorTemp = it.currentValue("colorTemperature")
-                name = (it.displayName).replace(" ","")
-                status = it.currentValue("switch")
-                oldStatus = "${status}::${oldLevel}::${oldColorTemp}"
-                state.oldMap.put(name,oldStatus)
-                if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - OLD STATUS - ${name} - ${oldStatus}"
+                if(alreadyThere == false) {
+                    oldLevel = it.currentValue("level")
+                    oldColorTemp = it.currentValue("colorTemperature")
+                    name = (it.displayName).replace(" ","")
+                    status = it.currentValue("switch")
+                    oldStatus = "${status}::${oldLevel}::${oldColorTemp}"
+                    state.oldMap.put(name,oldStatus)
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - OLD STATUS - ${name} - ${oldStatus}"
+                }
                 if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - NEW VALUE - ${it.displayName} - setColorTemp($state.onTemp)"
                 pauseExecution(actionDelay)
                 it.setLevel(onLevel as Integer ?: 99)
                 pauseExecution(actionDelay)
                 it.setColorTemperature(state.onTemp)
             } else if (it.hasCommand('setLevel')) {
-                oldLevel = it.currentValue("level")
-                name = (it.displayName).replace(" ","")
-                status = it.currentValue("switch")
-                oldStatus = "${status}::${oldLevel}"
-                state.oldMap.put(name,oldStatus)
-                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - ${name} - ${oldStatus}"
+                if(alreadyThere == false) {
+                    oldLevel = it.currentValue("level")
+                    name = (it.displayName).replace(" ","")
+                    status = it.currentValue("switch")
+                    oldStatus = "${status}::${oldLevel}"
+                    state.oldMap.put(name,oldStatus)
+                    if(logEnable) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - ${name} - ${oldStatus}"
+                }
                 if(logEnable) log.debug "In setLevelandColorHandler - setLevel - NEW VALUE - ${it.displayName} - setLevel: ${value}"
                 pauseExecution(actionDelay)
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 pauseExecution(actionDelay)
                 it.on()
             }
@@ -4832,13 +4868,13 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOn") {
         slowDimmerUp.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
             }
         }
@@ -4847,40 +4883,39 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOff") {
         slowDimmerDn.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
                 it.setLevel(level as Integer ?: 99)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
             }
         }
     }
-    
+
     if(state.fromWhere == "permanentDimHandler") {
         setOnLC.each {
             if(pdColor && it.hasCommand('setColor')) {
-                def value = [hue: hueColor, saturation: saturation, level: onLevel]
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if(pdTemp && it.hasCommand('setColorTemperature')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
                 pauseExecution(actionDelay)
                 if(permanentDimLvl) { it.setLevel(permanentDimLvl) }
                 if(warningDimLvl) { it.setLevel(warningDimLvl) }
                 pauseExecution(actionDelay)
                 it.setColorTemperature(pdTemp)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
                 pauseExecution(actionDelay)
                 if(permanentDimLvl) { it.setLevel(permanentDimLvl) }
                 if(warningDimLvl) { it.setLevel(warningDimLvl) }
             }
         }
     }
-    
+
     if(state.fromWhere == "permanentDimPerHandler") {
         currentMode = location.mode
         masterDimmersPerMode.each { itOne ->
@@ -4901,19 +4936,18 @@ def setLevelandColorHandler() {
                             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - MATCH - Working on: ${itOne}"
                             theDevice = itOne
                             if(theDevice.hasCommand('setColor') && state.onTemp == "NA") {
-                                def value = [hue: hueColor, saturation: saturation, level: onLevel]
-                                if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColor: $value"
+                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColor: $value"
                                 pauseExecution(actionDelay)
                                 theDevice.setColor(value)
                             } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA") { 
-                                if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
+                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
                                 pauseExecution(actionDelay)
                                 if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
                                 if(warningDimLvl) { theDevice.setLevel(warningDimLvl) }
                                 pauseExecution(actionDelay)
                                 theDevice.setColorTemperature(pdTemp)
                             } else {
-                                if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
+                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
                                 pauseExecution(actionDelay)
                                 if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
                                 if(warningDimLvl) { theDevice.setLevel(warningDimLvl) }
