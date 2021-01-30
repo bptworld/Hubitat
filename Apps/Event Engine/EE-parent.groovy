@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 01/29/21 - Fixed something...
  *  1.0.4 - 01/29/21 - Added Default Values
  *  1.0.3 - 10/18/20 - Added Global Variables
  *  1.0.2 - 09/13/20 - Bring on the Cogs!
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -85,7 +86,7 @@ def initialize() {
     //childApps.each {child ->
     //	log.info "Cog: ${child.label}"
     //}
-    mapOfChildren()
+    //mapOfChildren()
 }
 
 def mainPage() {
