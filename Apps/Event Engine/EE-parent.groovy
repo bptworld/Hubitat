@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 01/29/21 - Added Default Values
  *  1.0.3 - 10/18/20 - Added Global Variables
  *  1.0.2 - 09/13/20 - Bring on the Cogs!
  *  1.0.1 - 09/12/20 - Name change
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -64,12 +65,12 @@ preferences {
 } 
 
 def installed() {
-    log.debug "Installed with settings: ${settings}"
+    //log.debug "Installed with settings: ${settings}"
     initialize()
 }
 
 def updated() {
-    log.debug "Updated with settings: ${settings}"
+    //log.debug "Updated with settings: ${settings}"
     unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
@@ -81,10 +82,10 @@ def updated() {
 }
 
 def initialize() {
-    log.info "There are ${childApps.size()} Cogs"
-    childApps.each {child ->
-    	log.info "Cog: ${child.label}"
-    }
+    //childApps.each {child ->
+    //	log.info "Cog: ${child.label}"
+    //}
+    mapOfChildren()
 }
 
 def mainPage() {
@@ -97,8 +98,19 @@ def mainPage() {
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Cogs")) {
-				app(name: "anyOpenApp", appName: "Event Engine Cog", namespace: "BPTWorld", title: "<b>Add a new Cog to Event Engine</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Event Engine Cog", namespace: "BPTWorld", title: "<b>Add a new 'Cog' to Event Engine</b>", multiple: true)
 			}
+/*            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Spark Plugs")) {
+				app(name: "anyOpenApp", appName: "Event Engine Spark Plug", namespace: "BPTWorld", title: "<b>Add a new 'Spark Plug' to Event Engine</b>", multiple: true)
+			}
+*/            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Default Values")) {
+                paragraph "Default Values are shared across all Cogs but can be changed within each Cog if needed."
+                paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
+                input "pActionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, submitOnChange:true
+                paragraph "<hr>"
+            }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Global Variables")) {
                 paragraph "Global Variables can be accessed and updated by any EE Cog. A great way to share variables between Cogs!"
@@ -169,11 +181,37 @@ def sendToChildren() {
     }
 }
 
+def selectCogtoParent(data) {
+    if(logEnable) log.debug "In selectCogtoParent (${state.version}) - data: ${data}"
+    childApps.each { it ->
+        if(it.label == data) {
+            log.info "Match - ${data}"
+            state.mySettings = it.mySettings
+        }  
+    }
+    app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
+}
+
+def mapOfChildren() {
+    mapOfChildren = []
+    childApps.each { it ->
+        if(it.label.contains("paused")) {
+            
+        } else {
+            theName = "${it.label}"
+            mapOfChildren << theName
+        }
+    }
+    if(mapOfChildren) childApps.each { child ->
+        child.newChildAppsHandler(mapOfChildren)
+    }
+}
+
 def installCheck(){
     display()
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
-		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
+		section{paragraph "Please hit 'Done' to install '${app.label}' parent app."}
   	}
   	else{
     	if(logEnable) log.info "Parent Installed OK"
