@@ -67,6 +67,13 @@
          "tags": [ "Dashboards", "Doors & Windows", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
+   		"name": "Device Sequencer",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
+   		"description": "Turn on/off several devices in a row, with a user defined pause in between each.",
+         "tags": [ "Tools & Utilities" ]
+   	},
+      {
    		"name": "Device Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
