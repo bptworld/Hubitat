@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.4 - 02/01/21 - Fix to Default Delay setting, Added new 'Directional Conditions' to Conditions
 *  2.7.3 - 01/31/21 - Added True Reverse Option, Adjustment to Warning Dim
 *  2.7.2 - 01/29/21 - Adjustments to state maps, added more logging options
 *  2.7.1 - 01/27/21 - Adjustments to Reverse
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.3"
+    state.version = "2.7.4"
 }
 
 definition(
@@ -67,6 +68,7 @@ definition(
     description: "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
     category: "Convenience",
     parent: "BPTWorld:Event Engine",
+    installOnOpen: true,
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -147,6 +149,7 @@ def pageConfig() {
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
                 ["xContact":"Contact Sensors"],
+                ["xDirectional":"Directional Condition"],
                 ["xEnergy":"Energy Setpoint"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xGVar":"Global Variables"],
@@ -550,6 +553,31 @@ def pageConfig() {
                 app.removeSetting("contactRestrictionEvent")
                 app.removeSetting("crClosedOpen")
                 app.removeSetting("contactRANDOR")
+            }
+// -----------
+            if(triggerType.contains("xDirectional")) {
+                paragraph "<b>Directional Condition</b> <small><abbr title='Get notified on the direction something is moving in. Great for a Driveway Alert with direction.'><b>- INFO -</b></abbr></small>"
+                paragraph "If device 1 triggers before device 2 - Direction is considered <b>Right</b><br>If device 2 triggers before device 1 - Direction is considered <b>Left</b><br><small>Note: If the wrong direction is reported, simply reverse the two inputs.</small>"
+                input "theType1", "bool", title: "Device 1: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+                if(theType1) {
+                    input "device1", "capability.contactSensor", title: "Contact Sensor 1", mulitple:false, required:true, submitOnChange:true
+                } else {
+                    input "device1", "capability.motionSensor", title: "Motion Sensor 1", mulitple:false, required:true, submitOnChange:true
+                }
+                input "theType2", "bool", title: "Device 2: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+                if(theType2) {
+                    input "device2", "capability.contactSensor", title: "Contact Sensor 2", mulitple:false, required:true, submitOnChange:true
+                } else {
+                    input "device2", "capability.motionSensor", title: "Motion Sensor 2", mulitple:false, required:true, submitOnChange:true
+                }
+                input "theDirection", "enum", title: "Which direction to use as the condition", multiple:false, options: ["Left", "Right"], submitOnChange:true
+                paragraph "<hr>"
+                state.theCogTriggers += "<b>-</b> By Directional Condition: motion/contact 1: ${theType1} - device1: ${device1}, motion/contact 2: ${theType2} device2: ${device2}, theDirection: ${theDirection}<br>"
+            } else {
+                state.theCogTriggers -= "<b>-</b> By Directional Condition: motion/contact 1: ${theType1} - device1: ${device1}, motion/contact 2: ${theType2} device2: ${device2}, theDirection: ${theDirection}<br>"
+                app.removeSetting("theType1")
+                app.removeSetting("device1")
+                app.removeSetting("device2")
             }
 // -----------
             if(triggerType.contains("xEnergy")) {
@@ -2081,12 +2109,11 @@ def pageConfig() {
                 app.removeSetting("additionSwitches")
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
-            actionDelayValue = parent.pActionDelay ?: 100            
-            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:true, submitOnChange:true
+            actionDelayValue = parent.pActionDelay ?: 100
+            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:false, submitOnChange:true
             state.theCogActions += "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
             if(actionDelay == null || actionDelay == "") {
                 state.theCogActions -= "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
-                app.updateSetting("actionDelay",[value:"100",type:"number"])
             }
         }                
         // ********** End Actions **********
@@ -2206,6 +2233,7 @@ def notificationOptions(){
                 wc += "%whatHappened% - Device status that caused the event to trigger<br>"
                 wc += "%time% - Will speak the current time in 24 h<br>"
                 wc += "%time1% - Will speak the current time in 12 h<br>"
+                if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
                 if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
                 paragraph wc
 
@@ -2398,6 +2426,22 @@ def initialize() {
             }
         }       
 
+        if(triggerType) {
+            if(triggerType.contains("xDirectional")) {
+                if(theType1) {
+                    subscribe(device1, "contact", activeOneHandler)
+                } else {
+                    subscribe(device1, "motion", activeOneHandler)
+                }
+
+                if(theType2) {
+                    subscribe(device2, "contact", activeTwoHandler)
+                } else {
+                    subscribe(device2, "motion", activeTwoHandler)
+                }
+            }
+        }
+        
         if(timeDaysType) {
             if(timeDaysType.contains("tPeriodic")) { 
                 if(logEnable) log.debug "In initialize - tPeriodic - Creating Cron Jobs"
@@ -2440,9 +2484,6 @@ def startTheProcess(evt) {
     } else {
         if(logEnable || shortLog) log.trace "*"
         if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
-        state.totalMatch = 0
-        state.totalMatchHelper = 0
-        state.totalConditions = 0
         state.rCount = 0
         state.restrictionMatch = 0
         state.isThereDevices = false
@@ -2455,6 +2496,7 @@ def startTheProcess(evt) {
             state.totalMatch = 1
             state.totalConditions = 1
         }
+        
         if(state.wasHereLast == null) state.wasHereLast = "Starting"        
         if(evt) {
             if(evt == "runAfterDelay") {
@@ -2718,6 +2760,9 @@ def startTheProcess(evt) {
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
+        state.totalMatch = 0
+        state.totalMatchHelper = 0
+        state.totalConditions = 0
         if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
         if(logEnable || shortLog) log.trace "*"
     }
@@ -3551,7 +3596,7 @@ def switchesPerModeReverseActionHandler() {
 }
 
 def switchesInSequenceHandler() {
-    if(logEnable) log.debug "In switchesInSequenceHandler (${state.version})"
+    if(logEnable) log.debug "In switchesInSequenceHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
     if(deviceSeqAction1) {
         deviceSeqAction1.each { it ->
             pauseExecution(actionDelay)
@@ -3585,7 +3630,7 @@ def switchesInSequenceHandler() {
 }
 
 def switchesInSequenceReverseHandler() {
-    if(logEnable) log.debug "In switchesInSequenceReverseHandler (${state.version})"
+    if(logEnable) log.debug "In switchesInSequenceReverseHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
     if(deviceSeqAction5) {
         deviceSeqAction5.each { it ->
             pauseExecution(actionDelay)
@@ -4408,6 +4453,8 @@ def messageHandler() {
                 currentDateTime()
                 state.message = state.message.replace('%time1%', state.theTime1)
             }
+            if (state.message.contains("%lastDirection%")) {state.message = state.message.replace('%lastDirection%', state.lastDirection)}
+
             if(logEnable) log.debug "In messageHandler - message: ${state.message}"
             if(state.message && state.message != "null") {
                 if(useSpeech) letsTalk(state.message)
@@ -4471,35 +4518,37 @@ def currentDateTime() {
 // *****  Start Time Handlers *****
 def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler (${state.version})"
-    if(triggerType.contains("tTimeDays")) {
-        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-            if(fromSun) {
-                sunriseTime = getSunriseAndSunset().sunrise
-            } else {
-                sunriseTime = (getSunriseAndSunset().sunrise)+1
+    if(triggerType) {
+        if(triggerType.contains("tTimeDays")) {
+            if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
+                if(fromSun) {
+                    sunriseTime = getSunriseAndSunset().sunrise
+                } else {
+                    sunriseTime = (getSunriseAndSunset().sunrise)+1
+                }
+                sunsetTime = getSunriseAndSunset().sunset
+                if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
+                int theOffsetSunset = offsetSunset ?: 1
+                if(setBeforeAfter) {
+                    state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+                } else {
+                    state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+                }
+                int theOffsetSunrise = offsetSunrise ?: 1
+                if(riseBeforeAfter) {
+                    state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+                } else {
+                    state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+                }
+                if(fromSun) {
+                    if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}"
+                } else {
+                    if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
+                }
+                schedule("0 5 12 ? * * *", autoSunHandler)
+                schedule(state.timeSunset, runAtTime1)
+                if(!timeBetweenSunRestriction) schedule(state.timeSunrise, runAtTime2)
             }
-            sunsetTime = getSunriseAndSunset().sunset
-            if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
-            int theOffsetSunset = offsetSunset ?: 1
-            if(setBeforeAfter) {
-                state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
-            } else {
-                state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
-            }
-            int theOffsetSunrise = offsetSunrise ?: 1
-            if(riseBeforeAfter) {
-                state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-            } else {
-                state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-            }
-            if(fromSun) {
-                if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}"
-            } else {
-                if(logEnable) log.debug "In autoSunHandler - After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
-            }
-            schedule("0 5 12 ? * * *", autoSunHandler)
-            schedule(state.timeSunset, runAtTime1)
-            if(!timeBetweenSunRestriction) schedule(state.timeSunrise, runAtTime2)
         }
     }
     if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
@@ -4520,45 +4569,47 @@ def runAtTime2() {
 
 def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
-    if(triggerType.contains("tTimeDays")) {
-        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-            if(fromSun) {
-                nextSunrise = getSunriseAndSunset().sunrise
+    if(triggerType) {
+        if(triggerType.contains("tTimeDays")) {
+            if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
+                if(fromSun) {
+                    nextSunrise = getSunriseAndSunset().sunrise
+                } else {
+                    nextSunrise = (getSunriseAndSunset().sunrise)+1
+                }
+                nextSunset = getSunriseAndSunset().sunset
+                int theOffsetSunset = offsetSunset ?: 1
+                if(setBeforeAfter) {
+                    use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
+                } else {
+                    use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
+                }
+                int theOffsetSunrise = offsetSunrise ?: 1
+                if(riseBeforeAfter) {
+                    use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
+                } else {
+                    use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
+                }
+                if(fromSun) {    // Sunrise to Sunset
+                    state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
+                    if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunriseOffset: ${nextSunriseOffset} - nextSunsetOffset: ${nextSunsetOffset}"
+                } else {        // Sunset to Sunrise
+                    state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
+                    if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+                }
+                if(state.timeBetweenSun) {
+                    if(logEnable) log.debug "In checkTimeSun - Time within range"
+                } else {
+                    if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+                }
             } else {
-                nextSunrise = (getSunriseAndSunset().sunrise)+1
-            }
-            nextSunset = getSunriseAndSunset().sunset
-            int theOffsetSunset = offsetSunset ?: 1
-            if(setBeforeAfter) {
-                use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
-            } else {
-                use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
-            }
-            int theOffsetSunrise = offsetSunrise ?: 1
-            if(riseBeforeAfter) {
-                use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
-            } else {
-                use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
-            }
-            if(fromSun) {    // Sunrise to Sunset
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunriseOffset: ${nextSunriseOffset} - nextSunsetOffset: ${nextSunsetOffset}"
-            } else {        // Sunset to Sunrise
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkTimeSun - ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-            }
-            if(state.timeBetweenSun) {
-                if(logEnable) log.debug "In checkTimeSun - Time within range"
-            } else {
-                if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+                state.timeBetweenSun = true
             }
         } else {
             state.timeBetweenSun = true
         }
-    } else {
-        state.timeBetweenSun = true
+        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
     }
-    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
 }
 
 def startTimeBetween() {
@@ -5074,6 +5125,80 @@ def sdPerModeHandler(data) {
     app.removeSetting("sdPerModeColor")
     app.removeSetting("sdPerModeTime")
 }
+
+// ********** Start Directional Condition **********
+def activeOneHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In Directional Condition - activeOneHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
+        if(evt.value == "open" || evt.value == "active") {
+            if(atomicState.first != "two") { atomicState.first = "one" } 
+            atomicState.motionOneActive = true
+            if(logEnable) log.debug "In Directional Condition - activeOneHandler - first: ${atomicState.first}"
+            if(atomicState.first == "two") activeHandler()
+        } else {
+            inactiveOneHandler()
+        }
+    }
+}
+
+def activeTwoHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In Directional Condition - activeTwoHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
+        if(evt.value == "open" || evt.value == "active") {
+            if(atomicState.first != "one") { atomicState.first = "two" }
+            atomicState.motionTwoActive = true
+            if(logEnable) log.debug "In Directional Condition - activeTwoHandler - first: ${atomicState.first}"
+            if(atomicState.first == "one") activeHandler()
+        } else {
+            inactiveTwoHandler()
+        }
+    }
+}
+
+def activeHandler() {
+    if(logEnable) log.debug "In Directional Condition - activeHandler (${state.version})"
+    if(atomicState.motionOneActive && atomicState.motionTwoActive) {
+        if(atomicState.first == "one") { state.direction = "right" }
+        if(atomicState.first == "two") { state.direction = "left" }
+        state.lastDirection = state.direction
+        if(logEnable) log.debug "In Directional Condition - activeHandler - first: ${atomicState.first} - direction: ${state.direction}"
+        if(theDirection == "Right" && state.direction == "right") { 
+            state.totalMatch = 1
+            state.totalConditions = 1
+            startTheProcess() 
+        }
+        if(theDirection == "Left" && state.direction == "left") {
+            state.totalMatch = 1
+            state.totalConditions = 1
+            startTheProcess() 
+        }
+    }
+}
+
+def inactiveOneHandler(evt) {
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler (${state.version})"
+    if(atomicState.first == "one") atomicState.first = ""
+    atomicState.motionOneActive = false
+    state.direction = ""
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler - first: ${atomicState.first} - (should be blank)"
+    startTheProcess("reverse")
+}
+
+def inactiveTwoHandler(evt) {
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler (${state.version})"
+    if(atomicState.first == "two") atomicState.first = ""
+    atomicState.motionTwoActive = false
+    state.direction = ""
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler - first: ${atomicState.first} - (should be blank)"
+    startTheProcess("reverse")
+}
+// ********** End Directional Conditional **********
 
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
