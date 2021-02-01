@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.5 - 02/01/21 - Added defined range for Reverse with Delay (in minutes - 1 to 60)
 *  2.7.4 - 02/01/21 - Fix to Default Delay setting, Added new 'Directional Conditions' to Conditions
 *  2.7.3 - 01/31/21 - Added True Reverse Option, Adjustment to Warning Dim
 *  2.7.2 - 01/29/21 - Adjustments to state maps, added more logging options
@@ -46,11 +47,6 @@
 *  1.0.0 - 09/05/20 - Initial release.
 */
 
-/*
-- Working on Clone Cog
-- Working on making map of settings
-*/
-
 import groovy.json.*
 import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
@@ -58,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.4"
+    state.version = "2.7.5"
 }
 
 definition(
@@ -1985,14 +1981,14 @@ def pageConfig() {
                     }
                     input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
                     if(timeReverse) {
-                        input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                        input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
                     }
                     if(reverseWithDelay) {
                         paragraph "<hr>"
                         if(timePerMode) {
                             paragraph "Using Time to Reverse Per Mode."
                         } else {
-                            input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                            input "timeToReverse", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
                         }
                     }
                     if(!timeReverse) {
