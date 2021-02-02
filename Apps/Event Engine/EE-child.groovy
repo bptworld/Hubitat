@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.6 - 02/02/21 - Warning Dim length is now user defined, Reverse Delay time can now be Minutes or Seconds
 *  2.7.5 - 02/01/21 - Added defined range for Reverse with Delay (in minutes - 1 to 60)
 *  2.7.4 - 02/01/21 - Fix to Default Delay setting, Added new 'Directional Conditions' to Conditions
 *  2.7.3 - 01/31/21 - Added True Reverse Option, Adjustment to Warning Dim
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.5"
+    state.version = "2.7.6"
 }
 
 definition(
@@ -1970,13 +1971,15 @@ def pageConfig() {
                     if(reverseWithDelay) {
                         paragraph "<hr>"
                         input "dimWhileDelayed", "bool", title: "Dim lights DURING delay as a warning", defaultValue:false, submitOnChange:true
-                        input "dimAfterDelayed", "bool", title: "Dim lights for 30 seconds AFTER delay as a warning", defaultValue:false, submitOnChange:true
-                        if(dimWhileDelayed || dimAfterDelayed) { 
-                            input "warningDimLvl", "number", title: "Warning Dim Level (1 to 99)", range: '1..99'
+                        input "dimAfterDelayed", "bool", title: "Dim lights AFTER delay as a warning", defaultValue:false, submitOnChange:true
+                        if(dimWhileDelayed || dimAfterDelayed) {
+                            input "warningDimSec", "number", title: "Length of Dim (in Seconds - 1 to 60) <small><abbr title='Be sure this is less than Time To Reverse or it will be cut short.'><b>- INFO -</b></abbr></small>", range: '1..60', width:6
+                            input "warningDimLvl", "number", title: "Warning Dim Level (1 to 99)", range: '1..99', width:6
                             paragraph "<small>* This level will override the Permanent Dim option below.</small>"
                         }
                         paragraph "<hr>"
                     } else {
+                        app.removeSetting("warningDimSec")
                         app.removeSetting("warningDimLvl")
                     }
                     input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
@@ -1988,7 +1991,12 @@ def pageConfig() {
                         if(timePerMode) {
                             paragraph "Using Time to Reverse Per Mode."
                         } else {
-                            input "timeToReverse", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                            input "reverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", defaultValue:false, submitOnChange:true
+                            if(reverseTimeType) {
+                                input "timeToReverse", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
+                            } else {
+                                input "timeToReverse", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                            }
                         }
                     }
                     if(!timeReverse) {
@@ -2043,9 +2051,16 @@ def pageConfig() {
                     state.theCogActions -= "<b>-</b> Reverse: ${timeReverseMinutes} minute(s), even if Conditions are still true<br>"
                 }        
                 if(reverseWithDelay) {
-                    state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Level: ${warningDimLvl}<br>"
+                    if(reverseTimeType) {
+                        state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
+                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
+                    } else {
+                        state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
+                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
+                    }
                 } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Level: ${warningDimLvl}<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                 }
                 if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
                     state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
@@ -2101,8 +2116,10 @@ def pageConfig() {
                 app.removeSetting("permanentDim")
                 app.removeSetting("reverse")
                 app.removeSetting("reverseWithDelay")
+                app.removeSetting("warningDimSec")
                 app.removeSetting("warningDimLvl")
                 app.removeSetting("additionSwitches")
+                app.removeSetting("reverseTimeType")
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             actionDelayValue = parent.pActionDelay ?: 100
@@ -2674,7 +2691,7 @@ def startTheProcess(evt) {
                 } else {
                     if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
                 }
-            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {              
+            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
                     if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE - wasHereLast: ${state.wasHereLast}"
                     state.wasHereLast = "runReverseDelay"
@@ -2697,17 +2714,29 @@ def startTheProcess(evt) {
                                     def modeCheck = currentMode.contains(theMode)
                                     if(modeCheck) {
                                         timeTo = theTime
+                                        theDelay = timeTo.toInteger() * 60
                                         if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
                                     } else {
                                         if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                     }
                                 }
                             }
-                        } else {                       
-                            timeTo = timeToReverse ?: 3
+                        } else {
+                            if(reverseTimeType) {
+                                timeTo = timeToReverse ?: 60
+                                theDelay = timeTo.toInteger()
+                                log.info "true - theDelay: $theDelay"
+                            } else {
+                                timeTo = timeToReverse ?: 2
+                                theDelay = timeTo.toInteger() * 60
+                                log.info "False - theDelay: $theDelay"
+                            }
                         }                      
-                        theDelay = timeTo.toInteger() * 60
-                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                        if((logEnable || shortLog) && reverseTimeType) {
+                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                        } else {
+                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                        }
                     } else {
                         if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
@@ -2716,8 +2745,10 @@ def startTheProcess(evt) {
                         permanentDimHandler() 
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else if(dimAfterDelayed && (state.appStatus == "active")) { 
-                        firstDelay = theDelay - 30
-                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn 30 seconds before Reverse"
+                        theDelay = theDelay ?: 60
+                        wds = warningDimSec ?: 30
+                        firstDelay = theDelay - wds
+                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
                         runIn(firstDelay, permanentDimHandler)
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
