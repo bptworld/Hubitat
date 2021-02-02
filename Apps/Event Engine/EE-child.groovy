@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.7 - 02/02/21 - Added Reverse Delay Time in Minutes or Seconds to Switches Per Mode
 *  2.7.6 - 02/02/21 - Warning Dim length is now user defined, Reverse Delay time can now be Minutes or Seconds
 *  2.7.5 - 02/01/21 - Added defined range for Reverse with Delay (in minutes - 1 to 60)
 *  2.7.4 - 02/01/21 - Fix to Default Delay setting, Added new 'Directional Conditions' to Conditions
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.6"
+    state.version = "2.7.7"
 }
 
 definition(
@@ -1862,7 +1863,7 @@ def pageConfig() {
                 paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
                 input "sdPerModeName", "mode", title: "Mode", required:false, width:6                 
                 input "setDimmersPerMode", "enum", title: "Dimmers to set for this Mode", required:false, multiple:true, options:masterList, submitOnChange:true
-                input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
+                input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, range: '1..99'
                 input "sdPerModeColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
                 if(sdPerModeColorTemp) {
                     input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
@@ -1876,10 +1877,16 @@ def pageConfig() {
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
                     app.removeSetting("sdPerModeTemp")
                 }
-                input "timePerMode", "bool", title: "Use Time to Reverse Per Mode <small><abbr title='Switches and Virtual Contact Sensor can also be Reversed! More info below in the Reverse Feature section.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
-                if(timePerMode) {
-                    app.removeSetting("timeToReverse")                  
-                    input "sdPerModeTime", "number", title: "Time to Reverse (in minutes) - * For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.", submitOnChange:true
+                input "sdTimePerMode", "bool", title: "Use Time to Reverse Per Mode <small><abbr title='Switches and Virtual Contact Sensor can also be Reversed! More info below in the Reverse Feature section.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                if(sdTimePerMode) {
+                    app.removeSetting("timeToReverse")
+                    input "sdReverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", defaultValue:false, submitOnChange:true
+                    if(sdReverseTimeType) {
+                        input "sdPerModeTime", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
+                    } else {
+                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                    }
+                    paragraph "<small>* For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.</small>"
                 }
                 // *** Start Mode Map ***
                 input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
@@ -1887,6 +1894,16 @@ def pageConfig() {
                 input "sdPerModeClear", "button", title: "Clear Table", width: 3
                 input "refreshMap", "bool", defaultValue:false, title: "Refresh the Map", description: "Map", submitOnChange:true, width:3
                 if(refreshMap) {
+                    app.removeSetting("setDimmersPerMode")
+                    app.removeSetting("sdPerModeName")
+                    app.removeSetting("sdPerModeLevel")
+                    app.removeSetting("sdPerModeTemp")
+                    app.removeSetting("sdPerModeColor")
+                    app.removeSetting("sdPerModeTime")
+                    app.removeSetting("sdPerModeTimeType")
+                    app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
+                    app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
+                    app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])                  
                     app.updateSetting("refreshMap",[value:"false",type:"bool"])
                 }
                 paragraph "<small>* Remember to click outside all fields before pressing a button. Also, most of the time the button needs to be pushed twiced to add/edit. Need to work on that!</small>"
@@ -1909,6 +1926,7 @@ def pageConfig() {
                 app.removeSetting("sdPerModeTemp")
                 app.removeSetting("sdPerModeColor")
                 app.removeSetting("sdPerModeTime")
+                app.removeSetting("sdPerModeTimeType")
                 state.sdPerModeMap = [:]
                 state.thePerModeMap = null
             }
@@ -2705,17 +2723,28 @@ def startTheProcess(evt) {
                                     try {
                                         theMode = pieces[0]
                                         theTime = pieces[5]
+                                        theTimeType = pieces[6]
                                     } catch (e) {
-                                        if(theTime == null) theTime = 3
+                                        if(theTime == null) theTime = 2
+                                        try {
+                                            theTimeType = pieces[6]
+                                        } catch (e2) {
+                                            if(theTimeType == null) theTimeType = "false"
+                                        }
                                     }
                                     if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
                                     theTime = theTime.replace("]","")
                                     currentMode = location.mode
                                     def modeCheck = currentMode.contains(theMode)
                                     if(modeCheck) {
-                                        timeTo = theTime
-                                        theDelay = timeTo.toInteger() * 60
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo}"
+                                        if(theTimeType == "false") {
+                                            timeTo = theTime ?: 2
+                                            theDelay = timeTo.toInteger() * 60
+                                        } else {
+                                            timeTo = theTime ?: 120
+                                            theDelay = timeTo.toInteger()
+                                        }
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - timeType: ${theTimeType}"
                                     } else {
                                         if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                     }
@@ -2725,11 +2754,9 @@ def startTheProcess(evt) {
                             if(reverseTimeType) {
                                 timeTo = timeToReverse ?: 60
                                 theDelay = timeTo.toInteger()
-                                log.info "true - theDelay: $theDelay"
                             } else {
                                 timeTo = timeToReverse ?: 2
                                 theDelay = timeTo.toInteger() * 60
-                                log.info "False - theDelay: $theDelay"
                             }
                         }                      
                         if((logEnable || shortLog) && reverseTimeType) {
@@ -3496,14 +3523,20 @@ def switchesPerModeActionHandler() {
         theData.each { itTwo -> 
             def pieces = itTwo.split(":")
             try {
-                if(pieces[0]) theMode = pieces[0]
-                if(pieces[1]) theDevice = pieces[1]
-                if(pieces[2]) theLevel = pieces[2]
-                if(pieces[3]) theTemp = pieces[3]
-                if(pieces[4]) theColor = pieces[4]
-                if(pieces[5]) theTime = pieces[5]
+                theMode = pieces[0]
+                theDevice = pieces[1]
+                theLevel = pieces[2]
+                theTemp = pieces[3]
+                theColor = pieces[4]
+                theTime = pieces[5]
+                theTimeType = pieces[6]
             } catch (e) {
                 if(theTime == null) theTime = "NA"
+                try {
+                    theTimeType = pieces[6]
+                } catch (e2) {
+                    if(theTimeType == null) theTimeType = "false"
+                }
             }
             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             def modeCheck = currentMode.contains(theMode)
@@ -3524,7 +3557,6 @@ def switchesPerModeActionHandler() {
                         state.onColor = "${theColor}"
                         state.onLevel = theLevel
                         state.onTemp = theTemp
-                        state.timeToReversePermode = theTime
                         setLevelandColorHandler()
                     }
                 }
@@ -5109,48 +5141,56 @@ def sdPerModeHandler(data) {
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
         if(sdPerModeColor == null) sdPerModeColor = "NA"
         if(sdPerModeTime == null) sdPerModeTime = "NA"
+        if(sdReverseTimeType == null) sdReverseTimeType == false
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
-        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}"
+        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
+        log.trace "mode: ${theMode} - theValue: ${theValue}"
         state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
         state.sdPerModeMap.remove(theMode)
     }      
-    if(logEnable) log.debug "In sdPerModeHandler - ${state.sdPerModeMap}"
+    if(logEnable) log.debug "In sdPerModeHandler - Map: ${state.sdPerModeMap}"
     if(state.sdPerModeMap) {
-        thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b><td><b><u>TReverse</u></b>"
+        thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b><td><b><u>TimeRev</u></b><td><b><u>MinSec</u></b>"
         def theData = "${state.sdPerModeMap}".split(",")
         theData.each { it -> 
             def pieces = it.split(":")
             try {
-                if(pieces[0]) tMode = pieces[0]
-                if(pieces[1]) theDevices = pieces[1]
-                if(pieces[2]) theLevel = pieces[2]
-                if(pieces[3]) theTemp = pieces[3]
-                if(pieces[4]) theColor = pieces[4]
-                if(pieces[5]) theTime = pieces[5]
+                tMode = pieces[0]
+                theDevices = pieces[1]
+                theLevel = pieces[2]
+                theTemp = pieces[3]
+                theColor = pieces[4]
+                theTime = pieces[5]
+                theTimeType = pieces[6]
             } catch (e) {
                 if(theTime == null) theTime = "NA"
+                try {
+                    theTimeType = pieces[6]
+                } catch (e2) {
+                    if(theTimeType == null) theTimeType = "false"
+                }
             }
             if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
             theColor = theColor.replace("]","")
             theTime = theTime.replace("]","")
+            theTimeType = theTimeType.replace("]","")
+            if(theTimeType == "false") {
+                timeType = "Min"
+            } else {
+                timeType = "Sec"
+            }
             theDevicesList = ""
             theDs = theDevices.split(";")
             theDs.each { d ->
                 if(d.startsWith(" ") || d.startsWith("[")) d = d.substring(1)
                 theDevicesList += "${d}<br>"
             }
-            thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}"
+            thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}<td>${timeType}"
         }                
         thePerModeMap += "</table>"
     }
-    state.thePerModeMap = thePerModeMap    
-    app.removeSetting("setDimmersPerMode")
-    app.removeSetting("sdPerModeName")
-    app.removeSetting("sdPerModeLevel")
-    app.removeSetting("sdPerModeTemp")
-    app.removeSetting("sdPerModeColor")
-    app.removeSetting("sdPerModeTime")
+    state.thePerModeMap = thePerModeMap
 }
 
 // ********** Start Directional Condition **********
@@ -5239,6 +5279,16 @@ def appButtonHandler(buttonPressed) {
     } else if(sdPerModeName && state.whichButton == "sdPerModeAdd"){
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("add;nothing")
+        app.removeSetting("setDimmersPerMode")
+        app.removeSetting("sdPerModeName")
+        app.removeSetting("sdPerModeLevel")
+        app.removeSetting("sdPerModeTemp")
+        app.removeSetting("sdPerModeColor")
+        app.removeSetting("sdPerModeTime")
+        app.removeSetting("sdPerModeTimeType")
+        app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
+        app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
+        app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])
     } else if(sdPerModeName && state.whichButton == "sdPerModeClear"){
         state.sdPerModeMap = null
         state.thePerModeMap = null
