@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.7.8 - 02/03/21 - Fixed an error
 *  2.7.7 - 02/02/21 - Added Reverse Delay Time in Minutes or Seconds to Switches Per Mode
 *  2.7.6 - 02/02/21 - Warning Dim length is now user defined, Reverse Delay time can now be Minutes or Seconds
 *  2.7.5 - 02/01/21 - Added defined range for Reverse with Delay (in minutes - 1 to 60)
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.7"
+    state.version = "2.7.8"
 }
 
 definition(
@@ -2996,7 +2997,10 @@ def devicesGoodHandler(data) {
     deviceTrue1 = 0
     deviceTrue2 = 0
     state.isThereDevices = true
-    if(data == "condition") { state.totalConditions = state.totalConditions + 1 }
+    if(data == "condition") { 
+        if(state.totalConditions == null) state.totalConditions = 0
+        state.totalConditions = state.totalConditions + 1
+    }
     try {
         if(state.eventType == "globalVariable") {
             theList = []
