@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.7.9 - 02/03/21 - Fixed another error
-*  2.7.8 - 02/03/21 - Fixed an error
-*  2.7.7 - 02/02/21 - Added Reverse Delay Time in Minutes or Seconds to Switches Per Mode
-*  2.7.6 - 02/02/21 - Warning Dim length is now user defined, Reverse Delay time can now be Minutes or Seconds
-*  2.7.5 - 02/01/21 - Added defined range for Reverse with Delay (in minutes - 1 to 60)
-*  2.7.4 - 02/01/21 - Fix to Default Delay setting, Added new 'Directional Conditions' to Conditions
-*  2.7.3 - 01/31/21 - Added True Reverse Option, Adjustment to Warning Dim
-*  2.7.2 - 01/29/21 - Adjustments to state maps, added more logging options
-*  2.7.1 - 01/27/21 - Adjustments to Reverse
-*  2.7.0 - 01/24/21 - Adjustments to Time based conditions
+*  2.8.0 - 02/05/21 - Adjustments to Reverse per Mode
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.7.9"
+    state.version = "2.8.0"
 }
 
 definition(
@@ -1919,9 +1910,9 @@ def pageConfig() {
                 // *** End Mode Map ***
                 paragraph "<hr>"
 
-                state.theCogActions += "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"   
+                state.theCogActions += "<b>-</b> Switches Per Mode:<br>${state.thePerModeMap}<br>"   
             } else {
-                state.theCogActions -= "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"
+                state.theCogActions -= "<b>-</b> Switches Per Mode:<br>${state.thePerModeMap}<br>"
                 app.removeSetting("setDimmersPerMode")
                 app.removeSetting("sdPerModeName")
                 app.removeSetting("sdPerModeLevel")
@@ -1981,7 +1972,7 @@ def pageConfig() {
             }      
         
             // Start Reverse Options
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || setDimmersPerMode || lzw45Action) {
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
@@ -2087,7 +2078,7 @@ def pageConfig() {
                 } else {
                     state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
                 }
-                if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || setDimmersPerMode)){
+                if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || masterDimmersPerMode)){
                     paragraph "<hr>"
                     input "permanentDim", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     if(permanentDim) {
@@ -2140,7 +2131,7 @@ def pageConfig() {
                 app.removeSetting("warningDimLvl")
                 app.removeSetting("additionSwitches")
                 app.removeSetting("reverseTimeType")
-            }        
+            }
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             actionDelayValue = parent.pActionDelay ?: 100
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:false, submitOnChange:true
@@ -2362,27 +2353,6 @@ def notificationOptions(){
                 app.removeSetting("theFlasherDevice")
                 app.removeSetting("flashOnTriggerPreset")
             }
-        }
-    }
-}
-
-def copyCogOptions() {
-    dynamicPage(name: "copyCogOptions", title: "", install:false, uninstall:false) {
-		display()
-        state.theMessage = ""        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Cog Options")) {
-            paragraph "<b>Copy another Cog to this Cog!</b><br>This will overwrite all settings on this Cog with the settings of the 'from' Cog."
-            paragraph "When the copy switch is turned on:<br> - It will only take a few seconds<br> - When complete the switch will turn off<br> - The app number will be blank<br> - At this point you can press 'Next'"
-            paragraph "<b>Note:</b> Devices will be carried over to the new Cog but the attribute will have to be re-selected. This may cause errors in the log, just remember to go into each line and make sure the device attribute is set to the correct attribute."
-        }
-        section() {
-            input "fromCog", "number", title: "Cog App Number to Copy <b>From</b>", submitOnChange:true, width:6
-            
-            if(fromCog) {
-                input "copyCog", "bool", defaultValue: "false", title: "Copy Cog Now", description: "Copy Cog Now", submitOnChange: true
-                if(copyCog) requestCogCopy()
-            }
-            paragraph "${state.theMessage}"
         }
     }
 }
@@ -4159,49 +4129,6 @@ def actionHttpHandler() {
         }
     }
 }
-
-// ***** Start Cog Copy *****
-def requestCogCopy() {             // this is sent to the parent app
-    if(testLogEnable) log.info "In requestCogCopy (${state.version})"
-    toCog = app.id
-    parent.getCogSettings(fromCog,toCog)
-}
-
-def sendChildSettings() {           // this is then requested from the parent app
-    if(testLogEnable) log.info "In sendChildSettings (${state.version})"   
-    childAppSettings = settings
-}
-
-def doTheCogCopy(newSettings) {    // and finally the parent app sends the settings!
-    if(testLogEnable) log.info "In doTheCogCopy (${state.version})"
-    if(newSettings) {
-        if(testLogEnable) log.info "In doTheCogCopy - Received: ${newSettings}"
-        
-        newSettings.each { theOption ->
-            name = theOption.key
-            nameValue = theOption.value
-            
-            nValue = nameValue.toString()
-            if(nValue && (name != "cloneCog" && name != "copyCog" && name != "fromCog")) {
-                if(testLogEnable) log.info "In doTheCogCopy - Working on $name - value: $nameValue"
-                if(nValue.contains("[")) {
-                    app.updateSetting(name,[type:"enum",value:nameValue])
-                } else {
-                    app.updateSetting(name,nameValue)
-                }
-
-                //app.updateSetting(name,nameValue)
-            }     
-        }
-    }
-    if(testLogEnable) log.info "In doTheCogCopy - Finished"
-    app.updateSetting("copyCog",[value:"false",type:"bool"])
-    app.updateSetting("fromCog",[value:"",type:"number"])
-    app.updateSetting("cloneCog",[value:"false",type:"bool"])
-    if(testLogEnable) log.info "In doTheCogCopy - New settings: $settings"
-    state.copyFinished = true
-}
-// ***** End Cog Copy *****
 
 def switchesOnActionHandler() {
     state.switchesOnMap = [:]
