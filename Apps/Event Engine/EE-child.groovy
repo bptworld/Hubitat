@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.1 - 02/05/21 - Setpoint now handles in between (battery and Temp - more to come)
 *  2.8.0 - 02/05/21 - Adjustments to Reverse per Mode
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.0"
+    state.version = "2.8.1"
 }
 
 definition(
@@ -456,17 +457,18 @@ def pageConfig() {
                     input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery High", submitOnChange:true
                     if(setBEPointHigh) {
                         input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("beSetPointHigh")
                     }
                     input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
                         input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("beSetPointLow")
                     }
-                    if(beSetPointHigh) paragraph "Cog Will trigger when Battery reading is above or equal to ${beSetPointHigh}"
-                    if(beSetPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
+                    if(setBEPointBetween) {
+                        input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true, width:6
+                    }
+                    if(setBEPointHigh) paragraph "Cog Will trigger when Battery reading is above or equal to ${beSetPointHigh}"
+                    if(setBEPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
+                    if(setTEPointBetween) paragraph "Cog will trigger when Battery reading is between ${beSetPointLow} and ${beSetPointHigh}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
@@ -1116,22 +1118,25 @@ def pageConfig() {
                     input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
                         input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("setTEPointHigh")
                     }
                     input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
                         input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("setTEPointLow")
+                    }
+                    input "setTEPointBetween", "bool", defaultValue:false, title: "Condition true when Temperature is Between two Setpoints <small><abbr title='Cog will run when reading is between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Temp Between", submitOnChange:true
+                    if(setTEPointBetween) {
+                        input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(tempConditionOnly) {
-                        if(teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
-                        if(teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
+                        if(setTEPointHigh && teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
+                        if(setTEPointLow && teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
+                        if(setTEPointBetween) paragraph "Cog will use 'as condition' when Temperature reading is between ${teSetPointLow} and ${teSetPointHigh}"
                     } else {
-                        if(teSetPointHigh) paragraph "Cog will trigger when Temperature reading is above or equal to ${teSetPointHigh}"
-                        if(teSetPointLow) paragraph "Cog will trigger when Temperature reading is below ${teSetPointLow}"
+                        if(setTEPointHigh && teSetPointHigh) paragraph "Cog will trigger when Temperature reading is above or equal to ${teSetPointHigh}"
+                        if(setTEPointLow && teSetPointLow) paragraph "Cog will trigger when Temperature reading is below ${teSetPointLow}"
+                        if(setTEPointBetween) paragraph "Cog will trigger when Temperature reading is between ${teSetPointLow} and ${teSetPointHigh}"
                     }
                 }
                 paragraph "<hr>"
@@ -2023,7 +2028,7 @@ def pageConfig() {
                     paragraph "<small><b>Please only select ONE Reverse option</b></small>"
                     input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
                     input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
-                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between", defaultValue:false, submitOnChange:true
+                    if(setTEPointBetween) input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Not Between", defaultValue:false, submitOnChange:true
                     paragraph "<hr>"
                     app.updateSetting("reverse",[value:"false",type:"bool"])
                     app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
@@ -2074,9 +2079,9 @@ def pageConfig() {
                     state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                 }
                 if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-                    state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                    state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Not Between: ${reverseWhenBetween}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Not Between: ${reverseWhenBetween}<br>"
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || masterDimmersPerMode)){
                     paragraph "<hr>"
