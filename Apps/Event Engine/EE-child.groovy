@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.4 - 02/06/21 - Adjustments
 *  2.8.3 - 02/06/21 - Added in between Notification option
 *  2.8.2 - 02/06/21 - All Setpoints now handle in between, Setpoints can now handle decimals, Setpoints can now track direction
 *  2.8.1 - 02/05/21 - Setpoint now handles in between (battery and Temp - more to come)
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.3"
+    state.version = "2.8.4"
 }
 
 definition(
@@ -2703,10 +2704,12 @@ def startTheProcess(evt) {
                                 if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
                                 if(actionType.contains("aThermostat")) { thermostatActionHandler() }
                                 if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                                if(actionType.contains("aNotification")) { 
-                                    state.doMessage = true
-                                    messageHandler() 
-                                    if(useTheFlasher) theFlasherHandler()
+                                if(state.betweenTime) {
+                                    if(actionType.contains("aNotification")) { 
+                                        state.doMessage = true
+                                        messageHandler() 
+                                        if(useTheFlasher) theFlasherHandler()
+                                    }
                                 }
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                             }
@@ -2815,11 +2818,13 @@ def startTheProcess(evt) {
                         if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
                         if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
                         if(additionalSwitches) { additionalSwitchesHandler() }
-                        if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                            if(actionType.contains("aNotification")) { 
-                                state.doMessage = true
-                                messageHandler() 
-                                if(useTheFlasher) theFlasherHandler()
+                        if(state.betweenTime) {
+                            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                                if(actionType.contains("aNotification")) { 
+                                    state.doMessage = true
+                                    messageHandler() 
+                                    if(useTheFlasher) theFlasherHandler()
+                                }
                             }
                         }
                         if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
@@ -4503,7 +4508,7 @@ def messageHandler() {
     if(state.doMessage) {   
         if(triggerType) {
             if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-                if(logEnable && extraLogs) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
+                if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
                 if(state.setpointHighOK == "no") theMessage = "${messageH}"
                 if(state.setpointLowOK == "no") theMessage = "${messageL}"
                 if(state.setpointBetweenOK == "no") theMessage = "${messageB}"
