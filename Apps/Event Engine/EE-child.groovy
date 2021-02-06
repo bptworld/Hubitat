@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.2 - 02/06/21 - All Setpoints now handles in between, Setpoints can now handle decimals, Setpoints can now track direction
 *  2.8.1 - 02/05/21 - Setpoint now handles in between (battery and Temp - more to come)
 *  2.8.0 - 02/05/21 - Adjustments to Reverse per Mode
 *  ---
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.1"
+    state.version = "2.8.2"
 }
 
 definition(
@@ -456,24 +457,25 @@ def pageConfig() {
                 if(batteryEvent) {
                     input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery High", submitOnChange:true
                     if(setBEPointHigh) {
-                        input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true
+                        input "beSetPointHigh", "decimal", title: "Battery High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
+                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than Setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
-                        input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
+                        input "beSetPointLow", "decimal", title: "Battery Low Setpoint", required:true, submitOnChange:true
                     }
+                    input "setBEPointBetween", "bool", defaultValue:false, title: "Condition true when Battery is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Battery Between", submitOnChange:true
                     if(setBEPointBetween) {
-                        input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true, width:6
-                        input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true, width:6
+                        input "beSetPointLow", "decimal", title: "Battery Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "beSetPointHigh", "decimal", title: "Battery High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     if(setBEPointHigh) paragraph "Cog Will trigger when Battery reading is above or equal to ${beSetPointHigh}"
                     if(setBEPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
                     if(setTEPointBetween) paragraph "Cog will trigger when Battery reading is between ${beSetPointLow} and ${beSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${beSetPointHigh}, setpoint Low: ${beSetPointLow}, inBetween: ${setBEPointBetween}}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${beSetPointHigh}, setpoint Low: ${beSetPointLow}, inBetween: ${setBEPointBetween}}<br>"
                 app.removeSetting("batteryEvent")
                 app.removeSetting("beSetPointHigh")
                 app.removeSetting("beSetPointLow")
@@ -579,23 +581,25 @@ def pageConfig() {
                 if(energyEvent) {
                     input "setEEPointHigh", "bool", defaultValue: "false", title: "Condition true when Energy is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy High", submitOnChange:true
                     if(setEEPointHigh) {
-                        input "eeSetPointHigh", "number", title: "Energy High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("eeSetPointHigh")
+                        input "eeSetPointHigh", "decimal", title: "Energy High Setpoint", required:true, submitOnChange:true
                     }
                     input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy Low", submitOnChange:true
                     if(setEEPointLow) {
-                        input "eeSetPointLow", "number", title: "Energy Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("eeSetPointLow")
+                        input "eeSetPointLow", "decimal", title: "Energy Low Setpoint", required:true, submitOnChange:true
                     }
-                    if(eeSetPointHigh) paragraph "Cog will trigger when Energy reading is above or equal to ${eeSetPointHigh}"
-                    if(eeSetPointLow) paragraph "Cog will trigger when Energy reading is below ${eeSetPointLow}"
+                    input "eetBEPointBetween", "bool", defaultValue:false, title: "Condition true when Energy is Between two Setpoints <small><abbr title='Cog will run when reading is Between two Setpoints.'><b>- INFO -</b></abbr></small>", description: "Energy Between", submitOnChange:true
+                    if(setBEPointBetween) {
+                        input "eeSetPointLow", "decimal", title: "Energy Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "eeSetPointHigh", "decimal", title: "Energy High Setpoint", required:true, submitOnChange:true, width:6
+                    }
+                    if(setEEPointHigh) paragraph "Cog will trigger when Energy reading is above or equal to ${eeSetPointHigh}"
+                    if(setEEPointLow) paragraph "Cog will trigger when Energy reading is below ${eeSetPointLow}"
+                    if(setTEPointBetween) paragraph "Cog will trigger when Energy reading is between ${eeSetPointLow} and ${eeSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh} ${eeSetPointHigh}, setpoint Low: ${setEEPointLow} ${eeSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${eeSetPointHigh}, setpoint Low: ${eeSetPointLow}, inBetween: ${setTEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh} ${eeSetPointHigh}, setpoint Low: ${setEEPointLow} ${eeSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${eeSetPointHigh}, setpoint Low: ${eeSetPointLow}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("energyEvent")
                 app.removeSetting("eeSetPointHigh")
                 app.removeSetting("eeSetPointLow")
@@ -670,21 +674,23 @@ def pageConfig() {
                         if(globalVariableEvent) {
                             input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable High", submitOnChange:true
                             if(setGVPointHigh) {
-                                input "gvSetPointHigh", "number", title: "Variable High Setpoint", required:true, submitOnChange:true
-                            } else {
-                                app.removeSetting("gvSetPointHigh")
+                                input "gvSetPointHigh", "decimal", title: "Variable High Setpoint", required:true, submitOnChange:true
                             }
                             input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable Low", submitOnChange:true
                             if(setGVPointLow) {
-                                input "gvSetPointLow", "number", title: "Variable Low Setpoint", required:true, submitOnChange:true
-                            } else {
-                                app.removeSetting("gvSetPointLow")
+                                input "gvSetPointLow", "decimal", title: "Variable Low Setpoint", required:true, submitOnChange:true
                             }
-                            if(gvSetPointHigh) paragraph "Cog will trigger when Variable reading is above or equal to ${gvSetPointHigh}"
-                            if(gvSetPointLow) paragraph "Cog will trigger when Variable reading is below ${gvSetPointLow}"
+                            input "setGVPointBetween", "bool", defaultValue:false, title: "Condition true when Variable is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Varible Between", submitOnChange:true
+                            if(setGVPointBetween) {
+                                input "gvSetPointLow", "decimal", title: "Variable Low Setpoint", required:true, submitOnChange:true, width:6
+                                input "gvSetPointHigh", "decimal", title: "Variable High Setpoint", required:true, submitOnChange:true, width:6
+                            }
+                            if(setGVPointHigh) paragraph "Cog will trigger when Variable reading is above or equal to ${gvSetPointHigh}"
+                            if(setGVPointLow) paragraph "Cog will trigger when Variable reading is below ${gvSetPointLow}"
+                            if(setGVPointBetween) paragraph "Cog will trigger when Variable reading is between ${gvSetPointLow} and ${gvSetPointHigh}"
                             app.removeSetting("gvValue")
                             state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
-                            state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                            state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${gvSetPointHigh}, setpoint Low: ${gvSetPointLow}, inBetween: ${setGVPointBetween}<br>"
                         }
                     } else {
                         input "gvValue", "text", title: "Value", required:false, submitOnChange:true
@@ -692,7 +698,7 @@ def pageConfig() {
                         app.removeSetting("gvSetPointLow")
                         app.removeSetting("setGVPointHigh")
                         app.removeSetting("setGVPointLow")
-                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${gvSetPointHigh}, setpoint Low: ${gvSetPointLow}, inBetween: ${setGVPointBetween}<br>"
                         state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
                 } else {
@@ -776,28 +782,31 @@ def pageConfig() {
                     input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity High", submitOnChange:true
                     if(setHEPointHigh) {
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("heSetPointHigh")
                     }
                     input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity Low", submitOnChange:true
                     if(setHEPointLow) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("heSetPointLow")
+                    }
+                    input "setHEPointBetween", "bool", defaultValue:false, title: "Condition true when Humidity is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Humidity Between", submitOnChange:true
+                    if(setHEPointBetween) {
+                        input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(humidityConditionOnly) {
-                        if(heSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
-                        if(heSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
+                        if(setHEPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
+                        if(setHEPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
+                        if(setHEPointBetween) paragraph "Cog will use 'as condition' when Humidity reading is between ${heSetPointLow} and ${heSetPointHigh}"
                     } else {
-                        if(heSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${heSetPointHigh}"
-                        if(heSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${heSetPointLow}"
+                        if(setHEPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${heSetPointHigh}"
+                        if(setHEPointLow) paragraph "Cog will trigger when Humidity reading is below ${heSetPointLow}"
+                        if(setHEPointBetween) paragraph "Cog will trigger when Humidity reading is between ${heSetPointLow} and ${heSetPointHigh}"
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${heSetPointHigh}, setpoint Low: ${heSetPointLow}, inBetween: ${heSetPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${heSetPointHigh}, setpoint Low: ${heSetPointLow}, inBetween: ${heSetPointBetween}<br>"
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
@@ -811,29 +820,32 @@ def pageConfig() {
                 if(illuminanceEvent) {
                     input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "High", submitOnChange:true
                     if(setIEPointHigh) {
-                        input "ieSetPointHigh", "number", title: "Illuminance High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("ieSetPointHigh")
+                        input "ieSetPointHigh", "decimal", title: "Illuminance High Setpoint", required:true, submitOnChange:true
                     }
                     input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Low", submitOnChange:true
                     if(setIEPointLow) {
-                        input "ieSetPointLow", "number", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("ieSetPointLow")
+                        input "ieSetPointLow", "decimal", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
+                    }
+                    input "setIEPointBetween", "bool", defaultValue:false, title: "Condition true when Illuminance is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Illuminance Between", submitOnChange:true
+                    if(setIEPointBetween) {
+                        input "ieSetPointLow", "decimal", title: "Illuminance Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "ieSetPointHigh", "decimal", title: "Illuminance High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(illumConditionOnly) {
-                        if(iSetPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${ieSetPointHigh}"
-                        if(iSetPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${ieSetPointLow}"
+                        if(setIEPointHigh) paragraph "Cog will use 'as condition' when Illuminance reading is above or equal to ${ieSetPointHigh}"
+                        if(setIEPointLow) paragraph "Cog will use 'as condition' when Illuminance reading is below ${ieSetPointLow}"
+                        if(setIEPointBetween) paragraph "Cog will use 'as condition' when Illuminance reading is between ${ieSetPointLow} and ${ieSetPointHigh}"
                     } else {
-                        if(iSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${ieSetPointHigh}"
-                        if(iSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${ieSetPointLow}"
+                        if(setIEPointHigh) paragraph "Cog will trigger when Illuminance reading is above or equal to ${ieSetPointHigh}"
+                        if(setIEPointLow) paragraph "Cog will trigger when Illuminance reading is below ${ieSetPointLow}"
+                        if(setIEPointBetween) paragraph "Cog will trigger when Illuminance reading is between ${ieSetPointLow} and ${ieSetPointHigh}"
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${ieSetPointHigh}, setpoint Low: ${ieSetPointLow}, inBetween: ${setIEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${ieSetPointHigh}, setpoint Low: ${ieSetPointLow}, inBetween: ${setIEPointBetween}<br>"
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
@@ -967,25 +979,25 @@ def pageConfig() {
                 if(powerEvent) {
                     input "setPEPointHigh", "bool", defaultValue: "false", title: "Condition true when Power is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power High", submitOnChange:true
                     if(setPEPointHigh) {
-                        input "peSetPointHigh", "number", title: "Power High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("peSetPointHigh")
+                        input "peSetPointHigh", "decimal", title: "Power High Setpoint", required:true, submitOnChange:true
                     }
-
                     input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power Low", submitOnChange:true
                     if(setPEPointLow) {
-                        input "peSetPointLow", "number", title: "Power Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("peSetPointLow")
+                        input "peSetPointLow", "decimal", title: "Power Low Setpoint", required:true, submitOnChange:true
                     }
-
+                    input "setPEPointBetween", "bool", defaultValue:false, title: "Condition true when Power is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Power Between", submitOnChange:true
+                    if(setPEPointBetween) {
+                        input "peSetPointLow", "decimal", title: "Power Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "peSetPointHigh", "decimal", title: "Power High Setpoint", required:true, submitOnChange:true, width:6
+                    }
                     if(setPEPointHigh) paragraph "Cog will trigger when Power reading is above or equal to ${peSetPointHigh}"
                     if(setPEPointLow) paragraph "Cog will trigger when Power reading is below ${peSetPointLow}"
+                    if(setPEPointBetween) paragraph "Cog will trigger when Power reading is between ${peSetPointLow} and ${peSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${peSetPointHigh}, setpoint Low: ${peSetPointLow}, inBetween: ${setPEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${peSetPointHigh}, setpoint Low: ${peSetPointLow}, inBetween: ${setPEPointBetween}<br>"
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
@@ -1110,23 +1122,23 @@ def pageConfig() {
                 app.removeSetting("srOffOn")
                 app.removeSetting("switchRANDOR")
             }
-// -----------
+// ----------- setpointHandler - for search
             if(triggerType.contains("xTemp")) {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
                 if(tempEvent) {
                     input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
-                        input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true
+                        input "teSetPointHigh", "decimal", title: "Temperature High Setpoint", required:true, submitOnChange:true
                     }
                     input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
-                        input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true
+                        input "teSetPointLow", "decimal", title: "Temperature Low Setpoint", required:true, submitOnChange:true
                     }
                     input "setTEPointBetween", "bool", defaultValue:false, title: "Condition true when Temperature is Between two Setpoints <small><abbr title='Cog will run when reading is between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Temp Between", submitOnChange:true
                     if(setTEPointBetween) {
-                        input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true, width:6
-                        input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true, width:6
+                        input "teSetPointLow", "decimal", title: "Temperature Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "teSetPointHigh", "decimal", title: "Temperature High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(tempConditionOnly) {
@@ -1140,9 +1152,9 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${teSetPointHigh}, setpoint Low: ${teSetPointLow}, inBetween: ${setTEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${teSetPointHigh}, setpoint Low: ${teSetPointLow}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("tempEvent")
                 app.removeSetting("teSetPointHigh")
                 app.removeSetting("teSetPointLow")
@@ -1173,15 +1185,16 @@ def pageConfig() {
                 if(voltageEvent) {
                     input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage High", submitOnChange:true
                     if(setVEPointHigh) {
-                        input "veSetPointHigh", "number", title: "Voltage High Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("veSetPointHigh")
+                        input "veSetPointHigh", "decimal", title: "Voltage High Setpoint", required:true, submitOnChange:true
                     }
                     input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage Low", submitOnChange:true
                     if(setVEPointLow) {
-                        input "veSetPointLow", "number", title: "Voltage Low Setpoint", required:true, submitOnChange:true
-                    } else {
-                        app.removeSetting("veSetPointLow")
+                        input "veSetPointLow", "decimal", title: "Voltage Low Setpoint", required:true, submitOnChange:true
+                    }
+                    input "setVEPointBetween", "bool", defaultValue:false, title: "Condition true when Voltage is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Voltage Between", submitOnChange:true
+                    if(setVEPointBetween) {
+                        input "veSetPointLow", "decimal", title: "Voltage Low Setpoint", required:true, submitOnChange:true, width:6
+                        input "veSetPointHigh", "decimal", title: "Voltage High Setpoint", required:true, submitOnChange:true, width:6
                     }
                     if(veSetPointHigh) paragraph "Cog will trigger when Voltage reading is above or equal to ${veSetPointHigh}"
                     if(veSetPointLow) paragraph "Cog will trigger when Voltage reading is below ${veSetPointLow}"
@@ -1264,21 +1277,22 @@ def pageConfig() {
                     if(deviceORsetpoint) {
                         input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom High", submitOnChange:true
                         if(setSDPointHigh) {
-                            input "sdSetPointHigh", "number", title: "Custom High Setpoint", required:true, submitOnChange:true
-                        } else {
-                            app.removeSetting("sdSetPointHigh")
+                            input "sdSetPointHigh", "decimal", title: "Custom High Setpoint", required:true, submitOnChange:true
                         }
                         input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom Low", submitOnChange:true
                         if(setSDPointLow) {
-                            input "sdSetPointLow", "number", title: "Custom Low Setpoint", required:true, submitOnChange:true
-                        } else {
-                            app.removeSetting("sdSetPointLow")
+                            input "sdSetPointLow", "decimal", title: "Custom Low Setpoint", required:true, submitOnChange:true
                         }
-                        if(sdSetPointHigh) paragraph "Cog will trigger when Custom reading is above or equal to ${sdSetPointHigh}"
-                        if(sdSetPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
+                        input "setSDPointBetween", "bool", defaultValue:false, title: "Condition true when Custom is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Custom Between", submitOnChange:true
+                        if(setSDPointBetween) {
+                            input "sdSetPointLow", "decimal", title: "Custom Low Setpoint", required:true, submitOnChange:true, width:6
+                            input "sdSetPointHigh", "decimal", title: "Custom High Setpoint", required:true, submitOnChange:true, width:6
+                        }
+                        if(setSDPointHigh) paragraph "Cog will trigger when Custom reading is above or equal to ${sdSetPointHigh}"
+                        if(setSDPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
+                        if(setSDPointBetween) paragraph "Cog will trigger when Custom reading is between ${sdSetPointLow} and ${sdSetPointHigh}"
                         state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
-                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
-                        
+                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${sdSetPointHigh}, setpoint Low: ${sdSetPointLow}, inbetween: ${setSDPointBetween}<br>"          
                         app.removeSetting("custom1")
                         app.removeSetting("custom2")
                         app.removeSetting("sdCustom1Custom2")
@@ -1300,7 +1314,7 @@ def pageConfig() {
                         } else {
                             paragraph "Condition true when <b>all</b> Custom are true"
                         }
-                        state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
+                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${sdSetPointHigh}, setpoint Low: ${sdSetPointLow}, inbetween: ${setSDPointBetween}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
@@ -1324,6 +1338,13 @@ def pageConfig() {
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || state.useRollingAverage || (customEvent && deviceORsetpoint)) {
+                input "spDirection", "bool", defaultValue:false, title: "Track direction of setpoint <small><abbr title='Condition can also track which direction the setpoint is heading.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(spDirection) {
+                    input "spDirDownUp", "bool", defaultValue:false, title: "Condition is 'true' when setpoint is headind Down (off) or Up (on)", description: "Setpoint Direction", submitOnChange:true
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("spDirDownUp")
+                }
                 input "setpointRollingAverage", "bool", title: "Use a rolling Average for setpoints <small><abbr title='Use multiple readings instead of a single instance to control the Cog.'><b>- INFO -</b></abbr></small>", description: "average", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) {
                     paragraph "<small>*All values are rounded for this option</small>"
@@ -1335,14 +1356,25 @@ def pageConfig() {
                 input "useWholeNumber", "bool", title: "Only use Whole Numbers (round each number)", description: "Whole", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) paragraph "<b>When using a Rolling Average, use Whole Numbers MUST also be true.</b>"
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
+                paragraph "<hr>"
                 paragraph "Setpoint truths can also be reset one time daily. Typically to allow another notification of a high/low reading."
                 input "spResetTime", "time", title: "Time to reset Setpoint truths (optional)", description: "Reset SP", required:false
-                state.theCogTriggers += "<b>-</b> Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
+                if(spDirection) {
+                    if(spDirDownUp) {
+                        theDir = "Up"
+                    } else {
+                        theDir = "Down"
+                    }
+                } else {
+                    theDir = "NA"
+                }
+                state.theCogTriggers += "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
+                state.theCogTriggers -= "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir}<br>"
                 app.removeSetting("spResetTime")
                 app.removeSetting("useWholeNumber")
                 app.removeSetting("setpointRollingAverage")
+                app.removeSetting("spDirDownUp")
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
@@ -3218,6 +3250,7 @@ def setpointHandler() {
     if(state.setpointLowOK == null) state.setpointLowOK = "yes"
     if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
     state.isThereSPDevices = true
+    if(state.preSPV == null) state.preSPV = 0
     state.spName.each {
         if(state.spType == "globalVariable") {
             def theData = state.gvMap.get(globalVariableEvent)
@@ -3228,58 +3261,97 @@ def setpointHandler() {
         }
         if(logEnable) log.debug "In setpointHandler - spValue: ${spValue}"
         if(spValue || spValue == 0) {
-            if(logEnable) log.debug "In setpointHandler - spValue: ${spValue} - Just because."
             if(useWholeNumber) {
                 setpointValue = Math.round(spValue)
             } else {
-                setpointValue = spValue.toDouble()
+                setpointValue = spValue.toFloat()
+            }
+            if(logEnable) log.debug "In setpointHandler - setpointValue: ${setpointValue}"
+            if(spDirection) {
+                if(spDirDownUp == false) {
+                    if(setpointValue < state.preSPV) {
+                        direction = "DOWN"
+                        theDirection = true
+                    } else {
+                        direction = "UP"
+                        theDirection = false
+                    }
+                }
+                
+                if(spDirDownUp) {
+                    if(setpointValue < state.preSPV) {
+                        direction = "DOWN"
+                        theDirection = false
+                    } else {
+                        direction = "UP"
+                        theDirection = true
+                    }
+                }
+                if(spDirDownUp) {
+                    neededDir = "UP"
+                } else {
+                    neededDir = "DOWN"
+                }
+                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going ${direction}, needs to go ${neededDir}"
+            } else {
+                theDirection = true
             }
             state.preSPV = setpointValue
-            int setpointValue = setpointValue
-            if(setpointRollingAverage && setpointValue) {
-                theReadings = state.readings
-                if(theReadings == null) theReadings = []
-                theReadings.add(0,setpointValue)        
-                int maxReadingSize = numOfPoints
-                int readings = theReadings.size()
-                if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
-                state.readings = theReadings
-                setpointRollingAverageHandler(maxReadingSize)
-                if(state.theAverage >= 0) setpointValue = state.theAverage
-            }
-            if(state.setpointHigh && state.setpointLow) {
-                int setpointLow = state.setpointLow
-                int setpointHigh = state.setpointHigh
-                if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
-                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
-                    state.setpointBetweenOK = "no"
-                    state.setpointOK = true
-                } else {
-                    state.setpointBetweenOK = "yes"
-                    state.setpointOK = false
+            if(theDirection) {
+                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the correct direction"
+                //int setpointValue = setpointValue
+                if(setpointRollingAverage && setpointValue) {
+                    theReadings = state.readings
+                    if(theReadings == null) theReadings = []
+                    theReadings.add(0,setpointValue)        
+                    int maxReadingSize = numOfPoints
+                    int readings = theReadings.size()
+                    if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
+                    state.readings = theReadings
+                    setpointRollingAverageHandler(maxReadingSize)
+                    if(state.theAverage >= 0) setpointValue = state.theAverage
                 }
-            } else if(state.setpointHigh) {
-                int setpointHigh = state.setpointHigh
-                if(setpointValue >= setpointHigh) {  // bad
-                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
-                    state.setpointHighOK = "no"
-                    state.setpointOK = true
+                if(state.setpointHigh && state.setpointLow) {
+                    setpointLow = state.setpointLow
+                    setpointHigh = state.setpointHigh
+                    if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
+                        if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
+                        state.setpointBetweenOK = "no"
+                        state.setpointOK = true
+                    } else {
+                        if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
+                        state.setpointBetweenOK = "yes"
+                        state.setpointOK = false
+                    }
+                } else if(state.setpointHigh) {
+                    setpointHigh = state.setpointHigh
+                    if(setpointValue >= setpointHigh) {  // bad
+                        if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
+                        state.setpointHighOK = "no"
+                        state.setpointOK = true
+                    } else {
+                        if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
+                        state.setpointHighOK = "yes"
+                        state.setpointOK = false
+                    }
+                } else if(state.setpointLow) {
+                    setpointLow = state.setpointLow
+                    if(setpointValue < setpointLow) {  // bad
+                        if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
+                        state.setpointLowOK = "no"
+                        state.setpointOK = true
+                    } else {
+                        if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
+                        state.setpointLowOK = "yes"
+                        state.setpointOK = false
+                    }
                 } else {
-                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
-                    state.setpointHighOK = "yes"
-                    state.setpointOK = false
+                    if(logEnable) log.debug "In setpointHandler - Oops - Nothing Found"
                 }
-            } else if(state.setpointLow) {
-                int setpointLow = state.setpointLow
-                if(setpointValue < setpointLow) {  // bad
-                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
-                    state.setpointLowOK = "no"
-                    state.setpointOK = true
-                } else {
-                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
-                    state.setpointLowOK = "yes"
-                    state.setpointOK = false
-                }
+            } else {
+                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the wrong direction"
+                state.setpointLowOK = "yes"
+                state.setpointOK = false
             }
         } else {
             if(state.setpointHigh && state.setpointLow) {
