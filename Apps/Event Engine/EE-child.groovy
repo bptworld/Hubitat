@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  2.8.2 - 02/06/21 - All Setpoints now handles in between, Setpoints can now handle decimals, Setpoints can now track direction
+*  2.8.3 - 02/06/21 - Added in between Notification option
+*  2.8.2 - 02/06/21 - All Setpoints now handle in between, Setpoints can now handle decimals, Setpoints can now track direction
 *  2.8.1 - 02/05/21 - Setpoint now handles in between (battery and Temp - more to come)
 *  2.8.0 - 02/05/21 - Adjustments to Reverse per Mode
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.2"
+    state.version = "2.8.3"
 }
 
 definition(
@@ -1617,6 +1618,7 @@ def pageConfig() {
                 if(state.theCogNotifications) {
                     state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
                     state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                    state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
                     state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
                     state.theCogNotifications -= "<b>-</b> Use Speech: ${fmSpeaker}<br>"
                     state.theCogNotifications -= "<b>-</b> Send Push: ${sendPushMessage}<br>"
@@ -1624,6 +1626,7 @@ def pageConfig() {
                 app.removeSetting("message")
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
+                app.removeSetting("messageB")
                 app.removeSetting("useSpeech")
                 app.removeSetting("fmSpeaker")
                 app.removeSetting("sendPushMessage")
@@ -2302,13 +2305,17 @@ def notificationOptions(){
                     paragraph "<b>Setpoint Message Options</b>"
                     input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
                     input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
+                    input "messageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
                     if(messageH) state.theCogNotifications += "<b>-</b> Message when reading is too high: ${messageH}<br>"
                     if(messageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                    if(messageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
                 } else {
                     state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
                     state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                    state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
                     app.removeSetting("messageH")
                     app.removeSetting("messageL")
+                    app.removeSetting("messageB")
                 }
 
                 if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
@@ -2362,12 +2369,14 @@ def notificationOptions(){
         } else {
             state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
             state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
+            state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
             state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
             state.theCogNotifications -= "<b>-</b> Use Speech: ${fmSpeaker}<br>"
             state.theCogNotifications -= "<b>-</b> Send Push: ${sendPushMessage}<br>"
             app.removeSetting("message")
             app.removeSetting("messageH")
             app.removeSetting("messageL")
+            app.removeSetting("messageB")
             app.removeSetting("useSpeech")
             app.removeSetting("fmSpeaker")
             app.removeSetting("sendPushMessage")
@@ -4494,9 +4503,10 @@ def messageHandler() {
     if(state.doMessage) {   
         if(triggerType) {
             if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-                if(logEnable && extraLogs) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
+                if(logEnable && extraLogs) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
                 if(state.setpointHighOK == "no") theMessage = "${messageH}"
                 if(state.setpointLowOK == "no") theMessage = "${messageL}"
+                if(state.setpointBetweenOK == "no") theMessage = "${messageB}"
             } else {
                 theMessage = message
             }
