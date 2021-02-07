@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.5 - 02/07/21 - New option, Min Difference to count towards direction, Cosmetic changes.
 *  2.8.4 - 02/06/21 - Adjustments
 *  2.8.3 - 02/06/21 - Added in between Notification option
 *  2.8.2 - 02/06/21 - All Setpoints now handle in between, Setpoints can now handle decimals, Setpoints can now track direction
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.4"
+    state.version = "2.8.5"
 }
 
 definition(
@@ -475,9 +476,9 @@ def pageConfig() {
                     if(setTEPointBetween) paragraph "Cog will trigger when Battery reading is between ${beSetPointLow} and ${beSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${beSetPointHigh}, setpoint Low: ${beSetPointLow}, inBetween: ${setBEPointBetween}}<br>"
+                state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${beSetPointHigh}, setpoint Low: ${beSetPointLow}, inBetween: ${setBEPointBetween}}<br>"
+                state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
                 app.removeSetting("batteryEvent")
                 app.removeSetting("beSetPointHigh")
                 app.removeSetting("beSetPointLow")
@@ -599,9 +600,9 @@ def pageConfig() {
                     if(setTEPointBetween) paragraph "Cog will trigger when Energy reading is between ${eeSetPointLow} and ${eeSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${eeSetPointHigh}, setpoint Low: ${eeSetPointLow}, inBetween: ${setTEPointBetween}<br>"
+                state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${eeSetPointHigh}, setpoint Low: ${eeSetPointLow}, inBetween: ${setTEPointBetween}<br>"
+                state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("energyEvent")
                 app.removeSetting("eeSetPointHigh")
                 app.removeSetting("eeSetPointLow")
@@ -692,7 +693,7 @@ def pageConfig() {
                             if(setGVPointBetween) paragraph "Cog will trigger when Variable reading is between ${gvSetPointLow} and ${gvSetPointHigh}"
                             app.removeSetting("gvValue")
                             state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
-                            state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${gvSetPointHigh}, setpoint Low: ${gvSetPointLow}, inBetween: ${setGVPointBetween}<br>"
+                            state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                         }
                     } else {
                         input "gvValue", "text", title: "Value", required:false, submitOnChange:true
@@ -700,7 +701,7 @@ def pageConfig() {
                         app.removeSetting("gvSetPointLow")
                         app.removeSetting("setGVPointHigh")
                         app.removeSetting("setGVPointLow")
-                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${gvSetPointHigh}, setpoint Low: ${gvSetPointLow}, inBetween: ${setGVPointBetween}<br>"
+                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                         state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
                 } else {
@@ -709,7 +710,7 @@ def pageConfig() {
                 paragraph "<hr>"               
             } else {
                 state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
-                state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                 app.removeSetting("globalVariableEvent")
                 app.removeSetting("gvValue")
                 app.removeSetting("gvSetPointHigh")
@@ -806,9 +807,9 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${heSetPointHigh}, setpoint Low: ${heSetPointLow}, inBetween: ${heSetPointBetween}<br>"
+                state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${heSetPointHigh}, setpoint Low: ${heSetPointLow}, inBetween: ${heSetPointBetween}<br>"
+                state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
@@ -845,9 +846,9 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${ieSetPointHigh}, setpoint Low: ${ieSetPointLow}, inBetween: ${setIEPointBetween}<br>"
+                state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint High: ${ieSetPointHigh}, setpoint Low: ${ieSetPointLow}, inBetween: ${setIEPointBetween}<br>"
+                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
@@ -997,9 +998,9 @@ def pageConfig() {
                     if(setPEPointBetween) paragraph "Cog will trigger when Power reading is between ${peSetPointLow} and ${peSetPointHigh}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${peSetPointHigh}, setpoint Low: ${peSetPointLow}, inBetween: ${setPEPointBetween}<br>"
+                state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${peSetPointHigh}, setpoint Low: ${peSetPointLow}, inBetween: ${setPEPointBetween}<br>"
+                state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
@@ -1154,9 +1155,9 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${teSetPointHigh}, setpoint Low: ${teSetPointLow}, inBetween: ${setTEPointBetween}<br>"
+                state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${teSetPointHigh}, setpoint Low: ${teSetPointLow}, inBetween: ${setTEPointBetween}<br>"
+                state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("tempEvent")
                 app.removeSetting("teSetPointHigh")
                 app.removeSetting("teSetPointLow")
@@ -1202,9 +1203,9 @@ def pageConfig() {
                     if(veSetPointLow) paragraph "Cog will trigger when Voltage reading is below ${veSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh} ${veSetPointHigh}, setpoint Low: ${setVEPointLow} ${veSetPointLow}<br>"
+                state.theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh} ${veSetPointHigh}, setpoint Low: ${setVEPointLow} ${veSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
                 app.removeSetting("voltageEvent")
                 app.removeSetting("veSetPointHigh")
                 app.removeSetting("veSetPointLow")
@@ -1294,7 +1295,7 @@ def pageConfig() {
                         if(setSDPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
                         if(setSDPointBetween) paragraph "Cog will trigger when Custom reading is between ${sdSetPointLow} and ${sdSetPointHigh}"
                         state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
-                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${sdSetPointHigh}, setpoint Low: ${sdSetPointLow}, inbetween: ${setSDPointBetween}<br>"          
+                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint Low: ${sdSetPointLow}, setpoint High: ${sdSetPointHigh}, inbetween: ${setSDPointBetween}<br>"          
                         app.removeSetting("custom1")
                         app.removeSetting("custom2")
                         app.removeSetting("sdCustom1Custom2")
@@ -1316,7 +1317,7 @@ def pageConfig() {
                         } else {
                             paragraph "Condition true when <b>all</b> Custom are true"
                         }
-                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${sdSetPointHigh}, setpoint Low: ${sdSetPointLow}, inbetween: ${setSDPointBetween}<br>"
+                        state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint Low: ${sdSetPointLow}, setpoint High: ${sdSetPointHigh}, inBetween: ${setSDPointBetween}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
@@ -1325,7 +1326,7 @@ def pageConfig() {
                     }
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
+                state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint Low: ${sdSetPointLow}, setpoint High: ${sdSetPointHigh}, inBetween: ${setSDPointBetween}<br>"
                 state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                 app.removeSetting("customEvent")
                 app.removeSetting("specialAtt")
@@ -1343,9 +1344,11 @@ def pageConfig() {
                 input "spDirection", "bool", defaultValue:false, title: "Track direction of setpoint <small><abbr title='Condition can also track which direction the setpoint is heading.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(spDirection) {
                     input "spDirDownUp", "bool", defaultValue:false, title: "Condition is 'true' when setpoint is headind Down (off) or Up (on)", description: "Setpoint Direction", submitOnChange:true
+                    input "spDirMinValue", "decimal", title: "Min Difference to count towards direction <small><abbr title='If difference between last reading and current reading is less than Min Difference, the current value will be tossed and not used to determine direction.'><b>- INFO -</b></abbr></small>", defaultValue:0, submitOnChange:true
                     paragraph "<hr>"
                 } else {
                     app.removeSetting("spDirDownUp")
+                    app.removeSetting("spDirMinValue")
                 }
                 input "setpointRollingAverage", "bool", title: "Use a rolling Average for setpoints <small><abbr title='Use multiple readings instead of a single instance to control the Cog.'><b>- INFO -</b></abbr></small>", description: "average", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) {
@@ -1370,13 +1373,14 @@ def pageConfig() {
                 } else {
                     theDir = "NA"
                 }
-                state.theCogTriggers += "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir}<br>"
+                state.theCogTriggers += "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir} - Min Change: ${spDirMinValue}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir}<br>"
+                state.theCogTriggers -= "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir} - Min Change: ${spDirMinValue}<br>"
                 app.removeSetting("spResetTime")
                 app.removeSetting("useWholeNumber")
                 app.removeSetting("setpointRollingAverage")
                 app.removeSetting("spDirDownUp")
+                app.removeSetting("spDirMinValue")
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
@@ -2780,10 +2784,12 @@ def startTheProcess(evt) {
                                 theDelay = timeTo.toInteger() * 60
                             }
                         }                      
-                        if((logEnable || shortLog) && reverseTimeType) {
-                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                        } else {
-                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                        if(logEnable || shortLog) {
+                            if(reverseTimeType) {
+                                log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                            } else {
+                                log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                            }
                         }
                     } else {
                         if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
@@ -3264,7 +3270,6 @@ def setpointHandler() {
     if(state.setpointLowOK == null) state.setpointLowOK = "yes"
     if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
     state.isThereSPDevices = true
-    if(state.preSPV == null) state.preSPV = 0
     state.spName.each {
         if(state.spType == "globalVariable") {
             def theData = state.gvMap.get(globalVariableEvent)
@@ -3276,96 +3281,113 @@ def setpointHandler() {
         if(logEnable) log.debug "In setpointHandler - spValue: ${spValue}"
         if(spValue || spValue == 0) {
             if(useWholeNumber) {
-                setpointValue = Math.round(spValue)
+                setpointValue = Math.round(spValue).round(2)
             } else {
-                setpointValue = spValue.toFloat()
+                setpointValue = spValue.toFloat().round(2)
             }
-            if(logEnable) log.debug "In setpointHandler - setpointValue: ${setpointValue}"
+            if(state.preSPV == null) state.preSPV = setpointValue
+            if(logEnable) log.debug "In setpointHandler - setpointValue: ${setpointValue} - state.preSPV: ${state.preSPV}"
             if(spDirection) {
-                if(spDirDownUp == false) {
-                    if(setpointValue < state.preSPV) {
-                        direction = "DOWN"
-                        theDirection = true
-                    } else {
-                        direction = "UP"
-                        theDirection = false
-                    }
-                }
-                
-                if(spDirDownUp) {
-                    if(setpointValue < state.preSPV) {
-                        direction = "DOWN"
-                        theDirection = false
-                    } else {
-                        direction = "UP"
-                        theDirection = true
-                    }
-                }
-                if(spDirDownUp) {
-                    neededDir = "UP"
+                if(setpointValue < state.preSPV) {
+                    theDiff = state.preSPV - setpointValue
                 } else {
-                    neededDir = "DOWN"
+                    theDiff = setpointValue - state.preSPV
                 }
-                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going ${direction}, needs to go ${neededDir}"
+                theDifference = theDiff.toFloat().round(2)
+                if(spDirMinValue == null) spDirMinValue = 0
+                if(logEnable) log.debug "In setpointHandler - Checking if theDifference: ${theDifference} is greater than spDirMinValue: ${spDirMinValue}"
+                if(theDifference > spDirMinValue) {
+                    if(spDirDownUp == false) {
+                        if(setpointValue < state.preSPV) {
+                            direction = "DOWN"
+                            theDirection = true
+                        } else {
+                            direction = "UP"
+                            theDirection = false
+                        }
+                    }
+                    if(spDirDownUp) {
+                        if(setpointValue < state.preSPV) {
+                            direction = "DOWN"
+                            theDirection = false
+                        } else {
+                            direction = "UP"
+                            theDirection = true
+                        }
+                    }
+                    if(spDirDownUp) {
+                        neededDir = "UP"
+                    } else {
+                        neededDir = "DOWN"
+                    }
+                    if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going ${direction}, needs to go ${neededDir}"
+                    meetsMinValue = true
+                    state.preSPV = setpointValue
+                } else {
+                    if(logEnable) log.debug "In setpointHandler - Direction - The difference (${theDifference}) was not greater than the Min Difference (${spDirMinValue}). Reading not recorded."
+                    meetsMinValue = false
+                }
             } else {
                 theDirection = true
+                meetsMinValue = true
+                state.preSPV = setpointValue
             }
-            state.preSPV = setpointValue
-            if(theDirection) {
-                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the correct direction"
-                //int setpointValue = setpointValue
-                if(setpointRollingAverage && setpointValue) {
-                    theReadings = state.readings
-                    if(theReadings == null) theReadings = []
-                    theReadings.add(0,setpointValue)        
-                    int maxReadingSize = numOfPoints
-                    int readings = theReadings.size()
-                    if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
-                    state.readings = theReadings
-                    setpointRollingAverageHandler(maxReadingSize)
-                    if(state.theAverage >= 0) setpointValue = state.theAverage
-                }
-                if(state.setpointHigh && state.setpointLow) {
-                    setpointLow = state.setpointLow
-                    setpointHigh = state.setpointHigh
-                    if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
-                        if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
-                        state.setpointBetweenOK = "no"
-                        state.setpointOK = true
-                    } else {
-                        if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
-                        state.setpointBetweenOK = "yes"
-                        state.setpointOK = false
+            if(meetsMinValue) {
+                if(theDirection) {
+                    if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the correct direction"
+                    if(setpointRollingAverage && setpointValue) {
+                        theReadings = state.readings
+                        if(theReadings == null) theReadings = []
+                        theReadings.add(0,setpointValue)        
+                        int maxReadingSize = numOfPoints
+                        int readings = theReadings.size()
+                        if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
+                        state.readings = theReadings
+                        setpointRollingAverageHandler(maxReadingSize)
+                        if(state.theAverage >= 0) setpointValue = state.theAverage
                     }
-                } else if(state.setpointHigh) {
-                    setpointHigh = state.setpointHigh
-                    if(setpointValue >= setpointHigh) {  // bad
-                        if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
-                        state.setpointHighOK = "no"
-                        state.setpointOK = true
+                    if(state.setpointHigh && state.setpointLow) {
+                        setpointLow = state.setpointLow
+                        setpointHigh = state.setpointHigh
+                        if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
+                            if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
+                            state.setpointBetweenOK = "no"
+                            state.setpointOK = true
+                        } else {
+                            if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
+                            state.setpointBetweenOK = "yes"
+                            state.setpointOK = false
+                        }
+                    } else if(state.setpointHigh) {
+                        setpointHigh = state.setpointHigh
+                        if(setpointValue >= setpointHigh) {  // bad
+                            if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
+                            state.setpointHighOK = "no"
+                            state.setpointOK = true
+                        } else {
+                            if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
+                            state.setpointHighOK = "yes"
+                            state.setpointOK = false
+                        }
+                    } else if(state.setpointLow) {
+                        setpointLow = state.setpointLow
+                        if(setpointValue < setpointLow) {  // bad
+                            if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
+                            state.setpointLowOK = "no"
+                            state.setpointOK = true
+                        } else {
+                            if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
+                            state.setpointLowOK = "yes"
+                            state.setpointOK = false
+                        }
                     } else {
-                        if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
-                        state.setpointHighOK = "yes"
-                        state.setpointOK = false
-                    }
-                } else if(state.setpointLow) {
-                    setpointLow = state.setpointLow
-                    if(setpointValue < setpointLow) {  // bad
-                        if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
-                        state.setpointLowOK = "no"
-                        state.setpointOK = true
-                    } else {
-                        if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
-                        state.setpointLowOK = "yes"
-                        state.setpointOK = false
+                        if(logEnable) log.debug "In setpointHandler - Oops - Nothing Found"
                     }
                 } else {
-                    if(logEnable) log.debug "In setpointHandler - Oops - Nothing Found"
+                    if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the wrong direction"
+                    state.setpointLowOK = "yes"
+                    state.setpointOK = false
                 }
-            } else {
-                if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the wrong direction"
-                state.setpointLowOK = "yes"
-                state.setpointOK = false
             }
         } else {
             if(state.setpointHigh && state.setpointLow) {
