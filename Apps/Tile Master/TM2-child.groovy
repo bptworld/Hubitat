@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Create a tile with multiple devices and customization options.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.2 - 02/08/21 - Adjustment to 'Select the colors to display based on your setpoints'. Setpoints can now include negative numbers.
  *  2.5.1 - 12/20/20 - Adjustments to device value
  *  2.5.0 - 12/06/20 - Added more error catching
  *  ---
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.1"
+	state.version = "2.5.2"
 }
 
 definition(
@@ -370,8 +371,8 @@ def pageConfig() {
                             
                             if(textORnumber) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLow_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHigh_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLow_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigh_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLow_$x == null) numLow_$x = 0
                                 if(numHigh_$x == null) numHigh_$x = 0
                                 
@@ -405,8 +406,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumber) {
-                                input "iconNumLow_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHigh_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLow_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigh_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
@@ -598,8 +599,8 @@ def pageConfig() {
                             
                             if(textORnumbera) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowa_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHigha_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLowa_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigha_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowa_$x == null) numLowa_$x = 0
                                 if(numHigha_$x == null) numHigha_$x = 0
                                 
@@ -633,8 +634,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumbera) {
-                                input "iconNumLowa_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHigha_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLowa_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigha_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3a_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
@@ -827,8 +828,8 @@ def pageConfig() {
                             
                             if(textORnumberb) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowb_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHighb_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLowb_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHighb_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowb_$x == null) numLowb_$x = 0
                                 if(numHighb_$x == null) numHighb_$x = 0
                                 
@@ -862,8 +863,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumberb) {
-                                input "iconNumLowb_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHighb_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLowb_$x", "decimal", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHighb_$x", "decimal", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3b_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
