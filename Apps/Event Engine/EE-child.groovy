@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.6 - 02/09/21 - Lots of little adjustments
 *  2.8.5 - 02/07/21 - New option, Min Difference to count towards direction, Cosmetic changes.
 *  2.8.4 - 02/06/21 - Adjustments
 *  2.8.3 - 02/06/21 - Added in between Notification option
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.5"
+    state.version = "2.8.6"
 }
 
 definition(
@@ -1929,8 +1930,9 @@ def pageConfig() {
                 // *** Start Mode Map ***
                 input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
                 input "sdPerModeDel", "button", title: "Delete Mode", width: 3
-                input "sdPerModeClear", "button", title: "Clear Table", width: 3
-                input "refreshMap", "bool", defaultValue:false, title: "Refresh the Map", description: "Map", submitOnChange:true, width:3
+                input "sdPerModeClear", "button", title: "Clear Table <small><abbr title='This will delete all Modes, use with caution. This can not be undone.'><b>- INFO -</b></abbr></small>", width: 3
+                //input "refreshMap", "bool", defaultValue:false, title: "Refresh the Map", description: "Map", submitOnChange:true, width:3               
+                //input "sdPerModeRebuild", "button", title: "Rebuild Table <small><abbr title='This should only be needed when changes to the table are made by the developer.'><b>- INFO -</b></abbr></small>", width: 3
                 if(refreshMap) {
                     app.removeSetting("setDimmersPerMode")
                     app.removeSetting("sdPerModeName")
@@ -2532,10 +2534,14 @@ def initialize() {
 }
 
 def startTheProcess(evt) {
+    if(atomicState.running == null) atomicState.running = "Stopped"
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
+    } else if(atomicState.running == "Running") {
+        if(logEnable || shortLog) log.trace "*** ${app.label} - Already running ***"
     } else {
+        atomicState.running = "Running"
         if(logEnable || shortLog) log.trace "*"
         if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.rCount = 0
@@ -2550,8 +2556,7 @@ def startTheProcess(evt) {
             state.totalMatch = 1
             state.totalConditions = 1
         }
-        
-        if(state.wasHereLast == null) state.wasHereLast = "Starting"        
+      
         if(evt) {
             if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
@@ -2651,7 +2656,6 @@ def startTheProcess(evt) {
         }
 
         if(state.whatToDo == "stop") {
-            state.wasHereLast = "runStop"
             if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
             if(state.whatToDo == "run") {
@@ -2682,41 +2686,35 @@ def startTheProcess(evt) {
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
-                        state.wasHereLast = "runPause"
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
-                            if(state.wasHereLast == "runAction") {
-                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - Was just here, no need to do anything - (${state.wasHereLast})"
-                            } else {
-                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - wasHereLast: ${state.wasHereLast}"
-                                state.wasHereLast = "runAction"
-                                unschedule(permanentDimHandler)
-                                if(actionType.contains("aFan")) { fanActionHandler() }
-                                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                                if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                                if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                                if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                                if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                                if(state.betweenTime) {
-                                    if(actionType.contains("aNotification")) { 
-                                        state.doMessage = true
-                                        messageHandler() 
-                                        if(useTheFlasher) theFlasherHandler()
-                                    }
+                            if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType}"
+                            unschedule(permanentDimHandler)
+                            if(actionType.contains("aFan")) { fanActionHandler() }
+                            if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                            if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                            if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                            if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                            if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                            if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                            if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                            if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                            if(state.betweenTime) {
+                                if(actionType.contains("aNotification")) { 
+                                    state.doMessage = true
+                                    messageHandler() 
+                                    if(useTheFlasher) theFlasherHandler()
                                 }
-                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                             }
+                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -2736,11 +2734,10 @@ def startTheProcess(evt) {
                 }
             } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
-                    if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE - wasHereLast: ${state.wasHereLast}"
-                    state.wasHereLast = "runReverseDelay"
+                    if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
                     if(reverseWithDelay) {
                         if(timePerMode) {
-                            if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode"
+                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode"
                             masterDimmersPerMode.each { itOne ->
                                 def theData = "${state.sdPerModeMap}".split(",")        
                                 theData.each { itTwo -> 
@@ -2769,9 +2766,9 @@ def startTheProcess(evt) {
                                             timeTo = theTime ?: 120
                                             theDelay = timeTo.toInteger()
                                         }
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - timeType: ${theTimeType}"
+                                        if((logEnable || shortLog) && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - timeType: ${theTimeType}"
                                     } else {
-                                        if(logEnable) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
+                                        if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                     }
                                 }
                             }
@@ -2810,8 +2807,7 @@ def startTheProcess(evt) {
                     }
                 } else {             
                     if(actionType) {
-                        if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - wasHereLast: ${state.wasHereLast}"
-                        state.wasHereLast = "runReverseNow"
+                        if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
@@ -2839,7 +2835,6 @@ def startTheProcess(evt) {
                     state.appStatus = "inactive"
                 }
             } else {
-                state.wasHereLast = "runOops"
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
@@ -2848,6 +2843,7 @@ def startTheProcess(evt) {
         state.totalConditions = 0
         if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
         if(logEnable || shortLog) log.trace "*"
+        atomicState.running = "Stopped"
     }
 }
 
@@ -3281,7 +3277,7 @@ def setpointHandler() {
         if(logEnable) log.debug "In setpointHandler - spValue: ${spValue}"
         if(spValue || spValue == 0) {
             if(useWholeNumber) {
-                setpointValue = Math.round(spValue).round(2)
+                setpointValue = Math.round(spValue)
             } else {
                 setpointValue = spValue.toFloat().round(2)
             }
@@ -3603,7 +3599,7 @@ def restrictionHandler() {
 
 // ********** Start Actions **********
 def switchesPerModeActionHandler() {
-    if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - (${state.version})"
+    if(logEnable) log.debug "In switchesPerModeActionHandler - (${state.version})"
     currentMode = location.mode
     state.modeMatch = false
     masterDimmersPerMode.each { itOne ->
@@ -3619,12 +3615,8 @@ def switchesPerModeActionHandler() {
                 theTime = pieces[5]
                 theTimeType = pieces[6]
             } catch (e) {
-                if(theTime == null) theTime = "NA"
-                try {
-                    theTimeType = pieces[6]
-                } catch (e2) {
-                    if(theTimeType == null) theTimeType = "false"
-                }
+                log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
+                if(logEnable) log.warn "In switchesPerModeActionHandler - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTemp} - 4: ${theColor} - 5: ${theTime} - 6: ${theTimeType}"
             }
             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             def modeCheck = currentMode.contains(theMode)
@@ -4662,13 +4654,11 @@ def autoSunHandler() {
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - Starting"
-    state.wasHereLast = "runAtTime1"
     startTheProcess("run")
 }
 
 def runAtTime2() {
     if(logEnable) log.debug "In runAtTime2 (${state.version}) - Starting"
-    state.wasHereLast = "runAtTime2"
     startTheProcess("reverse")
 }
 
@@ -4731,7 +4721,6 @@ def endTimeBetween() {
 
 def certainTime() {
     if(logEnable) log.debug "In certainTime (${state.version})"  
-    state.wasHereLast = "runCertainTime"
     startTheProcess()
 }
 
@@ -5165,7 +5154,6 @@ def sendSettingsToParentHandler() {
 
 def globalVariablesHandler(data) {
     if(data) { state.gvMap = data }
-    state.wasHereLast = "runGV"
     if(globalVariableEvent) startTheProcess()
 }
 
@@ -5183,6 +5171,7 @@ def sdPerModeHandler(data) {
     if(state.sdPerModeMap == null) state.sdPerModeMap = [:]
     theMode = sdPerModeName.toString()
     if(theType == "add") {
+        if(logEnable) log.debug "In sdPerModeHandler - ADD"
         if(sdPerModeLevel == null) sdPerModeLevel = "NA"
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
         if(sdPerModeColor == null) sdPerModeColor = "NA"
@@ -5190,11 +5179,54 @@ def sdPerModeHandler(data) {
         if(sdReverseTimeType == null) sdReverseTimeType = "false"
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
         theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
-        log.trace "mode: ${theMode} - theValue: ${theValue}"
+        if(logEnable) log.trace "mode: ${theMode} - theValue: ${theValue}"
         state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
+        if(logEnable) log.debug "In sdPerModeHandler - DELETE"
         state.sdPerModeMap.remove(theMode)
-    }      
+    } else if(theType == "clear") {
+        if(logEnable) log.debug "In sdPerModeHandler - CLEAR"
+        state.sdPerModeMap = [:]  
+    } else if(theType == "rebuild") {
+        if(logEnable) log.debug "In sdPerModeHandler - REBUILD"
+        def theData = "${state.sdPerModeMap}".split(",")
+        theData.each { it -> 
+            def pieces = it.split(":")
+            try {
+                tMode = pieces[0]
+                theDevices = pieces[1]
+                theLevel = pieces[2]
+                theTemp = pieces[3]
+                theColor = pieces[4]
+                theTime = pieces[5]
+                theTimeType = pieces[6]
+            } catch (e) {
+                if(theTime == null) theTime = "NA"
+                if(theTimeType == null) theTimeType = "false"
+                try {
+                    theTimeType = pieces[6]
+                } catch (e2) {
+                    if(theTimeType == null) theTimeType = "false"
+                }
+            }
+            if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
+            theColor = theColor.replace("]","")
+            theTime = theTime.replace("]","")
+            theTimeType = theTimeType.replace("]","")
+        
+            if(theDevices == null) theDevices = "NA"
+            if(theLevel == null) theLevel = "NA"
+            if(theTemp == null) theTemp = "NA"
+            if(theColor == null) theColor = "NA"
+            if(theTime == null) theTime = "NA"
+            if(theTimeType == null) theTimeType = "false"
+            dpm = theDevices.toString().replace("[","").replace("]","").replace(", ",";")
+            theValue = "${dpm}:${theLevel}:${theTemp}:${theColor}:${theTime}:${theTimeType}"
+            if(logEnable) log.trace "Rebuilding: mode: ${tMode} - theValue: ${theValue}"
+            state.sdPerModeMap.put(tMode,theValue)
+        }
+    }
+// ***** Make Map *****    
     if(logEnable) log.debug "In sdPerModeHandler - Map: ${state.sdPerModeMap}"
     if(state.sdPerModeMap) {
         thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b><td><b><u>TimeRev</u></b><td><b><u>MinSec</u></b>"
@@ -5210,12 +5242,8 @@ def sdPerModeHandler(data) {
                 theTime = pieces[5]
                 theTimeType = pieces[6]
             } catch (e) {
-                if(theTime == null) theTime = "NA"
-                try {
-                    theTimeType = pieces[6]
-                } catch (e2) {
-                    if(theTimeType == null) theTimeType = "false"
-                }
+                log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
+                if(logEnable) log.warn "In Make Map - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTemp} - 4: ${theColor} - 5: ${theTime} - 6: ${theTimeType}"
             }
             if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
             theColor = theColor.replace("]","")
@@ -5235,8 +5263,20 @@ def sdPerModeHandler(data) {
             thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}<td>${timeType}"
         }                
         thePerModeMap += "</table>"
+    } else {
+        thePerModeMap = "Empty"
     }
     state.thePerModeMap = thePerModeMap
+    app.removeSetting("setDimmersPerMode")
+    app.removeSetting("sdPerModeName")
+    app.removeSetting("sdPerModeLevel")
+    app.removeSetting("sdPerModeTemp")
+    app.removeSetting("sdPerModeColor")
+    app.removeSetting("sdPerModeTime")
+    app.removeSetting("sdPerModeTimeType")
+    app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
+    app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
+    app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])
 }
 
 // ********** Start Directional Condition **********
@@ -5316,28 +5356,21 @@ def inactiveTwoHandler(evt) {
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(sdPerModeName && state.whichButton == "sdPerModeDel"){
+    if(sdPerModeName && state.whichButton == "sdPerModeDel") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("del;nothing")
-    } else if(sdPerModeName && state.whichButton == "sdPerModeDel"){
+    } else if(sdPerModeName && state.whichButton == "sdPerModeDel") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("del;nothing")
-    } else if(sdPerModeName && state.whichButton == "sdPerModeAdd"){
+    } else if(state.whichButton == "sdPerModeRebuild") {
+        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
+        sdPerModeHandler("rebuild;nothing")
+    } else if(sdPerModeName && state.whichButton == "sdPerModeAdd") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("add;nothing")
-        app.removeSetting("setDimmersPerMode")
-        app.removeSetting("sdPerModeName")
-        app.removeSetting("sdPerModeLevel")
-        app.removeSetting("sdPerModeTemp")
-        app.removeSetting("sdPerModeColor")
-        app.removeSetting("sdPerModeTime")
-        app.removeSetting("sdPerModeTimeType")
-        app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
-        app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
-        app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])
-    } else if(sdPerModeName && state.whichButton == "sdPerModeClear"){
-        state.sdPerModeMap = null
-        state.thePerModeMap = null
+    } else if(state.whichButton == "sdPerModeClear"){
+        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
+        sdPerModeHandler("clear;nothing")
     } else if(state.whichButton == "resetMaps") {
         if(state.setOldMap == null) state.setOldMap = false
         if(state.setOldMapPer == null) state.setOldMapPer = false
