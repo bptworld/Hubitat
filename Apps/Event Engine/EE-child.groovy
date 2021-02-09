@@ -5187,7 +5187,7 @@ def sdPerModeHandler(data) {
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
         if(sdPerModeColor == null) sdPerModeColor = "NA"
         if(sdPerModeTime == null) sdPerModeTime = "NA"
-        if(sdReverseTimeType == null) sdReverseTimeType == false
+        if(sdReverseTimeType == null) sdReverseTimeType = "false"
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
         theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
         log.trace "mode: ${theMode} - theValue: ${theValue}"
