@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.7 - 02/09/21 - A few more adjustments
 *  2.8.6 - 02/09/21 - Lots of little adjustments
 *  2.8.5 - 02/07/21 - New option, Min Difference to count towards direction, Cosmetic changes.
 *  2.8.4 - 02/06/21 - Adjustments
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.6"
+    state.version = "2.8.7"
 }
 
 definition(
@@ -2535,13 +2536,20 @@ def initialize() {
 
 def startTheProcess(evt) {
     if(atomicState.running == null) atomicState.running = "Stopped"
+    if(atomicState.tryRunning == null) atomicState.tryRunning = 0
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else if(atomicState.running == "Running") {
-        if(logEnable || shortLog) log.trace "*** ${app.label} - Already running ***"
+        atomicState.tryRunning += 1
+        if(atomicState.tryRunning > 3) {
+            atomicState.tryRunning = 0
+            atomicState.running = "Stopped"
+        }
+        if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
     } else {
         atomicState.running = "Running"
+        atomicState.tryRunning = 0
         if(logEnable || shortLog) log.trace "*"
         if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.rCount = 0
