@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Keep an eye on your devices and see how long it's been since they checked in.
  *
- *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2021 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.8 - 02/14/21 - Added a delay option to Refresh
  *  2.3.7 - 11/28/20 - Push adjustments, other tweaks
  *  2.3.6 - 11/27/20 - Adjustments and added features
  *  2.3.5 - 10/30/20 - Adjustments to Special Tracking
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.7"
+	state.version = "2.3.8"
 }
 
 definition(
@@ -240,6 +241,8 @@ def activityConfig() {
             input "useRefresh", "bool", title: "Use Refresh Options", defaultValue:false, submitOnChange:true
             if(useRefresh) {
 				input "maxTimeDiff", "number", title: "How many hours 'since activity' before trying refresh", required:true, defaultValue:24, submitOnChange:true
+                paragraph "Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands (refresh) being sent."
+                input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:false, submitOnChange:true
             }
         }
             
@@ -1572,9 +1575,11 @@ def refreshDevices(devices) {
 
         if(state.totalHours >= maxTimeDiff) {
             if(it.hasCommand("refresh")) {
+                pauseExecution(actionDelay)
                 it.refresh()
                 if(logEnable) log.debug "In refreshDevices - ${it} attempting update using refresh command"
             } else if(it.hasCommand("configure")) {
+                pauseExecution(actionDelay)
                 it.configure()
                 if(logEnable) log.debug "In refreshDevices - ${it} attempting update using configure command"
             } else {
