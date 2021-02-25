@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.9 - 02/25/21 - Minor adjustment to delay
  *  2.3.8 - 02/14/21 - Added a delay option to Refresh
  *  2.3.7 - 11/28/20 - Push adjustments, other tweaks
  *  2.3.6 - 11/27/20 - Adjustments and added features
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.8"
+	state.version = "2.3.9"
 }
 
 definition(
@@ -1572,7 +1573,7 @@ def refreshDevices(devices) {
     devices.each { it ->
         if(logEnable) log.debug "---------- ---------- --------- --------- Trying to REFRESH ---------- --------- --------- ---------- ---------"
         getTimeDiff(it)
-
+        actionDelay = actionDelay ?: 250
         if(state.totalHours >= maxTimeDiff) {
             if(it.hasCommand("refresh")) {
                 pauseExecution(actionDelay)
