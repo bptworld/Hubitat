@@ -46,6 +46,8 @@
  *
  *  Changes:
  *
+ *  2.6.1 - 02/26/21 - Fixed a login bug where authentication would fail when certain special characters were included in
+ *                     the login information.
  *  2.6.0 - 01/07/21 - Interim release reintegrating push notifications with a new POST request
                        to force location name update from real-time servers *  2.5.5 - 12/20/20 - Reliability Improvements:
                      - Added a 1 sec delay after push event to let data packet catch-up
@@ -63,9 +65,13 @@
 
 import java.text.SimpleDateFormat
 
+String.metaClass.encodeURL = {
+     java.net.URLEncoder.encode(delegate, "UTF-8")
+}
+
 def setVersion(){
     state.name = "Life360 with States"
-    state.version = "2.6.0"
+    state.version = "2.6.1"
 }
 
 definition(
@@ -147,8 +153,8 @@ def testLife360Connection() {
 
     initialize()
 
-    def username = settings.username
-    def password = settings.password
+    def username = settings.username.encodeURL()
+    def password = settings.password.encodeURL()
 
     def url = "https://api.life360.com/v3/oauth2/token.json"
 
