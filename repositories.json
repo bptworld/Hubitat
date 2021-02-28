@@ -102,6 +102,13 @@
          "tags": [ "Appliances", "LAN", "Multimedia", "Tools & Utilities" ]
    	},
       {
+   		"name": "gCalendar Driver",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/packageManifest.json",
+   		"description": "Retrieves a Google Calendar to be used with HE Dashboards.",
+         "tags": [ "Dashboards", "Misc. Devices", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Home Tracker",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/packageManifest.json",
