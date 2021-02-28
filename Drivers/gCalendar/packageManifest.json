@@ -1,0 +1,21 @@
+{
+	"packageName": "gCalendar Driver",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"dateReleased": "2021-02-28",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
+	"apps" : [
+	],
+	"drivers" : [
+		{
+			"id": "faf9cf98-d7d3-46fc-ba8a-55756ee7e1d1",
+			"name": "gCalendar Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/gc-driver.groovy",
+			"required": true,
+			"version": "1.0.0"
+		}
+	]
+}
