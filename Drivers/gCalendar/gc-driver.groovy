@@ -44,7 +44,7 @@
 metadata {
     definition (name: "gCalendar", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
         capability "Actuator"
-        attribute "gCal", "text"
+        attribute "bpt-gCal", "text"
         attribute "lastUpdated", "text"
         command "refresh"
     }
@@ -63,7 +63,7 @@ def refresh() {
     if(logEnable) log.debug "In refresh - gCal URl: ${gCal}"
     lu = new Date()
     theCal = "<div style='height:100%;width:100%'><iframe src='${gCal}' style='height:100%;width:100%;border:none'></iframe></div>"
-    sendEvent(name: "gCal", value: theCal)
+    sendEvent(name: "bpt-gCal", value: theCal)
     sendEvent(name: "lastUpdated", value: lu)
 }
 
