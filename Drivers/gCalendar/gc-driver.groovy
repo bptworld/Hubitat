@@ -38,11 +38,12 @@
  *  Original concept by @TechMedX
  *
  *  Changes:
+ *  1.0.1 - 03/01/21 - Fixed a typo
  *  1.0.0 - 02/28/21 - Initial release
 */
 
 metadata {
-    definition (name: "gCalendar", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+    definition (name: "gCalendar Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
         capability "Actuator"
         attribute "bpt-gCal", "text"
         attribute "lastUpdated", "text"
@@ -52,19 +53,23 @@ metadata {
 
 preferences {
     input title:"<b>Google Calendar Tile</b>", description:"Note: Calendar will be updated once every hour or when 'Refresh' button is pushed.<br><br><b>Setup:</b><br>1) Go to your Google Calendar<br>2) For the calendar you want to display, click Settings<br>3) Scroll down until you see the Embed Code<br>4) Copy that code and paste it into URL field here<br>5) Press 'Save Preferences'", type:"paragraph", element:"paragraph"
-    input "bpt-gCal", "text", title: "Google Calendar URL",  required: true
+    input "gCal", "text", title: "Google Calendar URL",  required: true
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false, submitOnChange: true
     input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"], defaultValue: "1 Hour"
 }
 
 def refresh() {
     if(logEnable) log.debug "In refresh"
-    if(gCal.contains("<iframe src=\"")) gCal = gCal.replace("<iframe src=\"", "").replace(">", "").replace("</iframe>", "")
-    if(logEnable) log.debug "In refresh - gCal URl: ${gCal}"
-    lu = new Date()
-    theCal = "<div style='height:100%;width:100%'><iframe src='${gCal}' style='height:100%;width:100%;border:none'></iframe></div>"
-    sendEvent(name: "bpt-gCal", value: theCal)
-    sendEvent(name: "lastUpdated", value: lu)
+    if(gCal) {
+        if(gCal.contains("<iframe src=\"")) gCal = gCal.replace("<iframe src=\"", "").replace(">", "").replace("</iframe>", "")
+        if(logEnable) log.debug "In refresh - gCal URl: ${gCal}"
+        lu = new Date()
+        theCal = "<div style='height:100%;width:100%'><iframe src='${gCal}' style='height:100%;width:100%;border:none'></iframe></div>"
+        sendEvent(name: "bpt-gCal", value: theCal)
+        sendEvent(name: "lastUpdated", value: lu)
+    } else {
+        log.info "gCalendar Driver - Be sure to fill in the Google Calendar URL and click Save Preferences"
+    }
 }
 
 def updated() {
