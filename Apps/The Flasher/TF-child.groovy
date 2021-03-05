@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 02/04/21 - Seperated Level from Color
  *  1.1.6 - 01/13/21 - Minor adjustment
  *  1.1.5 - 01/05/21 - Fixed an error
  *  1.1.4 - 01/05/21 - Adjustments
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -109,8 +110,10 @@ def pageConfig() {
                     input "numFlashes1", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay1", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch1) {
-                        if(theSwitch1.hasCommand('setColor')) {
+                        if(theSwitch.hasComamnd('setLevel')) {
                             input "level1", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                        }
+                        if(theSwitch1.hasCommand('setColor')) {
                             input "fColor1", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -140,8 +143,10 @@ def pageConfig() {
                     input "numFlashes2", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay2", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch2) {
-                        if(theSwitch2.hasCommand('setColor')) {
+                        if(theSwitch.hasComamnd('setLevel')) {
                             input "level2", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                        }
+                        if(theSwitch2.hasCommand('setColor')) {
                             input "fColor2", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -171,8 +176,10 @@ def pageConfig() {
                     input "numFlashes3", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay3", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch3) {
-                        if(theSwitch3.hasCommand('setColor')) {
+                        if(theSwitch.hasComamnd('setLevel')) {
                             input "level3", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                        }
+                        if(theSwitch3.hasCommand('setColor')) {
                             input "fColor3", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -202,8 +209,10 @@ def pageConfig() {
                     input "numFlashes4", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay4", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch4) {
-                        if(theSwitch4.hasCommand('setColor')) {
+                        if(theSwitch.hasComamnd('setLevel')) {
                             input "level4", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                        }
+                        if(theSwitch4.hasCommand('setColor')) {
                             input "fColor4", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -233,8 +242,10 @@ def pageConfig() {
                     input "numFlashes5", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay5", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch5) {
-                        if(theSwitch5.hasCommand('setColor')) {
+                        if(theSwitch.hasComamnd('setLevel')) {
                             input "level5", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                        }
+                        if(theSwitch5.hasCommand('setColor')) {
                             input "fColor5", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -299,8 +310,10 @@ def pageConfig() {
                 input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
                 input "delay", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, width: 6
                 if(theSwitch) {
-                    if(theSwitch.hasCommand('setColor')) {
+                    if(theSwitch.hasComamnd('setLevel')) {
                         input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                    }
+                    if(theSwitch.hasCommand('setColor')) {                    
                         input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
                             ["Soft White":"Soft White - Default"],
                             ["White":"White - Concentrate"],
@@ -640,10 +653,9 @@ def flashLights(data) {
                         if(logEnable) log.debug "In flashLights - Is switchSave: $state.switchSaved"
                         if(state.switchSaved == false) {
                             if(controlSwitch) {controlSwitch.on()}
-
+                                
                             if(theSwitch.hasCommand('setColor')) {
                                 state.oldValue = null
-                                if(logEnable) log.info "oldValue: $state.oldValue"
                                 oldHueColor = theSwitch.currentValue("hue")
                                 oldSaturation = theSwitch.currentValue("saturation")
                                 oldLevel = theSwitch.currentValue("level")                        
@@ -654,6 +666,14 @@ def flashLights(data) {
                                 theData = "${fColor};${level}"
                                 if(logEnable) log.debug "In flashLights - Sending to setLevelandColorHandler - theData: $theData"
                                 setLevelandColorHandler(theData)
+                            } else if(theSwitch.hasCommand('setLevel')) {
+                                state.oldValue = null
+                                oldLevel = theSwitch.currentValue("level")                        
+                                state.oldValue = oldLevel
+                                state.switchSaved = true
+                                if(logEnable) log.debug "In flashLights - setLevel - saving oldValue: $state.oldValue"
+
+                                state.value = oldLevel
                             }
                         } else {
                             if(logEnable) log.info "OldValue was already TRUE"
@@ -669,6 +689,9 @@ def flashLights(data) {
                                     if(s.hasCommand('setColor')) {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
                                         s.setColor(state.value)
+                                    } else if(s.hasCommand('setLevel')) {
+                                        if(logEnable) log.debug "In flashLights - $s.displayName, setLevel($state.level)"
+                                        s.setLevel(state.value)
                                     } else {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, on"
                                         s.on()
@@ -690,6 +713,9 @@ def flashLights(data) {
                                     if(s.hasCommand('setColor')) {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
                                         s.setColor(state.value)
+                                    } else if(s.hasCommand('setLevel')) {
+                                        if(logEnable) log.debug "In flashLights - $s.displayName, setLevel($state.level)"
+                                        s.setLevel(state.value)
                                     } else {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, on"
                                         s.on()
@@ -708,6 +734,9 @@ def flashLights(data) {
                             if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
                             if(theSwitch.hasCommand('setColor')) {
                                 theSwitch.setColor(state.oldValue)
+                                if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
+                            } else if(theSwitch.hasCommand('setLevel')) {
+                                theSwitch.setLevel(state.oldValue)
                                 if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
                             }
                             pauseExecution(500)
@@ -740,7 +769,7 @@ def flashLights(data) {
 def setLevelandColorHandler(data) {
     if(logEnable) log.debug "In setLevelandColorHandler (${state.version})"
     if(data) { 
-        if(logEnable) log.debug "In setLevelandColorHandler - Recieved Data: ${data}"
+        if(logEnable) log.debug "In setLevelandColorHandler - Received Data: ${data}"
         def (theColor, theLevel) = data.split(";") 
         state.theColor = theColor
         state.theLevel = theLevel
