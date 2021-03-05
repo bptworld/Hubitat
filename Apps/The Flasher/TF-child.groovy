@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *  1.1.7 - 02/04/21 - Seperated Level from Color
+ *  1.1.7 - 02/04/21 - Separated Level from Color
  *  1.1.6 - 01/13/21 - Minor adjustment
  *  1.1.5 - 01/05/21 - Fixed an error
  *  1.1.4 - 01/05/21 - Adjustments
