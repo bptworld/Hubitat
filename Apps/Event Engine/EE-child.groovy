@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.8.9 - 03/04/21 - Code adjustments, change to Switches per mode (modeMatchRestriction=true), Between Two Times and Sunset/Sunrise to Reverse, bug fixes
-*  2.8.8 - 02/11/21 - Squashed a bug with dimmers per mode
-*  2.8.7 - 02/09/21 - A few more adjustments
-*  2.8.6 - 02/09/21 - Lots of little adjustments
-*  2.8.5 - 02/07/21 - New option, Min Difference to count towards direction, Cosmetic changes.
-*  2.8.4 - 02/06/21 - Adjustments
-*  2.8.3 - 02/06/21 - Added in between Notification option
-*  2.8.2 - 02/06/21 - All Setpoints now handle in between, Setpoints can now handle decimals, Setpoints can now track direction
-*  2.8.1 - 02/05/21 - Setpoint now handles in between (battery and Temp - more to come)
-*  2.8.0 - 02/05/21 - Adjustments to Reverse per Mode
+*  2.9.0 - 03/05/21 - Fix for Between Two Times and Sunset/Sunrise to Reverse
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.9"
+    state.version = "2.9.0"
 }
 
 definition(
@@ -2024,9 +2015,14 @@ def pageConfig() {
             }      
         
             // Start Reverse Options
-            if(timeDaysType == null) timeDaysType = "nothing"
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || (timeDaysType.contains("tSunsetSunrise")) || (timeDaysType.contains("tBetween"))) {
-                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command) {
+            tdType = false
+            if(timeDaysType) {
+                if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tBetween")) {
+                    tdType = true
+                }
+            }
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action) {
+                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     paragraph "<small><b>Please only select ONE Reverse Action option</b></small>"
