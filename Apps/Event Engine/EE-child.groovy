@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.8.9 - 02/25/21 - Code adjustments, change to Switches per mode (modeMatchRestriction=true), Between Two Times and Sunset/Sunries to Reverse, bug fixes
 *  2.8.8 - 02/11/21 - Squashed a bug with dimmers per mode
 *  2.8.7 - 02/09/21 - A few more adjustments
 *  2.8.6 - 02/09/21 - Lots of little adjustments
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.8.8"
+    state.version = "2.8.9"
 }
 
 definition(
@@ -877,7 +878,7 @@ def pageConfig() {
                     }
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
-                    paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
+                    paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
                     state.theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                 } else {
                     state.theCogTriggers -= "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
@@ -903,7 +904,7 @@ def pageConfig() {
                     }
                     theNames = getLockCodeNames(lockRestrictionEvent)
                     input "lockRestrictionUser", "enum", title: "Restrict By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
-                    paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
+                    paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                     state.theCogTriggers += "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
                 } else {
                     state.theCogTriggers -= "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
@@ -2023,7 +2024,8 @@ def pageConfig() {
             }      
         
             // Start Reverse Options
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action) {
+            if(timeDaysType == null) timeDaysType = "nothing"
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || (timeDaysType.contains("tSunsetSunrise")) || (timeDaysType.contains("tBetween"))) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
@@ -2555,6 +2557,7 @@ def startTheProcess(evt) {
         atomicState.tryRunning = 0
         if(logEnable || shortLog) log.trace "*"
         if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+        if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
         state.rCount = 0
         state.restrictionMatch = 0
         state.isThereDevices = false
@@ -2595,15 +2598,15 @@ def startTheProcess(evt) {
             state.whatHappened = ""
             state.whoText = ""
         }
-        accelerationRestrictionHandler()
-        contactRestrictionHandler()
-        garageDoorRestrictionHandler()
-        lockRestrictionHandler()
-        motionRestrictionHandler()
-        motionRestrictionHandler2()
-        presenceRestrictionHandler()
-        switchRestrictionHandler()
-        waterRestrictionHandler()
+        if(accelerationRestrictionEvent) { accelerationRestrictionHandler() }
+        if(contactRestrictionEvent) { contactRestrictionHandler() }
+        if(garageDoorRestrictionEvent) { garageDoorRestrictionHandler() }
+        if(lockRestrictionEvent) { lockRestrictionHandler() }
+        if(motionRestrictionEvent) { motionRestrictionHandler() }
+        if(motionRestrictionEvent2) { motionRestrictionHandler2() }
+        if(presenceRestrictionEvent) { presenceRestrictionHandler() }
+        if(switchRestrictionEvent) { switchRestrictionHandler() }
+        if(watereRestrictionEvent) { waterRestrictionHandler() }
 
         if(state.areRestrictions) {
             if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
@@ -2629,37 +2632,48 @@ def startTheProcess(evt) {
             if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
             } else {
-                accelerationHandler()
-                contactHandler()
-                contact2Handler()
-                garageDoorHandler()
-                lockHandler()
-                motionHandler()
-                motion2Handler()
-                presenceHandler()
-                presence2Handler()
-                switchHandler()
-                switch2Handler()
-                thermostatHandler()
-                waterHandler()
+                if(accelerationEvent) { accelerationHandler() }
+                if(contactEvent) { contactHandler() }
+                if(myContacts2) { contact2Handler() }
+                if(garageDoorEvent) { garageDoorHandler() }
+                if(lockEvent) { lockHandler() }
+                if(motionEvent) { motionHandler() }
+                if(myMotion2) { motion2Handler() }
+                if(presenceEvent) { presenceHandler() }
+                if(myPresence2) { presence2Handler() }
+                if(switchEvent) { switchHandler() }
+                if(mySwitches2) { switch2Handler() }
+                if(thermoEvent) { thermostatHandler() }
+                if(waterEvent) { waterHandler() }
 
-                batteryHandler()
-                energyHandler()
-                humidityHandler()
-                illuminanceHandler()
-                powerHandler()
-                tempHandler()
-                voltageHandler()
+                if(batteryEvent) { batteryHandler() }
+                if(energyEvent) { energyHandler() }
+                if(humidityEvent) { humidityHandler() }
+                if(illuminanceEvent) { illuminanceHandler() }
+                if(powerEvent) { powerHandler() }
+                if(tempEvent) { tempHandler() }
+                if(voltageEvent) { voltageHandler() }
+                   
+                if(!state.isThereSPDevices) {  // Keep in LAST setpoint
+                    if(triggerAndOr) {
+                        state.setpointOK = false
+                    } else {
+                        state.setpointOK = true
+                    }
+                    state.setpointHighOK = "yes"
+                    state.setpointLowOK = "yes"
+                    state.setpointBetweenOK = "yes"
+                }
                 
                 if(deviceORsetpoint) {
-                    customSetpointHandler()
+                    if(customEvent) { customSetpointHandler() }
                 } else {
-                    customDeviceHandler()
+                    if(customEvent) { customDeviceHandler() }
                 }                
                 if(gvStyle) { 
-                    globalVariablesNumberHandler()
+                    if(globalVariableEvent) { globalVariablesNumberHandler() }
                 } else {
-                    globalVariablesTextHandler() 
+                    if(globalVariableEvent) { globalVariablesTextHandler() }
                 }               
                 if(triggerType.contains("xHubCheck")) { sendHttpHandler() }               
                 checkingWhatToDo()            
@@ -2775,9 +2789,9 @@ def startTheProcess(evt) {
                                         }
                                         if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
                                         if(theTimeType) {
-                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                                         } else {
-                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
                                         }
                                     } else {
                                         if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
@@ -2862,169 +2876,139 @@ def startTheProcess(evt) {
 
 // ********** Start Conditions **********
 def customDeviceHandler() {
-    if(customEvent) {
-        state.eventName = customEvent
-        state.eventType = specialAtt
-        state.type = sdCustom1Custom2
-        state.typeValue1 = custom1
-        state.typeValue2 = custom2
-        state.typeAO = customANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = customEvent
+    state.eventType = specialAtt
+    state.type = sdCustom1Custom2
+    state.typeValue1 = custom1
+    state.typeValue2 = custom2
+    state.typeAO = customANDOR
+    devicesGoodHandler("condition")
 }
 def accelerationHandler() {
-    if(accelerationEvent) {
-        state.eventName = accelerationEvent
-        state.eventType = "acceleration"
-        state.type = asInactiveActive
-        state.typeValue1 = "active"
-        state.typeValue2 = "inactive"
-        state.typeAO = accelerationANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = accelerationEvent
+    state.eventType = "acceleration"
+    state.type = asInactiveActive
+    state.typeValue1 = "active"
+    state.typeValue2 = "inactive"
+    state.typeAO = accelerationANDOR
+    devicesGoodHandler("condition")
 }
 def contactHandler() {
-    if(contactEvent) {
-        state.eventName = contactEvent
-        state.eventType = "contact"
-        state.type = csClosedOpen
-        state.typeValue1 = "open"
-        state.typeValue2 = "closed"
-        state.typeAO = contactANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = contactEvent
+    state.eventType = "contact"
+    state.type = csClosedOpen
+    state.typeValue1 = "open"
+    state.typeValue2 = "closed"
+    state.typeAO = contactANDOR
+    devicesGoodHandler("condition")
 }
 def contact2Handler() {
-    if(myContacts2) {
-        state.eventName = myContacts2
-        state.eventType = "contact"
-        state.type = contactOption2
-        state.typeValue1 = "open"
-        state.typeValue2 = "closed"
-        state.typeAO = false
-        devicesGoodHandler("helper")
-    }
+    state.eventName = myContacts2
+    state.eventType = "contact"
+    state.type = contactOption2
+    state.typeValue1 = "open"
+    state.typeValue2 = "closed"
+    state.typeAO = false
+    devicesGoodHandler("helper")
 }
 def garageDoorHandler() {
-    if(garageDoorEvent) {
-        state.eventName = garageDoorEvent
-        state.eventType = "door"
-        state.type = gdClosedOpen
-        state.typeValue1 = "open"
-        state.typeValue2 = "closed"
-        state.typeAO = garageDoorANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = garageDoorEvent
+    state.eventType = "door"
+    state.type = gdClosedOpen
+    state.typeValue1 = "open"
+    state.typeValue2 = "closed"
+    state.typeAO = garageDoorANDOR
+    devicesGoodHandler("condition")
 }
 def globalVariablesTextHandler() {
-    if(globalVariableEvent) {
-        state.eventName = globalVariableEvent
-        state.eventType = "globalVariable"
-        state.type = true
-        state.typeValue1 = gvValue
-        state.typeValue2 = "noData"
-        state.typeAO = false
-        devicesGoodHandler("condition")
-    }
+    state.eventName = globalVariableEvent
+    state.eventType = "globalVariable"
+    state.type = true
+    state.typeValue1 = gvValue
+    state.typeValue2 = "noData"
+    state.typeAO = false
+    devicesGoodHandler("condition")
 }
 def lockHandler() {
-    if(lockEvent) {
-        state.eventName = lockEvent
-        state.eventType = "lock"
-        state.type = lUnlockedLocked
-        state.typeValue1 = "locked"
-        state.typeValue2 = "unlocked"
-        state.typeAO = lockANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = lockEvent
+    state.eventType = "lock"
+    state.type = lUnlockedLocked
+    state.typeValue1 = "locked"
+    state.typeValue2 = "unlocked"
+    state.typeAO = lockANDOR
+    devicesGoodHandler("condition")
 }
 def motionHandler() {
-    if(motionEvent) {
-        state.eventName = motionEvent
-        state.eventType = "motion"
-        state.type = meInactiveActive
-        state.typeValue1 = "active"
-        state.typeValue2 = "inactive"
-        state.typeAO = motionANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = motionEvent
+    state.eventType = "motion"
+    state.type = meInactiveActive
+    state.typeValue1 = "active"
+    state.typeValue2 = "inactive"
+    state.typeAO = motionANDOR
+    devicesGoodHandler("condition")
 }
 def motion2Handler() {
-    if(myMotion2) {
-        state.eventName = myMotion2
-        state.eventType = "motion"
-        state.type = motionOption2
-        state.typeValue1 = "active"
-        state.typeValue2 = "inactive"
-        state.typeAO = false
-        devicesGoodHandler("helper")
-    }
+    state.eventName = myMotion2
+    state.eventType = "motion"
+    state.type = motionOption2
+    state.typeValue1 = "active"
+    state.typeValue2 = "inactive"
+    state.typeAO = false
+    devicesGoodHandler("helper")
 }
 def presenceHandler() {
-    if(presenceEvent) {
-        state.eventName = presenceEvent
-        state.eventType = "presence"
-        state.type = pePresentNotPresent
-        state.typeValue1 = "not present"
-        state.typeValue2 = "present"
-        state.typeAO = presenceANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = presenceEvent
+    state.eventType = "presence"
+    state.type = pePresentNotPresent
+    state.typeValue1 = "not present"
+    state.typeValue2 = "present"
+    state.typeAO = presenceANDOR
+    devicesGoodHandler("condition")
 }
 def presence2Handler() {
-    if(myPresence2) {
-        state.eventName = myPresence2
-        state.eventType = "presence"
-        state.type = presenceOption2
-        state.typeValue1 = "not present"
-        state.typeValue2 = "present"
-        state.typeAO = false
-        devicesGoodHandler("helper")
-    }
+    state.eventName = myPresence2
+    state.eventType = "presence"
+    state.type = presenceOption2
+    state.typeValue1 = "not present"
+    state.typeValue2 = "present"
+    state.typeAO = false
+    devicesGoodHandler("helper")
 }
 def switchHandler() {
-    if(switchEvent) {
-        state.eventName = switchEvent
-        state.eventType = "switch"
-        state.type = seOffOn
-        state.typeValue1 = "on"
-        state.typeValue2 = "off"
-        state.typeAO = switchANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = switchEvent
+    state.eventType = "switch"
+    state.type = seOffOn
+    state.typeValue1 = "on"
+    state.typeValue2 = "off"
+    state.typeAO = switchANDOR
+    devicesGoodHandler("condition")
 }
 def switch2Handler() {
-    if(mySwitches2) {
-        state.eventName = mySwitches2
-        state.eventType = "switch"
-        state.type = switchesOption2
-        state.typeValue1 = "on"
-        state.typeValue2 = "off"
-        state.typeAO = false
-        devicesGoodHandler("helper")
-    }
+    state.eventName = mySwitches2
+    state.eventType = "switch"
+    state.type = switchesOption2
+    state.typeValue1 = "on"
+    state.typeValue2 = "off"
+    state.typeAO = false
+    devicesGoodHandler("helper")
 }
 def thermostatHandler() {
-    if(thermoEvent) {
-        state.eventName = thermoEvent
-        state.eventType = "thermostatOperatingState"
-        state.type = false
-        state.typeValue1 = "idle"
-        state.typeValue2 = "thermostatEvent"
-        state.typeAO = thermoANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = thermoEvent
+    state.eventType = "thermostatOperatingState"
+    state.type = false
+    state.typeValue1 = "idle"
+    state.typeValue2 = "thermostatEvent"
+    state.typeAO = thermoANDOR
+    devicesGoodHandler("condition")
 }
 def waterHandler() {
-    if(waterEvent) {
-        state.eventName = waterEvent
-        state.eventType = "water"
-        state.type = weDryWet
-        state.typeValue1 = "Wet"
-        state.typeValue2 = "Dry"
-        state.typeAO = waterANDOR
-        devicesGoodHandler("condition")
-    }
+    state.eventName = waterEvent
+    state.eventType = "water"
+    state.type = weDryWet
+    state.typeValue1 = "Wet"
+    state.typeValue2 = "Dry"
+    state.typeAO = waterANDOR
+    devicesGoodHandler("condition")
 }
 
 def devicesGoodHandler(data) {
@@ -3182,95 +3166,67 @@ def ruleMachineHandler() {
 
 // ***** Start Setpoint Handlers *****
 def customSetpointHandler() {
-    if(customEvent) {
-        state.spName = customEvent
-        state.spType = specialAtt
-        state.setpointHigh = sdSetPointHigh
-        state.setpointLow = sdSetPointLow
-        setpointHandler()
-    }
+    state.spName = customEvent
+    state.spType = specialAtt
+    state.setpointHigh = sdSetPointHigh
+    state.setpointLow = sdSetPointLow
+    setpointHandler()
 }
 def batteryHandler() {
-    if(batteryEvent) {
-        state.spName = batteryEvent
-        state.spType = "battery"
-        state.setpointHigh = beSetPointHigh
-        state.setpointLow = beSetPointLow
-        setpointHandler()
-    }
+    state.spName = batteryEvent
+    state.spType = "battery"
+    state.setpointHigh = beSetPointHigh
+    state.setpointLow = beSetPointLow
+    setpointHandler()
 }
 def energyHandler() {
-    if(energyEvent) {
-        state.spName = energyEvent
-        state.spType = "energy"
-        state.setpointHigh = eeSetPointHigh
-        state.setpointLow = eeSetPointLow
-        setpointHandler()
-    }
+    state.spName = energyEvent
+    state.spType = "energy"
+    state.setpointHigh = eeSetPointHigh
+    state.setpointLow = eeSetPointLow
+    setpointHandler()
 }
 def globalVariablesNumberHandler() {
-    if(globalVariableEvent) {
-        state.spName = globalVariableEvent
-        state.spType = "globalVariable"
-        state.setpointHigh = gvSetPointHigh
-        state.setpointLow = gvSetPointLow
-        setpointHandler()
-    }
+    state.spName = globalVariableEvent
+    state.spType = "globalVariable"
+    state.setpointHigh = gvSetPointHigh
+    state.setpointLow = gvSetPointLow
+    setpointHandler()
 }
 def humidityHandler() {
-    if(humidityEvent) {
-        state.spName = humidityEvent
-        state.spType = "humidity"
-        state.setpointHigh = heSetPointHigh
-        state.setpointLow = heSetPointLow
-        setpointHandler()
-    } 
+    state.spName = humidityEvent
+    state.spType = "humidity"
+    state.setpointHigh = heSetPointHigh
+    state.setpointLow = heSetPointLow
+    setpointHandler()
 }
 def illuminanceHandler() {
-    if(illuminanceEvent) {
-        state.spName = illuminanceEvent
-        state.spType = "illuminance"
-        state.setpointHigh = ieSetPointHigh
-        state.setpointLow = ieSetPointLow
-        setpointHandler()
-    }
+    state.spName = illuminanceEvent
+    state.spType = "illuminance"
+    state.setpointHigh = ieSetPointHigh
+    state.setpointLow = ieSetPointLow
+    setpointHandler()
 }
 def powerHandler() {
-    if(powerEvent) {
-        state.spName = powerEvent
-        state.spType = "power"
-        state.setpointHigh = peSetPointHigh
-        state.setpointLow = peSetPointLow
-        setpointHandler()
-    }
+    state.spName = powerEvent
+    state.spType = "power"
+    state.setpointHigh = peSetPointHigh
+    state.setpointLow = peSetPointLow
+    setpointHandler()
 }
 def tempHandler() {
-    if(tempEvent) {
-        state.spName = tempEvent
-        state.spType = "temperature"
-        state.setpointHigh = teSetPointHigh
-        state.setpointLow = teSetPointLow
-        setpointHandler()
-    }
+    state.spName = tempEvent
+    state.spType = "temperature"
+    state.setpointHigh = teSetPointHigh
+    state.setpointLow = teSetPointLow
+    setpointHandler()
 }
 def voltageHandler() {
-    if(voltageEvent) {
-        state.spName = voltageEvent
-        state.spType = "voltage"
-        state.setpointHigh = veSetPointHigh
-        state.setpointLow = veSetPointLow
-        setpointHandler()
-    }    
-    if(!state.isThereSPDevices) {  // Keep in LAST setpoint
-        if(triggerAndOr) {
-            state.setpointOK = false
-        } else {
-            state.setpointOK = true
-        }
-        state.setpointHighOK = "yes"
-        state.setpointLowOK = "yes"
-        state.setpointBetweenOK = "yes"
-    }
+    state.spName = voltageEvent
+    state.spType = "voltage"
+    state.setpointHigh = veSetPointHigh
+    state.setpointLow = veSetPointLow
+    setpointHandler()
 }
 
 def setpointHandler() {
@@ -3448,103 +3404,85 @@ def setpointRollingAverageHandler(data) {
 
 // ********** Start Restrictions **********
 def accelerationRestrictionHandler() {
-    if(accelerationRestrictionEvent) {
-        state.rEventName = accelerationRestrictionEvent
-        state.rEventType = "acceleration"
-        state.rType = arInactiveActive
-        state.rTypeValue1 = "active"
-        state.rTypeValue2 = "inactive"
-        state.rTypeAO = accelerationRANDOR
-        restrictionHandler()
-    }
+    state.rEventName = accelerationRestrictionEvent
+    state.rEventType = "acceleration"
+    state.rType = arInactiveActive
+    state.rTypeValue1 = "active"
+    state.rTypeValue2 = "inactive"
+    state.rTypeAO = accelerationRANDOR
+    restrictionHandler()
 }
 def contactRestrictionHandler() {
-    if(contactRestrictionEvent) {
-        state.rEventName = contactRestrictionEvent
-        state.rEventType = "contact"
-        state.rType = crClosedOpen
-        state.rTypeValue1 = "open"
-        state.rTypeValue2 = "closed"
-        state.rTypeAO = contactRANDOR
-        restrictionHandler()
-    } 
+    state.rEventName = contactRestrictionEvent
+    state.rEventType = "contact"
+    state.rType = crClosedOpen
+    state.rTypeValue1 = "open"
+    state.rTypeValue2 = "closed"
+    state.rTypeAO = contactRANDOR
+    restrictionHandler()
 }
 def garageDoorRestrictionHandler() {
-    if(garageDoorRestrictionEvent) {
-        state.rEventName = garageDoorRestrictionEvent
-        state.rEventType = "door"
-        state.rEype = gdrClosedOpen
-        state.rTypeValue1 = "open"
-        state.rTypeValue2 = "closed"
-        state.rTypeAO = garageDoorRANDOR
-        restrictionHandler()
-    } 
+    state.rEventName = garageDoorRestrictionEvent
+    state.rEventType = "door"
+    state.rEype = gdrClosedOpen
+    state.rTypeValue1 = "open"
+    state.rTypeValue2 = "closed"
+    state.rTypeAO = garageDoorRANDOR
+    restrictionHandler()
 }
 def lockRestrictionHandler() {
-    if(lockRestrictionEvent) {
-        state.rEventName = lockRestrictionEvent
-        state.rEventType = "lock"
-        state.rType = lrUnlockedLocked
-        state.rTypeValue1 = "locked"
-        state.rTypeValue2 = "unlocked"
-        state.rTypeAO = false
-        restrictionHandler()
-    } 
+    state.rEventName = lockRestrictionEvent
+    state.rEventType = "lock"
+    state.rType = lrUnlockedLocked
+    state.rTypeValue1 = "locked"
+    state.rTypeValue2 = "unlocked"
+    state.rTypeAO = false
+    restrictionHandler()
 }
 def motionRestrictionHandler() {
-    if(motionRestrictionEvent) {
-        state.rEventName = motionRestrictionEvent
-        state.rEventType = "motion"
-        state.rType = mrInactiveActive
-        state.rTypeValue1 = "active"
-        state.rTypeValue2 = "inactive"
-        state.rTypeAO = motionRANDOR
-        restrictionHandler()
-    }
+    state.rEventName = motionRestrictionEvent
+    state.rEventType = "motion"
+    state.rType = mrInactiveActive
+    state.rTypeValue1 = "active"
+    state.rTypeValue2 = "inactive"
+    state.rTypeAO = motionRANDOR
+    restrictionHandler()
 }
 def motionRestrictionHandler2() {
-    if(motionRestrictionEvent2) {
-        state.rEventName = motionRestrictionEvent2
-        state.rEventType = "motion"
-        state.rType = mrInactiveActive2
-        state.rTypeValue1 = "active"
-        state.rTypeValue2 = "inactive"
-        state.rTypeAO = motionRANDOR2
-        restrictionHandler()
-    }
+    state.rEventName = motionRestrictionEvent2
+    state.rEventType = "motion"
+    state.rType = mrInactiveActive2
+    state.rTypeValue1 = "active"
+    state.rTypeValue2 = "inactive"
+    state.rTypeAO = motionRANDOR2
+    restrictionHandler()
 }
 def presenceRestrictionHandler() {
-    if(presenceRestrictionEvent) {
-        state.rEventName = presenceRestrictionEvent
-        state.rEventType = "presence"
-        state.rType = prPresentNotPresent
-        state.rTypeValue1 = "not present"
-        state.rTypeValue2 = "present"
-        state.rTypeAO = presenceRANDOR
-        restrictionHandler()
-    }
+    state.rEventName = presenceRestrictionEvent
+    state.rEventType = "presence"
+    state.rType = prPresentNotPresent
+    state.rTypeValue1 = "not present"
+    state.rTypeValue2 = "present"
+    state.rTypeAO = presenceRANDOR
+    restrictionHandler()
 }
 def switchRestrictionHandler() {
-    if(switchRestrictionEvent) {
-        state.rEventName = switchRestrictionEvent
-        state.rEventType = "switch"
-        state.rType = srOffOn
-        state.rTypeValue1 = "on"
-        state.rTypeValue2 = "off"
-        state.rTypeAO = switchRANDOR
-        restrictionHandler()
-    }
+    state.rEventName = switchRestrictionEvent
+    state.rEventType = "switch"
+    state.rType = srOffOn
+    state.rTypeValue1 = "on"
+    state.rTypeValue2 = "off"
+    state.rTypeAO = switchRANDOR
+    restrictionHandler()
 }
 def waterRestrictionHandler() {
-    if(waterRestrictionEvent) {
-        state.rEventName = waterRestrictionEvent
-        state.rEventType = "water"
-        state.rType = wrDryWet
-        state.rTypeValue1 = "Wet"
-        state.rTypeValue2 = "Dry"
-        state.rTypeAO = waterRANDOR
-        restrictionHandler()
-    }
+    state.rEventName = waterRestrictionEvent
+    state.rEventType = "water"
+    state.rType = wrDryWet
+    state.rTypeValue1 = "Wet"
+    state.rTypeValue2 = "Dry"
+    state.rTypeAO = waterRANDOR
+    restrictionHandler()
 }
 
 def restrictionHandler() {
@@ -3834,15 +3772,15 @@ def dimmerOnReverseActionHandler() {
             if(logEnable) log.debug "In dimmerOnReverseActionHandler - oldMap: ${state.oldMap}"
             if(currentONOFF == "on") {
                 name = (it.displayName).replace(" ","")
-                if(it.hasCommand("setColor")) {
+                if(it.hasCommand("setColor") && state.onColor != "No Change") {
                     try {
                         data = state.oldMap.get(name)
-                        def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
-                        int hueColor = oldHueColor.toInteger()
-                        int saturation = oldSaturation.toInteger()
-                        int level = oldLevel.toInteger()
-                        int cTemp = oldColorTemp.toInteger()
-                        def cMode = oldColorMode
+                        def theData = data.split("::")
+                        int hueColor = theData[1].toInteger()
+                        int saturation = theData[2].toInteger()
+                        int level = theData[3].toInteger()
+                        int cTemp = theData[4].toInteger()
+                        def cMode = theData[5]
                         if(cMode == "CT") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
                             pauseExecution(actionDelay)
@@ -3868,10 +3806,11 @@ def dimmerOnReverseActionHandler() {
                     } catch(e) {
                         log.error e
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor Oops - Turning Off (${it})"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - 1) ${theData[1]} - 2) ${theData[2]} - 3) ${theData[3]} - 4) ${theData[4]} - 5) ${theData[5]}"
                         pauseExecution(actionDelay)
                         it.off()
                     }
-                } else if(it.hasCommand("setColorTemperature")) {
+                } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
                     try {
                         data = state.oldMap.get(name)
                         def (oldStatus, oldLevel, oldTemp) = data.split("::")
