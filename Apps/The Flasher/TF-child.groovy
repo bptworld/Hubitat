@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 02/05/21 - Fixed a typo
  *  1.1.7 - 02/04/21 - Separated Level from Color
  *  1.1.6 - 01/13/21 - Minor adjustment
  *  1.1.5 - 01/05/21 - Fixed an error
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -110,7 +111,7 @@ def pageConfig() {
                     input "numFlashes1", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay1", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch1) {
-                        if(theSwitch.hasComamnd('setLevel')) {
+                        if(theSwitch1.hasCommand('setLevel')) {
                             input "level1", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
                         if(theSwitch1.hasCommand('setColor')) {
@@ -143,7 +144,7 @@ def pageConfig() {
                     input "numFlashes2", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay2", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch2) {
-                        if(theSwitch.hasComamnd('setLevel')) {
+                        if(theSwitch2.hasCommand('setLevel')) {
                             input "level2", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
                         if(theSwitch2.hasCommand('setColor')) {
@@ -176,7 +177,7 @@ def pageConfig() {
                     input "numFlashes3", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay3", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch3) {
-                        if(theSwitch.hasComamnd('setLevel')) {
+                        if(theSwitch3.hasCommand('setLevel')) {
                             input "level3", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
                         if(theSwitch3.hasCommand('setColor')) {
@@ -209,7 +210,7 @@ def pageConfig() {
                     input "numFlashes4", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay4", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch4) {
-                        if(theSwitch.hasComamnd('setLevel')) {
+                        if(theSwitch4.hasCommand('setLevel')) {
                             input "level4", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
                         if(theSwitch4.hasCommand('setColor')) {
@@ -242,7 +243,7 @@ def pageConfig() {
                     input "numFlashes5", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay5", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch5) {
-                        if(theSwitch.hasComamnd('setLevel')) {
+                        if(theSwitch5.hasCommand('setLevel')) {
                             input "level5", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
                         if(theSwitch5.hasCommand('setColor')) {
@@ -310,7 +311,7 @@ def pageConfig() {
                 input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
                 input "delay", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'500..5000', required: false, width: 6
                 if(theSwitch) {
-                    if(theSwitch.hasComamnd('setLevel')) {
+                    if(theSwitch.hasCommand('setLevel')) {
                         input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                     }
                     if(theSwitch.hasCommand('setColor')) {                    
