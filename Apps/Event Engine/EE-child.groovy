@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-*  2.8.9 - 03/04/21 - Code adjustments, change to Switches per mode (modeMatchRestriction=true), Between Two Times and Sunset/Sunries to Reverse, bug fixes
+*  2.8.9 - 03/04/21 - Code adjustments, change to Switches per mode (modeMatchRestriction=true), Between Two Times and Sunset/Sunrise to Reverse, bug fixes
 *  2.8.8 - 02/11/21 - Squashed a bug with dimmers per mode
 *  2.8.7 - 02/09/21 - A few more adjustments
 *  2.8.6 - 02/09/21 - Lots of little adjustments
