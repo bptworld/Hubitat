@@ -37,6 +37,9 @@
  *
  *  Changes:
  *
+ *  1.2.1 - 07/03/21 - Added null checks to precipitation values
+ *                     Corrected typo for Todays Pollen triggers
+ *
  *  1.2.0 - 12/06/21 - Adjustment to wind speed
  *  ---
  *  1.0.0 - 04/07/20 - Initial release
@@ -576,44 +579,59 @@ def getWeatherData() {
                 }
                 
                 
-                def xprecipitationLastHour = response.data.properties.precipitationLastHour.value
+                def xprecipitationLastHour = response.data.properties.precipitationLastHour
                 if(xprecipitationLastHour) {
-                    if(unitFormat1 == "Imperial") {
-                        mmTOin(xprecipitationLastHour)
-                        precipitationLastHour = theUnit
+                    xprecipitationLastHour=xprecipitationLastHour.value
+                    if(xprecipitationLastHour) {
+                        if(unitFormat1 == "Imperial") {
+                            mmTOin(xprecipitationLastHour)
+                            precipitationLastHour = theUnit
+                        } else {
+                            unitI = xprecipitationLastHour.toFloat()
+                            precipitationLastHour = unitI.round(2)
+                        }
                     } else {
-                        unitI = xprecipitationLastHour.toFloat()
-                        precipitationLastHour = unitI.round(2)
+                        precipitationLastHour=0
                     }
                     if(logEnable) log.debug "In getWeatherData - precipitationLastHour: ${precipitationLastHour}"
-                    sendEvent(name: "precipitationLastHour", value: precipitationLastHour)
                 }
+                sendEvent(name: "precipitationLastHour", value: precipitationLastHour)
                                
-                def xprecipitationLast3Hours = response.data.properties.precipitationLast3Hours.value
+                def xprecipitationLast3Hours = response.data.properties.precipitationLast3Hours
                 if(xprecipitationLast3Hours) {
-                    if(unitFormat1 == "Imperial") {
-                        mmTOin(xprecipitationLast3Hours)
-                        precipitationLast3Hours = theUnit
+                    xprecipitationLast3Hours=xprecipitationLast3Hours.value
+                    if(xprecipitationLast3Hours) {
+                        if(unitFormat1 == "Imperial") {
+                            mmTOin(xprecipitationLast3Hours)
+                            precipitationLast3Hours = theUnit
+                        } else {
+                            unitI = xpxprecipitationLast3Hours.toFloat()
+                            xprecipitationLast3Hours = unitI.round(2)
+                        }
                     } else {
-                        unitI = xpxprecipitationLast3Hours.toFloat()
-                        xprecipitationLast3Hours = unitI.round(2)
+                        precipitationLast3Hours=0
                     }
                     if(logEnable) log.debug "In getWeatherData - precipitationLast3Hours: ${precipitationLast3Hours}"
-                    sendEvent(name: "precipitationLast3Hours", value: precipitationLast3Hours)
                 }
+                sendEvent(name: "precipitationLast3Hours", value: precipitationLast3Hours)
                 
-                def xprecipitationLast6Hours = response.data.properties.precipitationLast6Hours.value
+                def xprecipitationLast6Hours = response.data.properties.precipitationLast6Hours
                 if(xprecipitationLast6Hours) {
-                    if(unitFormat1 == "Imperial") {
-                        mmTOin(xprecipitationLast6Hours)
-                        precipitationLast6Hours = theUnit
+                    xprecipitationLast6Hours=xprecipitationLast6Hours.value
+                    if(xprecipitationLast6Hours) {
+                        if(unitFormat1 == "Imperial") {
+                            mmTOin(xprecipitationLast6Hours)
+                            precipitationLast6Hours = theUnit
+                        } else {
+                            unitI = xpxprecipitationLast6Hours.toFloat()
+                            xprecipitationLast6Hours = unitI.round(2)
+                        }
                     } else {
-                        unitI = xpxprecipitationLast6Hours.toFloat()
-                        xprecipitationLast6Hours = unitI.round(2)
+                        precipitationLast6Hours=0
                     }
                     if(logEnable) log.debug "In getWeatherData - precipitationLast6Hours: ${precipitationLast6Hours}"
-                    sendEvent(name: "precipitationLast6Hours", value: precipitationLast6Hours)
                 }
+                sendEvent(name: "precipitationLast6Hours", value: precipitationLast6Hours)
                                
                 def xrelativeHumidity = response.data.properties.relativeHumidity.value
                 if(xrelativeHumidity) {
@@ -1159,7 +1177,7 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
                     
 					sendEvent(name: "pollenIndexToday", value: pollenPeriod.Index, displayed: true)
 					sendEvent(name: "pollenCategoryToday", value: pCatName2, displayed: true)
-					sendEvent(name: "pollenTriggersToday", value: pTriggersList, displayed: true)
+					sendEvent(name: "pollenTriggersToday", value: pTriggersList2, displayed: true)
 				}
 				
 				if(pollenPeriod.Type == 'Tomorrow') {
