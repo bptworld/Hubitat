@@ -37,10 +37,9 @@
  *
  *  Changes:
  *
- *  1.2.1 - 07/03/21 - Added null checks to precipitation values
+ *  1.2.1 - 03/07/21 - Added null checks to precipitation values
  *                     Corrected typo for Todays Pollen triggers
- *
- *  1.2.0 - 12/06/21 - Adjustment to wind speed
+ *  1.2.0 - 12/06/20 - Adjustment to wind speed
  *  ---
  *  1.0.0 - 04/07/20 - Initial release
  */
