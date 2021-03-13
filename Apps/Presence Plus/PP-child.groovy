@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,9 +37,10 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 03/13/21 - Added Contacts as a Presence option
  *  1.0.7 - 09/24/20 - Lots of Adjustments
- *  1.0.6 - 05/12/20 - Added separate delays for Arrival and Departure
- *  1.0.5 - 05/05/20 - Added Advanced Arrival section giving users a second set of arrival options
+ *  1.0.6 - 05/12/20 - Added separate delays for Present and Not Present
+ *  1.0.5 - 05/05/20 - Added Advanced Present section giving users a second set of Present options
  *  1.0.4 - 05/05/20 - Added number of sensors required to change status
  *  1.0.3 - 05/05/20 - Added delay before status is updated
  *  1.0.2 - 04/27/20 - Cosmetic changes
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -92,43 +93,47 @@ def pageConfig() {
             if(app.label) createChildDevice()
         }
         
-		section(getFormat("header-green", "${getImage("Blank")}"+" Arrival Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Present Options")) {
             input "ArrTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
             if(ArrTriggerType) paragraph "<b>using 'AND'</b>"
             if(!ArrTriggerType) paragraph "<b>using 'OR'</b>"
-			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:true
-            if(ArrTriggerType) input "arrNumOfSensors", "number", title: "How many sensors does it take to change status for Arrival (leave blank for All)", required:false, submitOnChange:true 
+			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
+            input "ArrConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (present when closed)", multiple:true, required:false
+            if(ArrTriggerType) input "arrNumOfSensors", "number", title: "How many sensors does it take to change status for Present (leave blank for All)", required:false, submitOnChange:true 
 		}
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Arrival Options")) {
-            paragraph "Advanced Arrival Options give you a second set of arrival Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
-            input "useAdvancedArr", "bool", title: "Use Advanced Arrival Options", description: "Advanced Arrival", required:false, submitOnChange:true
+        section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Present Options")) {
+            paragraph "Advanced Present Options give you a second set of Present Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
+            input "useAdvancedArr", "bool", title: "Use Advanced Present Options", description: "Advanced Present", required:false, submitOnChange:true
             if(useAdvancedArr) {
                 input "ArrTriggerType2", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
                 if(ArrTriggerType2) paragraph "<b>using 'AND'</b>"
                 if(!ArrTriggerType2) paragraph "<b>using 'OR'</b>"
-                input "ArrPresenceSensors2", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:true
-                if(ArrTriggerType2) input "arrNumOfSensors2", "number", title: "How many sensors does it take to change status for Arrival (leave blank for All)", required:false, submitOnChange:true 
+                input "ArrPresenceSensors2", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
+                input "ArrConPresenceSensors2", "capability.contactSensor", title: "Contact Sensors to combine (present when closed)", multiple:true, required:false
+                if(ArrTriggerType2) input "arrNumOfSensors2", "number", title: "How many sensors does it take to change status for Present (leave blank for All)", required:false, submitOnChange:true 
             } else {
                 app.removeSetting("ArrTriggerType2")
                 app.removeSetting("ArrPresenceSensors2")
+                app.removeSetting("ArrConPresenceSensors2")
                 app.removeSetting("arrNumOfSensors2")           
             }
 		}
  
-        section(getFormat("header-green", "${getImage("Blank")}"+" Departure Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Not Present Options")) {
             input "DepTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
 			if(DepTriggerType) paragraph "<b>using 'AND'</b>"
             if(!DepTriggerType) paragraph "<b>using 'OR'</b>"
             input "DepPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (not present)", multiple:true, required:false
-            if(DepTriggerType) input "depNumOfSensors", "number", title: "How many sensors does it take to change status for Departed (leave blank for All)", required:false, submitOnChange:true
+            input "DepConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (not present when open)", multiple:true, required:false
+            if(DepTriggerType) input "depNumOfSensors", "number", title: "How many sensors does it take to change status for Not Present (leave blank for All)", required:false, submitOnChange:true
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Failsafe Options")) {
-            paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here."
+            paragraph "Sometimes a Present or Not Present can be missed. With this option, Presence Plus will check every X minutes to see who is here."
             input "runEvery", "enum", title: "Check every X minutes", description: "runEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
-            input "theDelayArr", "number", title: "Delay setting arrival status by (seconds)", required:false, submitOnChange:true
-            input "theDelayDep", "number", title: "Delay setting departure status by (seconds)", required:false, submitOnChange:true
+            input "theDelayArr", "number", title: "Delay setting Present status by (seconds)", required:false, submitOnChange:true
+            input "theDelayDep", "number", title: "Delay setting Not Present status by (seconds)", required:false, submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
@@ -186,7 +191,9 @@ def initialize() {
         setDefaults()
         if(ArrPresenceSensors) subscribe(ArrPresenceSensors, "presence.present", arrSensorHandler)
         if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence.present", arrSensorHandler2)
+        if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact.closed", arrSensorHandler)
         if(DepPresenceSensors) subscribe(DepPresenceSensors, "presence.not present", depSensorHandler)
+        if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact.open", arrSensorHandler)
 
         if(runEvery == "Every 1 Minute") runEvery1Minute(arrSensorHandler)
         if(runEvery == "Every 5 Minutes") runEvery5Minutes(arrSensorHandler)
@@ -210,32 +217,70 @@ def arrSensorHandler(evt) {
         unschedule()
         int theDelayArr = theDelayArr ?: 1
 
-        if(ArrPresenceSensors) {
-            asCount = ArrPresenceSensors.size()
+        if(ArrPresenceSensors || ArrConPresenceSensors) {
+            if(ArrPresenceSensors) {
+                preSensors = ArrPresenceSensors.size()
+            } else {
+                preSensors = 0
+            }
+            if(ArrConPresenceSensors) {
+                conSensors = ArrConPresenceSensors.size()
+            } else {
+                conSensors = 0
+            }
+            asCount = preSensors + conSensors
             int theArrNum = arrNumOfSensors ?: asCount
             int pCount = 0
         }
 
-        if(ArrPresenceSensors2) {
-            asCount2 = ArrPresenceSensors2.size()
+        if(ArrPresenceSensors2 || ArrConPresenceSensors2) {
+            if(ArrPresenceSensors2) {
+                preSensors2 = ArrPresenceSensors2.size()
+            } else {
+                preSensors2 = 0
+            }
+            if(ArrConPresenceSensors2) {
+                conSensors2 = ArrConPresenceSensors2.size()
+            } else {
+                conSensors2 = 0
+            }
+            asCount2 = preSensors2 + conSensors2
             int theArrNum2 = arrNumOfSensors2 ?: asCount2
             int pCount2 = 0
         }
 
         if(ArrTriggerType == false) {    // or
             //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
-            ArrPresenceSensors.each { it ->
-                if(it.currentValue("presence") == "present") {
-                    state.pStatus = true	
+            if(ArrPresenceSensors) {
+                ArrPresenceSensors.each { it ->
+                    if(it.currentValue("presence") == "present") {
+                        state.pStatus = true	
+                    }
+                }
+            }
+            if(ArrConPresenceSensors) {
+                ArrConPresenceSensors.each { it ->
+                    if(it.currentValue("contact") == "closed") {
+                        state.pStatus = true	
+                    }
                 }
             }
         }
 
         if(ArrTriggerType == true) {    // and
             //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be TRUE for AND handler"
-            ArrPresenceSensors.each { it ->
-                if(it.currentValue("presence") == "present") {
-                    pCount = pCount + 1	
+            if(ArrPresenceSensors) {
+                ArrPresenceSensors.each { it ->
+                    if(it.currentValue("presence") == "present") {
+                        pCount = pCount + 1	
+                    }
+                }
+            }
+            if(ArrConPresenceSensors) {
+                ArrConPresenceSensors.each { it ->
+                    if(it.currentValue("contact") == "closed") {
+                        pCount = pCount + 1	
+                    }
                 }
             }
             if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
@@ -245,18 +290,36 @@ def arrSensorHandler(evt) {
         if(useAdvancedArr) {
             if(ArrTriggerType2 == false) {    // or
                 //if(logEnable) log.debug "In arrSensorHandler - Arr2: ${ArrTriggerType2} - Should be FALSE for OR handler"
-                ArrPresenceSensors2.each { it ->
-                    if(it.currentValue("presence") == "present") {
-                        state.pStatus = true	
+                if(ArrPresenceSensors2) {
+                    ArrPresenceSensors2.each { it ->
+                        if(it.currentValue("presence") == "present") {
+                            state.pStatus = true	
+                        }
+                    }
+                }
+                if(ArrConPresenceSensors2) {
+                    ArrConPresenceSensors2.each { it ->
+                        if(it.currentValue("contact") == "closed") {
+                            state.pStatus = true	
+                        }
                     }
                 }
             }
 
             if(ArrTriggerType2 == true) {    // and
                 //if(logEnable) log.debug "In arrSensorHandler - Arr2: ${ArrTriggerType2} - Should be TRUE for AND handler"
-                ArrPresenceSensors2.each { it ->
-                    if(it.currentValue("presence") == "present") {
-                        pCount2 = pCount2 + 1	
+                if(ArrPresenceSensors2) {
+                    ArrPresenceSensors2.each { it ->
+                        if(it.currentValue("presence") == "present") {
+                            pCount2 = pCount2 + 1	
+                        }
+                    }
+                }
+                if(ArrConPresenceSensors2) {
+                    ArrConPresenceSensors2.each { it ->
+                        if(it.currentValue("contact") == "closed") {
+                            pCount2 = pCount2 + 1	
+                        }
                     }
                 }
                 if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
@@ -280,25 +343,53 @@ def depSensorHandler(evt) {
         if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
 
         unschedule()
-        dsCount = DepPresenceSensors.size()
+        if(DepPresenceSensors) {
+            depSensors = DepPresenceSensors.size()
+        } else {
+            depSensors = 0
+        }
+        if(DepConPresenceSensors) {
+            depConSensors = DepConPresenceSensors.size()
+        } else {
+            depConSensors = 0
+        }
+        dsCount = depSensors + depConSensors
         int theDelayDep = theDelayDep ?: 1
         int theDepNum = depNumOfSensors ?: dsCount
         int pCount = 0
 
         if(DepTriggerType == false) {    // or
             //if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be FALSE for OR handler"
-            DepPresenceSensors.each { it ->
-                if(it.currentValue("presence") == "not present") {
-                    state.pStatus = false	
+            if(DepPresenceSensors) {
+                DepPresenceSensors.each { it ->
+                    if(it.currentValue("presence") == "not present") {
+                        state.pStatus = false	
+                    }
+                }
+            }
+            if(DepConPresenceSensors) {
+                DepConPresenceSensors.each { it ->
+                    if(it.currentValue("contact") == "open") {
+                        state.pStatus = false	
+                    }
                 }
             }
         }
 
         if(DepTriggerType == true) {    // and
             //if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be TRUE for AND handler"
-            DepPresenceSensors.each { it ->
-                if(it.currentValue("presence") == "not present") {
-                    pCount = pCount + 1	
+            if(DepPresenceSensors) {
+                DepPresenceSensors.each { it ->
+                    if(it.currentValue("presence") == "not present") {
+                        pCount = pCount + 1	
+                    }
+                }
+            }
+            if(DepConPresenceSensors) {
+                DepConPresenceSensors.each { it ->
+                    if(it.currentValue("contact") == "open") {
+                        pCount = pCount + 1	
+                    }
                 }
             }
             if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${dsCount} - notPresentCount: ${pCount} - theDepNum: ${theDepNum}"
@@ -342,7 +433,6 @@ def createChildDevice() {
 }
 
 // ********** Normal Stuff **********
-
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
     app?.updateSetting("logEnable",[value:"false",type:"bool"])
@@ -438,5 +528,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
