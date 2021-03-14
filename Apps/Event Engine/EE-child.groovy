@@ -8,7 +8,7 @@
 * 
 *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums! Thanks.
 *
-*  Remember...I am not a programmer, everything I do takes a lot of time and research!
+*  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
 *  Donations are never necessary but always appreciated. Donations to support development efforts are accepted via: 
 *
 *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.1 - 03/14/21 - Adjustments
 *  2.9.0 - 03/05/21 - Fix for Between Two Times and Sunset/Sunrise to Reverse
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.0"
+    state.version = "2.9.1"
 }
 
 definition(
@@ -2543,330 +2544,340 @@ def startTheProcess(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else if(atomicState.running == "Running") {
         atomicState.tryRunning += 1
-        if(atomicState.tryRunning > 3) {
+        if(atomicState.tryRunning > 2) {
             atomicState.tryRunning = 0
             atomicState.running = "Stopped"
-        }
-        if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
-    } else {
-        atomicState.running = "Running"
-        atomicState.tryRunning = 0
-        if(logEnable || shortLog) log.trace "*"
-        if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
-        if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
-        state.rCount = 0
-        state.restrictionMatch = 0
-        state.isThereDevices = false
-        state.isThereSPDevices = false
-        state.areRestrictions = false
-        state.setpointLow = null
-        state.setpointHigh = null
-        state.whoText = ""
-        if(startTime || preMadePeriodic) {
-            state.totalMatch = 1
-            state.totalConditions = 1
-        }
-      
-        if(evt) {
-            if(evt == "runAfterDelay") {
-                state.whoHappened = "NA"
-                state.whatHappened = "NA"
-            } else if(evt == "timeReverse" || evt == "reverse") {
-                state.whatToDo = "skipToReverse"
-            } else if(evt == "run") {
-                state.whatToDo = "run"
-            } else {
-                try {
-                    state.whoHappened = evt.displayName
-                    state.whatHappened = evt.value
-                    state.whoText = evt.descriptionText
-                } catch(e) {
-                    if(logEnable) log.debug "In startTheProcess - Whoops!"
-                }
-                if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
-                state.hasntDelayedYet = true
-                state.hasntDelayedReverseYet = true
-                state.whatToDo = "run"
-            }
+            if(logEnable || shortLog) log.trace "*** ${app.label} - Was already running, will run again next time ***"
         } else {
-            state.whatToDo = "run"
-            state.whoHappened = ""
-            state.whatHappened = ""
+            if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
+        }
+    } else if(actionType) {
+        try {
+            atomicState.running = "Running"
+            atomicState.tryRunning = 0
+            if(logEnable || shortLog) log.trace "*"
+            if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+            if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
+            state.rCount = 0
+            state.restrictionMatch = 0
+            state.isThereDevices = false
+            state.isThereSPDevices = false
+            state.areRestrictions = false
+            state.setpointLow = null
+            state.setpointHigh = null
             state.whoText = ""
-        }
-        if(accelerationRestrictionEvent) { accelerationRestrictionHandler() }
-        if(contactRestrictionEvent) { contactRestrictionHandler() }
-        if(garageDoorRestrictionEvent) { garageDoorRestrictionHandler() }
-        if(lockRestrictionEvent) { lockRestrictionHandler() }
-        if(motionRestrictionEvent) { motionRestrictionHandler() }
-        if(motionRestrictionEvent2) { motionRestrictionHandler2() }
-        if(presenceRestrictionEvent) { presenceRestrictionHandler() }
-        if(switchRestrictionEvent) { switchRestrictionHandler() }
-        if(watereRestrictionEvent) { waterRestrictionHandler() }
-
-        if(state.areRestrictions) {
-            if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
-            state.whatToDo = "stop"
-        } else {
-            if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
-                if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
-            } else {
-                checkTimeSun()
-                dayOfTheWeekHandler()
-                modeHandler()
-                hsmAlertHandler(state.whatHappened)
-                hsmStatusHandler(state.whatHappened)
-                if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
-                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
-            }           
-            if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
-            if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-            
-            if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
-                if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
-            } else {
-                if(accelerationEvent) { accelerationHandler() }
-                if(contactEvent) { contactHandler() }
-                if(myContacts2) { contact2Handler() }
-                if(garageDoorEvent) { garageDoorHandler() }
-                if(lockEvent) { lockHandler() }
-                if(motionEvent) { motionHandler() }
-                if(myMotion2) { motion2Handler() }
-                if(presenceEvent) { presenceHandler() }
-                if(myPresence2) { presence2Handler() }
-                if(switchEvent) { switchHandler() }
-                if(mySwitches2) { switch2Handler() }
-                if(thermoEvent) { thermostatHandler() }
-                if(waterEvent) { waterHandler() }
-
-                if(batteryEvent) { batteryHandler() }
-                if(energyEvent) { energyHandler() }
-                if(humidityEvent) { humidityHandler() }
-                if(illuminanceEvent) { illuminanceHandler() }
-                if(powerEvent) { powerHandler() }
-                if(tempEvent) { tempHandler() }
-                if(voltageEvent) { voltageHandler() }
-                   
-                if(!state.isThereSPDevices) {  // Keep in LAST setpoint
-                    if(triggerAndOr) {
-                        state.setpointOK = false
-                    } else {
-                        state.setpointOK = true
-                    }
-                    state.setpointHighOK = "yes"
-                    state.setpointLowOK = "yes"
-                    state.setpointBetweenOK = "yes"
-                }
-                
-                if(deviceORsetpoint) {
-                    if(customEvent) { customSetpointHandler() }
-                } else {
-                    if(customEvent) { customDeviceHandler() }
-                }                
-                if(gvStyle) { 
-                    if(globalVariableEvent) { globalVariablesNumberHandler() }
-                } else {
-                    if(globalVariableEvent) { globalVariablesTextHandler() }
-                }               
-                if(triggerType.contains("xHubCheck")) { sendHttpHandler() }               
-                checkingWhatToDo()            
+            if(startTime || preMadePeriodic) {
+                state.totalMatch = 1
+                state.totalConditions = 1
             }
-        }
 
-        if(state.whatToDo == "stop") {
-            if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
-        } else {
-            if(state.whatToDo == "run") {
-                if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
-                    if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
-                    if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                    if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
-                        if(notifyDelay && minSec) {
-                            theDelay = notifyDelay
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
-                        } else if(notifyDelay && !minSec) {
-                            theDelay = notifyDelay * 60
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
-                        } else if(randomDelay) {
-                            newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                            theDelay = newDelay * 60
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
-                        } else if(targetDelay) {
-                            theDelay = minutesUp * 60
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+            if(evt) {
+                if(evt == "runAfterDelay") {
+                    state.whoHappened = "NA"
+                    state.whatHappened = "NA"
+                } else if(evt == "timeReverse" || evt == "reverse") {
+                    state.whatToDo = "skipToReverse"
+                } else if(evt == "run") {
+                    state.whatToDo = "run"
+                } else {
+                    try {
+                        state.whoHappened = evt.displayName
+                        state.whatHappened = evt.value
+                        state.whoText = evt.descriptionText
+                    } catch(e) {
+                        if(logEnable) log.debug "In startTheProcess - Whoops!"
+                    }
+                    if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
+                    state.hasntDelayedYet = true
+                    state.hasntDelayedReverseYet = true
+                    state.whatToDo = "run"
+                }
+            } else {
+                state.whatToDo = "run"
+                state.whoHappened = ""
+                state.whatHappened = ""
+                state.whoText = ""
+            }
+            if(accelerationRestrictionEvent) { accelerationRestrictionHandler() }
+            if(contactRestrictionEvent) { contactRestrictionHandler() }
+            if(garageDoorRestrictionEvent) { garageDoorRestrictionHandler() }
+            if(lockRestrictionEvent) { lockRestrictionHandler() }
+            if(motionRestrictionEvent) { motionRestrictionHandler() }
+            if(motionRestrictionEvent2) { motionRestrictionHandler2() }
+            if(presenceRestrictionEvent) { presenceRestrictionHandler() }
+            if(switchRestrictionEvent) { switchRestrictionHandler() }
+            if(watereRestrictionEvent) { waterRestrictionHandler() }
+
+            if(state.areRestrictions) {
+                if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
+                state.whatToDo = "stop"
+            } else {
+                if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                    if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
+                } else {
+                    checkTimeSun()
+                    dayOfTheWeekHandler()
+                    modeHandler()
+                    hsmAlertHandler(state.whatHappened)
+                    hsmStatusHandler(state.whatHappened)
+                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
+                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                }           
+                if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
+                if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+
+                if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                    if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
+                } else {
+                    if(accelerationEvent) { accelerationHandler() }
+                    if(contactEvent) { contactHandler() }
+                    if(myContacts2) { contact2Handler() }
+                    if(garageDoorEvent) { garageDoorHandler() }
+                    if(lockEvent) { lockHandler() }
+                    if(motionEvent) { motionHandler() }
+                    if(myMotion2) { motion2Handler() }
+                    if(presenceEvent) { presenceHandler() }
+                    if(myPresence2) { presence2Handler() }
+                    if(switchEvent) { switchHandler() }
+                    if(mySwitches2) { switch2Handler() }
+                    if(thermoEvent) { thermostatHandler() }
+                    if(waterEvent) { waterHandler() }
+
+                    if(batteryEvent) { batteryHandler() }
+                    if(energyEvent) { energyHandler() }
+                    if(humidityEvent) { humidityHandler() }
+                    if(illuminanceEvent) { illuminanceHandler() }
+                    if(powerEvent) { powerHandler() }
+                    if(tempEvent) { tempHandler() }
+                    if(voltageEvent) { voltageHandler() }
+
+                    if(!state.isThereSPDevices) {  // Keep in LAST setpoint
+                        if(triggerAndOr) {
+                            state.setpointOK = false
                         } else {
-                            if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                            state.setpointOK = true
                         }
-                        if(actionType) {
-                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                        }                              
-                        state.hasntDelayedYet = false
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
-                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                    } else {
-                        if(actionType) {
-                            if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType}"
-                            unschedule(permanentDimHandler)
-                            if(actionType.contains("aFan")) { fanActionHandler() }
-                            if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                            if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                            if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                            if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                            if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                            if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                            if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                            if(state.betweenTime) {
-                                if(actionType.contains("aNotification")) { 
-                                    state.doMessage = true
-                                    messageHandler() 
-                                    if(useTheFlasher) theFlasherHandler()
-                                }
-                            }
-                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                        }
-                        if(setHSM) hsmChangeActionHandler()
-                        if(modeAction) modeChangeActionHandler()
-                        if(devicesToRefresh) devicesToRefreshActionHandler()
-                        if(rmRule) ruleMachineHandler()
-                        if(setGVname && setGVvalue) setGlobalVariableHandler()
-                        state.hasntDelayedYet = true
-                        if(timeReverse) {
-                            theDelay = timeReverseMinutes * 60
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
-                            runIn(theDelay, startTheProcess, [data: "timeReverse"])
-                        }
                     }
-                    state.appStatus = "active"
-                } else {
-                    if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
+
+                    if(deviceORsetpoint) {
+                        if(customEvent) { customSetpointHandler() }
+                    } else {
+                        if(customEvent) { customDeviceHandler() }
+                    }                
+                    if(gvStyle) { 
+                        if(globalVariableEvent) { globalVariablesNumberHandler() }
+                    } else {
+                        if(globalVariableEvent) { globalVariablesTextHandler() }
+                    }               
+                    if(triggerType.contains("xHubCheck")) { sendHttpHandler() }               
+                    checkingWhatToDo()            
                 }
-            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
-                if(reverseWithDelay && state.hasntDelayedReverseYet) {
-                    if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
-                    if(reverseWithDelay) {
-                        if(timePerMode) {
-                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode"
-                            masterDimmersPerMode.each { itOne ->
-                                def theData = "${state.sdPerModeMap}".split(",")        
-                                theData.each { itTwo -> 
-                                    def pieces = itTwo.split(":")
-                                    try {
-                                        theMode = pieces[0]
-                                        theTime = pieces[5]
-                                        theTimeType = pieces[6].replace("]","")
-                                    } catch (e) {
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - Something Went Wrong"
+            }
+
+            if(state.whatToDo == "stop") {
+                if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
+            } else {
+                if(state.whatToDo == "run") {
+                    if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
+                        if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
+                        if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+                        if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                            if(notifyDelay && minSec) {
+                                theDelay = notifyDelay
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                            } else if(notifyDelay && !minSec) {
+                                theDelay = notifyDelay * 60
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                            } else if(randomDelay) {
+                                newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                                theDelay = newDelay * 60
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                            } else if(targetDelay) {
+                                theDelay = minutesUp * 60
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                            } else {
+                                if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                            }
+                            if(actionType) {
+                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                            }                              
+                            state.hasntDelayedYet = false
+                            state.setpointHighOK = "yes"
+                            state.setpointLowOK = "yes"
+                            state.setpointBetweenOK = "yes"
+                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                        } else {
+                            if(actionType) {
+                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType}"
+                                unschedule(permanentDimHandler)
+                                if(actionType.contains("aFan")) { fanActionHandler() }
+                                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                                if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                                if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                                if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                                if(state.betweenTime) {
+                                    if(actionType.contains("aNotification")) { 
+                                        state.doMessage = true
+                                        messageHandler() 
+                                        if(useTheFlasher) theFlasherHandler()
                                     }
-                                    if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
-                                    theTime = theTime.replace("]","")
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
-                                    currentMode = location.mode
-                                    def modeCheck = currentMode.contains(theMode)
-                                    if(modeCheck) {
-                                        if(theTimeType == "false") {    // Minutes
-                                            timeTo = theTime ?: 2
-                                            theDelay = timeTo.toInteger() * 60
-                                        } else {
-                                            timeTo = theTime ?: 120
-                                            theDelay = timeTo.toInteger()
+                                }
+                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
+                            }
+                            if(setHSM) hsmChangeActionHandler()
+                            if(modeAction) modeChangeActionHandler()
+                            if(devicesToRefresh) devicesToRefreshActionHandler()
+                            if(rmRule) ruleMachineHandler()
+                            if(setGVname && setGVvalue) setGlobalVariableHandler()
+                            state.hasntDelayedYet = true
+                            if(timeReverse) {
+                                theDelay = timeReverseMinutes * 60
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
+                                runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                            }
+                        }
+                        state.appStatus = "active"
+                    } else {
+                        if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
+                    }
+                } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
+                    if(reverseWithDelay && state.hasntDelayedReverseYet) {
+                        if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
+                        if(reverseWithDelay) {
+                            if(timePerMode) {
+                                if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode"
+                                masterDimmersPerMode.each { itOne ->
+                                    def theData = "${state.sdPerModeMap}".split(",")        
+                                    theData.each { itTwo -> 
+                                        def pieces = itTwo.split(":")
+                                        try {
+                                            theMode = pieces[0]
+                                            theTime = pieces[5]
+                                            theTimeType = pieces[6].replace("]","")
+                                        } catch (e) {
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - Something Went Wrong"
                                         }
-                                        if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
-                                        if(theTimeType) {
-                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                        if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                                        theTime = theTime.replace("]","")
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
+                                        currentMode = location.mode
+                                        def modeCheck = currentMode.contains(theMode)
+                                        if(modeCheck) {
+                                            if(theTimeType == "false") {    // Minutes
+                                                timeTo = theTime ?: 2
+                                                theDelay = timeTo.toInteger() * 60
+                                            } else {
+                                                timeTo = theTime ?: 120
+                                                theDelay = timeTo.toInteger()
+                                            }
+                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
+                                            if(theTimeType) {
+                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                            } else {
+                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                            }
                                         } else {
-                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
                                         }
+                                    }
+                                }
+                            } else {
+                                if(reverseTimeType) {
+                                    timeTo = timeToReverse ?: 60
+                                    theDelay = timeTo.toInteger()
+                                } else {
+                                    timeTo = timeToReverse ?: 2
+                                    theDelay = timeTo.toInteger() * 60
+                                }                   
+                                if(logEnable || shortLog) {
+                                    log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
+                                    if(reverseTimeType) {
+                                        log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
                                     } else {
-                                        if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
+                                        log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                                     }
                                 }
                             }
                         } else {
-                            if(reverseTimeType) {
-                                timeTo = timeToReverse ?: 60
-                                theDelay = timeTo.toInteger()
-                            } else {
-                                timeTo = timeToReverse ?: 2
-                                theDelay = timeTo.toInteger() * 60
-                            }                   
-                            if(logEnable || shortLog) {
-                                log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
-                                if(reverseTimeType) {
-                                    log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                                } else {
-                                    log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                            if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
+                        }
+                        state.hasntDelayedReverseYet = false
+                        if(dimWhileDelayed && (state.appStatus == "active")) { 
+                            permanentDimHandler() 
+                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                        } else if(dimAfterDelayed && (state.appStatus == "active")) { 
+                            theDelay = theDelay ?: 60
+                            wds = warningDimSec ?: 30
+                            firstDelay = theDelay - wds
+                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
+                            runIn(firstDelay, permanentDimHandler)
+                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                        } else {
+                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                        }
+                    } else {             
+                        if(actionType) {
+                            if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
+                            if(actionType.contains("aFan")) { fanReverseActionHandler() }
+                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
+                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                            if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
+                            if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
+                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
+                            if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
+                            if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
+                            if(additionalSwitches) { additionalSwitchesHandler() }
+                            if(state.betweenTime) {
+                                if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                                    if(actionType.contains("aNotification")) { 
+                                        state.doMessage = true
+                                        messageHandler() 
+                                        if(useTheFlasher) theFlasherHandler()
+                                    }
                                 }
                             }
+                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                         }
-                    } else {
-                        if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
+                        state.hasntDelayedReverseYet = true
+                        state.appStatus = "inactive"
                     }
-                    state.hasntDelayedReverseYet = false
-                    if(dimWhileDelayed && (state.appStatus == "active")) { 
-                        permanentDimHandler() 
-                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                    } else if(dimAfterDelayed && (state.appStatus == "active")) { 
-                        theDelay = theDelay ?: 60
-                        wds = warningDimSec ?: 30
-                        firstDelay = theDelay - wds
-                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
-                        runIn(firstDelay, permanentDimHandler)
-                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                    } else {
-                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                    }
-                } else {             
-                    if(actionType) {
-                        if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
-                        if(actionType.contains("aFan")) { fanReverseActionHandler() }
-                        if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
-                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                        if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
-                        if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
-                        if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
-                        if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
-                        if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
-                        if(additionalSwitches) { additionalSwitchesHandler() }
-                        if(state.betweenTime) {
-                            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                                if(actionType.contains("aNotification")) { 
-                                    state.doMessage = true
-                                    messageHandler() 
-                                    if(useTheFlasher) theFlasherHandler()
-                                }
-                            }
-                        }
-                        if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
-                    }
-                    state.hasntDelayedReverseYet = true
-                    state.appStatus = "inactive"
+                } else {
+                    if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
                 }
-            } else {
-                if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
+            state.totalMatch = 0
+            state.totalMatchHelper = 0
+            state.totalConditions = 0
+            if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+            if(logEnable || shortLog) log.trace "*"
+            atomicState.running = "Stopped"
+        } catch(e) {
+            atomicState.running = "Stopped"
+            log.error(getExceptionMessageWithLine(e))
         }
-        state.totalMatch = 0
-        state.totalMatchHelper = 0
-        state.totalConditions = 0
-        if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
-        if(logEnable || shortLog) log.trace "*"
+    } else {
         atomicState.running = "Stopped"
+        if(logEnable || shortLog) log.trace "No Actions selected. Ending"
     }
 }
 
@@ -3630,6 +3641,7 @@ def switchesPerModeReverseActionHandler() {
                         }
                     }
                 } catch(e) {
+                    log.warn(getExceptionMessageWithLine(e))
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor Oops - Turning Off (${it})"
                     pauseExecution(actionDelay)
                     it.off()
@@ -3651,6 +3663,7 @@ def switchesPerModeReverseActionHandler() {
                         it.off()
                     }
                 } catch(e) {
+                    log.warn(getExceptionMessageWithLine(e))
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp Oops - Turning Off (${it})"
                     pauseExecution(actionDelay)
                     it.off()
@@ -3669,6 +3682,7 @@ def switchesPerModeReverseActionHandler() {
                         it.off()
                     }
                 } catch(e) {
+                    log.warn(getExceptionMessageWithLine(e))
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel Oops - Turning Off (${it})"
                     pauseExecution(actionDelay)
                     it.off()
@@ -3800,7 +3814,7 @@ def dimmerOnReverseActionHandler() {
                             }
                         }
                     } catch(e) {
-                        log.error e
+                        log.warn(getExceptionMessageWithLine(e))
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor Oops - Turning Off (${it})"
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - 1) ${theData[1]} - 2) ${theData[2]} - 3) ${theData[3]} - 4) ${theData[4]} - 5) ${theData[5]}"
                         pauseExecution(actionDelay)
@@ -3823,6 +3837,7 @@ def dimmerOnReverseActionHandler() {
                             it.off()
                         }
                     } catch(e) {
+                        log.warn(getExceptionMessageWithLine(e))
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp Oops - Turning Off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
@@ -3841,6 +3856,7 @@ def dimmerOnReverseActionHandler() {
                             it.off()
                         }
                     } catch(e) {
+                        log.warn(getExceptionMessageWithLine(e))
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel Oops - Turning Off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
