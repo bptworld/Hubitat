@@ -1,5 +1,5 @@
 /**
- *  ****************  Send IP2IR Child App  ****************
+ *  ****************  Send IP2IR Parent App  ****************
  *
  *  Design Usage:
  *  This app is designed to send commands to an iTach IP2IR device.
@@ -8,26 +8,25 @@
  *
  *  Copyright 2018-2021 Bryan Turcotte (@bptworld)
  *
- *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
+ *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based mine off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- * 
- *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
- *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
- *  the community grow. Have FUN with it!
- * 
+ *
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
+ *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -38,406 +37,144 @@
  *
  *  Changes:
  *
- *  2.0.5 - 01/24/21 - Changes to Send command, cosmetic changes
- *  2.0.4 - 06/13/20 - Changes to Digit Separator
- *  2.0.3 - 06/11/20 - Added 'Digit Separator' option, fixed problem with auto created device
+ *  2.0.6 - 03/15/21 - Adjustment
+ *  2.0.5 - 01/24/21 - Lots of changes for easier first time setup
+ *  2.0.4 - 01/16/21 - Cosmetic changes
+ *  2.0.3 - 06/11/20 - Added 'Digit Separator' to Advanced Options
  *  2.0.2 - 04/27/20 - Cosmetic changes
- *  2.0.1 - 10/20/19 - Time for an overhaul, this was one of the first big apps I created and it's definitely time for some changes!
-        - removed all button code since Google Home only uses switches. Switches are also much more versatile (on and off options)
-        - App now creates all the virtual switches for you based on child app name (also will delete it if app is uninstalled)
-        - Logs automatically turn off after 30 minutes
-        - Moved telnetDevice to parent app
-        - Code cleanup
-        - Cosmetic changes
+ *  2.0.1 - 10/20/19 - Moved telnetDevice to parent app
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  --
+ *  ---
  *  1.0.0 - 10/15/18 - Initial release
  */
- 
-import groovy.time.TimeCategory
-import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
-    name: "Send IP2IR Child",
+    name:"Send IP2IR",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "This app is designed to send commands to an iTach IP2IR device.",
-    category: "",
-	parent: "BPTWorld:Send IP2IR",
+    category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
-    iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Child.groovy",
+    iconX3Url: ""
 )
 
 preferences {
-    page(name: "pageConfig")
-}
-	
-def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {
-		display()
-        state.deviceCreatedMessage = ""
-		section("Instructions:", hideable: true, hidden: true) {
-			paragraph "There are 3 types of Triggers that can be used."
-        	paragraph "<b>Switch (on/off):</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
-            paragraph "<b>Switch (auto off):</b><br>This works just like a button, press to turn on and then in 1 second it will turn off."
-        	paragraph "<b>Channel:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channel numbers based on the Presets in the Parent app. Switch will also auto turn off after 1 second."
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger")) {
-			paragraph "<b>Select the Trigger Type to Activate to send the IR command</b>"
-            input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true,  options: ["Switch - on/off", "Switch - auto off", "Channel"]
-        }
-        if(triggerMode) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Name Child App and Create Virtual Device")) {
-                label title: "Enter a name for this child app.<br>This will also be the name of the virtual switch that will control the IR command.<br><small>- Switch will be automaticaly created for you!</small>", required:true, submitOnChange:true
-                if(app.label) checkVirtualChild()
-                paragraph "${state.deviceCreatedMessage}"
-                if(app.label) input "switch1", "capability.switch", title: "Select Trigger Device just created", required: true, multiple: false
-            }
-        }
-		       
-        if(triggerMode == "Switch - on/off"){
-	        section(getFormat("header-green", "${getImage("Blank")}"+" IR Command to Send")) {
-            	input "msgToSendOn", "text", required: true, title: "IR Code to Send - ON", defaultValue: ""
-                input "msgToSendOff", "text", required: true, title: "IR Code to Send - OFF", defaultValue: ""
-                input "mCommands", "bool", title: "Send the IR Code multiple times (think volume control)", required:true, defaultValue:false, submitOnChange:true
-				if(mCommands){
-					input "xTimesOn", "number", title: "How many times to send 'On' IR Code (1 to 10)", required:false, defaultValue:1, range: '1..10'
-					input "xTimesOff", "number", title: "How many times to send 'Off' IR Code (1 to 10)", required: false, defaultValue:1, range: '1..10'
-					input "Delay", "number", required: true, title: "Delay between IR Commands", defaultValue:1000
-				}
-            }
-        }
-        
-        if(triggerMode == "Switch - auto off"){
-	        section(getFormat("header-green", "${getImage("Blank")}"+" IR Command to Send")) {
-            	input "msgToSendOn", "text", required: true, title: "IR Code to Send - ON", defaultValue: "sendir..."
-                input "mCommands", "bool", title: "Send the IR Code multiple times (think volume control)", required:true, defaultValue:false, submitOnChange:true
-				if(mCommands){
-					input "xTimesOn", "number", title: "How many times to send 'On' IR Code (1 to 10)", required:false, defaultValue:1, range: '1..10'
-					input "Delay", "number", required: true, title: "Delay between IR Commands", defaultValue:1000
-				}
-            }
-        }
+     page name: "mainPage", title: "", install: true, uninstall: true
+} 
 
-        if(triggerMode == "Channel"){
-		    section(getFormat("header-green", "${getImage("Blank")}"+" IR Command to Send")) {
-			    paragraph "<b>Input between 1 and 4 digits to send.</b>"
-            	input "Digit1", "text", required: true, title: "Channel - First Digit", defaultValue: ""
-                if(parent.msgDigitDS) input "dSeparator1", "bool", title: "Use Digit Separator between First and Second Digit", defaultValue:false
-            	input "Digit2", "text", required: false, title: "Channel - Second Digit", defaultValue: ""
-                if(parent.msgDigitDS) input "dSeparator2", "bool", title: "Use Digit Separator between Second and Third Digit", defaultValue:false
-            	input "Digit3", "text", required: false, title: "Channel - Third Digit", defaultValue: ""
-                if(parent.msgDigitDS) input "dSeparator3", "bool", title: "Use Digit Separator between Third and Fourth Digit", defaultValue:false
-				input "Digit4", "text", required: fasle, title: "Channel - Fourth Digit", defaultValue: ""
-				input "Delay", "number", required: true, title: "Delay between sending Digits", defaultValue: 1000
-				input "EnterCode", "bool", title: "Send Enter Code after Digits", required: true, defaultValue: false
+def installed() {
+    log.debug "Installed with settings: ${settings}"
+    initialize()
+}
+
+def updated() {
+    log.debug "Updated with settings: ${settings}"
+    unsubscribe()
+    initialize()
+}
+
+def initialize() {
+    log.info "There are ${childApps.size()} child apps"
+    childApps.each {child ->
+    log.info "Child app: ${child.label}"
+    }
+}
+
+def mainPage() {
+    dynamicPage(name: "mainPage") {
+    	installCheck()
+		if(state.appInstalled == 'COMPLETE'){
+			section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+				paragraph "There are 4 types of Triggers that can be made."
+        		paragraph "<b>Switch:</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
+    			paragraph "<b>Button:</b><br>Used to send one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
+        		paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app."
+        		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
+        		paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+				}
+            section(getFormat("header-green", "${getImage("Blank")}"+" Telnet Setup")) {
+                paragraph "Send IP2IR needs a Telnet device to operate. This is the device you'll use to control other things."
+                input "useExistingDevice", "bool", title: "Use existing device (off) or have Send IP2IR create a new one for you (on)", defaultValue:false, submitOnChange:true
+                if(useExistingDevice) {
+                    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Send IP2IR - Telnet')", required:true, submitOnChange:true
+                    paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                    if(dataName) createDataChildDevice()
+                    if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                    paragraph "${statusMessageD}"
+                }
+                input "telnetDevice", "capability.telnet", title: "Virtual Device created for Send IP2IR", required:true, multiple:false
+                if(!useExistingDevice) {
+                    app.removeSetting("dataName")
+                    paragraph "<small>* Device must use the 'IP2IR Telnet' Driver.</small>"
+                }
+                if(telnetDevice) {
+                    paragraph "<b>Be sure to go into the the Telnet Device and finish setting it up BEFORE continuing with this app.</b>"
+                }
+    	    }
+            
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+                paragraph "<b>Please enter in the Preset Values in 'Advanced Config' BEFORE creating Child Apps</b>"
+				app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR' child</b>", multiple: true)
 			}
-		}
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
-        }
-        
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-            if(logEnable) {
-                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            
+			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
+            	paragraph "<b>Please enter in the Preset Values in 'Advanced Config' BEFORE creating Child Apps</b>"
+			}
+            section("Advanced Config:", hideable: true, hidden: true) {
+            	input "msgDigit1", "text", required: true, title: "IR Code to Send - 1", defaultValue: ""
+                input "msgDigit2", "text", required: true, title: "IR Code to Send - 2", defaultValue: ""
+                input "msgDigit3", "text", required: true, title: "IR Code to Send - 3", defaultValue: ""
+                input "msgDigit4", "text", required: true, title: "IR Code to Send - 4", defaultValue: ""
+                input "msgDigit5", "text", required: true, title: "IR Code to Send - 5", defaultValue: ""
+                input "msgDigit6", "text", required: true, title: "IR Code to Send - 6", defaultValue: ""
+                input "msgDigit7", "text", required: true, title: "IR Code to Send - 7", defaultValue: ""
+                input "msgDigit8", "text", required: true, title: "IR Code to Send - 8", defaultValue: ""
+                input "msgDigit9", "text", required: true, title: "IR Code to Send - 9", defaultValue: ""
+                input "msgDigit0", "text", required: true, title: "IR Code to Send - 0", defaultValue: ""
+                input "msgDigitE", "text", required: false, title: "IR Code to Send - Enter", defaultValue: ""
+                input "msgDigitDS", "text", required: false, title: "IR Code to Send - Digit Separator (-)", defaultValue: ""
             }
-  	    }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required:false
+ 			}
+		}
 		display2()
 	}
 }
 
-def installed() {
-	log.debug "Installed with settings: ${settings}"
-	initialize()
+def installCheck(){  
+    display()
+	state.appInstalled = app.getInstallationState() 
+	if(state.appInstalled != 'COMPLETE'){
+		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
+  	}
+  	else{
+    	log.info "Parent Installed OK"
+  	}
 }
 
-def uninstalled() {
-    unschedule()
-    unsubscribe()
-    def children = getChildDevices()
-    if(logEnable) log.debug "In uninstall - children: ${children}"
-    if(children) {
-        children.each { child ->
-            deleteChildDevice(child.deviceNetworkId)
-        }
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "IP2IR Telnet", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Send IP2IR unable to create device - ${e}" }
     } else {
-        paragraph "In uninstall - NO Children to remove"
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
     }
-}
-
-def updated() {
-	log.debug "Installed with settings: ${settings}"
-	unsubscribe()
-	unschedule()
-    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
-    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
-	initialize()
-}
-
-def initialize(){
-	if(logEnable) log.debug "Inside Initialize..."
-    checkEnableHandler()
-    setDefaults()
-    if(triggerMode == "Switch - on/off") subscribe(switch1, "switch", switchHandlerOnOff) 
-    if(triggerMode == "Switch - auto off") subscribe(switch1, "switch", switchHandlerAuto)    
-	if(triggerMode == "Channel") subscribe(switch1, "switch", channelHandlerSwitch)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
-}
-
-def switchHandlerOnOff (evt) {
-    checkEnableHandler()
-    if(state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        def switching = evt.value
-        if(switching == "on"){
-            if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
-            if(!mCommands) { 
-                parent.telnetDevice.deviceNotification(msgToSendOn)
-            } else {
-                for (i = 0; i < xTimesOn; i++) {
-                    parent.telnetDevice.deviceNotification(msgToSendOn)
-                    pauseExecution(Delay)
-                }
-            }
-        }
-
-        if(switching == "off"){
-            if(logEnable) log.debug "In switchHandlerOnOff - telnet Device: ${parent.telnetDevice} - mCommands: ${mCommands} - Switch is turned off - msg: ${msgToSendOff}"
-            if(!mCommands) {
-                parent.telnetDevice.deviceNotification(msgToSendOff)
-            } else {
-                for (i = 0; i < xTimesOff; i++) {
-                    parent.telnetDevice.deviceNotification(msgToSendOff)
-                    pauseExecution(Delay)
-                }
-            }
-        }
-    }
-}
-
-def switchHandlerAuto (evt) {
-    checkEnableHandler()
-    if(state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        def switching = evt.value
-        if(switching == "on"){
-            if(logEnable) log.debug "In switchHandlerAuto - telnet Device: ${parent.telnetDevice}  - mCommands: ${mCommands} - Switch is turned on - msg: ${msgToSendOn}"
-            if(!mCommands) {
-                parent.telnetDevice.deviceNotification(msgToSendOn)
-            } else {
-                for (i = 0; i < xTimesOn; i++) {
-                    parent.telnetDevice.deviceNotification(msgToSendOn)
-                    pauseExecution(Delay)
-                }
-            }
-        }
-    }
-}
-
-def PresetToSend1(){
-    if(Digit1 == "1") {msgToSend1 = parent.msgDigit1}
-    if(Digit1 == "2") {msgToSend1 = parent.msgDigit2}
-    if(Digit1 == "3") {msgToSend1 = parent.msgDigit3}
-    if(Digit1 == "4") {msgToSend1 = parent.msgDigit4}
-    if(Digit1 == "5") {msgToSend1 = parent.msgDigit5}
-	if(Digit1 == "6") {msgToSend1 = parent.msgDigit6}
-	if(Digit1 == "7") {msgToSend1 = parent.msgDigit7}
-	if(Digit1 == "8") {msgToSend1 = parent.msgDigit8}
-	if(Digit1 == "9") {msgToSend1 = parent.msgDigit9}
-	if(Digit1 == "0") {msgToSend1 = parent.msgDigit0}
-    if(logEnable) log.debug "Getting Digit 1...${Digit1} - ${msgToSend1}"
-}
-
-def PresetToSend2(){
-    if(Digit2 == "1") {msgToSend2 = parent.msgDigit1}
-    if(Digit2 == "2") {msgToSend2 = parent.msgDigit2}
-    if(Digit2 == "3") {msgToSend2 = parent.msgDigit3}
-    if(Digit2 == "4") {msgToSend2 = parent.msgDigit4}
-    if(Digit2 == "5") {msgToSend2 = parent.msgDigit5}
-	if(Digit2 == "6") {msgToSend2 = parent.msgDigit6}
-	if(Digit2 == "7") {msgToSend2 = parent.msgDigit7}
-	if(Digit2 == "8") {msgToSend2 = parent.msgDigit8}
-	if(Digit2 == "9") {msgToSend2 = parent.msgDigit9}
-	if(Digit2 == "0") {msgToSend2 = parent.msgDigit0}
-    if(logEnable) log.debug "Getting Digit 2...${Digit2} - ${msgToSend2}"
-}
-
-def PresetToSend3(){
-    if(Digit3 == "1") {msgToSend3 = parent.msgDigit1}
-    if(Digit3 == "2") {msgToSend3 = parent.msgDigit2}
-    if(Digit3 == "3") {msgToSend3 = parent.msgDigit3}
-    if(Digit3 == "4") {msgToSend3 = parent.msgDigit4}
-    if(Digit3 == "5") {msgToSend3 = parent.msgDigit5}
-	if(Digit3 == "6") {msgToSend3 = parent.msgDigit6}
-	if(Digit3 == "7") {msgToSend3 = parent.msgDigit7}
-	if(Digit3 == "8") {msgToSend3 = parent.msgDigit8}
-	if(Digit3 == "9") {msgToSend3 = parent.msgDigit9}
-	if(Digit3 == "0") {msgToSend3 = parent.msgDigit0}
-    if(logEnable) log.debug "Getting Digit 3...${Digit3} - ${msgToSend3}"
-}
-
-def PresetToSend4(){
-    if(Digit4 == "1") {msgToSend4 = parent.msgDigit1}
-    if(Digit4 == "2") {msgToSend4 = parent.msgDigit2}
-    if(Digit4 == "3") {msgToSend4 = parent.msgDigit3}
-    if(Digit4 == "4") {msgToSend4 = parent.msgDigit4}
-    if(Digit4 == "5") {msgToSend4 = parent.msgDigit5}
-	if(Digit4 == "6") {msgToSend4 = parent.msgDigit6}
-	if(Digit4 == "7") {msgToSend4 = parent.msgDigit7}
-	if(Digit4 == "8") {msgToSend4 = parent.msgDigit8}
-	if(Digit4 == "9") {msgToSend4 = parent.msgDigit9}
-	if(Digit4 == "0") {msgToSend4 = parent.msgDigit0}
-    if(logEnable) log.debug "Getting Digit 4...${Digit4} - ${msgToSend4}"
-}
-
-def PresetToSendE(){
-    if(parent.msgDigitE) msgToSendE = parent.msgDigitE    
-    if(logEnable) log.debug "Getting Digit E...${PresetToSendE} - ${msgToSendE}"
-}
-
-def PresetToSendDS() {
-    if(parent.msgDigitDS) msgToSendDS = parent.msgDigitDS
-    if(logEnable) log.debug "Getting Digit DS...${PresetToSendDS} - ${msgToSendDS}"
-}
-
-def channelHandlerSwitch(evt) {
-    checkEnableHandler()
-    if(state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        def switching = evt.value
-        if(switching == "on"){
-            if(logEnable) log.debug "You pressed Channel Switch On"
-            PresetToSend1()
-            PresetToSend2()
-            PresetToSend3()
-            PresetToSend4()
-            PresetToSendE()
-            PresetToSendDS()
-
-            if(logEnable) log.debug "In channelHandlerSwitch - Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
-
-            if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
-            parent.telnetDevice.deviceNotification(msgToSend1)
-            pauseExecution(Delay)
-
-            if(dSeparator1) {
-                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator1} - ${msgToSendDS}"
-                parent.telnetDevice.deviceNotification(msgToSendDS)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Digit Separator"
-            }
-
-            if(Digit2 != "null") {
-                if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
-                parent.telnetDevice.deviceNotification(msgToSend2)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Channel Digit 2"
-            }
-
-            if(dSeparator2) {
-                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator2} - ${msgToSendDS}"
-                parent.telnetDevice.deviceNotification(msgToSendDS)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Digit Separator"
-            }
-
-            if(Digit3 != "null") {
-                if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
-                parent.telnetDevice.deviceNotification(msgToSend3)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Channel Digit 3"
-            }
-
-            if(dSeparator3) {
-                if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator3} - ${msgToSendDS}"
-                parent.telnetDevice.deviceNotification(msgToSendDS)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Digit Separator"
-            }
-
-            if(Digit4 != "null") {
-                if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
-                parent.telnetDevice.deviceNotification(msgToSend4)
-                pauseExecution(Delay)
-            } else{
-                if(logEnable) log.debug "Did not send Channel Digit 4"
-            }
-            if(logEnable) log.debug "${EnterCode}"
-            if(EnterCode) {
-                if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
-                parent.telnetDevice.deviceNotification(msgToSendE)
-            } else{
-                if(logEnable) log.debug "Did not send Channel Enter"
-            }
-        }
-    }
-}
-
-def checkVirtualChild(){
-    if(logEnable) log.debug "In checkVirtualChild"
-    def children = getChildDevices()
-    if(logEnable) log.debug "In checkVirtualChild - children: ${children}"
-    if(children) {
-        if(logEnable) log.debug "In checkVirtualChild - Device already created."
-        state.deviceCreatedMessage = "Device found."
-    } else createVirtualChild()
-}
-
-def createVirtualChild() {
-    if(logEnable) log.debug "In createVirtualChild - No children Found - Time to create device"
-    try {
-        if(triggerMode == "Switch - auto off" || triggerMode == "Channel") addChildDevice("BPTWorld", "Send IP2IR Switch Driver", "IP2IR-${app.id}", null, [name: "${app.label}", label: "${app.label}"])
-        if(triggerMode == "Switch - on/off") addChildDevice("hubitat", "Virtual Switch", "IP2IR-${app.id}", null, [name: "${app.label}", label: "${app.label}"])
-        if(logEnable) log.debug "In createVirtualChild - Device ${app.label} was successfully created!"
-        state.deviceCreatedMessage = "Device created!"
-    } catch (e) {
-        log.error "Send IP2IR - ${e}"
-    }   
-}
-
-// ********** Normal Stuff **********
-
-def logsOff(){
-    if(logEnable) log.info "In LogsOff - debug logging disabled"
-    device.updateSetting("logEnable",[value:"false",type:"bool"])
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { state.eSwitch = true }
-            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
-        }
-    }
-}
-
-def setDefaults(){
-    if(state.uniqueIdentifier == null || state.uniqueIdentifier == "") state.uniqueIdentifier = 0
+    return statusMessageD
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -476,42 +213,25 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    timeSinceNewHeaders()   
-    if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-        def params = [
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-            requestContentType: "application/json",
-            contentType: "application/json",
-            timeout: 30
-        ]
-
-        try {
-            def result = null
-            httpGet(params) { resp ->
-                state.headerMessage = resp.data.headerMessage
-                state.footerMessage = resp.data.footerMessage
-            }
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
         }
-        catch (e) { }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
-}
-
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
-        prev = new Date()
-    } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
     }
-    def now = new Date()
-    use(TimeCategory) {       
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.totalHours = (state.days * 24) + state.hours
-    }
-    state.previous = now
 }
