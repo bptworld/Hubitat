@@ -688,7 +688,7 @@ def messageHandler(where,msg,place) {
                     }
                 } else if(where == "departed" || where == "HomeDeparted") {
                     if(speakHasDeparted) letsTalk(state.message)
-                    if(pushHasDeparted) pushHandlertheMessage(state.message)
+                    if(pushHasDeparted) pushHandler(state.message)
                     if(useTheFlasher && flashDepartedHomePreset) {
                         flashData = "Preset::${flashDepartedHomePreset}"
                         theFlasherDevice.sendPreset(flashData)
