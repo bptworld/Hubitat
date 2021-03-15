@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 03/15/21 - Adjustment
  *  2.0.5 - 01/24/21 - Lots of changes for easier first time setup
  *  2.0.4 - 01/16/21 - Cosmetic changes
  *  2.0.3 - 06/11/20 - Added 'Digit Separator' to Advanced Options
@@ -49,7 +50,7 @@
 
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -108,7 +109,7 @@ def mainPage() {
                     if(statusMessageD == null) statusMessageD = "Waiting on status message..."
                     paragraph "${statusMessageD}"
                 }
-                input "telnetDevice", "capability.switch", title: "Virtual Device created for Send IP2IR", required:true, multiple:false
+                input "telnetDevice", "capability.telnet", title: "Virtual Device created for Send IP2IR", required:true, multiple:false
                 if(!useExistingDevice) {
                     app.removeSetting("dataName")
                     paragraph "<small>* Device must use the 'IP2IR Telnet' Driver.</small>"
