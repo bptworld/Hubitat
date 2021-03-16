@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.3 - 03/15/21 - Fixed a bug in the departed method. No longer throwing errors.
  *  2.1.2 - 12/03/20 - Fixed aplace --> aPlace in arrivedHandler and now its working :-)
  *  2.1.1 - 10/17/20 - Added 'Who's with me' options
  *  2.1.0 - 09/02/20 - Cosmetic changes
@@ -688,7 +689,7 @@ def messageHandler(where,msg,place) {
                     }
                 } else if(where == "departed" || where == "HomeDeparted") {
                     if(speakHasDeparted) letsTalk(state.message)
-                    if(pushHasDeparted) pushHandlertheMessage(state.message)
+                    if(pushHasDeparted) pushHandler(state.message)
                     if(useTheFlasher && flashDepartedHomePreset) {
                         flashData = "Preset::${flashDepartedHomePreset}"
                         theFlasherDevice.sendPreset(flashData)
