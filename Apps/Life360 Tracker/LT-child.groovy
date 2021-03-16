@@ -51,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.1"
+	state.version = "2.1.3"
 }
 
 definition(
