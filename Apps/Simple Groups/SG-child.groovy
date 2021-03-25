@@ -8,7 +8,7 @@
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,11 +37,9 @@
  *
  *  Changes:
  *
+ *  2.0.1 - 03/25/21 - Adjustments
  *  2.0.0 - 01/17/21 - Complete rewrite, Added Delay. Other adjustments
- *  1.0.4 - 01/13/21 - Adjustments
- *  1.0.3 - 12/31/20 - Fixed boo-boo with switches, Added Shades, Added pause and disable switch
- *  1.0.2 - 08/07/20 - Fixed switchOptions
- *  1.0.1 - 05/21/20 - Added more stuff
+ *  ---
  *  1.0.0 - 05/20/20 - Initial release.
  *
  */
@@ -51,14 +49,14 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Groups"
-	state.version = "2.0.0"
+	state.version = "2.0.1"
 }
 
 definition(
     name: "Simple Groups Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Group just about anything. Even groups of groups!",
+    description: "Group just about anything.",
     category: "Convenience",
 	parent: "BPTWorld:Simple Groups",
     iconUrl: "",
@@ -103,23 +101,26 @@ def pageConfig() {
                 allAttrs1 = groupEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
                 input "groupAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
-                if(groupAtt == "acceleration") { theAtt1 = "active";theAtt2 = "inactive" }
-                if(groupAtt == "carbonMonoxide") { theAtt1 = "detected";theAtt2 = "clear" }
-                if(groupAtt == "contact") { theAtt1 = "open";theAtt2 = "closed" }
-                if(groupAtt == "door") { theAtt1 = "open";theAtt2 = "closed" }
-                if(groupAtt == "filterStatus") { theAtt1 = "replace";theAtt2 = "normal" }
-                if(groupAtt == "lock") { theAtt1 = "unlocked";theAtt2 = "locked" }
-                if(groupAtt == "motion") { theAtt1 = "active";theAtt2 = "inactive" }
-                if(groupAtt == "windowShade") { theAtt1 = "open";theAtt2 = "closed" }
-                if(groupAtt == "shock") { theAtt1 = "detected";theAtt2 = "clear" }
-                if(groupAtt == "sleeping") { theAtt1 = "not sleeping";theAtt2 = "sleeping" }
-                if(groupAtt == "smoke") { theAtt1 = "detected";theAtt2 = "clear" }
-                if(groupAtt == "sound") { theAtt1 = "detected";theAtt2 = "clear" }
-                if(groupAtt == "switch") { theAtt1 = "on";theAtt2 = "off" }
-                if(groupAtt == "tamper") { theAtt1 = "detected";theAtt2 = "clear" }
-                if(groupAtt == "valve") { theAtt1 = "open";theAtt2 = "closed" }
-                if(groupAtt == "water") { theAtt1 = "wet";theAtt2 = "dry" }
-                
+                if(groupAtt) {
+                    theAtt1 = null ; theAtt2 = null
+                    if(groupAtt == "acceleration") { theAtt1 = "active";theAtt2 = "inactive" }
+                    if(groupAtt == "carbonMonoxide") { theAtt1 = "detected";theAtt2 = "clear" }
+                    if(groupAtt == "contact") { theAtt1 = "open";theAtt2 = "closed" }
+                    if(groupAtt == "door") { theAtt1 = "open";theAtt2 = "closed" }
+                    if(groupAtt == "filterStatus") { theAtt1 = "replace";theAtt2 = "normal" }
+                    if(groupAtt == "lock") { theAtt1 = "unlocked";theAtt2 = "locked" }
+                    if(groupAtt == "motion") { theAtt1 = "active";theAtt2 = "inactive" }
+                    if(groupAtt == "presence") { theAtt1 = "present";theAtt2 = "not present" }
+                    if(groupAtt == "windowShade") { theAtt1 = "open";theAtt2 = "closed" }
+                    if(groupAtt == "shock") { theAtt1 = "detected";theAtt2 = "clear" }
+                    if(groupAtt == "sleeping") { theAtt1 = "not sleeping";theAtt2 = "sleeping" }
+                    if(groupAtt == "smoke") { theAtt1 = "detected";theAtt2 = "clear" }
+                    if(groupAtt == "sound") { theAtt1 = "detected";theAtt2 = "clear" }
+                    if(groupAtt == "switch") { theAtt1 = "on";theAtt2 = "off" }
+                    if(groupAtt == "tamper") { theAtt1 = "detected";theAtt2 = "clear" }
+                    if(groupAtt == "valve") { theAtt1 = "open";theAtt2 = "closed" }
+                    if(groupAtt == "water") { theAtt1 = "wet";theAtt2 = "dry" }
+                }
                 if(theAtt1 == null) {
                     paragraph "The selected attribute isn't supported at this time. Please let me know what attribute you want added and I can see if it's possible. Thanks."
                 } else {
@@ -133,7 +134,7 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-            input "onDelay", "number", title: "How long to be '${att1}' before triggering a change (in seconds)", required:true, defaultValue:1, submitOnChange:true
+            input "onDelay", "number", title: "How long to be '${att1}' before triggering a change (in seconds - 0 for No Delay)", required:true, defaultValue:0, submitOnChange:true
             input "offDelay", "number", title: "How long to be '${att2}' before triggering a change (in seconds)", required:true, defaultValue:120, submitOnChange:true
         }
         
@@ -217,7 +218,7 @@ def groupHandler(evt) {
         if(groupEvent) {
             if(logEnable) log.debug "     - - - - - Start - - - - -     "
             activeCount = 0
-            theOnDelay = onDelay ?: 1
+            theOnDelay = onDelay ?: 0
             theOffDelay = offDelay ?: 120
 
             groupEvent.each { it ->
@@ -231,9 +232,14 @@ def groupHandler(evt) {
             if(activeCount >= 1) {
                 if(logEnable) log.debug "In groupHandler - Received ${att1} - waiting ${theOnDelay} seconds"
                 unschedule(sendOffCommand)
-                runIn(theOnDelay, sendOnCommand)
+                if(theOnDelay >= 1) {
+                    runIn(theOnDelay, sendOnCommand)
+                } else {
+                    sendOnCommand()
+                }
             } else {
                 if(logEnable) log.debug "In groupHandler - Received ${att2} - waiting ${theOffDelay} seconds"
+                unschedule(sendOnCommand)
                 runIn(theOffDelay, sendOffCommand)
             }
             if(logEnable) log.debug "     - - - - - End - - - - -     "
