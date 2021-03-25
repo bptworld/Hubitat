@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.2 - 03/25/21 - More Adjustments
 *  2.9.1 - 03/14/21 - Adjustments
 *  2.9.0 - 03/05/21 - Fix for Between Two Times and Sunset/Sunrise to Reverse
 *  ---
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.1"
+    state.version = "2.9.2"
 }
 
 definition(
@@ -1965,6 +1966,10 @@ def pageConfig() {
                 app.removeSetting("sdPerModeColor")
                 app.removeSetting("sdPerModeTime")
                 app.removeSetting("sdPerModeTimeType")
+                app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
+                app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
+                app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])                  
+                app.updateSetting("refreshMap",[value:"false",type:"bool"])
                 state.sdPerModeMap = [:]
                 state.thePerModeMap = null
             }
@@ -2049,7 +2054,7 @@ def pageConfig() {
                     }
                     if(reverseWithDelay) {
                         paragraph "<hr>"
-                        if(timePerMode) {
+                        if(sdTimePerMode) {
                             paragraph "Using Time to Reverse Per Mode."
                         } else {
                             input "reverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", defaultValue:false, submitOnChange:true
@@ -2761,8 +2766,8 @@ def startTheProcess(evt) {
                     if(reverseWithDelay && state.hasntDelayedReverseYet) {
                         if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
                         if(reverseWithDelay) {
-                            if(timePerMode) {
-                                if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode"
+                            if(sdTimePerMode) {
+                                if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-sdTimePerMode"
                                 masterDimmersPerMode.each { itOne ->
                                     def theData = "${state.sdPerModeMap}".split(",")        
                                     theData.each { itTwo -> 
@@ -2772,11 +2777,11 @@ def startTheProcess(evt) {
                                             theTime = pieces[5]
                                             theTimeType = pieces[6].replace("]","")
                                         } catch (e) {
-                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - Something Went Wrong"
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
                                         }
                                         if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
                                         theTime = theTime.replace("]","")
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-timePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
                                         currentMode = location.mode
                                         def modeCheck = currentMode.contains(theMode)
                                         if(modeCheck) {
@@ -2787,14 +2792,14 @@ def startTheProcess(evt) {
                                                 timeTo = theTime ?: 120
                                                 theDelay = timeTo.toInteger()
                                             }
-                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-timePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
+                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-sdTimePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
                                             if(theTimeType) {
                                                 if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                                             } else {
                                                 if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
                                             }
                                         } else {
-                                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-timePerMode - No Match"
+                                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-sdTimePerMode - No Match"
                                         }
                                     }
                                 }
