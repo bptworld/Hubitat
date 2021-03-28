@@ -8,7 +8,7 @@
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.3 - 03/27/21 - Sorted Attributes
  *  2.5.2 - 02/08/21 - Adjustment to 'Select the colors to display based on your setpoints'. Setpoints can now include negative numbers.
  *  2.5.1 - 12/20/20 - Adjustments to device value
  *  2.5.0 - 12/06/20 - Added more error catching
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.2"
+	state.version = "2.5.3"
 }
 
 definition(
@@ -246,8 +247,9 @@ def pageConfig() {
                         if(theDevice) {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
+                            allAtts1 = allAtts.sort { a, b -> a.value <=> b.value }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
-                            input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts, defaultValue:state.theAtts_$x
+                            input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts1, defaultValue:state.theAtts_$x
                             deviceAtt = app."deviceAtts_$x"
                             
                             input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
@@ -476,8 +478,9 @@ def pageConfig() {
                         if(theDevicea) {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
+                            allAttsaa = allAttsa.sort { a, b -> a.value <=> b.value }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
-                            input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa, defaultValue:state.theAttsa_$x
+                            input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsaa, defaultValue:state.theAttsa_$x
                             deviceAtta = app."deviceAttsa_$x"
                             
                             input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
@@ -705,8 +708,9 @@ def pageConfig() {
                         if(theDeviceb) {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
+                            allAttsba = allAttsb.sort { a, b -> a.value <=> b.value }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
-                            input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb, defaultValue:state.theAttsb_$x
+                            input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsba, defaultValue:state.theAttsb_$x
                             deviceAttb = app."deviceAttsb_$x"
                                                                                                                               
                             input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
