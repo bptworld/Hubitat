@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.4 - 04/02/21 - More logic changes
 *  2.9.3 - 03/31/21 - Overhaul of Sunset/Sunrise handlers
 *  2.9.2 - 03/25/21 - More Adjustments
 *  2.9.1 - 03/14/21 - Adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.3"
+    state.version = "2.9.4"
 }
 
 definition(
@@ -2522,8 +2523,8 @@ def initialize() {
         if(timeDaysType) {
             if(timeDaysType.contains("tPeriodic")) { 
                 if(logEnable) log.debug "In initialize - tPeriodic - Creating Cron Jobs"
-                if(preMadePeriodic) { schedule(preMadePeriodic, runAtTime1) }
-                if(preMadePeriodic2) { schedule(preMadePeriodic2, runAtTime2) }
+                if(preMadePeriodic) { schedule(preMadePeriodic, startTimeBetween) }
+                if(preMadePeriodic2) { schedule(preMadePeriodic2, endTimeBetween) }
             }
         }
         
@@ -2584,6 +2585,7 @@ def startTheProcess(evt) {
             state.setpointLow = null
             state.setpointHigh = null
             state.whoText = ""
+            state.trueReverse = true
             if(startTime || preMadePeriodic) {
                 state.totalMatch = 1
                 state.totalConditions = 1
@@ -2638,14 +2640,14 @@ def startTheProcess(evt) {
                     modeHandler()
                     hsmAlertHandler(state.whatHappened)
                     hsmStatusHandler(state.whatHappened)
-                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
-                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "skipToReverse" }
+                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "skipToReverse" }
+                    if(timeBetweenSunRestriction && !state.timeBetween) { state.whatToDo = "skipToReverse" } 
+                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "skipToReverse" } 
                 }           
                 if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
-                if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
 
                 if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
                     if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
@@ -2700,9 +2702,10 @@ def startTheProcess(evt) {
 
             if(state.whatToDo == "stop") {
                 if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
+                atomicState.running = "Stopped"
             } else {
                 if(state.whatToDo == "run") {
-                    if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
+                    if(state.modeMatch && state.daysMatch && state.betweenTime && state.modeMatch) {
                         if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                         if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                         if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
@@ -2733,7 +2736,7 @@ def startTheProcess(evt) {
                         } else {
                             if(actionType) {
                                 if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType}"
-                                unschedule(permanentDimHandler)
+                                unschedule(permanentDimHandler)                              
                                 if(actionType.contains("aFan")) { fanActionHandler() }
                                 if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                                 if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
@@ -2852,26 +2855,31 @@ def startTheProcess(evt) {
                         }
                     } else {             
                         if(actionType) {
+                            if(state.modeMatch && state.daysMatch && state.betweenTime && state.modeMatch) {
+                                state.trueReverse = true
+                            } else {
+                                state.trueReverse = false
+                            }
                             if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
-                            if(actionType.contains("aFan")) { fanReverseActionHandler() }
-                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
-                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
-                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
-                            if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
-                            if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
-                            if(additionalSwitches) { additionalSwitchesHandler() }
-                            if(state.betweenTime) {
-                                if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                                    if(actionType.contains("aNotification")) { 
-                                        state.doMessage = true
-                                        messageHandler() 
-                                        if(useTheFlasher) theFlasherHandler()
-                                    }
+                            fanReverseActionHandler()
+                            lzw45ReverseHandler()
+                            switchesOnReverseActionHandler()
+                            switchesToggleActionHandler()
+                            switchesInSequenceReverseHandler()
+
+                            if((permanentDim || permanentDim2) && state.trueReverse) {
+                                permanentDimHandler()
+                            } else {
+                                switchesOffReverseActionHandler()
+                                dimmerOnReverseActionHandler()
+                                switchesPerModeReverseActionHandler()
+                            }
+
+                            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                                if(actionType.contains("aNotification")) { 
+                                    state.doMessage = true
+                                    messageHandler() 
+                                    if(useTheFlasher) theFlasherHandler()
                                 }
                             }
                             if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
@@ -3576,50 +3584,52 @@ def restrictionHandler() {
 // ********** Start Actions **********
 def switchesPerModeActionHandler() {
     if(logEnable) log.debug "In switchesPerModeActionHandler - (${state.version})"
-    currentMode = location.mode
-    state.modeMatch = false
-    masterDimmersPerMode.each { itOne ->
-        def theData = "${state.sdPerModeMap}".split(",")        
-        theData.each { itTwo -> 
-            def pieces = itTwo.split(":")
-            try {
-                theMode = pieces[0]
-                theDevice = pieces[1]
-                theLevel = pieces[2]
-                theTemp = pieces[3]
-                theColor = pieces[4]
-                theTime = pieces[5]
-                theTimeType = pieces[6]
-            } catch (e) {
-                log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
-                if(logEnable) log.warn "In switchesPerModeActionHandler - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTemp} - 4: ${theColor} - 5: ${theTime} - 6: ${theTimeType}"
-            }
-            if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
-            def modeCheck = currentMode.contains(theMode)
-            if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
-            if(modeCheck) {
-                state.modeMatch = true
-                theColor = theColor.replace("]","")
-                theTime = theTime.replace("]","")
-                def cleanOne = "${itOne}"
-                def cleanTwo = theDevice.replace("[","").replace("]","").split(";")
-                cleanTwo.each { itThree ->
-                    if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
-                    if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
-                    if(cleanOne == itThree) {
-                        if((logEnable && state.spmah) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
-                        state.fromWhere = "switchesPerMode"
-                        state.sPDM = itOne
-                        state.onColor = "${theColor}"
-                        state.onLevel = theLevel
-                        state.onTemp = theTemp
-                        setLevelandColorHandler()
+    if(masterDimmersPerMode) {
+        currentMode = location.mode
+        state.modeMatch = false
+        masterDimmersPerMode.each { itOne ->
+            def theData = "${state.sdPerModeMap}".split(",")        
+            theData.each { itTwo -> 
+                def pieces = itTwo.split(":")
+                try {
+                    theMode = pieces[0]
+                    theDevice = pieces[1]
+                    theLevel = pieces[2]
+                    theTemp = pieces[3]
+                    theColor = pieces[4]
+                    theTime = pieces[5]
+                    theTimeType = pieces[6]
+                } catch (e) {
+                    log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
+                    if(logEnable) log.warn "In switchesPerModeActionHandler - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTemp} - 4: ${theColor} - 5: ${theTime} - 6: ${theTimeType}"
+                }
+                if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                def modeCheck = currentMode.contains(theMode)
+                if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
+                if(modeCheck) {
+                    state.modeMatch = true
+                    theColor = theColor.replace("]","")
+                    theTime = theTime.replace("]","")
+                    def cleanOne = "${itOne}"
+                    def cleanTwo = theDevice.replace("[","").replace("]","").split(";")
+                    cleanTwo.each { itThree ->
+                        if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
+                        if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
+                        if(cleanOne == itThree) {
+                            if((logEnable && state.spmah) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
+                            state.fromWhere = "switchesPerMode"
+                            state.sPDM = itOne
+                            state.onColor = "${theColor}"
+                            state.onLevel = theLevel
+                            state.onTemp = theTemp
+                            setLevelandColorHandler()
+                        }
                     }
                 }
             }
         }
+        if(state.modeMatch == false) switchesPerModeReverseActionHandler()
     }
-    if(state.modeMatch == false) switchesPerModeReverseActionHandler()
 }
 
 def switchesPerModeReverseActionHandler() {
@@ -3642,7 +3652,7 @@ def switchesPerModeReverseActionHandler() {
                         it.setColorTemperature(cTemp)
                         pauseExecution(actionDelay)
                         it.setLevel(level)                          
-                        if(oldStatus == "off" || trueReverse) {                            
+                        if(oldStatus == "off" || trueReverse || state.trueReverse == false) {                            
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
@@ -3652,7 +3662,7 @@ def switchesPerModeReverseActionHandler() {
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         pauseExecution(actionDelay)
                         it.setColor(theValue)
-                        if(oldStatus == "off" || trueReverse) {
+                        if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
@@ -3675,7 +3685,7 @@ def switchesPerModeReverseActionHandler() {
                     it.setLevel(level)
                     pauseExecution(actionDelay)
                     it.setColorTemperature(cTemp)
-                    if(oldStatus == "off" || trueReverse) {
+                    if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
@@ -3694,7 +3704,7 @@ def switchesPerModeReverseActionHandler() {
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
                     pauseExecution(actionDelay)
                     it.setLevel(level)
-                    if(oldStatus == "off" || trueReverse) {
+                    if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
@@ -3714,69 +3724,73 @@ def switchesPerModeReverseActionHandler() {
 }
 
 def switchesInSequenceHandler() {
-    if(logEnable) log.debug "In switchesInSequenceHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
-    if(deviceSeqAction1) {
-        deviceSeqAction1.each { it ->
-            pauseExecution(actionDelay)
-            it.on()
+    if(deviceSeqAction1 || deviceSeqAction2 || deviceSeqAction3 || deviceSeqAction4 || deviceSeqAction5) {
+        if(logEnable) log.debug "In switchesInSequenceHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
+        if(deviceSeqAction1) {
+            deviceSeqAction1.each { it ->
+                pauseExecution(actionDelay)
+                it.on()
+            }
         }
-    }
-    if(deviceSeqAction2) {
-        deviceSeqAction2.each { it ->
-            pauseExecution(actionDelay)
-            it.on()
+        if(deviceSeqAction2) {
+            deviceSeqAction2.each { it ->
+                pauseExecution(actionDelay)
+                it.on()
+            }
         }
-    }
-    if(deviceSeqAction3) {
-        deviceSeqAction3.each { it ->
-            pauseExecution(actionDelay)
-            it.on()
+        if(deviceSeqAction3) {
+            deviceSeqAction3.each { it ->
+                pauseExecution(actionDelay)
+                it.on()
+            }
         }
-    }
-    if(deviceSeqAction4) {
-        deviceSeqAction4.each { it ->
-            pauseExecution(actionDelay)
-            it.on()
+        if(deviceSeqAction4) {
+            deviceSeqAction4.each { it ->
+                pauseExecution(actionDelay)
+                it.on()
+            }
         }
-    }
-    if(deviceSeqAction5) {
-        deviceSeqAction5.each { it ->
-            pauseExecution(actionDelay)
-            it.on()
+        if(deviceSeqAction5) {
+            deviceSeqAction5.each { it ->
+                pauseExecution(actionDelay)
+                it.on()
+            }
         }
     }
 }
 
 def switchesInSequenceReverseHandler() {
-    if(logEnable) log.debug "In switchesInSequenceReverseHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
-    if(deviceSeqAction5) {
-        deviceSeqAction5.each { it ->
-            pauseExecution(actionDelay)
-            it.off()
+    if(deviceSeqAction1 || deviceSeqAction2 || deviceSeqAction3 || deviceSeqAction4 || deviceSeqAction5) {
+        if(logEnable) log.debug "In switchesInSequenceReverseHandler (${state.version}) - deviceSeqAction1: ${deviceSeqAction1} - deviceSeqAction2: ${deviceSeqAction2} - deviceSeqAction3: ${deviceSeqAction3} - deviceSeqAction4: ${deviceSeqAction4} - deviceSeqAction5: ${deviceSeqAction5}"
+        if(deviceSeqAction5) {
+            deviceSeqAction5.each { it ->
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
-    }
-    if(deviceSeqAction4) {
-        deviceSeqAction4.each { it ->
-            pauseExecution(actionDelay)
-            it.off()
+        if(deviceSeqAction4) {
+            deviceSeqAction4.each { it ->
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
-    }
-    if(deviceSeqAction3) {
-        deviceSeqAction3.each { it ->
-            pauseExecution(actionDelay)
-            it.off()
+        if(deviceSeqAction3) {
+            deviceSeqAction3.each { it ->
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
-    }
-    if(deviceSeqAction2) {
-        deviceSeqAction2.each { it ->
-            pauseExecution(actionDelay)
-            it.off()
+        if(deviceSeqAction2) {
+            deviceSeqAction2.each { it ->
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
-    }
-    if(deviceSeqAction1) {
-        deviceSeqAction1.each { it ->
-            pauseExecution(actionDelay)
-            it.off()
+        if(deviceSeqAction1) {
+            deviceSeqAction1.each { it ->
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
     }
 }
@@ -3815,7 +3829,7 @@ def dimmerOnReverseActionHandler() {
                             it.setColorTemperature(cTemp)
                             pauseExecution(actionDelay)
                             it.setLevel(level)                          
-                            if(oldStatus == "off" || trueReverse) {                            
+                            if(oldStatus == "off" || trueReverse || state.trueReverse == false) {                            
                                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                                 pauseExecution(actionDelay)
                                 it.off()
@@ -3825,7 +3839,7 @@ def dimmerOnReverseActionHandler() {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                             pauseExecution(actionDelay)
                             it.setColor(theValue)
-                            if(oldStatus == "off" || trueReverse) {
+                            if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                                 pauseExecution(actionDelay)
                                 it.off()
@@ -3849,7 +3863,7 @@ def dimmerOnReverseActionHandler() {
                         it.setLevel(level)
                         pauseExecution(actionDelay)
                         it.setColorTemperature(cTemp)
-                        if(oldStatus == "off" || trueReverse) {
+                        if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
@@ -3868,7 +3882,7 @@ def dimmerOnReverseActionHandler() {
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
                         pauseExecution(actionDelay)
                         it.setLevel(level)
-                        if(oldStatus == "off" || trueReverse) {
+                        if(oldStatus == "off" || trueReverse || state.trueReverse == false) {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
@@ -3950,48 +3964,56 @@ def permanentDimHandler() {
 }
 
 def devicesToRefreshActionHandler() {
-    devicesToRefresh.each { it ->
-        if(logEnable) log.debug "In devicesToRefreshActionHandler - Refreshing ${it}"
-        pauseExecution(actionDelay)
-        it.refresh()
+    if(devicesToRefresh) {
+        devicesToRefresh.each { it ->
+            if(logEnable) log.debug "In devicesToRefreshActionHandler - Refreshing ${it}"
+            pauseExecution(actionDelay)
+            it.refresh()
+        }
     }
 }
 
 def additionalSwitchesHandler() {
-    if(logEnable) log.debug "In additionalSwitchesHandler (${state.version})"
-    additionalSwitches.each { it ->
-        pauseExecution(actionDelay)
-        it.off()
+    if(additionalSwitches) {
+        if(logEnable) log.debug "In additionalSwitchesHandler (${state.version})"
+        additionalSwitches.each { it ->
+            pauseExecution(actionDelay)
+            it.off()
+        }
     }
 }
 
 def fanActionHandler() {
-    fanAction.each { it ->
-        if(logEnable) log.debug "In fanActionHandler - Changing ${it} to ${fanSpeed}"
-        if(state.setFanOldMap == false) {
-            state.oldFanMap = [:]
-            name = (it.displayName).replace(" ","")
-            status = it.currentValue("speed")
-            oldStatus = "${status}"
-            state.oldFanMap.put(name,oldStatus) 
-            state.setFanOldMap = true
+    if(fanAction) {
+        fanAction.each { it ->
+            if(logEnable) log.debug "In fanActionHandler - Changing ${it} to ${fanSpeed}"
+            if(state.setFanOldMap == false) {
+                state.oldFanMap = [:]
+                name = (it.displayName).replace(" ","")
+                status = it.currentValue("speed")
+                oldStatus = "${status}"
+                state.oldFanMap.put(name,oldStatus) 
+                state.setFanOldMap = true
+            }
+            log.warn "oldStatus: ${oldStatus}"
+            pauseExecution(actionDelay)
+            it.setSpeed(fanSpeed)
         }
-        log.warn "oldStatus: ${oldStatus}"
-        pauseExecution(actionDelay)
-        it.setSpeed(fanSpeed)
     }
 }
 
 def fanReverseActionHandler() {
-    if(state.oldFanMap) {
-        fanAction.each { it ->
-            name = (it.displayName).replace(" ","")
-            data = state.oldFanMap.get(name)
-            def fanSpeed = data
-            if(logEnable) log.debug "In fanReverseActionHandler - Changing ${it} to ${fanSpeed}"
-            pauseExecution(actionDelay)
-            it.setSpeed(fanSpeed)
-            state.setFanOldMap = false
+    if(fanAction) {
+        if(state.oldFanMap) {
+            fanAction.each { it ->
+                name = (it.displayName).replace(" ","")
+                data = state.oldFanMap.get(name)
+                def fanSpeed = data
+                if(logEnable) log.debug "In fanReverseActionHandler - Changing ${it} to ${fanSpeed}"
+                pauseExecution(actionDelay)
+                it.setSpeed(fanSpeed)
+                state.setFanOldMap = false
+            }
         }
     }
 }
@@ -4073,33 +4095,37 @@ def lockUserActionHandler(evt) {
 }
 
 def lzw45ActionHandler() {
-    if(logEnable) log.debug "In lzw45ActionHandler - Sending to ${lzw45Action} - command: ${lzw45Command}"
-    // Save current Status
-    state.oldLZW45Switch = lzw45Action.currentValue("switch")
-    state.oldLZW45Level = lzw45Action.currentValue("level")
+    if(lzw45Action) {
+        if(logEnable) log.debug "In lzw45ActionHandler - Sending to ${lzw45Action} - command: ${lzw45Command}"
+        // Save current Status
+        state.oldLZW45Switch = lzw45Action.currentValue("switch")
+        state.oldLZW45Level = lzw45Action.currentValue("level")
 
-    pauseExecution(actionDelay)
-    if(lzw45Command == "on") lzw45Action.on()
-    if(lzw45Command == "off") lzw45Action.off()
-    if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStart(cesParam1)
-    if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStart(pesParam1,pesParam2)
-    if(lzw45Command == "Start Notification") lzw45Action.startNotification(snParam1)
+        pauseExecution(actionDelay)
+        if(lzw45Command == "on") lzw45Action.on()
+        if(lzw45Command == "off") lzw45Action.off()
+        if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStart(cesParam1)
+        if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStart(pesParam1,pesParam2)
+        if(lzw45Command == "Start Notification") lzw45Action.startNotification(snParam1)
+    }
 }
 
 def lzw45ReverseHandler() {
-    if(logEnable) log.debug "In lzw45ReverseHandler - Sending to ${lzw45Action}"
-    if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStop()
-    if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStop()
-    if(lzw45Command == "Start Notification") lzw45Action.stopNotification()
-    pauseExecution(actionDelay)
-    if(state.oldLZW45Switch == "on") {
-        lzw45Action.setLevel(state.oldLZW45Level)
+    if(lzw45Action) {
+        if(logEnable) log.debug "In lzw45ReverseHandler - Sending to ${lzw45Action}"
+        if(lzw45Command == "Custom Effect Start") lzw45Action.customEffectStop()
+        if(lzw45Command == "Pixel Effect Start") lzw45Action.pixelEffectStop()
+        if(lzw45Command == "Start Notification") lzw45Action.stopNotification()
         pauseExecution(actionDelay)
-        lzw45Action.on() 
-    } else {
-        lzw45Action.setLevel(state.oldLZW45Level)
-        pauseExecution(actionDelay)
-        lzw45Action.off()
+        if(state.oldLZW45Switch == "on") {
+            lzw45Action.setLevel(state.oldLZW45Level)
+            pauseExecution(actionDelay)
+            lzw45Action.on() 
+        } else {
+            lzw45Action.setLevel(state.oldLZW45Level)
+            pauseExecution(actionDelay)
+            lzw45Action.off()
+        }
     }
 }
 
@@ -4218,73 +4244,83 @@ def actionHttpHandler() {
 }
 
 def switchesOnActionHandler() {
-    state.switchesOnMap = [:]
-    switchesOnAction.each { it ->
-        if(logEnable) log.debug "In switchesOnActionHandler - Turning on ${it}"
-        cStatus = it.currentValue('switch')
-        name = (it.displayName).replace(" ","")
-        state.switchesOnMap.put(name,cStatus)
-        pauseExecution(actionDelay)
-        if(cStatus == "off") it.on()
+    if(switchesOnAction) {
+        state.switchesOnMap = [:]
+        switchesOnAction.each { it ->
+            if(logEnable) log.debug "In switchesOnActionHandler - Turning on ${it}"
+            cStatus = it.currentValue('switch')
+            name = (it.displayName).replace(" ","")
+            state.switchesOnMap.put(name,cStatus)
+            pauseExecution(actionDelay)
+            if(cStatus == "off") it.on()
+        }
     }
 }
 
 def switchesOnReverseActionHandler() {
-    log.info "switchesOnMap: ${state.switchesOnMap}"
-    switchesOnAction.each { it ->
-        name = (it.displayName).replace(" ","")
-        data = state.switchesOnMap.get(name)
-        if(logEnable) log.debug "In switchesOnReverseActionHandler - Reversing ${it} - Previous status: ${data} - trueReverse: ${trueReverse}"        
-        pauseExecution(actionDelay)
-        if(trueReverse) {
-            it.off()
-        } else {
-            if(data == "off") it.off()
-            if(data == "on") it.on()
+    if(switchesOnAction) {
+        log.info "switchesOnMap: ${state.switchesOnMap}"
+        switchesOnAction.each { it ->
+            name = (it.displayName).replace(" ","")
+            data = state.switchesOnMap.get(name)
+            if(logEnable) log.debug "In switchesOnReverseActionHandler - Reversing ${it} - Previous status: ${data} - trueReverse: ${trueReverse}"        
+            pauseExecution(actionDelay)
+            if(trueReverse || state.trueReverse == false) {
+                it.off()
+            } else {
+                if(data == "off") it.off()
+                if(data == "on") it.on()
+            }
         }
+        state.switchesOnMap = [:]
     }
-    state.switchesOnMap = [:]
 }
 
 def switchesOffActionHandler() {
-    state.switchesOffMap = [:]
-    switchesOffAction.each { it ->
-        if(logEnable) log.debug "In switchesOffActionHandler - Turning off ${it}"
-        cStatus = it.currentValue('switch')
-        name = (it.displayName).replace(" ","")
-        state.switchesOffMap.put(name,cStatus)
-        pauseExecution(actionDelay)
-        if(cStatus == "on") it.off()
+    if(switchesOffAction) {
+        state.switchesOffMap = [:]
+        switchesOffAction.each { it ->
+            if(logEnable) log.debug "In switchesOffActionHandler - Turning off ${it}"
+            cStatus = it.currentValue('switch')
+            name = (it.displayName).replace(" ","")
+            state.switchesOffMap.put(name,cStatus)
+            pauseExecution(actionDelay)
+            if(cStatus == "on") it.off()
+        }
     }
 }
 
 def switchesOffReverseActionHandler() {
-    switchesOffAction.each { it ->
-        name = (it.displayName).replace(" ","")
-        data = state.switchesOffMap.get(name)
-        if(logEnable) log.debug "In switchesOffReverseActionHandler - Reversing ${it} - Previous status: ${data} - trueReverse: ${trueReverse}"
-        pauseExecution(actionDelay)
-        if(trueReverse) {
-            it.on()
-        } else {
-            if(data == "off") it.off()
-            if(data == "on") it.on()
+    if(switchesOffAction) {
+        switchesOffAction.each { it ->
+            name = (it.displayName).replace(" ","")
+            data = state.switchesOffMap.get(name)
+            if(logEnable) log.debug "In switchesOffReverseActionHandler - Reversing ${it} - Previous status: ${data} - trueReverse: ${trueReverse}"
+            pauseExecution(actionDelay)
+            if(trueReverse || state.trueReverse == false) {
+                it.on()
+            } else {
+                if(data == "off") it.off()
+                if(data == "on") it.on()
+            }
         }
+        state.switchesOffMap = [:]
     }
-    state.switchesOffMap = [:]
 }
 
 def switchesToggleActionHandler() {
-    switchesToggleAction.each { it ->
-        status = it.currentValue("switch")
-        if(status == "off") {
-            if(logEnable) log.debug "In switchesToggleActionHandler - Turning on ${it}"
-            pauseExecution(actionDelay)
-            it.on()
-        } else {
-            if(logEnable) log.debug "In switchesToggleActionHandler - Turning off ${it}"
-            pauseExecution(actionDelay)
-            it.off()
+    if(switchesToggleAction) {
+        switchesToggleAction.each { it ->
+            status = it.currentValue("switch")
+            if(status == "off") {
+                if(logEnable) log.debug "In switchesToggleActionHandler - Turning on ${it}"
+                pauseExecution(actionDelay)
+                it.on()
+            } else {
+                if(logEnable) log.debug "In switchesToggleActionHandler - Turning off ${it}"
+                pauseExecution(actionDelay)
+                it.off()
+            }
         }
     }
 }
@@ -4410,26 +4446,28 @@ def dimStepDown() {
 }
 
 def thermostatActionHandler() {
-    thermostatAction.each { it ->
-        if(setThermostatFanMode) {
-            if(logEnable) log.debug "In thermostatActionHandler - Fan Mode - Setting ${it} to ${setThermostatFanMode}"
-            pauseExecution(actionDelay)
-            it.setThermostatFanMode(setThermostatFanMode)
-        }
-        if(setThermostatMode) {
-            if(logEnable) log.debug "In thermostatActionHandler - Thermostat Mode - Setting ${it} to ${setThermostatMode}"
-            pauseExecution(actionDelay)
-            it.setThermostatMode(setThermostatMode)
-        }
-        if(coolingSetpoint) {
-            if(logEnable) log.debug "In thermostatActionHandler - Cooling Setpoint - Setting ${it} to ${coolingSetpoint}"
-            pauseExecution(actionDelay)
-            it.setCoolingSetpoint(coolingSetpoint)
-        }
-        if(heatingSetpoint) {
-            if(logEnable) log.debug "In thermostatActionHandler - Heating Setpoint - Setting ${it} to ${heatingSetpoint}"
-            pauseExecution(actionDelay)
-            it.setHeatingSetpoint(heatingSetpoint)
+    if(thermostatAction) {
+        thermostatAction.each { it ->
+            if(setThermostatFanMode) {
+                if(logEnable) log.debug "In thermostatActionHandler - Fan Mode - Setting ${it} to ${setThermostatFanMode}"
+                pauseExecution(actionDelay)
+                it.setThermostatFanMode(setThermostatFanMode)
+            }
+            if(setThermostatMode) {
+                if(logEnable) log.debug "In thermostatActionHandler - Thermostat Mode - Setting ${it} to ${setThermostatMode}"
+                pauseExecution(actionDelay)
+                it.setThermostatMode(setThermostatMode)
+            }
+            if(coolingSetpoint) {
+                if(logEnable) log.debug "In thermostatActionHandler - Cooling Setpoint - Setting ${it} to ${coolingSetpoint}"
+                pauseExecution(actionDelay)
+                it.setCoolingSetpoint(coolingSetpoint)
+            }
+            if(heatingSetpoint) {
+                if(logEnable) log.debug "In thermostatActionHandler - Heating Setpoint - Setting ${it} to ${heatingSetpoint}"
+                pauseExecution(actionDelay)
+                it.setHeatingSetpoint(heatingSetpoint)
+            }
         }
     }
 }
@@ -4606,7 +4644,7 @@ def checkSunHandler() {
             sunriseTime = (getSunriseAndSunset().sunrise)+1
         }
         sunsetTime = getSunriseAndSunset().sunset
-        if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
+        if(logEnable) log.debug "In checkSunHandler - Actual Sunrise: ${sunriseTime} - Actual Sunset: ${sunsetTime}"
 
         if(setBeforeAfter) {
             state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))       // checkSunHandler
@@ -4626,50 +4664,41 @@ def checkSunHandler() {
 
         if(triggerType.contains("tTimeDays")) {
             if(fromSun) {    // Sunrise to Sunset
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunriseOffset: ${nextSunriseOffset} --- nextSunsetOffset: ${nextSunsetOffset}"
+                state.timeBetween = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
+                if(logEnable) log.debug "In checkSunHandler - timeBetween: ${state.timeBetween} - nextSunriseOffset: ${nextSunriseOffset} --- nextSunsetOffset: ${nextSunsetOffset}"
             } else {        // Sunset to Sunrise
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} --- nextSunriseOffset: ${nextSunriseOffset}"
+                state.timeBetween = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
+                if(logEnable) log.debug "In checkSunHandler - timeBetween: ${state.timeBetween} - nextSunsetOffset: ${nextSunsetOffset} --- nextSunriseOffset: ${nextSunriseOffset}"
             }
 
             if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
-                schedule(nextSunriseOffset, runAtTime1)
-                if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
+                schedule(nextSunriseOffset, startTimeBetween)
+                if(sunriseEndTime) schedule(nextSunsetOffset, endTimeBetween)
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, endTimeBetween)
             } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
-                schedule(nextSunsetOffset, runAtTime1)
-                if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2)
+                schedule(nextSunsetOffset, startTimeBetween)
+                if(sunsetEndTime) schedule(nextSunriseOffset, endTimeBetween)
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, endTimeBetween)
             } 
         } else {
-            state.timeBetweenSun = true
+            state.timeBetween = true
         }
-
         schedule("0 5 12 ? * * *", checkSunHandler)
+    } else {
+        state.timeBetween = true
     }
 }
 
-def runAtTime1() {
-    if(logEnable) log.debug "In runAtTime1 (${state.version}) - Run"
+def startTimeBetween() {
+    if(logEnable) log.debug "In startTimeBetween (${state.version})"
+    state.betweenTime = true
     startTheProcess("run")
 }
 
-def runAtTime2() {
-    if(logEnable) log.debug "In runAtTime2 (${state.version}) - Reverse"
-    startTheProcess("reverse")
-}
-
-def startTimeBetween() {
-    if(logEnable) log.debug "In startTimeBetween (${state.version}) - Start"
-    state.betweenTime = true
-    runAtTime1()
-}
-
 def endTimeBetween() {
-    if(logEnable) log.debug "In endTimeBetween (${state.version}) - End"
+    if(logEnable) log.debug "In endTimeBetween (${state.version})"
     state.betweenTime = false
-    if(timeBetweenRestriction == false) { runAtTime2() }
+    startTheProcess("reverse")
 }
 
 def certainTime() {
@@ -4722,7 +4751,7 @@ def modeHandler() {
 
 def checkingWhatToDo() {
     if(logEnable) log.debug "In checkingWhatToDo (${state.version})"    
-    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
+    if(state.betweenTime && state.modeMatch && state.daysMatch) {
         state.timeOK = true
     } else {
         state.timeOK = false
