@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 04/03/21 - Fixed error
  *  1.0.8 - 03/13/21 - Added Contacts as a Presence option
  *  1.0.7 - 09/24/20 - Lots of Adjustments
  *  1.0.6 - 05/12/20 - Added separate delays for Present and Not Present
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -216,6 +217,8 @@ def arrSensorHandler(evt) {
 
         unschedule()
         int theDelayArr = theDelayArr ?: 1
+        int pCount = 0
+        int pCount2 = 0
 
         if(ArrPresenceSensors || ArrConPresenceSensors) {
             if(ArrPresenceSensors) {
@@ -230,7 +233,6 @@ def arrSensorHandler(evt) {
             }
             asCount = preSensors + conSensors
             int theArrNum = arrNumOfSensors ?: asCount
-            int pCount = 0
         }
 
         if(ArrPresenceSensors2 || ArrConPresenceSensors2) {
@@ -246,7 +248,6 @@ def arrSensorHandler(evt) {
             }
             asCount2 = preSensors2 + conSensors2
             int theArrNum2 = arrNumOfSensors2 ?: asCount2
-            int pCount2 = 0
         }
 
         if(ArrTriggerType == false) {    // or
