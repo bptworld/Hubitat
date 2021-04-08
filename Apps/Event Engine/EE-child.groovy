@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.6 - 04/08/21 - Adjustment to checkSunHandler
 *  2.9.5 - 04/04/21 - Rolled back some changes
 *  2.9.4 - 04/02/21 - Pulled
 *  2.9.3 - 03/31/21 - Overhaul of Sunset/Sunrise handlers
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.5"
+    state.version = "2.9.6"
 }
 
 definition(
@@ -4648,6 +4649,8 @@ def checkSunHandler() {
             state.timeBetweenSun = true
         }
         schedule("0 5 12 ? * * *", checkSunHandler)
+    } else {
+        state.timeBetweenSun = true
     }
 }
 
