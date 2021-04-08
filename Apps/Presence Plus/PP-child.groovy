@@ -138,7 +138,7 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            input "mySensor", "capability.presenceSensor", title: "Select device created to hold the combined presence value", multiple:false, required:false
+            input "mySensor", "capability.presenceSensor", title: "Select device created to hold the combined presence value", multiple:false, required:true
             paragraph "<small>* This device was automaticaly created when you entered in the app name. Look for a device with the same name as this app.</small>"
         }
         
