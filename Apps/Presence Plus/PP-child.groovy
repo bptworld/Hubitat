@@ -325,7 +325,7 @@ def arrSensorHandler(evt) {
                         }
                     }
                 }
-                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount2} - theArrNum2: ${theArrNum2}"
+                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount2} - presentCount: ${pCount2} - theArrNum2: ${theArrNum2}"
                 if(pCount2 >= theArrNum2) state.pStatus = true       
             }
         }
