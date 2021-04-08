@@ -219,6 +219,8 @@ def arrSensorHandler(evt) {
         int theDelayArr = theDelayArr ?: 1
         int pCount = 0
         int pCount2 = 0
+	int theArrNum = 0
+	int theArrNum2 = 0
 
         if(ArrPresenceSensors || ArrConPresenceSensors) {
             if(ArrPresenceSensors) {
@@ -232,7 +234,7 @@ def arrSensorHandler(evt) {
                 conSensors = 0
             }
             asCount = preSensors + conSensors
-            int theArrNum = arrNumOfSensors ?: asCount
+            theArrNum = arrNumOfSensors ?: asCount
         }
 
         if(ArrPresenceSensors2 || ArrConPresenceSensors2) {
@@ -247,7 +249,7 @@ def arrSensorHandler(evt) {
                 conSensors2 = 0
             }
             asCount2 = preSensors2 + conSensors2
-            int theArrNum2 = arrNumOfSensors2 ?: asCount2
+            theArrNum2 = arrNumOfSensors2 ?: asCount2
         }
 
         if(ArrTriggerType == false) {    // or
@@ -323,7 +325,7 @@ def arrSensorHandler(evt) {
                         }
                     }
                 }
-                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount2} - theArrNum: ${theArrNum2}"
+                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount2} - theArrNum2: ${theArrNum2}"
                 if(pCount2 >= theArrNum2) state.pStatus = true       
             }
         }
