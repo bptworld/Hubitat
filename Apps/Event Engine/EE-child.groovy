@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.7 - 04/10/21 - More adjustments to checkSunHandler
 *  2.9.6 - 04/08/21 - Adjustment to checkSunHandler
 *  2.9.5 - 04/04/21 - Rolled back some changes
 *  2.9.4 - 04/02/21 - Pulled
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.6"
+    state.version = "2.9.7"
 }
 
 definition(
@@ -377,6 +378,7 @@ def pageConfig() {
                 } else {
                     app.removeSetting("sunriseEndTime")
                 }
+                checkSunHandler()
                 paragraph "<hr>"
                 if(sunriseEndTime) theDate = toDateTime(sunriseEndTime)
                 state.theCogTriggers += "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
@@ -394,6 +396,7 @@ def pageConfig() {
                 } else {
                     app.removeSetting("sunsetEndTime")
                 }
+                checkSunHandler()
                 paragraph "<hr>"
                 if(sunsetEndTime) theDate = toDateTime(sunsetEndTime)
                 state.theCogTriggers += "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${theDate}<br>"
@@ -4600,7 +4603,8 @@ def currentDateTime() {
 def checkSunHandler() {
     if(logEnable) log.debug "In checkSunHandler (${state.version})"
     if(timeDaysType == null) timeDaysType = ""
-    if(timeDaysType.contains("tSunsetSunrise")) {
+    if(logEnable) log.debug "In checkSunHandler - timeDaysType: ${timeDaysType}"
+    if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
         int theOffsetSunset = offsetSunset ?: 1
         int theOffsetSunrise = offsetSunrise ?: 1
         if(fromSun) {
@@ -4635,16 +4639,16 @@ def checkSunHandler() {
                 state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
                 if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} --- nextSunriseOffset: ${nextSunriseOffset}"
             }
-
-            if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
-                schedule(nextSunriseOffset, runAtTime1)
-                if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
-            } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
-                schedule(nextSunsetOffset, runAtTime1)
-                if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2)
-            } 
+        }
+        
+        if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
+            schedule(nextSunriseOffset, runAtTime1)
+            if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
+            if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
+        } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
+            schedule(nextSunsetOffset, runAtTime1)
+            if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
+            if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2) 
         } else {
             state.timeBetweenSun = true
         }
