@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Check selected devices, then warn you what's not in the right state.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.4 - 04/13/21 - Adjustments to thermostat handling
  *  1.2.3 - 12/04/20 - Removed spacing in message
  *  1.2.2 - 12/04/20 - Adjustments
  *  1.2.1 - 12/04/20 - Pre and Post messages are now optional, new option to include App name in push, new option to include device status in message
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.3"
+	state.version = "1.2.4"
 }
 
 definition(
@@ -90,8 +91,7 @@ def pageConfig() {
             paragraph " - <u>Power...</u><br> * Power plug is below 5, announce that the washer or dryer is finished!"
             paragraph "<b>The only limit is your imagination!</b>"
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
-        
+ 
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
             if(onDemandSwitch || days || modeName || thermostats || powerEvent || humidityEvent || tempEvent || useTime) {
                 href "triggerOptions", title:"${getImage("optionsGreen")} Select Trigger", description:"Click here for Options"
@@ -124,26 +124,22 @@ def pageConfig() {
             }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
-            if(pauseApp) {
-                if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
-                    }
-                }
-            } else {
-                if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
-                }
-            }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-		}
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
+        }
 		display2()
 	}
 }
@@ -421,7 +417,12 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
@@ -435,10 +436,9 @@ private removeChildDevices(delete) {
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
     } else {
-        setDefaults()
         if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
         if(triggerType1 == "xDay" && timeToRun) schedule(timeToRun, checkDeviceHandler)
         if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
@@ -911,7 +911,11 @@ def thermostatHandler(evt) {
                 }
             }
             if(state.thermFound) {
-                checkDeviceHandler()
+                if(useTime) {
+                    checkTimeInState()
+                } else {
+                    checkDeviceHandler()
+                }
             } else {
                 if(logEnable) log.debug "In thermostatHandler - No Match Found"
             }
@@ -936,7 +940,11 @@ def thermostatModeHandler(evt) {
                 }
             }
             if(state.thermModeFound) {
-                checkDeviceHandler()
+                if(useTime) {
+                    checkTimeInState()
+                } else {
+                    checkDeviceHandler()
+                }
             } else {
                 if(logEnable) log.debug "In thermostatModeHandler - No Match Found"
             }
@@ -1223,7 +1231,6 @@ def createChildDevice() {
 }
 
 // ********** Normal Stuff **********
-
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
     app?.updateSetting("logEnable",[value:"false",type:"bool"])
@@ -1232,16 +1239,12 @@ def logsOff() {
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
             if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
         }
     }
-}
-
-def setDefaults(){
-    if(state.lastActivated == null){state.lastActivated == now()}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -1260,15 +1263,23 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
