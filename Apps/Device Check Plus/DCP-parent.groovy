@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Check selected devices, then warn you what's not in the right state.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/13/21 - Adjustments
  *  1.0.2 - 04/27/20 - Cosmetic changes
  *  1.0.1 - 10/16/19 - Cosmetic changes
  *  1.0.0 - 10/13/19 - Initial release
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -84,7 +85,6 @@ def initialize() {
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
-        display()
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section("Instructions:", hideable: true, hidden: true) {
@@ -151,7 +151,6 @@ def display2() {
 
 def getHeaderAndFooter() {
     if(state.totalHours > 4) {
-        //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
             requestContentType: "application/json",
