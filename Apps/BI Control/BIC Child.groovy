@@ -4,13 +4,13 @@
  *  Design Usage:
  *  This app is designed to work locally with Blue Iris security software.
  *
- *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2021 Bryan Turcotte (@bptworld)
  *
  *  Thanks to (@jpark40) for the original 'Blue Iris Profiles based on Modes' code that I based this app off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -36,18 +36,9 @@
  *
  *  Changes:
  *
+ *  2.1.2 - 04/15/21 - Add Profile 0
  *  2.1.1 - 08/27/20 - Round 2 on Reboot command
  *  2.1.0 - 08/24/20 - Added Motion as trigger, added Reboot command
- *  2.0.9 - 07/09/20 - Fixed Disable switch
- *  2.0.8 - 06/26/20 - Fixed a typo
- *  2.0.7 - 06/25/20 - Add App Control options
- *  2.0.6 - 05/22/20 - Add toggle for camera triggers option
- *  2.0.5 - 05/22/20 - More contact options
- *  2.0.4 - 05/18/20 - Added contact triggers
- *  2.0.2 - 04/27/20 - Cosmetic changes
- *  2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
- *  2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
- *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  ---
  *  1.0.0 - 11/03/18 - Hubitat Port of ST app 'Blue Iris Profiles based on Modes' - 2016 (@jpark40)
  *
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.1.1"
+	state.version = "2.1.2"
 }
 
 definition(
@@ -97,6 +88,7 @@ def pageConfig() {
             }
 			if(triggerMode == "Mode"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Profile based on HE Mode")) {
+                    input "biProfile0", "mode", title: "Profile 0 Mode(s)", required: false, multiple: true, width:3
 					input "biProfile1", "mode", title: "Profile 1 Mode(s)", required: false, multiple: true, width:3
 					input "biProfile2", "mode", title: "Profile 2 Mode(s)", required: false, multiple: true, width:3
 					input "biProfile3", "mode", title: "Profile 3 Mode(s)", required: false, multiple: true, width:3 
@@ -116,6 +108,7 @@ def pageConfig() {
                     input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Mode change", required: false, multiple: true
                     
 					input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
+                        [Pon0:"Profile 0"],
 						[Pon1:"Profile 1"],
 						[Pon2:"Profile 2"],
 						[Pon3:"Profile 3"],
@@ -350,7 +343,12 @@ def profileModeChangeHandler(evt) {
         if(logEnable) log.debug "BI Control-modeChangeHandler (${state.version})"
         if(logEnable) log.debug "Mode changed to ${evt.value}"
 
-        if(biProfile1 != null && evt.value in biProfile1) {
+        if(biProfile0 != null && evt.value in biProfile0) {
+            def setProfile = "0"
+            biChangeProfile(setProfile)
+            if(logEnable) log.debug "biProfile0 ${settings.biProfile0}"
+        } 
+        else if(biProfile1 != null && evt.value in biProfile1) {
             def setProfile = "1"
             biChangeProfile(setProfile)
             if(logEnable) log.debug "biProfile1 ${settings.biProfile1}"
@@ -400,7 +398,10 @@ def profileSwitchHandler(evt) {
 
         if(contin) {
             if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
-            if(switchProfileOn == "Pon1") {
+            if(switchProfileOn == "Pon0") {
+                def setProfile = "0"
+                biChangeProfile(setProfile)
+            } else if(switchProfileOn == "Pon1") {
                 def setProfile = "1"
                 biChangeProfile(setProfile)
             } else if(switchProfileOn == "Pon2") {
@@ -729,6 +730,7 @@ def checkSwitchesContacts() {
 }
 
 // ********** Normal Stuff **********
+
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
     app?.updateSetting("logEnable",[value:"false",type:"bool"])
@@ -787,7 +789,6 @@ def display2() {
 def getHeaderAndFooter() {
     timeSinceNewHeaders()   
     if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
             requestContentType: "application/json",
@@ -823,5 +824,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
