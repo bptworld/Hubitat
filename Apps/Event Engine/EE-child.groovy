@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.8 - 04/22/21 - Added 'use as Condition but not as a Trigger' to most conditions
 *  2.9.7 - 04/10/21 - More adjustments to checkSunHandler
 *  2.9.6 - 04/08/21 - Adjustment to checkSunHandler
 *  2.9.5 - 04/04/21 - Rolled back some changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.7"
+    state.version = "2.9.8"
 }
 
 definition(
@@ -245,11 +246,11 @@ def pageConfig() {
                     paragraph "Condition is true when in modes selected."
                 }
                 input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
-                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
+                state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
                 app.removeSetting("modeEvent")
                 app.removeSetting("modeCondition")
                 app.removeSetting("modeMatchRestriction")
@@ -260,12 +261,14 @@ def pageConfig() {
                 paragraph "<b>By Days</b>"
                 input "days", "enum", title: "Activate on these days", description: "Days to Activate <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
+                input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction}<br>"
+                state.theCogTriggers += "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 app.removeSetting("days")
                 app.removeSetting("daysMatchRestriction")
+                app.removeSetting("daysMatchConditionOnly")
             }
 // -----------
             if(timeDaysType.contains("tTime")) {
@@ -299,6 +302,7 @@ def pageConfig() {
                 input "fromTime", "time", title: "From <small><abbr title='Exact time for the Cog to start'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
                 input "toTime", "time", title: "To <small><abbr title='Exact time for the Cog to End'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
                 input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
+                input "timeBetweenMatchConditionOnly", "bool", defaultValue:false, title: "Use Time Between as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 if(fromTime && toTime) {
                     theDate1 = toDateTime(fromTime)
@@ -312,19 +316,20 @@ def pageConfig() {
                     state.betweenTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
                     paragraph "From: ${theDate1} - To: ${nextToDate}<br>Currently, Between equals ${state.betweenTime}"
                 }
-                state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction}<br>"
+                state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction} - just Condition: ${timeBetweenMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction} - just Condition: ${timeBetweenMatchConditionOnly}<br>"
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
                 app.removeSetting("timeBetweenRestriction")
+                app.removeSetting("timeBetweenMatchConditionOnly")
             }
 // -----------
             if(timeDaysType.contains("tSunsetSunrise")) {
                 if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
-                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
+                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunrise' can not be used at the same time. Please deselect one of them.</b>"
                 } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
-                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
+                    paragraph "<b>'Sunset/Sunrise' and 'Just Sunset' can not be used at the same time. Please deselect one of them.</b>"
                 } else {
                     paragraph "<b>Sunset/Sunrise</b>"
                     input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on) <small><abbr title='Choose when the Cog will be active'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
@@ -346,6 +351,7 @@ def pageConfig() {
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
                     input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
                     checkSunHandler()
+                    input "sunsetSunriseMatchConditionOnly", "bool", defaultValue:false, title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     paragraph "<hr>"
                     state.theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
                     if(fromSun) {
@@ -359,6 +365,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}<br>"
                 state.theCogTriggers -= "<b>-</b> After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}<br>"
                 app.removeSetting("timeBetweenSunRestriction")
+                app.removeSetting("timeBetweenSunMatchConditionOnly")
             }
 // -----------
             if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
@@ -438,7 +445,6 @@ def pageConfig() {
                     app.removeSetting("asInactiveActive")
                     app.removeSetting("accelerationANDOR")
                 }
-
                 input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
                 if(accelerationRestrictionEvent) {
                     input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", defaultValue:false, submitOnChange:true
@@ -460,6 +466,12 @@ def pageConfig() {
                     app.removeSetting("arInactiveActive")
                     app.removeSetting("accelerationRANDOR")
                 }
+                input "accelerationConditionOnly", "bool", defaultValue:false, title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(accelerationConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${accelerationConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${accelerationConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("accelerationEvent")
@@ -468,6 +480,7 @@ def pageConfig() {
                 app.removeSetting("accelerationRestrictionEvent")
                 app.removeSetting("arInactiveActive")
                 app.removeSetting("accelerationRANDOR")
+                app.removeSetting("accelerationConditionOnly")
             }
 // -----------
             if(triggerType.contains("xBattery")) {
@@ -491,8 +504,14 @@ def pageConfig() {
                     if(setBEPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
                     if(setTEPointBetween) paragraph "Cog will trigger when Battery reading is between ${beSetPointLow} and ${beSetPointHigh}"
                 }
-                paragraph "<hr>"
+                input "batteryConditionOnly", "bool", defaultValue:false, title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
+                if(batteryConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${batteryConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${batteryConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
                 app.removeSetting("batteryEvent")
@@ -559,6 +578,12 @@ def pageConfig() {
                     app.removeSetting("crClosedOpen")
                     app.removeSetting("contactRANDOR")
                 }
+                input "contactConditionOnly", "bool", defaultValue:false, title: "Use Contact as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(contactConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${contactConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${contactConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("contactEvent")
@@ -567,6 +592,7 @@ def pageConfig() {
                 app.removeSetting("contactRestrictionEvent")
                 app.removeSetting("crClosedOpen")
                 app.removeSetting("contactRANDOR")
+                app.removeSetting("contactConditionOnly")
             }
 // -----------
             if(triggerType.contains("xDirectional")) {
@@ -616,7 +642,13 @@ def pageConfig() {
                     if(setTEPointBetween) paragraph "Cog will trigger when Energy reading is between ${eeSetPointLow} and ${eeSetPointHigh}"
                 }
                 paragraph "<hr>"
+                input "energyConditionOnly", "bool", defaultValue:false, title: "Use Energy as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
+                if(energyConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${energyConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${energyConditionOnly}<br>"
+                }
             } else {
                 state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("energyEvent")
@@ -624,6 +656,7 @@ def pageConfig() {
                 app.removeSetting("eeSetPointLow")
                 app.removeSetting("setEEPointHigh")
                 app.removeSetting("setEEPointLow")
+                app.removeSetting("energyconditionOnly")
             }
 // -----------
             if(triggerType.contains("xGarageDoor")) {
@@ -671,6 +704,12 @@ def pageConfig() {
                     app.removeSetting("gdsClosedOpen")
                     app.removeSetting("garageDoorRANDOR")
                 }
+                input "garageDoorConditionOnly", "bool", defaultValue:false, title: "Use Garage Door as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(garageDoorConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${garageDoorConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${garageDoorConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("garageDoorEvent")
@@ -679,6 +718,7 @@ def pageConfig() {
                 app.removeSetting("garageDoorRestrictionEvent")
                 app.removeSetting("gdsClosedOpen")
                 app.removeSetting("garageDoorRANDOR")
+                app.removeSetting("garageDoorConditionOnly")
             }
 // -----------
             if(triggerType.contains("xGVar")) {
@@ -811,7 +851,7 @@ def pageConfig() {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true, width:6
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(humidityConditionOnly) {
                         if(setHEPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
                         if(setHEPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
@@ -823,7 +863,13 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
+                input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
+                if(humidityConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${humidityConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${humidityConditionOnly}<br>"
+                }
             } else {
                 state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
                 app.removeSetting("humidityEvent")
@@ -831,6 +877,7 @@ def pageConfig() {
                 app.removeSetting("heSetPointLow")
                 app.removeSetting("setHEPointHigh")
                 app.removeSetting("setHEPointLow")
+                app.removeSetting("humidityConditionOnly")
             }
 // -----------
             if(triggerType.contains("xIlluminance")) {
@@ -850,7 +897,7 @@ def pageConfig() {
                         input "ieSetPointLow", "decimal", title: "Illuminance Low Setpoint", required:true, submitOnChange:true, width:6
                         input "ieSetPointHigh", "decimal", title: "Illuminance High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(illumConditionOnly) {
                         if(setIEPointHigh) paragraph "Cog will use 'as condition' when Illuminance reading is above or equal to ${ieSetPointHigh}"
                         if(setIEPointLow) paragraph "Cog will use 'as condition' when Illuminance reading is below ${ieSetPointLow}"
@@ -861,8 +908,14 @@ def pageConfig() {
                         if(setIEPointBetween) paragraph "Cog will trigger when Illuminance reading is between ${ieSetPointLow} and ${ieSetPointHigh}"
                     }
                 }
-                paragraph "<hr>"
+                input "illuminanceConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
+                if(illuminanceConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${illuminanceConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${illuminanceConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
                 app.removeSetting("illuminanceEvent")
@@ -925,6 +978,12 @@ def pageConfig() {
                     app.removeSetting("lrUnlockedLocked")
                     app.removeSetting("lockRANDOR")
                 }
+                input "lockConditionOnly", "bool", defaultValue:false, title: "Use Lock as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(lockConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${lockConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${lockConditionOnly}<br>"
+                }
                 paragraph "<hr>" 
             } else {
                 app.removeSetting("lockUser")
@@ -935,6 +994,7 @@ def pageConfig() {
                 app.removeSetting("lockRestrictionEvent")
                 app.removeSetting("lrUnlockedLocked")
                 app.removeSetting("lockRANDOR")
+                app.removeSetting("lockConditionOnly")
             }
 // -----------
             if(triggerType.contains("xMotion")) {
@@ -982,6 +1042,12 @@ def pageConfig() {
                     app.removeSetting("mrInactiveActive")
                     app.removeSetting("motionRANDOR")
                 }
+                input "motionConditionOnly", "bool", defaultValue:false, title: "Use Motion as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(motionConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${motionConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${motionConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("motionEvent")
@@ -990,6 +1056,7 @@ def pageConfig() {
                 app.removeSetting("motionRestrictionEvent")
                 app.removeSetting("mrInactiveActive")
                 app.removeSetting("motionRANDOR")
+                app.removeSetting("motionConditionOnly")
             }
 // -----------
             if(triggerType.contains("xPower")) {
@@ -1013,8 +1080,14 @@ def pageConfig() {
                     if(setPEPointLow) paragraph "Cog will trigger when Power reading is below ${peSetPointLow}"
                     if(setPEPointBetween) paragraph "Cog will trigger when Power reading is between ${peSetPointLow} and ${peSetPointHigh}"
                 }
-                paragraph "<hr>"
+                input "powerConditionOnly", "bool", defaultValue:false, title: "Use Power as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
+                if(powerConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${powerConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${powerConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
                 app.removeSetting("powerEvent")
@@ -1071,6 +1144,12 @@ def pageConfig() {
                     app.removeSetting("prPresentNotPresent")
                     app.removeSetting("presentRANDOR")
                 }
+                input "presenceConditionOnly", "bool", defaultValue:false, title: "Use Presence as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(presenceConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${presenceConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${presenceConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("presenceEvent")
@@ -1079,6 +1158,7 @@ def pageConfig() {
                 app.removeSetting("presenceRestrictionEvent")
                 app.removeSetting("prPresentNotPresent")
                 app.removeSetting("presentRANDOR")
+                app.removeSetting("presenceConditionOnly")
             }
 // -----------
             if(triggerType.contains("xSwitch")) {
@@ -1130,6 +1210,12 @@ def pageConfig() {
                     app.removeSetting("srOffOn")
                     app.removeSetting("switchRANDOR")
                 }
+                input "switchConditionOnly", "bool", defaultValue:false, title: "Use Switch as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(switchConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${switchConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${switchConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("switchEvent")
@@ -1140,6 +1226,7 @@ def pageConfig() {
                 app.removeSetting("switchRestrictionEvent")
                 app.removeSetting("srOffOn")
                 app.removeSetting("switchRANDOR")
+                app.removeSetting("switchConditionOnly")
             }
 // ----------- setpointHandler - for search
             if(triggerType.contains("xTemp")) {
@@ -1159,7 +1246,7 @@ def pageConfig() {
                         input "teSetPointLow", "decimal", title: "Temperature Low Setpoint", required:true, submitOnChange:true, width:6
                         input "teSetPointHigh", "decimal", title: "Temperature High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cog's logic BUT can't cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(tempConditionOnly) {
                         if(setTEPointHigh && teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
                         if(setTEPointLow && teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
@@ -1170,8 +1257,14 @@ def pageConfig() {
                         if(setTEPointBetween) paragraph "Cog will trigger when Temperature reading is between ${teSetPointLow} and ${teSetPointHigh}"
                     }
                 }
-                paragraph "<hr>"
+                input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temp as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
+                if(tempConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${tempConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${tempConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("tempEvent")
@@ -1191,8 +1284,14 @@ def pageConfig() {
                 } else {
                     paragraph "Condition true when <b>all</b> Thermostats are true"
                 }
-                paragraph "<hr>"
+                input "thermoConditionOnly", "bool", defaultValue:false, title: "Use Thermostat as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
+                if(thermoConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${thermoConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${thermoConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 app.removeSetting("thermoEvent")
@@ -1218,8 +1317,14 @@ def pageConfig() {
                     if(veSetPointHigh) paragraph "Cog will trigger when Voltage reading is above or equal to ${veSetPointHigh}"
                     if(veSetPointLow) paragraph "Cog will trigger when Voltage reading is below ${veSetPointLow}"
                 }
-                paragraph "<hr>"
+                input "voltageConditionOnly", "bool", defaultValue:false, title: "Use Voltage as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 state.theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
+                if(voltageConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${voltageConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${voltageConditionOnly}<br>"
+                }
+                paragraph "<hr>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
                 app.removeSetting("voltageEvent")
@@ -1274,6 +1379,12 @@ def pageConfig() {
                     app.removeSetting("wrDryWet")
                     app.removeSetting("waterRANDOR")
                 }
+                input "waterConditionOnly", "bool", defaultValue:false, title: "Use Water as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                if(waterConditionOnly) {
+                    state.theCogTriggers += " - Condition Only: ${waterConditionOnly}<br>"
+                } else {
+                    state.theCogTriggers -= " - Condition Only: ${waterConditionOnly}<br>"
+                }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("waterEvent")
@@ -1282,6 +1393,7 @@ def pageConfig() {
                 app.removeSetting("waterRestrictionEvent")
                 app.removeSetting("wrDryWet")
                 app.removeSetting("waterRANDOR")
+                app.removeSetting("waterConditionOnly")
             }
 // -----------
             if(triggerType.contains("xCustom")) {
@@ -1443,7 +1555,7 @@ def pageConfig() {
         section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
             paragraph "Examples of Primary and Secondary Condition use"
             paragraph "<b>Bathroom</b><br>Walk into bathroom and trigger the 'Ceiling Motions Sensor' (primary), lights come on. Stay still too long and lights will turn off."
-            paragraph "Close the door to trigger the 'contact sensor' (secondary). Even if the motion becomes inactive, (it can't see you when in the shower), the lights will not turn off until that door is opened and the motion is inactive."
+            paragraph "Close the door to trigger the 'contact sensor' (secondary). Even if the motion becomes inactive, (it can not see you when in the shower), the lights will not turn off until that door is opened and the motion is inactive."
             paragraph "<hr>"
             paragraph "<b>Kitchen</b><br>Lights are off - 'Kitchen Ceiling Motion Sensor' (primary) triggers room to be occupied, lights come on.  'Motion sensor under table' (secondary) helps lights to stay on even if 'Kitchen Ceiling Motion Sensor' becomes inactive."
             paragraph "Dog walks under table and triggers the 'Motion sensor under table' (secondary) but the lights were off, lights stay off."
@@ -2438,12 +2550,10 @@ def notificationOptions(){
 }
 
 def installed() {
-    //log.debug "Installed with settings: ${settings}"
     initialize()
 }
 
 def updated() {	
-    //if(logEnable) log.debug "Updated with settings: ${settings}"
     unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
@@ -2461,24 +2571,24 @@ def initialize() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(startTime) schedule(startTime, certainTime)
-        if(accelerationEvent) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
-        if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
-        if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
-        if(energyEvent) subscribe(energyEvent, "energy", startTheProcess)
-        if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
+        if(accelerationEvent && accelerationConditionOnly == false) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
+        if(batteryEvent && batteryConditionOnly == false) subscribe(batteryEvent, "battery", startTheProcess)
+        if(contactEvent && contactConditionOnly == false) subscribe(contactEvent, "contact", startTheProcess)
+        if(energyEvent && energyConditionOnly == false) subscribe(energyEvent, "energy", startTheProcess)
+        if(garagedoorEvent && garageDoorConditionOnly == false) subscribe(garagedoorEvent, "door", startTheProcess)
         if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
         if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
         if(humidityEvent && humidityConditionOnly == false) subscribe(humidityEvent, "humidity", startTheProcess)
         if(illuminanceEvent && illumConditionOnly == false) subscribe(illuminanceEvent, "illuminance", startTheProcess)
-        if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
+        if(lockEvent && lockConditionOnly == false) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent && modeMatchConditionOnly == false) subscribe(location, "mode", startTheProcess)
-        if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
-        if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
-        if(presenceEvent) subscribe(presenceEvent, "presence", startTheProcess)
-        if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
-        if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
+        if(motionEvent && motionConditionOnly == false) subscribe(motionEvent, "motion", startTheProcess)
+        if(powerEvent && powerConditionOnly == false) subscribe(powerEvent, "power", startTheProcess)
+        if(presenceEvent && presenceConditionOnly == false) subscribe(presenceEvent, "presence", startTheProcess)
+        if(switchEvent && switchConditionOnly == false) subscribe(switchEvent, "switch", startTheProcess)
+        if(voltageEvent && voltageConditionOnly == false) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent && tempConditionOnly == false) subscribe(tempEvent, "temperature", startTheProcess)
-        if(thermoEvent) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
+        if(thermoEvent && thermoConditionOnly == false) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
         
         if(myContacts2) subscribe(myContacts2, "contact.closed", startTheProcess)
@@ -2645,10 +2755,10 @@ def startTheProcess(evt) {
                     hsmAlertHandler(state.whatHappened)
                     hsmStatusHandler(state.whatHappened)
                     if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
-                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                    if(daysMatchRestriction && (!state.daysMatch || daysMatchConditionOnly)) { state.whatToDo = "stop" }
+                    if(timeBetweenRestriction && (!state.betweenTime || timeBetweenMatchConditionOnly)) { state.whatToDo = "stop" }
+                    if(timeBetweenSunRestriction && (!state.timeBetweenSun || timeBetweenSunMatchConditionOnly)) { state.whatToDo = "stop" } 
+                    if(modeMatchRestriction && (!state.modeMatch || modeMatchConditionOnly)) { state.whatToDo = "stop" }
                 }           
                 if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
                 if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
