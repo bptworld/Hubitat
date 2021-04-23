@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.9.9 - 04/23/21 - Adjustments
 *  2.9.8 - 04/22/21 - Added 'use as Condition but not as a Trigger' to most conditions
 *  2.9.7 - 04/10/21 - More adjustments to checkSunHandler
 *  2.9.6 - 04/08/21 - Adjustment to checkSunHandler
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.8"
+    state.version = "2.9.9"
 }
 
 definition(
@@ -2570,6 +2571,23 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        if(accelerationConditionOnly == null) accelerationConditionOnly = false
+        if(batteryConditionOnly == null) batteryConditionOnly = false
+        if(contactConditionOnly == null) contactConditionOnly = false
+        if(energyConditionOnly == null) energyConditionOnly = false
+        if(garageDoorConditionOnly == null) garageDoorConditionOnly = false
+        if(humidityConditionOnly == null) humidityConditionOnly = false
+        if(illumConditionOnly == null) illumConditionOnly = false
+        if(lockConditionOnly == null) lockConditionOnly = false
+        if(modeMatchConditionOnly == null) modeMatchConditionOnly = false
+        if(motionConditionOnly == null) motionConditionOnly = false
+        if(powerConditionOnly == null) powerConditionOnly = false
+        if(presenceConditionOnly == null) presenceConditionOnly = false
+        if(switchConditionOnly == null) switchConditionOnly = false
+        if(voltageConditionOnly == null) voltageConditionOnly = false
+        if(tempConditionOnly == null) tempConditionOnly = false
+        if(thermoConditionOnly == null) thermoConditionOnly = false
+        
         if(startTime) schedule(startTime, certainTime)
         if(accelerationEvent && accelerationConditionOnly == false) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
         if(batteryEvent && batteryConditionOnly == false) subscribe(batteryEvent, "battery", startTheProcess)
@@ -2755,10 +2773,10 @@ def startTheProcess(evt) {
                     hsmAlertHandler(state.whatHappened)
                     hsmStatusHandler(state.whatHappened)
                     if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                    if(daysMatchRestriction && (!state.daysMatch || daysMatchConditionOnly)) { state.whatToDo = "stop" }
-                    if(timeBetweenRestriction && (!state.betweenTime || timeBetweenMatchConditionOnly)) { state.whatToDo = "stop" }
-                    if(timeBetweenSunRestriction && (!state.timeBetweenSun || timeBetweenSunMatchConditionOnly)) { state.whatToDo = "stop" } 
-                    if(modeMatchRestriction && (!state.modeMatch || modeMatchConditionOnly)) { state.whatToDo = "stop" }
+                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
+                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
                 }           
                 if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
                 if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
