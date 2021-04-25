@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.4 - 04/26/21 - Added pushbutton control (up to 4 buttons per device, only push event)
  *  2.5.3 - 03/27/21 - Sorted Attributes
  *  2.5.2 - 02/08/21 - Adjustment to 'Select the colors to display based on your setpoints'. Setpoints can now include negative numbers.
  *  2.5.1 - 12/20/20 - Adjustments to device value
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.3"
+	state.version = "2.5.4"
 }
 
 definition(
@@ -248,8 +249,8 @@ def pageConfig() {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             allAtts1 = allAtts.sort { a, b -> a.value <=> b.value }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
-                            input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts1, defaultValue:state.theAtts_$x
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', 'Push' and 'Door'</b>"
+			    input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts1, defaultValue:state.theAtts_$x
                             deviceAtt = app."deviceAtts_$x"
                             
                             input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
@@ -261,12 +262,27 @@ def pageConfig() {
                             if(deviceStatus && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
                             
                             if(controlDevices && deviceAtt && !hideAttr) {
-                                if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock" || deviceAtt.toLowerCase() == "door") {
+                                if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock" || deviceAtt.toLowerCase() == "door" || deviceAtt.toLowerCase() == "pushed") { 
                                     cDevID = theDevice.id
                                     //cDevCom = theDevice.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                         ipORcloud = app."ipORcloud_$x"
+					if(deviceAtt.toLowerCase() == "pushed") {
+                                            deviceStatus="push"
+                                            if(!ipORcloud) {
+                                                controlPush1 = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2 = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3 = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4 = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/push/4?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlPush1 = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2 = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3 = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4 = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/push/4?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlPush_$x", "enum", title: "Select the PUSH Maker URL", multiple:false, options: ["$controlPush1","$controlPush2","$controlPush3","$controlPush4"], submitOnChange:true
+                                        }
                                         if(deviceAtt.toLowerCase() == "switch") {
                                             if(!ipORcloud) {
                                                 controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
@@ -308,7 +324,8 @@ def pageConfig() {
                                     if(useBitly) {
                                         paragraph "--------------------------------------------------------------------"
                                         paragraph "Please use the URLs provided with Bitly."
-                                        if(controlOn) paragraph "On - ${controlOn}"
+                                        if(controlPush) paragraph "Push - ${controlPush}"
+					if(controlOn) paragraph "On - ${controlOn}"
                                         if(controlOff) paragraph "Off - ${controlOff}"
                                         if(controlLock) paragraph "Lock - ${controlLock}"
                                         if(controlUnlock) paragraph "Unlock - ${controlUnlock}"
@@ -317,6 +334,9 @@ def pageConfig() {
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                        if(deviceAtt.toLowerCase() == "pushed") {
+                                            input "bControlPush_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
                                         if(deviceAtt.toLowerCase() == "switch") {
                                             input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
@@ -479,7 +499,7 @@ def pageConfig() {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             allAttsaa = allAttsa.sort { a, b -> a.value <=> b.value }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', 'Push' and 'Door'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsaa, defaultValue:state.theAttsa_$x
                             deviceAtta = app."deviceAttsa_$x"
                             
@@ -492,13 +512,29 @@ def pageConfig() {
                             if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                             
                             if(controlDevices && deviceAtta && !hideAttra) {
-                                if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock" || deviceAtta.toLowerCase() == "door") {
+                            if(controlDevices && deviceAtta && !hideAttra) {
+                                if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock" || deviceAtta.toLowerCase() == "door" || deviceAtta.toLowerCase() == "pushed") {
                                     cDevIDa = theDevicea.id
                                     //cDevComa = theDevicea.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                         ipORclouda = app."ipORclouda_$x"
-                                        if(deviceAtta.toLowerCase() == "switch") {
+                                        if(deviceAtta.toLowerCase() == "pushed") {
+                                            deviceStatus="push"
+                                            if(!ipORclouda) {
+                                                controlPush1a = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2a = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3a = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4a = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/push/4?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlPush1a = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2a = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3a = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4a = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/push/4?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlPusha_$x", "enum", title: "Select the PUSH Maker URL", multiple:false, options: ["$controlPush1a","$controlPush2a","$controlPush3a","$controlPush4a"], submitOnChange:true
+                                        }
+					if(deviceAtta.toLowerCase() == "switch") {
                                             if(!ipORclouda) {
                                                 controlOna = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
                                                 controlOffa = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
@@ -540,7 +576,8 @@ def pageConfig() {
                                     if(useBitlya) {
                                         paragraph "--------------------------------------------------------------------"
                                         paragraph "Please use the URLs provided with Bitly."
-                                        if(controlOna) paragraph "On - ${controlOna}"
+                                        if(controlPusha) paragraph "Push - ${controlPusha}"
+					if(controlOna) paragraph "On - ${controlOna}"
                                         if(controlOffa) paragraph "Off - ${controlOffa}"
                                         if(controlLocka) paragraph "Lock - ${controlLocka}"
                                         if(controlUnlocka) paragraph "Unlock - ${controlUnlocka}"
@@ -549,7 +586,10 @@ def pageConfig() {
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
-                                        if(deviceAtta.toLowerCase() == "switch") {
+                                        if(deviceAtta.toLowerCase() == "pushed") {
+                                            input "bControlPusha_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+					if(deviceAtta.toLowerCase() == "switch") {
                                             input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
@@ -709,7 +749,7 @@ def pageConfig() {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             allAttsba = allAttsb.sort { a, b -> a.value <=> b.value }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', 'Push' and 'Door'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsba, defaultValue:state.theAttsb_$x
                             deviceAttb = app."deviceAttsb_$x"
                                                                                                                               
@@ -722,13 +762,29 @@ def pageConfig() {
                             if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             
                             if(controlDevices && deviceAttb && !hideAttrb) {
-                                if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door") {
+                            if(controlDevices && deviceAttb && !hideAttrb) {
+                                if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door" || deviceAttb.toLowerCase() == "pushed") {
                                     cDevIDb = theDeviceb.id
                                     //cDevComb = theDeviceb.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                         ipORcloudb = app."ipORcloudb_$x"
-                                        if(deviceAttb.toLowerCase() == "switch") {
+                                        if(deviceAttb.toLowerCase() == "pushed") {
+                                            deviceStatus="push"
+                                            if(!ipORcloudb) {
+                                                controlPush1b = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2b = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3b = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4b = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/push/4?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlPush1b = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/push/1?access_token=${parent.accessToken}"
+                                                controlPush2b = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/push/2?access_token=${parent.accessToken}"
+                                                controlPush3b = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/push/3?access_token=${parent.accessToken}"
+                                                controlPush4b = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/push/4?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlPushb_$x", "enum", title: "Select the PUSH Maker URL", multiple:false, options: ["$controlPush1b","$controlPush2b","$controlPush3b","$controlPush4b"], submitOnChange:true
+                                        }
+					if(deviceAttb.toLowerCase() == "switch") {
                                             if(!ipORcloudb) {
                                                 controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
                                                 controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
@@ -769,7 +825,8 @@ def pageConfig() {
                                     if(useBitlyb) {
                                         paragraph "--------------------------------------------------------------------"
                                         paragraph "Please use the URLs provided with Bitly."
-                                        if(controlOnb) paragraph "On - ${controlOnb}"
+                                        if(controlPushb) paragraph "Push - ${controlPushb}"
+					if(controlOnb) paragraph "On - ${controlOnb}"
                                         if(controlOffb) paragraph "Off - ${controlOffb}"
                                         if(controlLockb) paragraph "Lock - ${controlLockb}"
                                         if(controlUnlockb) paragraph "Unlock - ${controlUnlockb}"
@@ -778,7 +835,10 @@ def pageConfig() {
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
-                                        if(deviceAttb.toLowerCase() == "switch") {
+                                        if(deviceAttb.toLowerCase() == "pushed") {
+                                            input "bControlPushb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+					if(deviceAttb.toLowerCase() == "switch") {
                                             input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
@@ -1112,6 +1172,7 @@ def removeExtraLines() {
 
             app.removeSetting("device_$d"); app.removeSetting("devicea_$d"); app.removeSetting("deviceb_$d")
             app.removeSetting("deviceAtts_$d"); app.removeSetting("deviceAttsa_$d"); app.removeSetting("deviceAttsb_$d")
+            app.removeSetting("controlPush_$d"); app.removeSetting("controlPusha_$d"); app.removeSetting("controlPushb_$d")     
             app.removeSetting("hideAttr_$d"); app.removeSetting("hideAttra_$d"); app.removeSetting("hideAttrb_$d")
             app.removeSetting("controlOn_$d"); app.removeSetting("controlOna_$d"); app.removeSetting("controlOnb_$d")
             app.removeSetting("controlOff_$d"); app.removeSetting("controlOffa_$d"); app.removeSetting("controlOffb_$d")
@@ -1120,8 +1181,9 @@ def removeExtraLines() {
             app.removeSetting("controlClose_$d"); app.removeSetting("controlClosea_$d"); app.removeSetting("controlCloseb_$d")
             app.removeSetting("controlOpen_$d"); app.removeSetting("controlOpena_$d"); app.removeSetting("controlOpenb_$d")
             app.removeSetting("useBitly_$d"); app.removeSetting("useBitlya_$d"); app.removeSetting("useBitlyb_$d")
-            app.removeSetting("bControlOn_$d"); app.removeSetting("bControlOna_$d"); app.removeSetting("bControlOnb_$d")
-            app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOffb_$d")
+            app.removeSetting("bcontrolPush_$d"); app.removeSetting("bcontrolPusha_$d"); app.removeSetting("bcontrolPushb_$d") 
+	    app.removeSetting("bControlOn_$d"); app.removeSetting("bControlOna_$d"); app.removeSetting("bControlOnb_$d")
+            app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOffa_$d"); app.removeSetting("bControlOffb_$d")
             app.removeSetting("bControlLock_$d"); app.removeSetting("bControlLocka_$d"); app.removeSetting("bControlLockb_$d")
             app.removeSetting("bControlUnLock_$d"); app.removeSetting("bControlUnLocka_$d"); app.removeSetting("bControlUnLockb_$d")
             app.removeSetting("bControlClose_$d"); app.removeSetting("bControlClosea_$d"); app.removeSetting("bControlCloseb_$d")
@@ -1431,6 +1493,7 @@ def tileHandler(evt){
                 try{ if(deviceAtts) deviceStatus = theDevice.currentValue("${deviceAtts}") }
                 catch (e) {}
                 if(deviceStatus == null) deviceStatus = "No Data"
+                if(deviceAtts == "pushed") deviceStatus = "push"
                 if(!valueOrCell || useIcons) {
                     getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, icon2Name,iconNumLow, iconNumHigh)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
@@ -1453,7 +1516,8 @@ def tileHandler(evt){
 		    if(theDevicea) {
                 try{ if(deviceAttsa) deviceStatusa = theDevicea.currentValue("${deviceAttsa}") }
                 catch (e) {}
-			    if(deviceStatusa == null) deviceStatusa = "No Data"
+		if(deviceStatusa == null) deviceStatusa = "No Data"
+                if(deviceAttsa == "pushed") deviceStatusa = "push"
                 if(!valueOrCella || useIconsa) {
                     getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a, icon1Namea, icon2Namea,iconNumLowa, iconNumHigha)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
@@ -1476,8 +1540,9 @@ def tileHandler(evt){
 		    if(theDeviceb) {
                 try{ if(deviceAttsb) deviceStatusb = theDeviceb.currentValue("${deviceAttsb}") }
                 catch (e) {}
-			    if(deviceStatusb == null) deviceStatusb = "No Data"
-                if(!valueOrCellb || useIconsb) {
+		if(deviceStatusb == null) deviceStatusb = "No Data"
+                if(deviceAttsb == "pushed") deviceStatusb = "push"
+		if(!valueOrCellb || useIconsb) {
                     getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumHighb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, icon2Nameb,iconNumLowb, iconNumHighb)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - b - deviceStatus1b: ${deviceStatus1b} - wordsBEF1b: ${wordsBEF1b} - wordsAFT1b: ${wordsAFT1b}"
@@ -1523,7 +1588,12 @@ def tileHandler(evt){
         linkAFTL = app."linkAFTL_$y"
         useBitly = app."useBitly_$y"
         
-        if(!useBitly && deviceAtts == "switch") controlOn = app."controlOn_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOn = app."controlPush_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOff = app."controlPush_$y"
+        if(useBitly && deviceAtts == "pushed") controlOn = app."bControlPush_$y"
+        if(useBitly && deviceAtts == "pushed") controlOff = app."bControlPush_$y"
+	
+	if(!useBitly && deviceAtts == "switch") controlOn = app."controlOn_$y"
         if(!useBitly && deviceAtts == "switch") controlOff = app."controlOff_$y"
         if(useBitly && deviceAtts == "switch") controlOn = app."bControlOn_$y"
         if(useBitly && deviceAtts == "switch") controlOff = app."bControlOff_$y"
@@ -1552,7 +1622,12 @@ def tileHandler(evt){
         linkAFTLa = app."linkAFTLa_$y"
         useBitlya = app."useBitlya_$y"
         
-        if(!useBitlya && deviceAttsa == "switch") controlOna = app."controlOna_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOna = app."controlPusha_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOffa = app."controlPusha_$y"
+        if(useBitly && deviceAtts == "pushed") controlOna = app."bControlPusha_$y"
+        if(useBitly && deviceAtts == "pushed") controlOffa = app."bControlPusha_$y"
+
+	if(!useBitlya && deviceAttsa == "switch") controlOna = app."controlOna_$y"
         if(!useBitlya && deviceAttsa == "switch") controlOffa = app."controlOffa_$y"
         if(useBitlya && deviceAttsa == "switch") controlOna = app."bControlOna_$y"
         if(useBitlya && deviceAttsa == "switch") controlOffa = app."bControlOffa_$y"
@@ -1582,7 +1657,12 @@ def tileHandler(evt){
         cDevBEFidb = app."cDeviceBEFidb_$y"
         useBitlyb = app."useBitlyb_$y"
         
-        if(!useBitlyb && deviceAttsb == "switch") controlOnb = app."controlOnb_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOnb = app."controlPushb_$y"
+        if(!useBitly && deviceAtts == "pushed") controlOffb = app."controlPushb_$y"
+        if(useBitly && deviceAtts == "pushed") controlOnb = app."bControlPushb_$y"
+        if(useBitly && deviceAtts == "pushed") controlOffb = app."bControlPushb_$y"
+	
+	if(!useBitlyb && deviceAttsb == "switch") controlOnb = app."controlOnb_$y"
         if(!useBitlyb && deviceAttsb == "switch") controlOffb = app."controlOffb_$y"
         if(useBitlyb && deviceAttsb == "switch") controlOnb = app."bControlOnb_$y"
         if(useBitlyb && deviceAttsb == "switch") controlOffb = app."bControlOffb_$y"
@@ -1773,13 +1853,17 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
     newWords2 = ""
     
     if(!hideAttr) {
-        if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock" || deviceAtts == "door")) { 
+        if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock" || deviceAtts == "door" || deviceAtts == "pushed")) { 
             if(theDevice) {
-                if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
+		if(deviceAtts == "pushed") cStatus = "push"
+		if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
                 if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
                 if(deviceAtts == "door") cStatus = theDevice.currentValue("door")            
 
-                if(cStatus == "on" || cStatus == "locked" || cStatus == "closed") {
+                if (cStatus == "push") {
+                    controlLink = "<a href=${controlOn} target=a>$deviceStatus</a>"
+                }
+                else if (cStatus == "on" || cStatus == "locked" || cStatus == "closed") {
                     controlLink = "<a href=${controlOff} target=a>$deviceStatus</a>"
                 } else {
                     controlLink = "<a href=${controlOn} target=a>$deviceStatus</a>"
