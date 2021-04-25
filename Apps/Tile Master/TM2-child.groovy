@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  2.5.4 - 04/26/21 - Added pushbutton control (up to 4 buttons per device, only push event)
+ *  2.5.5 - 04/25/21 - Fixed an issue with the last merge.
+ *  2.5.4 - 04/25/21 - Added pushbutton control (up to 4 buttons per device, only push event) - Thank you @ilkeraktuna
  *  2.5.3 - 03/27/21 - Sorted Attributes
  *  2.5.2 - 02/08/21 - Adjustment to 'Select the colors to display based on your setpoints'. Setpoints can now include negative numbers.
  *  2.5.1 - 12/20/20 - Adjustments to device value
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.4"
+	state.version = "2.5.5"
 }
 
 definition(
@@ -268,7 +269,7 @@ def pageConfig() {
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                         ipORcloud = app."ipORcloud_$x"
-					if(deviceAtt.toLowerCase() == "pushed") {
+                                        if(deviceAtt.toLowerCase() == "pushed") {
                                             deviceStatus="push"
                                             if(!ipORcloud) {
                                                 controlPush1 = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/push/1?access_token=${parent.accessToken}"
@@ -511,7 +512,6 @@ def pageConfig() {
                             if(deviceStatusa == null) deviceStatusa = "No Data"
                             if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                             
-                            if(controlDevices && deviceAtta && !hideAttra) {
                             if(controlDevices && deviceAtta && !hideAttra) {
                                 if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock" || deviceAtta.toLowerCase() == "door" || deviceAtta.toLowerCase() == "pushed") {
                                     cDevIDa = theDevicea.id
@@ -761,7 +761,6 @@ def pageConfig() {
                             if(deviceStatusb == null) deviceStatusb = "No Data"
                             if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             
-                            if(controlDevices && deviceAttb && !hideAttrb) {
                             if(controlDevices && deviceAttb && !hideAttrb) {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door" || deviceAttb.toLowerCase() == "pushed") {
                                     cDevIDb = theDeviceb.id
