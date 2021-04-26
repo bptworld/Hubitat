@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.9.9 - 04/23/21 - Adjustments
-*  2.9.8 - 04/22/21 - Added 'use as Condition but not as a Trigger' to most conditions
-*  2.9.7 - 04/10/21 - More adjustments to checkSunHandler
-*  2.9.6 - 04/08/21 - Adjustment to checkSunHandler
-*  2.9.5 - 04/04/21 - Rolled back some changes
-*  2.9.4 - 04/02/21 - Pulled
-*  2.9.3 - 03/31/21 - Overhaul of Sunset/Sunrise handlers
-*  2.9.2 - 03/25/21 - More Adjustments
-*  2.9.1 - 03/14/21 - Adjustments
-*  2.9.0 - 03/05/21 - Fix for Between Two Times and Sunset/Sunrise to Reverse
+*  3.0.0 - 04/26/21 - Adjustments, big change to 'xx as Restriction'
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.9.9"
+    state.version = "3.0.0"
 }
 
 definition(
@@ -137,11 +128,6 @@ def pageConfig() {
             paragraph "${rf}"
             paragraph "<hr>"
         }
-        /* if(triggerType == null || triggerType == "") {
-            section() {
-                href "copyCogOptions", title: "Copy Cog Options", description: "Click here for options"
-            }
-        } */
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Conditions")) {
             input "triggerType", "enum", title: "Condition Type <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>", options: [
@@ -246,7 +232,7 @@ def pageConfig() {
                 } else {
                     paragraph "Condition is true when in modes selected."
                 }
-                input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
+                input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
                 input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
@@ -261,7 +247,7 @@ def pageConfig() {
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
                 input "days", "enum", title: "Activate on these days", description: "Days to Activate <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
+                input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
                 input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
@@ -302,7 +288,7 @@ def pageConfig() {
                 paragraph "<b>Between two times</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>"
                 input "fromTime", "time", title: "From <small><abbr title='Exact time for the Cog to start'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
                 input "toTime", "time", title: "To <small><abbr title='Exact time for the Cog to End'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
-                input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
+                input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
                 input "timeBetweenMatchConditionOnly", "bool", defaultValue:false, title: "Use Time Between as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 if(fromTime && toTime) {
@@ -350,7 +336,7 @@ def pageConfig() {
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                     }
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
-                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='If used as a Restriction, Reverse and Permanent Dim will not run when this Condition becomes false.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
+                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
                     checkSunHandler()
                     input "sunsetSunriseMatchConditionOnly", "bool", defaultValue:false, title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     paragraph "<hr>"
@@ -2363,10 +2349,12 @@ def pageConfig() {
                 input "shortLog", "bool", title: "Short Logs - Please only post short logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-                input "clearMaps", "bool", title: "Clear oldMaps", description: "clear", defaultValue:false, submitOnChange:true
+                input "clearMaps", "bool", title: "Clear oldMaps and AtomicStates", description: "clear", defaultValue:false, submitOnChange:true
                 if(clearMaps) {
                     state.oldMap = [:]
                     state.oldMapPer = [:]
+                    atomicState.running = "Stopped"
+                    atomicState.tryRunning = 0
                     app.updateSetting("clearMaps",[value:"false",type:"bool"])
                 }
                 if(setpointRollingAverage) {
@@ -3937,33 +3925,39 @@ def dimmerOnReverseActionHandler() {
                 if(it.hasCommand("setColor") && state.onColor != "No Change") {
                     try {
                         data = state.oldMap.get(name)
-                        def theData = data.split("::")
-                        int hueColor = theData[1].toInteger()
-                        int saturation = theData[2].toInteger()
-                        int level = theData[3].toInteger()
-                        int cTemp = theData[4].toInteger()
-                        def cMode = theData[5]
-                        if(cMode == "CT") {
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
-                            pauseExecution(actionDelay)
-                            it.setColorTemperature(cTemp)
-                            pauseExecution(actionDelay)
-                            it.setLevel(level)                          
-                            if(oldStatus == "off" || trueReverse) {                            
-                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                        if(data) {
+                            def theData = data.split("::")
+                            int hueColor = theData[1].toInteger()
+                            int saturation = theData[2].toInteger()
+                            int level = theData[3].toInteger()
+                            int cTemp = theData[4].toInteger()
+                            def cMode = theData[5]
+                            if(cMode == "CT") {
+                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
                                 pauseExecution(actionDelay)
-                                it.off()
+                                it.setColorTemperature(cTemp)
+                                pauseExecution(actionDelay)
+                                it.setLevel(level)                          
+                                if(oldStatus == "off" || trueReverse) {                            
+                                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                                    pauseExecution(actionDelay)
+                                    it.off()
+                                }
+                            } else {
+                                def theValue = [hue: hueColor, saturation: saturation, level: level]
+                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
+                                pauseExecution(actionDelay)
+                                it.setColor(theValue)
+                                if(oldStatus == "off" || trueReverse) {
+                                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                                    pauseExecution(actionDelay)
+                                    it.off()
+                                }
                             }
                         } else {
-                            def theValue = [hue: hueColor, saturation: saturation, level: level]
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor Oops, no DATA - Turning Off (${it})"
                             pauseExecution(actionDelay)
-                            it.setColor(theValue)
-                            if(oldStatus == "off" || trueReverse) {
-                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
-                                pauseExecution(actionDelay)
-                                it.off()
-                            }
+                            it.off()
                         }
                     } catch(e) {
                         log.warn(getExceptionMessageWithLine(e))
@@ -3975,16 +3969,22 @@ def dimmerOnReverseActionHandler() {
                 } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
                     try {
                         data = state.oldMap.get(name)
-                        def (oldStatus, oldLevel, oldTemp) = data.split("::")
-                        int level = oldLevel.toInteger()
-                        int cTemp = oldColorTemp.toInteger()
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setLevel(level)
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp)
-                        if(oldStatus == "off" || trueReverse) {
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
+                        if(data) {
+                            def (oldStatus, oldLevel, oldTemp) = data.split("::")
+                            int level = oldLevel.toInteger()
+                            int cTemp = oldColorTemp.toInteger()
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
+                            pauseExecution(actionDelay)
+                            it.setLevel(level)
+                            pauseExecution(actionDelay)
+                            it.setColorTemperature(cTemp)
+                            if(oldStatus == "off" || trueReverse) {
+                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
+                                pauseExecution(actionDelay)
+                                it.off()
+                            } 
+                        } else {
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp Oops, no DATA - Turning Off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         }
@@ -3997,13 +3997,19 @@ def dimmerOnReverseActionHandler() {
                 } else if(it.hasCommand("setLevel")) {
                     try {
                         data = state.oldMap.get(name)
-                        def (oldStatus, oldLevel) = data.split("::")
-                        int level = oldLevel.toInteger()
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setLevel(level)
-                        if(oldStatus == "off" || trueReverse) {
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
+                        if(data) {
+                            def (oldStatus, oldLevel) = data.split("::")
+                            int level = oldLevel.toInteger()
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
+                            pauseExecution(actionDelay)
+                            it.setLevel(level)
+                            if(oldStatus == "off" || trueReverse) {
+                                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
+                                pauseExecution(actionDelay)
+                                it.off()
+                            }
+                        } else {
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel Oops, no DATA - Turning Off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         }
@@ -4834,22 +4840,23 @@ def dayOfTheWeekHandler() {
 def modeHandler() {
     if(logEnable) log.debug "In modeHandler (${state.version})"
     if(modeEvent) {
+        state.modeMatch = false
         theValue = location.mode
-        def modeCheck = modeEvent.contains(theValue)
-        if(modeCondition) {
-            if(modeCheck) {
-                state.modeMatch = false
+        modeEvent.each { it ->
+            if(logEnable) log.debug "In modeHandler - Checking current Mode: ${theValue} vs: ${it}"
+            if(theValue == it) modeCheck = true
+            if(modeCondition) {
+                if(!modeCheck) {
+                    state.modeMatch = true
+                }
             } else {
-                state.modeMatch = true
-            }
-        } else {
-            if(modeCheck) {
-                state.modeMatch = true
-            } else {
-                state.modeMatch = false
+                if(modeCheck) {
+                    state.modeMatch = true
+                }
             }
         }
     } else {
+        if(logEnable) log.debug "In modeHandler - No Mode selected so modeMatch = true"
         state.modeMatch = true
     }
     if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch}"
@@ -4857,11 +4864,17 @@ def modeHandler() {
 // *****  End Time Handlers *****
 
 def checkingWhatToDo() {
-    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"    
+    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
+    state.jumpToStop = false
     if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
         state.timeOK = true
     } else {
         state.timeOK = false
+        // check for Restriction
+        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
+        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
+        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
+        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
     }
     if(triggerAndOr) {
         if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
@@ -4896,15 +4909,18 @@ def checkingWhatToDo() {
     }   
     if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
     if(state.everythingOK) {
-            state.whatToDo = "run"
-            if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
+        state.whatToDo = "run"
+        if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
     } else {
-        if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+        if(state.jumpToStop) {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Using B - Stop"
+        } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingWhatToDo - Using B - Reverse"
+            if(logEnable) log.debug "In checkingWhatToDo - Using C - Reverse"
         } else {
             state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Using C - Stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Using D - Stop"
         }
     }   
     if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
@@ -5108,6 +5124,7 @@ def setLevelandColorHandler() {
                 if(logEnable) log.debug "In setLevelandColorHandler - setLevel - NEW VALUE - ${it.displayName} - setLevel: ${value}"
                 pauseExecution(actionDelay)
                 it.setLevel(onLevel as Integer ?: 99)
+                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - *** Just setLevel on ${it.displayName} to ${onLevel} ***"
             } else {
                 if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 pauseExecution(actionDelay)
