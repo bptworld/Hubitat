@@ -8,7 +8,7 @@
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.7 - 04/28/21 - Added 'Replay'
  *  2.2.6 - 01/12/21 - Adjustments to Priority processing
  *  2.2.5 - 11/27/20 - Adjustments
  *  2.2.4 - 07/21/20 - Adjustments
@@ -77,10 +78,12 @@ metadata {
         
         command "sendPush", ["string"]
         command "latestMessageFrom", ["string"]
+        command "replayMessage", ["string"]
 
         attribute "bpt-whatDidISay", "string"
         attribute "whatDidISayCount", "string"
         attribute "latestMessage", "string"
+        attribute "rawMessage", "string"
         attribute "latestMessageDateTime", "string"
         attribute "latestMessageFrom", "string"
         attribute "bpt-speakerStatus1", "string"
@@ -132,6 +135,7 @@ def playAnnouncement(String message, volume=null, restoreVolume=null) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', speechReceivedFULL, 'N:X', volume, restoreVolume)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playAnnouncement(String message, String title, volume=null, restoreVolume=null) {
@@ -139,6 +143,7 @@ def playAnnouncement(String message, String title, volume=null, restoreVolume=nu
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', speechReceivedFULL, 'N:X', volume, restoreVolume, title)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playAnnouncementAll(String message, title=null) {
@@ -146,6 +151,7 @@ def playAnnouncementAll(String message, title=null) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncementAll', speechReceivedFULL, 'N:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def deviceNotification(message) {
@@ -153,6 +159,7 @@ def deviceNotification(message) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('deviceNotification', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playText(message) {
@@ -160,6 +167,7 @@ def playText(message) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playText', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playTextAndRestore(message) {
@@ -167,6 +175,7 @@ def playTextAndRestore(message) {
     speechReceivedFULL = message
     theMessage = composeMessageMap('playTextAndRestore', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playTrack(message) {
@@ -174,6 +183,7 @@ def playTrack(message) {
     speechReceivedFULL = message
     theMessage = composeMessageMap('playTrack', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def playTrackAndRestore(message) {
@@ -182,6 +192,7 @@ def playTrackAndRestore(message) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTrackAndRestore', speechReceivedFULL, 'X:0')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def restoreTrack(message) {
@@ -189,6 +200,7 @@ def restoreTrack(message) {
     speechReceivedFULL = message
     theMessage = composeMessageMap('restoreTrack', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def resumeTrack(message) {
@@ -196,6 +208,7 @@ def resumeTrack(message) {
     speechReceivedFULL = message
     theMessage = composeMessageMap('resumeTrack', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def setTrack(message) {
@@ -203,12 +216,14 @@ def setTrack(message) {
     speechReceivedFULL = message
     theMessage = composeMessageMap('setTrack', speechReceivedFULL, 'X:X')
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def setVolume(volume) {
     if(logEnable) log.debug "In setVolume"
     theMessage = composeMessageMap('setVolume', '', 'X:X', volume, null, null)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)   
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
@@ -216,6 +231,7 @@ def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeSpeakAndRestore', speechReceivedFULL, 'N:X', volume, restoreVolume)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def setVolumeAndSpeak(volume, message) {
@@ -223,6 +239,7 @@ def setVolumeAndSpeak(volume, message) {
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeAndSpeak', speechReceivedFULL, 'N:X', volume)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+    sendEvent(name: "rawMessage", value: message)
 }
 
 def speak(message) {    
@@ -234,12 +251,19 @@ def speak(message) {
         theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
         if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
         sendEvent(name: "latestMessage", value: theMessage, isStateChange:true)
+        sendEvent(name: "rawMessage", value: message)
         latestMessageDate()
         populateMap(priority,lastSpoken)
     } else {
         lmf = device.currentValue("latestMessageFrom")
         log.warn "Follow Me - speak - Something went Wrong, No message received. (${lmf})"
     }
+}
+
+def replayMessage(data) {
+    if(logEnable) log.debug "In replay"
+    def replayMessage = device.currentValue('rawMessage')
+    speak(replayMessage)
 }
 
 def priorityHandler(message) { 
