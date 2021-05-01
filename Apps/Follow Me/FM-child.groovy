@@ -7,7 +7,7 @@
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.4 - 04/30/21 - Added replay option
  *  2.3.3 - 01/14/21 - Added 'App Description'
  *  2.3.2 - 01/13/21 - Fixed a typo
  *  2.3.1 - 01/12/21 - Adjustments to Priority processing
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.3"
+	state.version = "2.3.4"
 }
 
 definition(
@@ -306,6 +307,17 @@ def pageConfig() {
 			}
 		}
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" Replay Options")) {
+            paragraph "<b>Follow Me can also replay the last message spoken.</b> It's best to create a virtual switch with a 1s auto off."
+            input "replaySwitch", "capability.switch", title: "Select a switch to trigger the replay."
+            paragraph "More replay options coming!"
+            if(replaySwitch) {
+                state.appD += "<b>Replay Last Message Switch:</b>: ${replaySwitch}"
+            } else {
+                state.appD -= "<b>Replay Last Message Switch:</b>: ${replaySwitch}"
+            }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
@@ -503,6 +515,7 @@ def initialize() {
         if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
         if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
         if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
+        if(replaySwitch) subscribe(replaySwitch, "switch.on", replayHandler)
     }
 }
 
@@ -1519,6 +1532,11 @@ def clearTheQueue() {
 def showTheQueue() {
     app?.updateSetting("showQueue",[value:"false",type:"bool"])
     if(logQueue) log.debug "In showTheQueue (${state.version})"	
+}
+
+def replayHandler(evt) {
+    if(logEnable) log.debug "In replayHandler"
+    gvDevice.replayMessage()
 }
 
 def createDataChildDevice() {    
