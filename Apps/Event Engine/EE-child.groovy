@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.1 - 05/07/21 - Added 'System Startup' to Condition Types
 *  3.0.0 - 04/26/21 - Adjustments, big change to 'xx as Restriction'
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.0"
+    state.version = "3.0.1"
 }
 
 definition(
@@ -149,6 +150,7 @@ def pageConfig() {
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
+                ["xSystemStartup":"Sytem Startup"],
                 ["xTemp":"Temperature Setpoint"],
                 ["xTherm":"Thermostat Activity"],
                 ["xVoltage":"Voltage Setpoint"],
@@ -1146,7 +1148,7 @@ def pageConfig() {
                 app.removeSetting("prPresentNotPresent")
                 app.removeSetting("presentRANDOR")
                 app.removeSetting("presenceConditionOnly")
-            }
+            }       
 // -----------
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
@@ -1214,6 +1216,18 @@ def pageConfig() {
                 app.removeSetting("srOffOn")
                 app.removeSetting("switchRANDOR")
                 app.removeSetting("switchConditionOnly")
+            }
+// -----------
+            if(triggerType.contains("xSystemStartup")) {
+                paragraph "<b>System Startup</b>"
+                input "startupEvent", "bool", defaultValue:false, title: "Run Cog when system first starts up", description: "System Startup", submitOnChange:true
+                if(startupEvent) {
+                    paragraph "<b>Cog is set to run when system is starting up</b>"
+                    state.theCogTriggers += "<b>-</b> At System Startup: ${startupEvent}<br>"
+                } else {
+                    paragraph ""
+                    state.theCogTriggers -= "<b>-</b> At System Startup: ${startupEvent}<br>"
+                }
             }
 // ----------- setpointHandler - for search
             if(triggerType.contains("xTemp")) {
@@ -2349,7 +2363,7 @@ def pageConfig() {
                 input "shortLog", "bool", title: "Short Logs - Please only post short logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-                input "clearMaps", "bool", title: "Clear oldMaps and AtomicStates", description: "clear", defaultValue:false, submitOnChange:true
+                input "clearMaps", "bool", title: "Clear oldMaps and atomicStates", description: "clear", defaultValue:false, submitOnChange:true
                 if(clearMaps) {
                     state.oldMap = [:]
                     state.oldMapPer = [:]
@@ -2435,39 +2449,42 @@ def notificationOptions(){
                 if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
                 if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
                 paragraph wc
+                if(triggerType) {
+                    if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+                        paragraph "<b>Setpoint Message Options</b>"
+                        input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
+                        input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
+                        input "messageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
+                        if(messageH) state.theCogNotifications += "<b>-</b> Message when reading is too high: ${messageH}<br>"
+                        if(messageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                        if(messageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
+                    } else {
+                        state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
+                        state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                        state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
+                        app.removeSetting("messageH")
+                        app.removeSetting("messageL")
+                        app.removeSetting("messageB")
+                    }
 
-                if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-                    paragraph "<b>Setpoint Message Options</b>"
-                    input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
-                    input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
-                    input "messageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
-                    if(messageH) state.theCogNotifications += "<b>-</b> Message when reading is too high: ${messageH}<br>"
-                    if(messageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
-                    if(messageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
-                } else {
-                    state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
-                    state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
-                    state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
-                    app.removeSetting("messageH")
-                    app.removeSetting("messageL")
-                    app.removeSetting("messageB")
-                }
-
-                if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
-                    paragraph "<b>Random Message Options</b>"
-                    input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                    input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
-                    if(message) state.theCogNotifications += "<b>-</b> Message: ${message}<br>"
-                    if(msgList) {
-                        def values = "${message}".split(";")
-                        listMap = ""
-                        values.each { item -> listMap += "${item}<br>"}
-                        paragraph "${listMap}"
+                    if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
+                        paragraph "<b>Random Message Options</b>"
+                        input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                        input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
+                        if(message) state.theCogNotifications += "<b>-</b> Message: ${message}<br>"
+                        if(msgList) {
+                            def values = "${message}".split(";")
+                            listMap = ""
+                            values.each { item -> listMap += "${item}<br>"}
+                            paragraph "${listMap}"
+                        }
+                    } else {
+                        state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
+                        app.removeSetting("message")
+                        app.removeSetting("msgList")
                     }
                 } else {
-                    state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
-                    app.removeSetting("message")
-                    app.removeSetting("msgList")
+                    paragraph "<b>Can't add a message until a Condition Type is selected.</b>"
                 }
             }
                 
@@ -2571,6 +2588,7 @@ def initialize() {
         if(motionConditionOnly == null) motionConditionOnly = false
         if(powerConditionOnly == null) powerConditionOnly = false
         if(presenceConditionOnly == null) presenceConditionOnly = false
+        if(startupConditionOnly == null) startupConditionOnly = false
         if(switchConditionOnly == null) switchConditionOnly = false
         if(voltageConditionOnly == null) voltageConditionOnly = false
         if(tempConditionOnly == null) tempConditionOnly = false
@@ -2591,6 +2609,7 @@ def initialize() {
         if(motionEvent && motionConditionOnly == false) subscribe(motionEvent, "motion", startTheProcess)
         if(powerEvent && powerConditionOnly == false) subscribe(powerEvent, "power", startTheProcess)
         if(presenceEvent && presenceConditionOnly == false) subscribe(presenceEvent, "presence", startTheProcess)
+        if(startupEvent && startupConditionOnly == false) subscribe(location, "systemStart", startTheProcess)
         if(switchEvent && switchConditionOnly == false) subscribe(switchEvent, "switch", startTheProcess)
         if(voltageEvent && voltageConditionOnly == false) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent && tempConditionOnly == false) subscribe(tempEvent, "temperature", startTheProcess)
