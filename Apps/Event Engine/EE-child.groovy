@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.2 - 05/09/21 - Added 'Button' to Condition Types
 *  3.0.1 - 05/07/21 - Added 'System Startup' to Condition Types
 *  3.0.0 - 04/26/21 - Adjustments, big change to 'xx as Restriction'
 *  ---
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.1"
+    state.version = "3.0.2"
 }
 
 definition(
@@ -135,6 +136,7 @@ def pageConfig() {
                 ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
+                ["xButton":"Button (Beta)"],
                 ["xContact":"Contact Sensors"],
                 ["xDirectional":"Directional Condition"],
                 ["xEnergy":"Energy Setpoint"],
@@ -248,7 +250,7 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
-                input "days", "enum", title: "Activate on these days", description: "Days to Activate <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                input "days", "enum", title: "Activate on these days <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", description: "Days to Activate", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
                 input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
@@ -508,6 +510,35 @@ def pageConfig() {
                 app.removeSetting("beSetPointLow")
                 app.removeSetting("setBEPointHigh")
                 app.removeSetting("setBEPointLow")
+            }
+// -----------
+            if(triggerType.contains("xButton")) {
+                paragraph "<b>Button</b>"
+                input "buttonEvent", "capability.pushableButton", title: "By Button <small><abbr title='If choosing mulitple buttons, be sure each button has the attribute that you want to use.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
+                if(buttonEvent) {
+                    attr = []
+                    buttonEvent.each { button ->
+                        if(button.hasAttribute("doubleTapped")) attr << "doubleTapped"
+                        if(button.hasAttribute("held")) attr << "held"
+                        if(button.hasAttribute("pushed")) attr << "pushed"
+                        if(button.hasAttribute("released")) attr << "released"
+                        if(button.hasAttribute("taps")) attr << "taps"   
+                    }
+                    input "buttonNumber", "text", title: "Button Number", required:true, submitOnChange:true
+                    input "buttonAction", "enum", title: "When Button is:", required:true, multiple:false, options: attr, submitOnChange:true
+                    if(buttonAction == "taps") {
+                        input "buttonTaps", "number", title: "Number of Button Taps (2-4)", range: '2..4', required:true, submitOnChange:true
+                    } else {
+                        buttonTaps = "NA"
+                    }
+                    state.theCogTriggers += "<b>-</b> By Button: ${buttonEvent} - Button Number: ${buttonNumber}, Button Action: ${buttonAction}}, Button Taps: ${buttonTaps}<br>"
+                } else {
+                    app.removeSetting("buttonNumber")
+                    app.removeSetting("buttonAction")
+                    app.removeSetting("buttonTaps")
+                    state.theCogTriggers -= "<b>-</b> By Button: ${buttonEvent} - Button Number: ${buttonNumber}, Button Action: ${buttonAction}}, Button Taps: ${buttonTaps}<br>"
+                }
+                paragraph "<hr>"
             }
 // -----------
             if(triggerType.contains("xContact")) {
@@ -1148,7 +1179,7 @@ def pageConfig() {
                 app.removeSetting("prPresentNotPresent")
                 app.removeSetting("presentRANDOR")
                 app.removeSetting("presenceConditionOnly")
-            }       
+            }          
 // -----------
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
@@ -1228,6 +1259,7 @@ def pageConfig() {
                     paragraph ""
                     state.theCogTriggers -= "<b>-</b> At System Startup: ${startupEvent}<br>"
                 }
+                paragraph "<hr>"
             }
 // ----------- setpointHandler - for search
             if(triggerType.contains("xTemp")) {
@@ -1921,7 +1953,6 @@ def pageConfig() {
                     }
                     state.theCogActions += "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"   
                 } else {
-                    state.theCogActions -= "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
                     state.theCogActions -= "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
@@ -2578,6 +2609,7 @@ def initialize() {
     } else {
         if(accelerationConditionOnly == null) accelerationConditionOnly = false
         if(batteryConditionOnly == null) batteryConditionOnly = false
+        if(buttonConditionOnly == null) buttonConditionOnly = false
         if(contactConditionOnly == null) contactConditionOnly = false
         if(energyConditionOnly == null) energyConditionOnly = false
         if(garageDoorConditionOnly == null) garageDoorConditionOnly = false
@@ -2597,6 +2629,14 @@ def initialize() {
         if(startTime) schedule(startTime, certainTime)
         if(accelerationEvent && accelerationConditionOnly == false) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
         if(batteryEvent && batteryConditionOnly == false) subscribe(batteryEvent, "battery", startTheProcess)
+        if(buttonEvent) {
+            bAction = buttonAction.toString()
+            if(bAction == "pushed") subscribe(buttonEvent, "pushed", buttonHandler)
+            if(bAction == "held") subscribe(buttonEvent, "held", buttonHandler)
+            if(bAction == "doubleTapped") subscribe(buttonEvent, "doubleTapped", buttonHandler)
+            if(bAction == "released") subscribe(buttonEvent, "released", buttonHandler)            
+            if(bAction == "taps") subscribe(buttonEvent, "taps", buttonHandler)
+        }
         if(contactEvent && contactConditionOnly == false) subscribe(contactEvent, "contact", startTheProcess)
         if(energyEvent && energyConditionOnly == false) subscribe(energyEvent, "energy", startTheProcess)
         if(garagedoorEvent && garageDoorConditionOnly == false) subscribe(garagedoorEvent, "door", startTheProcess)
@@ -3041,6 +3081,34 @@ def startTheProcess(evt) {
 }
 
 // ********** Start Conditions **********
+def buttonHandler(evt) {
+    if(logEnable || shortLog) log.debug "In buttonEvent (${state.version})"
+    def whichButton = evt.displayName
+    def bNumber = evt.value
+    def pressType = evt.name
+    if(logEnable || shortLog) log.debug "In buttonEvent - ${whichButton}: bNumber: ${bNumber} - pressType ${pressType}"    
+    if(buttonAction == "taps") {
+        bNum = bNumber.toInteger()
+        bTap = buttonTaps.toInteger()
+        if(bNum == bTap) {
+            if(logEnable || shortLog) log.debug "In buttonEvent - Number of Presses: ${bNum} matches presses Needed: ${bTap}"
+            startTheProcess()
+        } else {
+            if(logEnable || shortLog) log.debug "In buttonEvent - Number of Presses: ${bNum} does NOT match presses Needed: ${bTap} - stopping"
+        }
+    } else if(bNumber == buttonNumber) {
+        if(logEnable || shortLog) log.debug "In buttonEvent - Button Pressed: ${bNumber} matches Button Needed: ${buttonNumber}"
+        if(pressType == buttonAction) {
+            if(logEnable || shortLog) log.debug "In buttonEvent - Press Type: ${pressType} matches event Needed: ${buttonAction}"
+            startTheProcess()
+        } else {
+            if(logEnable || shortLog) log.debug "In buttonEvent - Press Type: ${pressType} did NOT match event Needed: ${buttonAction} - stopping"
+        }
+    } else {
+        if(logEnable || shortLog) log.debug "In buttonEvent - Button Pressed: ${bNumber} did NOT match Button Needed: ${buttonNumber} - Stopping"
+    }
+}
+
 def customDeviceHandler() {
     state.eventName = customEvent
     state.eventType = specialAtt
