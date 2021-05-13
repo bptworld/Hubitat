@@ -8,7 +8,7 @@
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 05/13/21 - Added BI Control Info
  *  1.0.5 - 01/29/21 - Fixed something...
  *  1.0.4 - 01/29/21 - Added Default Values
  *  1.0.3 - 10/18/20 - Added Global Variables
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -101,11 +102,7 @@ def mainPage() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Cogs")) {
 				app(name: "anyOpenApp", appName: "Event Engine Cog", namespace: "BPTWorld", title: "<b>Add a new 'Cog' to Event Engine</b>", multiple: true)
 			}
-/*            
-            section(getFormat("header-green", "${getImage("Blank")}"+" Spark Plugs")) {
-				app(name: "anyOpenApp", appName: "Event Engine Spark Plug", namespace: "BPTWorld", title: "<b>Add a new 'Spark Plug' to Event Engine</b>", multiple: true)
-			}
-*/            
+           
             section(getFormat("header-green", "${getImage("Blank")}"+" Default Values")) {
                 paragraph "Default Values are shared across all Cogs but can be changed within each Cog if needed."
                 paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
@@ -130,6 +127,16 @@ def mainPage() {
                 paragraph "${state.niceMap}"
                 paragraph "<hr>"
 			}
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Blue Iris Info")) {
+                paragraph "If you are planning on usine EE to control Blue Iris, enter in your Server Config information here."
+				paragraph "In Blue Iris settings > Web Server > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."
+                paragraph "<b>Use the local IP address for Host, do not include http:// or anything but the IP address. ie. 192.168.1.123</b>"
+				input "biServer", "text", title: "Server", description: "Blue Iris web server IP", required: false
+				input "biPort", "number", title: "Port", description: "Blue Iris web server port", required: false
+				input "biUser", "text", title: "User name", description: "Blue Iris user name", required: false
+				input "biPass", "password", title: "Password", description: "Blue Iris password", required: false
+            }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
