@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.3 - 05/13/21 - Adjustments, Added Blue Iris Control
 *  3.0.2 - 05/09/21 - Added 'Button' to Condition Types
 *  3.0.1 - 05/07/21 - Added 'System Startup' to Condition Types
 *  3.0.0 - 04/26/21 - Adjustments, big change to 'xx as Restriction'
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.2"
+    state.version = "3.0.3"
 }
 
 definition(
@@ -136,14 +137,14 @@ def pageConfig() {
                 ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
-                ["xButton":"Button (Beta)"],
+                ["xButton":"Button"],
                 ["xContact":"Contact Sensors"],
                 ["xDirectional":"Directional Condition"],
                 ["xEnergy":"Energy Setpoint"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xGVar":"Global Variables"],
-                ["xHSMAlert":"HSM Alerts *** not tested ***"],
-                ["xHSMStatus":"HSM Status *** not tested ***"],
+                ["xHSMAlert":"HSM Alerts (Beta)"],
+                ["xHSMStatus":"HSM Status (Beta)"],
                 ["xHubCheck":"Hub Check Options"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
@@ -1649,10 +1650,11 @@ def pageConfig() {
             }  
         }
 // ***** Condition Helper End *****        
-        // ********** Start Actions **********
+// ********** Start Actions **********
         state.theCogActions = "<b><u>Actions</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
+                ["aBlueIris":"Blue Iris Control (Beta)"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -1673,6 +1675,85 @@ def pageConfig() {
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
             if(actionType == null) actionType = " "
+// BI Control            
+            if(actionType.contains("aBlueIris")) {
+                paragraph "<b>Blue Iris Control</b>"
+                if(parent.biServer && parent.biUser && parent.biPass) {
+                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ","Camera_Reboot"], required:true, Multiple:false
+
+                    if(biControl == "Camera_Preset") {
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        input "biCameraPreset", "enum", title: "Preset number", options: [
+                            [PS1:"Preset 1"],
+                            [PS2:"Preset 2"],
+                            [PS3:"Preset 3"],
+                            [PS4:"Preset 4"],
+                            [PS5:"Preset 5"],
+                        ], required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
+                    } else {
+                        app.removeSetting("biCameraPreset")
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
+                    }
+
+                    if(biControl == "Camera_Snapshot"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
+                    } else {
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
+                    }
+
+                    if(biControl == "Camera_Trigger"){
+                        paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
+                        input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
+                    } else {
+                        app.removeSetting("useMethod")
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
+                    }
+
+                    if(biControl == "Camera_PTZ"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        input "biCameraPTZ", "enum", title: "PTZ Command", options: [
+                            [PTZ0:"0 - Left"],
+                            [PTZ1:"1 - Right"],
+                            [PTZ2:"2 - Up"],
+                            [PTZ3:"3 - Down"],
+                            [PTZ4:"4 - Home"],
+                            [PTZ5:"5 - Zoom In"],
+                            [PTZ6:"6 - Zoom Out"],
+                        ], required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
+                    } else {
+                        app.removeSetting("biCameraPTZ")
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
+                    }
+
+                    if(biControl == "Camera_Reboot"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
+                    } else {
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
+                    }
+
+                    paragraph "<hr>"
+                } else {
+                    paragraph "<b>Be sure to fill out the Blue Iris Information in the EE Parent app before selecting this option.</b>"
+                    paragraph "<hr>"
+                }
+            } else {
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
+                app.removeSetting("biControl")
+                app.removeSetting("biCamera")
+                app.removeSetting("biCameraPreset")
+                app.removeSetting("useMethod")
+                app.removeSetting("biCameraPTZ")
+            }
+// End BI Control
             
             if(actionType.contains("aFan")) {
                 paragraph "<b>Fan Control</b>"
@@ -2089,7 +2170,7 @@ def pageConfig() {
                     app.removeSetting("sdPerModeTime")
                     app.removeSetting("sdReverseTimeType")
                 }
-                // *** Start Mode Map ***
+// *** Start Mode Map ***
                 input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
                 input "sdPerModeDel", "button", title: "Delete Mode", width: 3
                 input "sdPerModeClear", "button", title: "Clear Table <small><abbr title='This will delete all Modes, use with caution. This can not be undone.'><b>- INFO -</b></abbr></small>", width: 3
@@ -2410,6 +2491,12 @@ def pageConfig() {
                     }
                     paragraph "<small>* Rolling Average will be cleared immediately and the switch will turned back off.<br>Current Rolling Average: ${state.readings}</small>"
                 }
+            } else {
+                app.updateSetting("logEnable",[value:"false",type:"bool"])
+                app.updateSetting("shortLog",[value:"false",type:"bool"])
+                app.updateSetting("extraLogs",[value:"false",type:"bool"])
+                app.updateSetting("clearMaps",[value:"false",type:"bool"])
+                app.removeSetting("logOffTime")
             }
         }
         
@@ -2938,6 +3025,10 @@ def startTheProcess(evt) {
                                         if(useTheFlasher) theFlasherHandler()
                                     }
                                 }
+                                if(actionType.contains("aBlueIris")) {
+                                    if(biControl == "Camera_Preset") { cameraPresetHandler() }
+                                }
+                                
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                             }
                             if(setHSM) hsmChangeActionHandler()
@@ -5552,9 +5643,6 @@ def appButtonHandler(buttonPressed) {
     if(sdPerModeName && state.whichButton == "sdPerModeDel") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("del;nothing")
-    } else if(sdPerModeName && state.whichButton == "sdPerModeDel") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        sdPerModeHandler("del;nothing")
     } else if(state.whichButton == "sdPerModeRebuild") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("rebuild;nothing")
@@ -5568,6 +5656,194 @@ def appButtonHandler(buttonPressed) {
         if(state.setOldMap == null) state.setOldMap = false
         if(state.setOldMapPer == null) state.setOldMapPer = false
     }
+}
+
+// ********** BI Control **********
+def profileSwitchHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In switchChangeHandler (${state.version})"
+        if(logEnable) log.debug "In switchChangeHandler - switchProfileOn: ${switchProfileOn}"
+        if(switchProfileOn == "Pon0") {
+            biChangeProfile("0")
+        } else if(switchProfileOn == "Pon1") {
+            biChangeProfile("1")
+        } else if(switchProfileOn == "Pon2") {
+            biChangeProfile("2")
+        } else if(switchProfileOn == "Pon3") {
+            biChangeProfile("3")
+        } else if(switchProfileOn == "Pon4") {
+            biChangeProfile("4")
+        } else if(switchProfileOn == "Pon5") {
+            biChangeProfile("5")
+        } else if(switchProfileOn == "Pon6") {
+            biChangeProfile("6")
+        } else if(switchProfileOn == "Pon7") {
+            biChangeProfile("7")
+        }
+    }
+}
+
+def scheduleSwitchHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In switchChangeHandler (${state.version})"
+        if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
+        biChangeSchedule(biScheduleSwitch)
+    }
+}
+
+def cameraPresetHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In cameraPresetHandler (${state.version}) - biCameraPreset: ${biCameraPreset}"
+        if(biCameraPreset == "PS1") {
+            biChangeProfile("1")
+        } else if(biCameraPreset == "PS2") {
+            biChangeProfile("2")
+        } else if(biCameraPreset == "PS3") {
+            biChangeProfile("3")
+        } else if(biCameraPreset == "PS4") {
+            biChangeProfile("4")
+        } else if(biCameraPreset == "PS5") {
+            biChangeProfile("5")
+        }
+    }
+}
+
+def cameraSnapshotHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In cameraSnapshotHandler (${state.version})"
+        if(logEnable) log.debug "In cameraSnapshotHandler - Switch on"
+        biChangeProfile("0")
+    }
+}
+
+def cameraTriggerHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In cameraTriggerHandler (${state.version})"
+        if(logEnable) log.debug "cameraTriggerHandler - On"
+        biChangeProfile("1")
+    }
+}
+
+def cameraPTZHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In cameraPTZHandler (${state.version})"
+        if(logEnable) log.debug "In cameraPTZHandler - biCameraPTZ: ${biCameraPTZ}"
+        if(biCameraPTZ == "PTZ0") {
+            biChangeProfile("0")
+        } else if(biCameraPTZ == "PTZ1") {
+            biChangeProfile("1")
+        } else if(biCameraPTZ == "PTZ2") {
+            biChangeProfile("2")
+        } else if(biCameraPTZ == "PTZ3") {
+            biChangeProfile("3")
+        } else if(biCameraPTZ == "PTZ4") {
+            biChangeProfile("4")
+        } else if(biCameraPTZ == "PTZ5") {
+            biChangeProfile("5")
+        } else if(biCameraPTZ == "PTZ6") {
+            biChangeProfile("6")
+        }
+    }
+}
+
+def cameraRebootHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In cameraRebootHandler (${state.version})"
+        if(logEnable) log.debug "In cameraRebootHandler - Switch on"
+        biChangeProfile("0")
+    }
+}
+
+
+def biChangeProfile(num) {
+	if(logEnable) log.debug "In biChangeProfile (${state.version})"
+	biHost = "${parent.biServer}:${parent.biPort}"
+	if(biControl == "Mode") {
+		if(logEnable) log.debug "I'm in Mode"
+		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
+    } else if(biControl == "Switch_Contact_Motion") {
+        if(logEnable) log.debug "I'm in Switch, Contact or Motion"
+        biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"       
+    } else if(biControl == "Camera_Preset") {
+        if(logEnable) log.debug "I'm in Camera_Preset"
+        biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
+        // /admin?camera=x&preset=x
+    } else if(biControl == "Camera_Snapshot") {
+        if(logEnable) log.debug "I'm in Camera_Snapshot"
+        biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"        
+        // /admin?camera=x&snapshot
+    } else if(biControl == "Camera_Trigger") {
+        if(logEnable) log.debug "I'm in Camera_Trigger"
+        if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+        if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"        
+        // NOTE: if this Command doesn't work for you, try the second one instead
+        // /admin?camera=x&manrec=1
+    } else if(biControl == "Camera_PTZ") {
+        if(logEnable) log.debug "I'm in Camera_PTZ"
+        biRawCommand = "/cam/${biCamera}/pos=${num}"        
+        // /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
+    } else if(biControl == "Camera_Reboot") {
+        if(logEnable) log.debug "I'm in Camera_Reboot"
+        biRawCommand = "/admin?camera=${biCamera}&reboot&user=${parent.biUser}&pw=${parent.biPass}"
+        // /admin?camera=x&reboot
+    } else {
+        biRawCommand = "*** Something went wrong! ***"
+    }
+
+    if(logEnable) log.debug "In biChangeProfile - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
+	if(logEnable) log.debug "In biChangeProfile - sending GET to URL: ${biHost}${biRawCommand}"
+	def httpMethod = "GET"
+	def httpRequest = [
+		method:		httpMethod,
+		path: 		biRawCommand,
+		headers:	[
+			HOST:		biHost,
+			Accept: 	"*/*",
+		]
+	]
+	def hubAction = new hubitat.device.HubAction(httpRequest)
+	sendHubCommand(hubAction)
+}
+
+def biChangeSchedule(schedule) {
+    if(logEnable) log.debug "In biChangeSchedule (${state.version})"
+	biHost = "${parent.biServer}:${parent.biPort}"
+    if(logEnable) log.debug "In biChangeSchedule - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
+	biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
+	if(logEnable) log.debug "In biChangeSchedule - sending GET to URL: ${biHost}${biRawCommand}"
+	
+	def httpMethod = "GET"
+	def httpRequest = [
+		method:		httpMethod,
+		path: 		biRawCommand,
+		headers:	[
+			HOST:		biHost,
+			Accept: 	"*/*",
+		]
+	]
+	def hubAction = new hubitat.device.HubAction(httpRequest)
+    sendHubCommand(hubAction)
 }
 
 // ********** Normal Stuff **********
