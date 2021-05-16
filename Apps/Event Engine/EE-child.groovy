@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.4 - 05/15/21 - More BI fun!
 *  3.0.3 - 05/13/21 - Adjustments, Added Blue Iris Control
 *  3.0.2 - 05/09/21 - Added 'Button' to Condition Types
 *  3.0.1 - 05/07/21 - Added 'System Startup' to Condition Types
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.3"
+    state.version = "3.0.4"
 }
 
 definition(
@@ -1679,8 +1680,32 @@ def pageConfig() {
             if(actionType.contains("aBlueIris")) {
                 paragraph "<b>Blue Iris Control</b>"
                 if(parent.biServer && parent.biUser && parent.biPass) {
-                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ","Camera_Reboot"], required:true, Multiple:false
-
+                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot"], required:true, Multiple:false
+                    if(biControl == "Switch_Profile") {
+                        input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
+                            [Pon0:"Profile 0"],
+                            [Pon1:"Profile 1"],
+                            [Pon2:"Profile 2"],
+                            [Pon3:"Profile 3"],
+                            [Pon4:"Profile 4"],
+                            [Pon5:"Profile 5"],
+                            [Pon6:"Profile 6"],
+                            [Pon7:"Profile 7"],
+                        ], required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
+                    } else {
+                        app.removeSetting("switchProfileOn")
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
+                    }
+                    
+                    if(biControl == "Switch_Schedule") {
+                        input "biScheduleName", "text", title: "Schedule Name", description: "The exact name of the BI schedule"
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
+                    } else {
+                        app.removeSetting("biScheduleName")
+                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
+                    }
+                                     
                     if(biControl == "Camera_Preset") {
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         input "biCameraPreset", "enum", title: "Preset number", options: [
@@ -1742,11 +1767,15 @@ def pageConfig() {
                     paragraph "<hr>"
                 }
             } else {
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
                 state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
                 state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
                 state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
                 state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
                 state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
+                app.removeSetting("switchProfileOn")
+                app.removeSetting("biScheduleName")
                 app.removeSetting("biControl")
                 app.removeSetting("biCamera")
                 app.removeSetting("biCameraPreset")
@@ -3026,7 +3055,13 @@ def startTheProcess(evt) {
                                     }
                                 }
                                 if(actionType.contains("aBlueIris")) {
-                                    if(biControl == "Camera_Preset") { cameraPresetHandler() }
+                                    if(biControl == "Switch_Profile") { profileSwitchHandler() }
+                                    if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
+                                    if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
+                                    if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
+                                    if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
+                                    if(biControl == "Camera_PTZ") { cameraPTZHandler() }
+                                    if(biControl == "Camera_Reboot") { cameraRebootHandler() }
                                 }
                                 
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
@@ -5692,8 +5727,8 @@ def scheduleSwitchHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In switchChangeHandler (${state.version})"
-        if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
-        biChangeSchedule(biScheduleSwitch)
+        if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn: ${biScheduleName}"
+        biChangeSchedule(biScheduleName)
     }
 }
 
