@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.5 - 05/19/21 - Added Cog Description and Other Notes
 *  3.0.4 - 05/15/21 - More BI fun!
 *  3.0.3 - 05/13/21 - Adjustments, Added Blue Iris Control
 *  3.0.2 - 05/09/21 - Added 'Button' to Condition Types
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.4"
+    state.version = "3.0.5"
 }
 
 definition(
@@ -2497,6 +2498,8 @@ def pageConfig() {
             } else {
                 label title: "Enter a name for this automation", required:false
             }
+            input "longDescription", "paragraph", title: "Cog Description (optional)", submitOnChange:true
+            input "otherNotes", "paragraph", title: "Other Notes (optional)", submitOnChange:true
             input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", defaultValue:false, submitOnChange:true
             input "logOptions", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logOptions) {
@@ -2530,12 +2533,17 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
-            paragraph "This will give a short description on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
+            paragraph "This will give a break down on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
             paragraph "<b>Event Engine Cog (${state.version}) - ${app.label}</b>"
+            if(longDescription) paragraph "<b>Description:</b> ${longDescription}<br>"
             if(state.theCogTriggers) paragraph state.theCogTriggers.replaceAll("null","NA")
             if(state.theCogActions) paragraph state.theCogActions.replaceAll("null","NA")
             if(state.theCogNotifications) paragraph state.theCogNotifications.replaceAll("null","NA")
+            if(otherNotes) {
+                paragraph "<hr>"
+                paragraph "<b>Other Notes:</b> ${otherNotes}<br>"
+            }
             paragraph "<hr>"
             paragraph "<small>* If you're not seeing your Notification settings, please re-visit the Notifications section.</small>"
             input "resetCog", "bool", defaultValue:false, title: "Refresh The Cog Description <small>(This will happen immediately)</small>", description: "Cog", submitOnChange:true
