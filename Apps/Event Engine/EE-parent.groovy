@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 05/23/21 - Added Calendarific Info
  *  1.0.6 - 05/13/21 - Added BI Control Info
  *  1.0.5 - 01/29/21 - Fixed something...
  *  1.0.4 - 01/29/21 - Added Default Values
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -99,6 +100,10 @@ def mainPage() {
 				paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
 			}
             
+            section() {
+                paragraph "Remember: Options for Global Variables, Blue Iris and Calendarific can be found below the Cogs Section."
+            }
+            
 			section(getFormat("header-green", "${getImage("Blank")}"+" Cogs")) {
 				app(name: "anyOpenApp", appName: "Event Engine Cog", namespace: "BPTWorld", title: "<b>Add a new 'Cog' to Event Engine</b>", multiple: true)
 			}
@@ -129,13 +134,32 @@ def mainPage() {
 			}
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Blue Iris Info")) {
-                paragraph "If you are planning on usine EE to control Blue Iris, enter in your Server Config information here."
-				paragraph "In Blue Iris settings > Web Server > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."
-                paragraph "<b>Use the local IP address for Host, do not include http:// or anything but the IP address. ie. 192.168.1.123</b>"
-				input "biServer", "text", title: "Server", description: "Blue Iris web server IP", required: false
-				input "biPort", "number", title: "Port", description: "Blue Iris web server port", required: false
-				input "biUser", "text", title: "User name", description: "Blue Iris user name", required: false
-				input "biPass", "password", title: "Password", description: "Blue Iris password", required: false
+                paragraph "If you are planning on using EE to control Blue Iris, enter in your Server Config information here."
+                input "useBI", "bool", title: "Use Blue Iris?", description: "Blue Iris", defaultValue:false, submitOnChange:true
+                if(useBI) {
+                    paragraph "In Blue Iris settings > Web Server > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."
+                    paragraph "<b>Use the local IP address for Host, do not include http:// or anything but the IP address. ie. 192.168.1.123</b>"
+                    input "biServer", "text", title: "Server", description: "Blue Iris web server IP", required: false
+                    input "biPort", "number", title: "Port", description: "Blue Iris web server port", required: false
+                    input "biUser", "text", title: "User name", description: "Blue Iris user name", required: false
+                    input "biPass", "password", title: "Password", description: "Blue Iris password", required: false
+                } else {
+                    app.removeSetting("biServer")
+                    app.removeSetting("biPort")
+                    app.removeSetting("biUser")
+                    app.removeSetting("biPass")
+                }
+            }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Calendarific Info")) {
+                paragraph "If you are planning on using Calendarific to control EE, enter in your Server Config information here."
+                input "useCal", "bool", title: "Use Calendarific?", description: "Blue Iris", defaultValue:false, submitOnChange:true
+                if(useCal) {
+                    paragraph "Get your FREE key from <a href='https://calendarific.com/' target=_blank'>Calendarific</a>."
+                    input "apiKey", "text", title: "API Key", required:true, submitOnChange:true
+                } else {
+                    app.removeSetting("apiKey")
+                }
             }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
