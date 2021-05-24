@@ -8,7 +8,7 @@
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -34,15 +34,7 @@
  *
  *  Changes:
  *
- *  2.3.9 - 02/25/21 - Minor adjustment to delay
- *  2.3.8 - 02/14/21 - Added a delay option to Refresh
- *  2.3.7 - 11/28/20 - Push adjustments, other tweaks
- *  2.3.6 - 11/27/20 - Adjustments and added features
- *  2.3.5 - 10/30/20 - Adjustments to Special Tracking
- *  2.3.4 - 09/02/20 - Cosmetic changes
- *  2.3.3 - 08/02/20 - Fixed typo with locks
- *  2.3.2 - 07/29/20 - Fixed typo with Battery
- *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports, other adjustments
+ *  2.4.0 - 05/24/21 - Add second switch option to Run Reports on Demand, fixed typo with Activity push
  *  ---
  *  1.0.0 - 12/21/18 - Initial release.
  *
@@ -53,7 +45,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.9"
+	state.version = "2.4.0"
 }
 
 definition(
@@ -147,7 +139,8 @@ def pageConfig() {
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
 			input "timeToRun", "time", title: "Check Devices at this time daily", required:false, submitOnChange:true
-            input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report at any time", required:false, submitOnChange:true
+            input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report at any time (with push)", required:false, submitOnChange:true
+            input "runReportSwitchNoPush", "capability.switch", title: "Turn this switch 'on' to a run new report at any time WITHOUT sending a push", required:false, submitOnChange:true
             paragraph "Push messages will only go out when Time and/or Switch options are choosen and triggered. This way you can view as many manual reports as needed to troubleshoot your system without being flooded with push notifications."
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification", multiple:true, required:false, submitOnChange:true
             if(sendPushMessage) {
@@ -156,7 +149,7 @@ def pageConfig() {
                 input "statusPush", "bool", title: "Send Status Report", defaultValue:false, submitOnChange:true, width:6
                 input "specialTrackingPush", "bool", title: "Send Special Tracking Report", defaultValue:false, submitOnChange:true, width:6
                 
-                input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true
+                input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true, width:6
             }
         }
         
@@ -768,6 +761,7 @@ def initialize() {
         setDefaults()
         if(timeToRun) schedule(timeToRun, activityHandler)
         if(runReportSwitch) subscribe(runReportSwitch, "switch.on", activityHandler)
+        if(runReportSwitchNoPush) subscribe(runReportSwitchNoPush, "switch.on", activityHandler)
     }
 }
 
@@ -786,6 +780,12 @@ def activityHandler(evt) {
     } else {
         clearMaps()
         if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
+        if(evt) {
+            state.whoHappened = evt.displayName
+            if(logEnable) log.debug "In activityHandler - whoHappened: ${state.whoHappened}" 
+        } else {
+            state.whoHappened = ""
+        }
         if(activityDevices) myActivityHandler()
         if(batteryDevices) myBatteryHandler()
         if(statusDevices) myStatusHandler()
@@ -796,7 +796,8 @@ def activityHandler(evt) {
         if(isDataBatteryDevice) isThereData()
         if(isDataStatusDevice) isThereData()
         if(isDataSpecialDevice) isThereData()
-        if(sendPushMessage) pushNow()
+        if(logEnable) log.debug "In activityHandler - whoHappened: ${state.whoHappened} VS runReportSwitchNoPush: ${runReportSwitchNoPush}" 
+        if(sendPushMessage && state.whoHappened.toString() != runReportSwitchNoPush.toString()) pushNow()
         if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
     }
 }	
@@ -1331,8 +1332,8 @@ def myActivityAttHandler() {
         def tbl = tblhead
         def tileCount = 1
         state.activityAttCount = 0
-        state.activityAttMapPhoneS = ""
-        activityAttMapPhone = "Activity with Attributes Report \n"
+        state.activityMapPhoneS = ""
+        activityMapPhone = "Activity with Attributes Report \n"
 
         theDevices = activityAttDevices.sort { a, b -> a.displayName <=> b.displayName }    
 
@@ -1369,7 +1370,7 @@ def myActivityAttHandler() {
                     if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${lastAct}"
                     if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${lastAct}"
 
-                    activityAttMapPhone += "${it.displayName} - ${lastAct} \n"
+                    activityMapPhone += "${it.displayName} - ${lastAct} \n"
 
                     totalLength = tbl.length() + line.length()
                     if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
@@ -1410,8 +1411,8 @@ def myActivityAttHandler() {
         def rightNow = new Date()
         dateFormatHandler(rightNow)
         state.activityAttMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
-        activityAttMapPhone += "Report generated: ${newDate} \n"
-        state.activityAttMapPhoneS = activityAttMapPhone
+        activityMapPhone += "Report generated: ${newDate} \n"
+        state.activityMapPhoneS = activityMapPhone
         if(logEnable) log.debug "     - - - - - End (Activity with Attributes) - - - - -     "
     }
 }
