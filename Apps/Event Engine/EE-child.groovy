@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.7 - 05/28/21 - Added a random delay for sunset/sunrise options
 *  3.0.6 - 05/23/21 - Added support for Calendarific (holidays!)
 *  3.0.5 - 05/19/21 - Added Cog Description and Other Notes
 *  3.0.4 - 05/15/21 - More BI fun!
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.6"
+    state.version = "3.0.7"
 }
 
 definition(
@@ -159,6 +160,7 @@ def pageConfig() {
                 ["xSystemStartup":"Sytem Startup"],
                 ["xTemp":"Temperature Setpoint"],
                 ["xTherm":"Thermostat Activity"],
+                //["xTransition":"Transitions"],
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
                 ["xCustom":"** Custom Attribute **"]
@@ -332,17 +334,57 @@ def pageConfig() {
                     if(fromSun) {
                         paragraph "Sunrise <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                        input "offsetSunrise", "number", title: "Offset(minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                        if(offsetSunrise == 99) {
+                            input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            input "sunriseDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                            state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                        } else {
+                            state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                            app.removeSetting("sunriseDelayLow")
+                            app.removeSetting("sunriseDelayHigh")
+                        }
                         paragraph "Sunset"
                         input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                        input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                        if(offsetSunset == 99) {
+                            input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            input "sunsetDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                            state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                        } else {
+                            state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                            app.removeSetting("sunsetDelayLow")
+                            app.removeSetting("sunsetDelayHigh")
+                        }
                     } else {
                         paragraph "Sunset <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
-                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, width:6, submitOnChange:true
+                        input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                        if(offsetSunset == 99) {
+                            input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            input "sunsetDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                            state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                        } else {
+                            state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                            app.removeSetting("sunsetDelayLow")
+                            app.removeSetting("sunsetDelayHigh")
+                        }
                         paragraph "Sunrise"
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                        input "offsetSunrise", "number", title: "Offset(minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                        if(offsetSunrise == 99) {
+                            input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            input "sunriseDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                            if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                            state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                        } else {
+                            state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                            app.removeSetting("sunriseDelayLow")
+                            app.removeSetting("sunriseDelayHigh")
+                        }
                     }
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
                     input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
@@ -373,7 +415,17 @@ def pageConfig() {
             } else if(timeDaysType.contains("tSunrise")) {
                 paragraph "<b>Just Sunrise</b> <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>"
                 input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                input "offsetSunrise", "number", title: "Offset (minutes)", width:6
+                input "offsetSunrise", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                if(offsetSunrise == 99) {
+                    input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                    input "sunriseDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                    if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                    state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
+                    app.removeSetting("sunriseDelayLow")
+                    app.removeSetting("sunriseDelayHigh")
+                }
                 input "sunriseToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(sunriseToTime) {
                     input "sunriseEndTime", "time", title: "Time to End", description: "Time", required:false
@@ -391,7 +443,17 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise}<br>"
                 paragraph "<b>Just Sunset</b>"
                 input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
-                input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
+                if(offsetSunset == 99) {
+                    input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                    input "sunsetDelayHigh", "number", title: "Random Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
+                    if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
+                    state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
+                    app.removeSetting("sunsetDelayLow")
+                    app.removeSetting("sunsetDelayHigh")
+                }
                 input "sunsetToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                 if(sunsetToTime) {
                     input "sunsetEndTime", "time", title: "Time to End", description: "Time", required:false
@@ -416,6 +478,8 @@ def pageConfig() {
                 app.removeSetting("setBeforeAfter")
                 app.removeSetting("riseBeforeAfter")
                 app.removeSetting("fromSun")
+                app.removeSetting("sunsetDelayLow")
+                app.removeSetting("sunsetDelayHigh")
             }
 // -----------          
             if(timeDaysType.contains("tHoliday")) {
@@ -1367,6 +1431,28 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 app.removeSetting("thermoEvent")
+            }
+// -----------
+            if(triggerType.contains("xTransition")) {
+                paragraph "<b>Attribute Transitions</b>"
+                input "attTransitionEvent", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
+                if(attTransitionEvent) {
+                    allAttrs1 = []
+                    allAttrs1 = attTransitionEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                    allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                    input "attTransitionAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
+                    
+                    paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
+                    input "atAttribute1", "text", title: "FROM Attribute Value", required:true, submitOnChange:true
+                    input "atAttribute2", "text", title: "TO Attribute Value", required:true, submitOnChange:true
+                    
+                    state.theCogTriggers += "<b>-</b> By Attribute Transition: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                }
+            } else {
+                state.theCogTriggers -= "<b>-</b> By Attribute Transition: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                app.removeSetting("attTransitionEvent")
+                app.removeSetting("atAttribute1")
+                app.removeSetting("atAttribute2")
             }
 // -----------
             if(triggerType.contains("xVoltage")) {
@@ -2951,6 +3037,7 @@ def startTheProcess(evt) {
                         state.whoText = evt.descriptionText
                     } catch(e) {
                         if(logEnable) log.debug "In startTheProcess - Whoops!"
+                        log.error(getExceptionMessageWithLine(e))
                     }
                     if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                     state.hasntDelayedYet = true
@@ -3148,6 +3235,7 @@ def startTheProcess(evt) {
                                             theTimeType = pieces[6].replace("]","")
                                         } catch (e) {
                                             if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
+                                            log.error(getExceptionMessageWithLine(e))
                                         }
                                         if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
                                         theTime = theTime.replace("]","")
@@ -5005,8 +5093,32 @@ def checkSunHandler() {
     if(timeDaysType == null) timeDaysType = ""
     if(logEnable) log.debug "In checkSunHandler - timeDaysType: ${timeDaysType}"
     if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
-        int theOffsetSunset = offsetSunset ?: 1
-        int theOffsetSunrise = offsetSunrise ?: 1
+        if(offsetSunset == 99) {
+            sunsetHigh = sunsetDelayHigh ?: 5
+            sunsetLow = sunsetDelayLow ?: 1
+            try {
+                sunsetDelay = Math.abs(new Random().nextInt() % (sunsetHigh - sunsetLow)) + sunsetLow
+            } catch (e) { 
+                // nothing
+            }
+            state.theOffsetSunset = sunsetDelay ?: 1
+        } else {
+            state.theOffsetSunset = offsetSunset ?: 1
+        }
+        
+        if(offsetSunrise == 99) {
+            sunsetHigh = sunsetDelayHigh ?: 5
+            sunsetLow = sunsetDelayLow ?: 1
+            try {
+                sunriseDelay = Math.abs(new Random().nextInt() % (sunriseHigh - sunriseLow)) + sunriseLow
+            } catch (e) { 
+                // nothing
+            }
+            state.theOffsetSunrise = sunriseDelay ?: 1
+        } else {
+            state.theOffsetSunrise = offsetSunrise ?: 1
+        }
+        
         if(fromSun) {
             sunriseTime = getSunriseAndSunset().sunrise
         } else {
@@ -5016,19 +5128,23 @@ def checkSunHandler() {
         if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
 
         if(setBeforeAfter) {
-            state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))       // checkSunHandler
-            use( TimeCategory ) { nextSunsetOffset = sunsetTime + theOffsetSunset.minutes }    // checkTimeSun
+            oSunset = state.theOffsetSunset.toInteger()
+            state.timeSunset = new Date(sunsetTime.time + (oSunset * 60 * 1000))       // checkSunHandler
+            use( TimeCategory ) { nextSunsetOffset = sunsetTime + oSunset.minutes }    // checkTimeSun
         } else {
-            state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
-            use( TimeCategory ) { nextSunsetOffset = sunsetTime - theOffsetSunset.minutes }
+            oSunset = state.theOffsetSunset.toInteger()
+            state.timeSunset = new Date(sunsetTime.time - (oSunset * 60 * 1000))
+            use( TimeCategory ) { nextSunsetOffset = sunsetTime - oSunset.minutes }
         }    
 
         if(riseBeforeAfter) {
-            state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-            use( TimeCategory ) { nextSunriseOffset = sunriseTime + theOffsetSunrise.minutes }
+            oSunrise = state.theOffsetSunrise.toInteger()
+            state.timeSunrise = new Date(sunriseTime.time + (oSunrise * 60 * 1000))
+            use( TimeCategory ) { nextSunriseOffset = sunriseTime + oSunrise.minutes }
         } else {
-            state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-            use( TimeCategory ) { nextSunriseOffset = sunriseTime - theOffsetSunrise.minutes }
+            oSunrise = state.theOffsetSunrise.toInteger()
+            state.timeSunrise = new Date(sunriseTime.time - (oSunrise * 60 * 1000))
+            use( TimeCategory ) { nextSunriseOffset = sunriseTime - oSunrise.minutes }
         }
 
         if(triggerType.contains("tTimeDays")) {
@@ -5136,7 +5252,6 @@ def checkingWhatToDo() {
         state.timeOK = true
     } else {
         state.timeOK = false
-        // check for Restriction
         if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
         if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
         if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
@@ -5499,7 +5614,6 @@ def setLevelandColorHandler() {
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
     def list = []
     myDev.each {
-        //log.warn "Working on Lock: ${it}"
         list += getLockCodesFromDevice(it).tokenize(",")
     }
     lista = list.flatten().unique{ it }
@@ -5584,8 +5698,7 @@ def sdPerModeHandler(data) {
             if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
             theColor = theColor.replace("]","")
             theTime = theTime.replace("]","")
-            theTimeType = theTimeType.replace("]","")
-        
+            theTimeType = theTimeType.replace("]","")       
             if(theDevices == null) theDevices = "NA"
             if(theLevel == null) theLevel = "NA"
             if(theTemp == null) theTemp = "NA"
@@ -5863,7 +5976,6 @@ def cameraRebootHandler() {
     }
 }
 
-
 def biChangeProfile(num) {
 	if(logEnable) log.debug "In biChangeProfile (${state.version})"
 	biHost = "${parent.biServer}:${parent.biPort}"
@@ -5898,7 +6010,6 @@ def biChangeProfile(num) {
     } else {
         biRawCommand = "*** Something went wrong! ***"
     }
-
     if(logEnable) log.debug "In biChangeProfile - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
 	if(logEnable) log.debug "In biChangeProfile - sending GET to URL: ${biHost}${biRawCommand}"
 	def httpMethod = "GET"
