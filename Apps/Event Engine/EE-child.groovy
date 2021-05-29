@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.9 - 05/29/21 - Added Transitions for Device Attributes, HSM Status and Modes
 *  3.0.8 - 05/28/21 - Added Days odd or even condition
 *  3.0.7 - 05/28/21 - Added a random delay for sunset/sunrise options
 *  3.0.6 - 05/23/21 - Added support for Calendarific (holidays!)
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.8"
+    state.version = "3.0.9"
 }
 
 definition(
@@ -161,7 +162,7 @@ def pageConfig() {
                 ["xSystemStartup":"Sytem Startup"],
                 ["xTemp":"Temperature Setpoint"],
                 ["xTherm":"Thermostat Activity"],
-                //["xTransition":"Transitions"],
+                ["xTransition":"Transitions"],
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
                 ["xCustom":"** Custom Attribute **"]
@@ -923,7 +924,16 @@ def pageConfig() {
             if(triggerType.contains("xHSMStatus")) {
                 paragraph "<b>HSM Status</b>"
                 paragraph "<b>Warning: This Condition has not been tested. Use at your own risk.</b>"
-                input "hsmStatusEvent", "enum", title: "By HSM Status", options: ["All Disarmed", "Armed Away", "Armed Home", "Armed Night", "Delayed Armed Away", "Delayed Armed Home", "Delayed Armed Night", "Disarmed"], multiple:true, submitOnChange:true
+                input "hsmStatusEvent", "enum", title: "By HSM Status", options: [
+                    ["allDisarmed":"All Disarmed"],
+                    ["armedAway":"Armed Away"],
+                    ["armedHome":"Armed Home"],
+                    ["armedNight":"Armed Night"],
+                    ["delayedArmed":"Delayed Armed Away"],
+                    ["delayedArmedHome":"Delayed Armed Home"],
+                    ["delayedArmedNight":"Delayed Armed Night"],
+                    ["disarmed":"Disarmed"]
+                ], multiple:true, submitOnChange:true, width:6
                 if(hsmStatusEvent) paragraph "Cog will trigger when <b>any</b> of the HSM Status are active."
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By HSM Status: ${hsmStatusEvent}<br>"
@@ -1444,23 +1454,51 @@ def pageConfig() {
             }
 // -----------
             if(triggerType.contains("xTransition")) {
-                paragraph "<b>Attribute Transitions</b>"
-                input "attTransitionEvent", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
-                if(attTransitionEvent) {
-                    allAttrs1 = []
-                    allAttrs1 = attTransitionEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                    allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
-                    input "attTransitionAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
-                    
-                    paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
-                    input "atAttribute1", "text", title: "FROM Attribute Value", required:true, submitOnChange:true
-                    input "atAttribute2", "text", title: "TO Attribute Value", required:true, submitOnChange:true
-                    
-                    state.theCogTriggers += "<b>-</b> By Attribute Transition: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
-                }
+                paragraph "<b>Transitions</b>"
+                input "transitionType", "enum", title: "Type of Transition", options: ["Device Attribute", "HSM Status", "Mode"], required:true, multiple:false, submitOnChange:true               
+                if(transitionType == "Device Attribute") {
+                    paragraph "<u>Device Attribute</u>"
+                    input "attTransitionEvent", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
+                    if(attTransitionEvent) {
+                        allAttrs1 = []
+                        allAttrs1 = attTransitionEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                        allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                        input "attTransitionAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true                   
+                        paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
+                        input "atAttribute1", "text", title: "FROM Attribute Value", required:true, submitOnChange:true, width:6
+                        input "atAttribute2", "text", title: "TO Attribute Value", required:true, submitOnChange:true, width:6        
+                        state.theCogTriggers += "<b>-</b> By Device Attribute Transition: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                    } else {
+                        app.removeSetting("attTransitionAtt")
+                    }
+                } else if(transitionType == "HSM Status") {
+                    paragraph "<u>HSM Status</u>"
+                    input "atAttribute1", "enum", title: "TO HSM Status", options: [
+                        ["allDisarmed":"All Disarmed"],
+                        ["armedAway":"Armed Away"],
+                        ["armedHome":"Armed Home"],
+                        ["armedNight":"Armed Night"],
+                        ["disarmed":"Disarmed"]
+                    ], multiple:false, submitOnChange:true, width:6
+                    input "atAttribute2", "enum", title: "TO HSM Status", options: [
+                        ["allDisarmed":"All Disarmed"],
+                        ["armedAway":"Armed Away"],
+                        ["armedHome":"Armed Home"],
+                        ["armedNight":"Armed Night"],
+                        ["disarmed":"Disarmed"]
+                    ], multiple:false, submitOnChange:true, width:6
+                    state.theCogTriggers += "<b>-</b> By Transition: ${transitionType} - attTransitionEvent: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                } else if(transitionType == "Mode") {
+                    paragraph "<u>Mode</u>"
+                    input "atAttribute1", "mode", title: "FROM Mode", multiple:false, submitOnChange:true, width:6
+                    input "atAttribute2", "mode", title: "TO Mode", multiple:false, submitOnChange:true, width:6
+                    state.theCogTriggers += "<b>-</b> By Transition: ${transitionType} - attTransitionEvent: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                }               
             } else {
-                state.theCogTriggers -= "<b>-</b> By Attribute Transition: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                state.theCogTriggers -= "<b>-</b> By Transition: ${transitionType} - attTransitionEvent: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
+                app.removeSetting("transitionType")
                 app.removeSetting("attTransitionEvent")
+                app.removeSetting("attTransitionAtt")
                 app.removeSetting("atAttribute1")
                 app.removeSetting("atAttribute2")
             }
@@ -1788,7 +1826,7 @@ def pageConfig() {
         state.theCogActions = "<b><u>Actions</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
-                ["aBlueIris":"Blue Iris Control (Beta)"],
+                ["aBlueIris":"Blue Iris Control"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -2866,6 +2904,7 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        if(logEnable) log.trace "***** Initialize (${state.version}) - ${app.label} *****"
         if(accelerationConditionOnly == null) accelerationConditionOnly = false
         if(batteryConditionOnly == null) batteryConditionOnly = false
         if(buttonConditionOnly == null) buttonConditionOnly = false
@@ -2956,6 +2995,12 @@ def initialize() {
                     subscribe(device2, "motion", activeTwoHandler)
                 }
             }
+            
+            if(triggerType.contains("xTransition")) {
+                if(transitionType == "Device Attribute") { subscribe(attTransitionEvent, attTransitionAtt, startTheProcess) }
+                if(transitionType == "HSM Status") { subscribe(location, "hsmStatus", startTheProcess) }
+                if(transitionType == "Mode") { subscribe(location, "mode", startTheProcess) }
+            }
         }
         
         if(timeDaysType) {
@@ -2970,8 +3015,7 @@ def initialize() {
             }
         }
         
-        checkSunHandler()
-        
+        checkSunHandler() 
         if(fromTime && toTime) {
             schedule(fromTime, startTimeBetween)
             schedule(toTime, endTimeBetween)
@@ -3116,7 +3160,7 @@ def startTheProcess(evt) {
                     if(tempEvent) { tempHandler() }
                     if(voltageEvent) { voltageHandler() }
 
-                    if(!state.isThereSPDevices) {  // Keep in LAST setpoint
+                    if(!state.isThereSPDevices) {
                         if(triggerAndOr) {
                             state.setpointOK = false
                         } else {
@@ -3137,8 +3181,9 @@ def startTheProcess(evt) {
                     } else {
                         if(globalVariableEvent) { globalVariablesTextHandler() }
                     }               
-                    if(triggerType.contains("xHubCheck")) { sendHttpHandler() }               
-                    checkingWhatToDo()            
+                    if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
+                    checkTransitionHandler()
+                    checkingWhatToDo()     // Putting it all together!       
                 }
             }
 
@@ -5281,68 +5326,6 @@ def modeHandler() {
 }
 // *****  End Time Handlers *****
 
-def checkingWhatToDo() {
-    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
-    state.jumpToStop = false
-    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
-        state.timeOK = true
-    } else {
-        state.timeOK = false
-        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
-        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
-        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
-        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
-    }
-    if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
-        if(state.timeOK) {
-            if((state.totalMatch >= 1) || state.setpointOK) {
-                state.everythingOK = true
-            } else {
-                if(state.totalMatchHelper >= 1) {
-                    state.everythingOK = true
-                } else {
-                    state.everythingOK = false
-                }
-            }
-        } else {
-            state.everythingOK = false
-        }
-    } else {
-        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
-        if(state.timeOK) {
-            if((state.totalMatch == state.totalConditions) && state.setpointOK) {
-                state.everythingOK = true
-            } else {
-                if(state.totalMatchHelper >= 1) {
-                    state.everythingOK = true
-                } else {
-                    state.everythingOK = false
-                }
-            }
-        } else {
-            state.everythingOK = false
-        }
-    }   
-    if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
-    if(state.everythingOK) {
-        state.whatToDo = "run"
-        if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
-    } else {
-        if(state.jumpToStop) {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Using B - Stop"
-        } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-            state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingWhatToDo - Using C - Reverse"
-        } else {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Using D - Stop"
-        }
-    }   
-    if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
-}
-
 def setLevelandColorHandler() {
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
@@ -6234,6 +6217,116 @@ def checkForHoliday() {
 }
 // ***** End Calendarific *****
 
+def checkTransitionHandler() {
+    if(logEnable) log.debug "In checkTransitionHandler (${state.version})"
+    if(transitionType == "Device Attribute") {
+        if(attTransitionEvent) {
+            if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
+            state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+            if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+                state.transitionOK = true
+            } else {
+                if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                state.previousAtt = state.currentAtt
+                state.transitionOK = false
+            }
+        }
+    } else if(transitionType == "HSM Status") {
+        if(state.previousAtt == null) state.previousAtt = location.hsmStatus
+        state.currentAtt = location.hsmStatus
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+            state.transitionOK = true
+        } else {
+            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+            state.previousAtt = state.currentAtt
+            state.transitionOK = false
+        }      
+    } else if(transitionType == "Mode") {
+        if(state.previousAtt == null) state.previousAtt = location.mode
+        state.currentAtt = location.mode
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+            state.transitionOK = true
+        } else {
+            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+            state.previousAtt = state.currentAtt
+            state.transitionOK = false
+        }
+    } else {
+        state.transitionOK = true
+    }
+}
+
+def checkingWhatToDo() {
+    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
+    state.jumpToStop = false
+    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
+        state.timeOK = true
+    } else {
+        state.timeOK = false
+        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
+        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
+        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
+        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
+    }
+    if(triggerAndOr) {
+        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${transitionOK} - timeOK: ${state.timeOK}"
+        if(state.timeOK) {
+            if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK) {
+                state.everythingOK = true
+            } else {
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
+            }
+        } else {
+            state.everythingOK = false
+        }
+    } else {
+        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(state.timeOK) {
+            if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK) {
+                state.everythingOK = true
+            } else {
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
+            }
+        } else {
+            state.everythingOK = false
+        }
+    }   
+    if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
+    if(state.everythingOK) {
+        state.whatToDo = "run"
+        if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
+    } else {
+        if(state.jumpToStop) {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Using B - Stop"
+        } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+            state.whatToDo = "reverse"
+            if(logEnable) log.debug "In checkingWhatToDo - Using C - Reverse"
+        } else {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Using D - Stop"
+        }
+    }   
+    if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
+}
+
 // ********** Normal Stuff **********
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
@@ -6310,8 +6403,7 @@ def getHeaderAndFooter() {
                 state.headerMessage = resp.data.headerMessage
                 state.footerMessage = resp.data.footerMessage
             }
-        }
-        catch (e) { }
+        } catch (e) { }
     }
     if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
     if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
