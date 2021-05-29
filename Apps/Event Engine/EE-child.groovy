@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  3.0.8 - 05/28/21 - Added Days odd or even condition
 *  3.0.7 - 05/28/21 - Added a random delay for sunset/sunrise options
 *  3.0.6 - 05/23/21 - Added support for Calendarific (holidays!)
 *  3.0.5 - 05/19/21 - Added Cog Description and Other Notes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.7"
+    state.version = "3.0.8"
 }
 
 definition(
@@ -257,14 +258,23 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
-                input "days", "enum", title: "Activate on these days <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", description: "Days to Activate", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                input "days", "enum", title: "Activate on these days <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", description: "Days to Activate", required:true, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                paragraph "<hr>"
+                paragraph "You can also choose if the condition will trigger only on Even or Odd days. Great for watering schedules."
+                input "useDayMonthYear", "bool", title: "Use Day of the Month (off) or Day of the Year (on)", description: "The Days", defaultValue:false, submitOnChange:true
+                input "evenDays", "bool", title: "But only on Even Days (2,4,6,8,etc)", description: "Even Days", defaultValue:false, submitOnChange:true, width:6
+                input "oddDays", "bool", title: "But only on Odd Days (1,3,5,7,etc)", description: "Odd Days", defaultValue:false, submitOnChange:true, width:6
+                if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
+                paragraph "<hr>"
                 input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
                 input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                state.theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Days - ${days} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                state.theCogTriggers -= "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 app.removeSetting("days")
+                app.removeSetting("evenDays")
+                app.removeSetting("oddDays")
                 app.removeSetting("daysMatchRestriction")
                 app.removeSetting("daysMatchConditionOnly")
             }
@@ -5203,6 +5213,13 @@ def certainTime() {
 
 def dayOfTheWeekHandler() {
     if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+    state.daysMatch = null
+    Date date = new Date() 
+    if(useDayMonthYear) {
+        state.numberDay = date[Calendar.DAY_OF_YEAR]
+    } else {
+        state.numberDay = date[Calendar.DAY_OF_MONTH]
+    }
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
@@ -5213,9 +5230,28 @@ def dayOfTheWeekHandler() {
         } else {
             state.daysMatch = false
         }
-    } else {
-        state.daysMatch = true
     }
+    if(evenDays) {
+        nDay = state.numberDay.toInteger()
+        if(nDay % 2 == 0) { 
+            state.daysMatch = true
+        } else {
+            state.daysmatch = false
+        }
+        hmmm = nDay % 2
+        if(logEnable) log.debug "In dayOfTheWeekHandler - Even - nDay: ${nDay} - ${state.daysMatch} (${hmmm})"
+    } 
+    if(oddDays) {
+        nDay = state.numberDay.toInteger()
+        if(nDay % 2 == 0) { 
+            state.daysMatch = false
+        } else {
+            state.daysmatch = true
+        }
+        hmmm = nDay % 2
+        if(logEnable) log.debug "In dayOfTheWeekHandler - Odd - nDay: ${nDay} - ${state.daysMatch} (${hmmm})"
+    }
+    if(state.daysMatch == null) state.daysMatch = true
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
