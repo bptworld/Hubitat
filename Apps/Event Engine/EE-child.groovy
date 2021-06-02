@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  3.0.9 - 05/29/21 - Added Transitions for Device Attributes, HSM Status and Modes
-*  3.0.8 - 05/28/21 - Added Days odd or even condition
-*  3.0.7 - 05/28/21 - Added a random delay for sunset/sunrise options
-*  3.0.6 - 05/23/21 - Added support for Calendarific (holidays!)
-*  3.0.5 - 05/19/21 - Added Cog Description and Other Notes
-*  3.0.4 - 05/15/21 - More BI fun!
-*  3.0.3 - 05/13/21 - Adjustments, Added Blue Iris Control
-*  3.0.2 - 05/09/21 - Added 'Button' to Condition Types
-*  3.0.1 - 05/07/21 - Added 'System Startup' to Condition Types
-*  3.0.0 - 04/26/21 - Adjustments, big change to 'xx as Restriction'
+*  3.1.0 - 05/29/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.0.9"
+    state.version = "3.1.0"
 }
 
 definition(
@@ -261,19 +252,53 @@ def pageConfig() {
                 paragraph "<b>By Days</b>"
                 input "days", "enum", title: "Activate on these days <small><abbr title='Choose the Days to use with this Cog'><b>- INFO -</b></abbr></small>", description: "Days to Activate", required:true, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                 paragraph "<hr>"
-                paragraph "You can also choose if the condition will trigger only on Even or Odd days. Great for watering schedules."
-                input "useDayMonthYear", "bool", title: "Use Day of the Month (off) or Day of the Year (on)", description: "The Days", defaultValue:false, submitOnChange:true
-                input "evenDays", "bool", title: "But only on Even Days (2,4,6,8,etc)", description: "Even Days", defaultValue:false, submitOnChange:true, width:6
-                input "oddDays", "bool", title: "But only on Odd Days (1,3,5,7,etc)", description: "Odd Days", defaultValue:false, submitOnChange:true, width:6
-                if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
+                paragraph "You can also choose if the condition will trigger only on Even or Odd days. Great for watering schedules.<br>Or choose by Even or Odd weeks. Great for Recycle schedules."
+                input "useDayWeek", "bool", title: "Use Day (off) or Week (On)", description: "Day or Week", defaultVAlue:false, submitOnChange:true, width:6
+                if(useDayWeek) {
+                    paragraph "Week starts on Sunday and ends on Saturday", width:6
+                    input "evenDays", "bool", title: "But only on Even Weeks (2,4,6,8,etc)", description: "Even Weeks", defaultValue:false, submitOnChange:true, width:6
+                    input "oddDays", "bool", title: "But only on Odd Weeks (1,3,5,7,etc)", description: "Odd Weeks", defaultValue:false, submitOnChange:true, width:6
+                    if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
+                    Date date = new Date() 
+                    numberWeek = date[Calendar.WEEK_OF_YEAR]
+                    nDay = numberWeek.toInteger()
+                    if(nDay % 2 == 0) { 
+                        weekIS = "even"
+                    } else {
+                        weekIS = "odd"
+                    }
+                    paragraph "<b>The current week number is ${numberWeek}, which is an ${weekIS} number.</b>"    
+                    state.theCogTriggers += "<b>-</b> By Weeks - ${days} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                } else {
+                    input "useDayMonthYear", "bool", title: "Use Day of the Month (off) or Day of the Year (on)", description: "The Days", defaultValue:false, submitOnChange:true, width:6
+                    input "evenDays", "bool", title: "But only on Even Days (2,4,6,8,etc)", description: "Even Days", defaultValue:false, submitOnChange:true, width:6
+                    input "oddDays", "bool", title: "But only on Odd Days (1,3,5,7,etc)", description: "Odd Days", defaultValue:false, submitOnChange:true, width:6
+                    if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
+                    Date date = new Date()
+                    if(useDayMonthYear) {
+                        numberDay = date[Calendar.DAY_OF_YEAR]
+                    } else {
+                        numberDay = date[Calendar.DAY_OF_MONTH]
+                    }
+                    nDay = numberDay.toInteger()
+                    if(nDay % 2 == 0) { 
+                        dayIS = "even"
+                    } else {
+                        dayIS = "odd"
+                    }
+                    paragraph "<b>The current day number is ${numberDay}, which is an ${dayIS} number.</b>"
+                    state.theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                }
                 paragraph "<hr>"
                 input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
                 input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                paragraph "<b>Reminder: You'll need to select a Time for the Cog to run on the Days selected here.</b>"
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
             } else {
                 state.theCogTriggers -= "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                state.theCogTriggers -= "<b>-</b> By Weeks - ${days} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 app.removeSetting("days")
+                app.removeSetting("useDayWeek")
                 app.removeSetting("evenDays")
                 app.removeSetting("oddDays")
                 app.removeSetting("daysMatchRestriction")
@@ -1827,6 +1852,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
                 ["aBlueIris":"Blue Iris Control"],
+                ["aDenonAVR":"Denon AVR Control"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -1954,7 +1980,37 @@ def pageConfig() {
                 app.removeSetting("biCameraPTZ")
             }
 // End BI Control
-            
+// Denon AVR Control
+            if(actionType.contains("aDenonAVR")) {
+                paragraph "<b>Denon AVR Control</b>"
+                input "denonAVR", "capability.actuator", title: "Denon AVR Device", mutiple:false, submitOnchange:true
+                if(denonAVR) {
+                    allAttrs1 = []
+                    allAttrs1 = denonAVR.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                    allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                    input "denonControl", "enum", title: "Select Control Type", submitOnChange:true, options: allAttrs1a, required:true, Multiple:false
+                    
+                    if(denonControl) {
+                        if(denonControl == "switch") { input "denonSwitch", "enum", title: "Set Switch to", options: ["on","off"] }
+                        
+                        else if(denonControl == "volume") { 
+                            paragraph "Pleasee only use ONE of the following options"
+                            input "denonSetVolume", "number", title: "Set Volume to (1 to 100)", range:'1..100'
+                            input "denonVolumeDown", "number", title: "Volume Down - How Many Step Down (1 to 10)", range:'1..10'
+                            input "dononVolumeUp", "number", title: "Volume up - How Many Steps Up (1 to 10)", range:'1..10' 
+                        }
+                        
+                        else { paragraph "${denonControl} isn't supported yet. Please contact BPtWorld to get it added." }
+                        
+                    }
+                }
+                paragraph "<hr>"
+            } else {
+                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
+                
+                app.removeSetting("biCameraPTZ")
+            }
+// End Denon AVR Control
             if(actionType.contains("aFan")) {
                 paragraph "<b>Fan Control</b>"
                 input "fanAction", "capability.fanControl", title: "Fan Devices", multiple:true, submitOnChange:true
@@ -4159,35 +4215,40 @@ def switchesPerModeReverseActionHandler() {
             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Working on $it"
             name = (it.displayName).replace(" ","")
             if(it.hasCommand("setColor")) {
+                if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setColor"
                 try {
                     data = state.oldMap.get(name)
-                    def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
-                    int hueColor = oldHueColor.toInteger()
-                    int saturation = oldSaturation.toInteger()
-                    int level = oldLevel.toInteger()
-                    int cTemp = oldColorTemp.toInteger()
-                    def cMode = oldColorMode
-                    if(cMode == "CT") {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp)
-                        pauseExecution(actionDelay)
-                        it.setLevel(level)                          
-                        if(oldStatus == "off" || trueReverse) {                            
-                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
+                    if(data) {
+                        def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
+                        int hueColor = oldHueColor.toInteger()
+                        int saturation = oldSaturation.toInteger()
+                        int level = oldLevel.toInteger()
+                        int cTemp = oldColorTemp.toInteger()
+                        def cMode = oldColorMode
+                        if(cMode == "CT") {
+                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
                             pauseExecution(actionDelay)
-                            it.off()
+                            it.setColorTemperature(cTemp)
+                            pauseExecution(actionDelay)
+                            it.setLevel(level)                          
+                            if(oldStatus == "off" || trueReverse) {                            
+                                if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
+                                pauseExecution(actionDelay)
+                                it.off()
+                            }
+                        } else {
+                            def theValue = [hue: hueColor, saturation: saturation, level: level]
+                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
+                            pauseExecution(actionDelay)
+                            it.setColor(theValue)
+                            if(oldStatus == "off" || trueReverse) {
+                                if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
+                                pauseExecution(actionDelay)
+                                it.off()
+                            }
                         }
                     } else {
-                        def theValue = [hue: hueColor, saturation: saturation, level: level]
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColor(theValue)
-                        if(oldStatus == "off" || trueReverse) {
-                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
-                            pauseExecution(actionDelay)
-                            it.off()
-                        }
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor found NO data"
                     }
                 } catch(e) {
                     log.warn(getExceptionMessageWithLine(e))
@@ -4196,20 +4257,25 @@ def switchesPerModeReverseActionHandler() {
                     it.off()
                 }
             } else if(it.hasCommand("setColorTemperature") && theColor == "NA") {
+                if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setColorTemperature"
                 try {
                     data = state.oldMap.get(name)
-                    def (oldStatus, oldLevel, oldTemp) = data.split("::")
-                    int level = oldLevel.toInteger()
-                    int cTemp = oldTemp.toInteger()
-                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level)
-                    pauseExecution(actionDelay)
-                    it.setColorTemperature(cTemp)
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Turning light off (${it})"
+                    if(data) {
+                        def (oldStatus, oldLevel, oldTemp) = data.split("::")
+                        int level = oldLevel.toInteger()
+                        int cTemp = oldTemp.toInteger()
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
                         pauseExecution(actionDelay)
-                        it.off()
+                        it.setLevel(level)
+                        pauseExecution(actionDelay)
+                        it.setColorTemperature(cTemp)
+                        if(oldStatus == "off" || trueReverse) {
+                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Turning light off (${it})"
+                            pauseExecution(actionDelay)
+                            it.off()
+                        }
+                    } else {
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp found NO data"
                     }
                 } catch(e) {
                     log.warn(getExceptionMessageWithLine(e))
@@ -4218,17 +4284,22 @@ def switchesPerModeReverseActionHandler() {
                     it.off()
                 }      
             } else if(it.hasCommand("setLevel")) {
+                if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setLevel"
                 try {
                     data = state.oldMap.get(name)
-                    def (oldStatus, oldLevel) = data.split("::")
-                    int level = oldLevel.toInteger()
-                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level)
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Turning light off (${it})"
+                    if(data) {
+                        def (oldStatus, oldLevel) = data.split("::")
+                        int level = oldLevel.toInteger()
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
                         pauseExecution(actionDelay)
-                        it.off()
+                        it.setLevel(level)
+                        if(oldStatus == "off" || trueReverse) {
+                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Turning light off (${it})"
+                            pauseExecution(actionDelay)
+                            it.off()
+                        }
+                    } else {
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel found NO data"
                     }
                 } catch(e) {
                     log.warn(getExceptionMessageWithLine(e))
@@ -5265,6 +5336,7 @@ def dayOfTheWeekHandler() {
     } else {
         state.numberDay = date[Calendar.DAY_OF_MONTH]
     }
+    state.numberWeek = date[Calendar.WEEK_OF_YEAR]
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
@@ -5277,7 +5349,11 @@ def dayOfTheWeekHandler() {
         }
     }
     if(evenDays) {
-        nDay = state.numberDay.toInteger()
+        if(useDayWeek) {
+            nDay = state.numberWeek.toInteger()
+        } else {
+            nDay = state.numberDay.toInteger()
+        }
         if(nDay % 2 == 0) { 
             state.daysMatch = true
         } else {
@@ -5287,7 +5363,11 @@ def dayOfTheWeekHandler() {
         if(logEnable) log.debug "In dayOfTheWeekHandler - Even - nDay: ${nDay} - ${state.daysMatch} (${hmmm})"
     } 
     if(oddDays) {
-        nDay = state.numberDay.toInteger()
+        if(useDayWeek) {
+            nDay = state.numberWeek.toInteger()
+        } else {
+            nDay = state.numberDay.toInteger()
+        }
         if(nDay % 2 == 0) { 
             state.daysMatch = false
         } else {
@@ -6261,7 +6341,11 @@ def checkTransitionHandler() {
             state.transitionOK = false
         }
     } else {
-        state.transitionOK = true
+        if(triggerAndOr) {
+            state.transitionOK = false
+        } else {
+            state.transitionOK = true
+        }
     }
 }
 
