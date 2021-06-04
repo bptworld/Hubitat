@@ -74,6 +74,13 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
+   		"name": "Device Transformer",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Transformer/packageManifest.json",
+   		"description": "Transform a device into a virtual multi-sensor device.",
+         "tags": [ "Tools & Utilities" ]
+   	},
+      {
    		"name": "Device Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
