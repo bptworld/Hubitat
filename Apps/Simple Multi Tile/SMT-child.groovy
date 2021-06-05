@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 06/05/21 - Added a few functions
  *  1.0.1 - 06/05/21 - Fixed an error
  *  1.0.0 - 06/04/21 - Initial release.
  *
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Multi Tile Child"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
