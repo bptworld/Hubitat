@@ -242,6 +242,13 @@
          "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
+   		"name": "Simple Multi Tile",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Multi%20Tile/packageManifest.json",
+   		"description": "Create a simple multi device tile with just a few clicks",
+         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Simple Reminders",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/packageManifest.json",
