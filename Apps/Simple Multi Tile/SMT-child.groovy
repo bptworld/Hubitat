@@ -95,14 +95,20 @@ def pageConfig() {
         } 
        
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to Track")) {
+            input "howManyAtt", "enum", title: "How many Attributes per Device", options: [
+                ["1":"one"],
+                ["2":"two"],
+                ["3":"three"]
+            ], submitOnChange:true
+            if(howManyAtt) hMA = howManyAtt.toInteger()
             input "device1", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
             if(device1) {
                 allAttrs1 = []
                 allAttrs1 = device1.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
                 input "deviceAtt1a", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt1b", "enum", title: "Attribute to track", options: allAttrs1a, required:false, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt1c", "enum", title: "Attribute to track", options: allAttrs1a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt1b", "enum", title: "Attribute to track", options: allAttrs1a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt1c", "enum", title: "Attribute to track", options: allAttrs1a, required:false, multiple:false, submitOnChange:true, width:4
             }
             
             input "device2", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
@@ -111,8 +117,8 @@ def pageConfig() {
                 allAttrs2 = device2.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs2a = allAttrs2.sort { a, b -> a.value <=> b.value }
                 input "deviceAtt2a", "enum", title: "Attribute to track", options: allAttrs2a, required:true, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt2b", "enum", title: "Attribute to track", options: allAttrs2a, required:false, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt2c", "enum", title: "Attribute to track", options: allAttrs2a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt2b", "enum", title: "Attribute to track", options: allAttrs2a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt2c", "enum", title: "Attribute to track", options: allAttrs2a, required:false, multiple:false, submitOnChange:true, width:4
             }
             
             input "device3", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
@@ -121,8 +127,8 @@ def pageConfig() {
                 allAttrs3 = device3.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs3a = allAttrs3.sort { a, b -> a.value <=> b.value }
                 input "deviceAtt3a", "enum", title: "Attribute to track", options: allAttrs3a, required:true, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt3b", "enum", title: "Attribute to track", options: allAttrs3a, required:false, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt3c", "enum", title: "Attribute to track", options: allAttrs3a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt3b", "enum", title: "Attribute to track", options: allAttrs3a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt3c", "enum", title: "Attribute to track", options: allAttrs3a, required:false, multiple:false, submitOnChange:true, width:4
             }
             
             input "device4", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
@@ -131,8 +137,8 @@ def pageConfig() {
                 allAttrs4 = device4.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs4a = allAttrs4.sort { a, b -> a.value <=> b.value }
                 input "deviceAtt4a", "enum", title: "Attribute to track", options: allAttrs4a, required:true, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt4b", "enum", title: "Attribute to track", options: allAttrs4a, required:false, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt4c", "enum", title: "Attribute to track", options: allAttrs4a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt4b", "enum", title: "Attribute to track", options: allAttrs4a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt4c", "enum", title: "Attribute to track", options: allAttrs4a, required:false, multiple:false, submitOnChange:true, width:4
             }
             
             input "device5", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
@@ -141,18 +147,27 @@ def pageConfig() {
                 allAttrs5 = device5.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                 allAttrs5a = allAttrs5.sort { a, b -> a.value <=> b.value }
                 input "deviceAtt5a", "enum", title: "Attribute to track", options: allAttrs5a, required:true, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt5b", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
-                input "deviceAtt5c", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt5b", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt5c", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
             }
         }
                
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
             paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "bFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
-            input "bFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
-            
+            input "bFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6            
             input "bFilter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
             input "bFilter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+            input "showHeader", "bool", title: "Show Table Header?", defaultValue:false, submitOnChange:true
+            if(showHeader) {
+                input "headerName1", "text", title: "Column 1 Name", submitOnChange:true, width:3
+                input "headerName2", "text", title: "Column 2 Name", submitOnChange:true, width:3
+                if(hMA > 1) input "headerName3", "text", title: "Column 3 Name", submitOnChange:true, width:3
+                if(hMA > 2) input "headerName4", "text", title: "Column 4 Name", submitOnChange:true, width:3
+            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -258,31 +273,31 @@ def theDeviceHandler(evt) {
         if(evt) whatHappened = evt.value
         state.recognised = false
         if(logEnable) log.debug "In theDeviceHandler - whatHappened: ${whatHappened}"
-        
+        if(howManyAtt) hMA = howManyAtt.toInteger()
         if(device1) { 
-            currentDevice1a = device1.currentValue(deviceAtt1a) ?: "-"
-            currentDevice1b = device1.currentValue(deviceAtt1b) ?: "-"
-            currentDevice1c = device1.currentValue(deviceAtt1c) ?: "-"
+            currentDevice1a = device1.currentValue(deviceAtt1a) ?: ""
+            currentDevice1b = device1.currentValue(deviceAtt1b) ?: ""
+            currentDevice1c = device1.currentValue(deviceAtt1c) ?: ""
         }
         if(device2) { 
-            currentDevice2a = device2.currentValue(deviceAtt2a) ?: "-"
-            currentDevice2b = device2.currentValue(deviceAtt2b) ?: "-"
-            currentDevice2c = device2.currentValue(deviceAtt2c) ?: "-"
+            currentDevice2a = device2.currentValue(deviceAtt2a) ?: ""
+            currentDevice2b = device2.currentValue(deviceAtt2b) ?: ""
+            currentDevice2c = device2.currentValue(deviceAtt2c) ?: ""
         }
         if(device3) { 
-            currentDevice3a = device3.currentValue(deviceAtt3a) ?: "-"
-            currentDevice3b = device3.currentValue(deviceAtt3b) ?: "-"
-            currentDevice3c = device3.currentValue(deviceAtt3c) ?: "-"
+            currentDevice3a = device3.currentValue(deviceAtt3a) ?: ""
+            currentDevice3b = device3.currentValue(deviceAtt3b) ?: ""
+            currentDevice3c = device3.currentValue(deviceAtt3c) ?: ""
         }
         if(device4) {
-            currentDevice4a = device4.currentValue(deviceAtt4a) ?: "-"
-            currentDevice4b = device4.currentValue(deviceAtt4b) ?: "-"
-            currentDevice4c = device4.currentValue(deviceAtt4c) ?: "-"
+            currentDevice4a = device4.currentValue(deviceAtt4a) ?: ""
+            currentDevice4b = device4.currentValue(deviceAtt4b) ?: ""
+            currentDevice4c = device4.currentValue(deviceAtt4c) ?: ""
         }
         if(device5) { 
-            currentDevice5a = device5.currentValue(deviceAtt5a) ?: "-"
-            currentDevice5b = device5.currentValue(deviceAtt5b) ?: "-"
-            currentDevice5c = device5.currentValue(deviceAtt5c) ?: "-"
+            currentDevice5a = device5.currentValue(deviceAtt5a) ?: ""
+            currentDevice5b = device5.currentValue(deviceAtt5b) ?: ""
+            currentDevice5c = device5.currentValue(deviceAtt5c) ?: ""
         }
             
         if(device1) {
@@ -320,12 +335,39 @@ def theDeviceHandler(evt) {
             if(bFilter3) { theName5 = theName5.replace("${bFilter3}", "") }
             if(bFilter4) { theName5 = theName5.replace("${bFilter4}", "") }
         }
-        state.theTable =  "<table width=100%><tr><td width=55% align=center><u>Device</u><td width=15%><u>Value 1</u><td width=15%><u>Value 2</u><td width=15%><u>Value 3</u>"
-        if(device1) state.theTable += "<tr><td>${theName1}<td>${currentDevice1a}<td>${currentDevice1b}<td>${currentDevice1c}"
-        if(device2) state.theTable += "<tr><td>${theName2}<td>${currentDevice2a}<td>${currentDevice2b}<td>${currentDevice2c}"
-        if(device3) state.theTable += "<tr><td>${theName3}<td>${currentDevice3a}<td>${currentDevice3b}<td>${currentDevice3c}"
-        if(device4) state.theTable += "<tr><td>${theName4}<td>${currentDevice4a}<td>${currentDevice4b}<td>${currentDevice4c}"
-        if(device5) state.theTable += "<tr><td>${theName5}<td>${currentDevice5a}<td>${currentDevice5b}<td>${currentDevice5c}"
+
+        if(showHeader) {
+            if(hMA == 1) state.theTable = "<table width=100%><tr><td width=55% align=left><u><b>${headerName1}</u></b><td width=15% align=left><u><b>${headerName2}</u></b>"
+            if(hMA > 1)  state.theTable = "<table width=100%><tr><td width=55% align=left><u><b>${headerName1}</u></b><td width=15% align=left><u><b>${headerName2}</u></b><td width=15% align=left><u><b>${headerName3}</u></b>"
+            if(hMA > 2)  state.theTable = "<table width=100%><tr><td width=55% align=left><u><b>${headerName1}</u></b><td width=15% align=left><u><b>${headerName2}</u></b><td width=15% align=left><u><b>${headerName3}</u></b><td width=15% align=left><u><b>${headerName4}</u></b>"
+        } else {
+            state.theTable = "<table width=100%><tr><td colSpan=4>"
+        }
+        if(device1) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName1}<td width=15% align=left>${currentDevice1a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName1}<td width=15% align=left>${currentDevice1a}<td width=15% align=left>${currentDevice1b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName1}<td width=15% align=left>${currentDevice1a}<td width=15% align=left>${currentDevice1b}<td width=15% align=left>${currentDevice1c}"
+        }
+        if(device2) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName2}<td width=15% align=left>${currentDevice2a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName2}<td width=15% align=left>${currentDevice2a}<td width=15% align=left>${currentDevice2b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName2}<td width=15% align=left>${currentDevice2a}<td width=15% align=left>${currentDevice2b}<td width=15% align=left>${currentDevice2c}"
+        }
+        if(device3) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName3}<td width=15% align=left>${currentDevice3a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName3}<td width=15% align=left>${currentDevice3a}<td width=15% align=left>${currentDevice3b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName3}<td width=15% align=left>${currentDevice3a}<td width=15% align=left>${currentDevice3b}<td width=15% align=left>${currentDevice3c}"
+        }
+        if(device4) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName4}<td width=15% align=left>${currentDevice4a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName4}<td width=15% align=left>${currentDevice4a}<td width=15% align=left>${currentDevice4b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName4}<td width=15% align=left>${currentDevice4a}<td width=15% align=left>${currentDevice4b}<td width=15% align=left>${currentDevice4c}"
+        }
+        if(device5) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}<td width=15% align=left>${currentDevice5b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}<td width=15% align=left>${currentDevice5b}<td width=15% align=left>${currentDevice5c}"
+        }
         state.theTable += "</table>"
         
         if(state.theTable) { state.tableCount = state.theTable.size() }
