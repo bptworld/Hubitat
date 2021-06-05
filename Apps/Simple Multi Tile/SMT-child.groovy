@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 06/05/21 - Fixed an error
  *  1.0.0 - 06/04/21 - Initial release.
  *
  */
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Multi Tile Child"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -221,29 +222,29 @@ def initialize() {
         log.info "${app.label} is Paused"
     } else {
         if(device1) {
-            subscribe(device1, deviceAtt1a, theDeviceHandler)
-            subscribe(device1, deviceAtt1b, theDeviceHandler)
-            subscribe(device1, deviceAtt1c, theDeviceHandler)
+            if(deviceAtt1a) subscribe(device1, deviceAtt1a, theDeviceHandler)
+            if(deviceAtt1b) subscribe(device1, deviceAtt1b, theDeviceHandler)
+            if(deviceAtt1c) subscribe(device1, deviceAtt1c, theDeviceHandler)
         }
         if(device2) {
-            subscribe(device2, deviceAtt2a, theDeviceHandler)
-            subscribe(device2, deviceAtt2b, theDeviceHandler)
-            subscribe(device2, deviceAtt2c, theDeviceHandler)
+            if(deviceAtt2a) subscribe(device2, deviceAtt2a, theDeviceHandler)
+            if(deviceAtt2b) subscribe(device2, deviceAtt2b, theDeviceHandler)
+            if(deviceAtt2c) subscribe(device2, deviceAtt2c, theDeviceHandler)
         }
         if(device3) {
-            subscribe(device3, deviceAtt3a, theDeviceHandler)
-            subscribe(device3, deviceAtt3b, theDeviceHandler)
-            subscribe(device3, deviceAtt3c, theDeviceHandler)
+            if(deviceAtt3a) subscribe(device3, deviceAtt3a, theDeviceHandler)
+            if(deviceAtt3b) subscribe(device3, deviceAtt3b, theDeviceHandler)
+            if(deviceAtt3c) subscribe(device3, deviceAtt3c, theDeviceHandler)
         }
         if(device4) {
-            subscribe(device4, deviceAtt4a, theDeviceHandler)
-            subscribe(device4, deviceAtt4b, theDeviceHandler)
-            subscribe(device4, deviceAtt4c, theDeviceHandler)
+            if(deviceAtt4a) subscribe(device4, deviceAtt4a, theDeviceHandler)
+            if(deviceAtt4b) subscribe(device4, deviceAtt4b, theDeviceHandler)
+            if(deviceAtt4c) subscribe(device4, deviceAtt4c, theDeviceHandler)
         }
         if(device5) {
-            subscribe(device5, deviceAtt5a, theDeviceHandler)
-            subscribe(device5, deviceAtt5b, theDeviceHandler)
-            subscribe(device5, deviceAtt5c, theDeviceHandler)
+            if(deviceAtt5a) subscribe(device5, deviceAtt5a, theDeviceHandler)
+            if(deviceAtt5b) subscribe(device5, deviceAtt5b, theDeviceHandler)
+            if(deviceAtt5c) subscribe(device5, deviceAtt5c, theDeviceHandler)
         }
     }
 }
@@ -327,11 +328,13 @@ def theDeviceHandler(evt) {
         if(device5) state.theTable += "<tr><td>${theName5}<td>${currentDevice5a}<td>${currentDevice5b}<td>${currentDevice5c}"
         state.theTable += "</table>"
         
-        state.tableCount = state.theTable.size()
-        if(logEnable) log.debug "In theDeviceHandler - tableCount: ${tableCount}"
-        dataDevice.sendEvent(name: "bpt-simpleMultiTile", value: state.theTable, isStateChange: true)
-        dataDevice.sendEvent(name: "tableCount", value: state.tableCount, isStateChange: true)  
-        dataDevice.sendEvent(name: "lastUpdated", value: new Date(), isStateChange: true)  
+        if(state.theTable) { state.tableCount = state.theTable.size() }
+        if(logEnable) log.debug "In theDeviceHandler - tableCount: ${state.tableCount}"
+        if(dataDevice) {
+            dataDevice.sendEvent(name: "bpt-simpleMultiTile", value: state.theTable, isStateChange: true)
+            dataDevice.sendEvent(name: "tableCount", value: state.tableCount, isStateChange: true)  
+            dataDevice.sendEvent(name: "lastUpdated", value: new Date(), isStateChange: true)  
+        }
     }
 }
 
