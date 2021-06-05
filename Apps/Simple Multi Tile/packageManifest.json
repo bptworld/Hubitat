@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2021-06-04",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "",
+	"communityLink": "https://community.hubitat.com/t/release-simple-multi-tile-create-a-simple-multi-device-tile-with-just-a-few-clicks/73877",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
