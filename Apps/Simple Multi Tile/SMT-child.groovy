@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 06/05/21 - Added a 6th line
  *  1.0.2 - 06/05/21 - Added a few functions
  *  1.0.1 - 06/05/21 - Fixed an error
  *  1.0.0 - 06/04/21 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Multi Tile Child"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -150,6 +151,16 @@ def pageConfig() {
                 input "deviceAtt5a", "enum", title: "Attribute to track", options: allAttrs5a, required:true, multiple:false, submitOnChange:true, width:4
                 if(hMA > 1) input "deviceAtt5b", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
                 if(hMA > 2) input "deviceAtt5c", "enum", title: "Attribute to track", options: allAttrs5a, required:false, multiple:false, submitOnChange:true, width:4
+            }
+            
+            input "device6", "capability.*", title: "Select a device", required:false, multiple:false, submitOnChange:true
+            if(device6) {
+                allAttrs6 = []
+                allAttrs6 = device6.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                allAttrs6a = allAttrs5.sort { a, b -> a.value <=> b.value }
+                input "deviceAtt56", "enum", title: "Attribute to track", options: allAttrs6a, required:true, multiple:false, submitOnChange:true, width:4
+                if(hMA > 1) input "deviceAtt6b", "enum", title: "Attribute to track", options: allAttrs6a, required:false, multiple:false, submitOnChange:true, width:4
+                if(hMA > 2) input "deviceAtt6c", "enum", title: "Attribute to track", options: allAttrs6a, required:false, multiple:false, submitOnChange:true, width:4
             }
         }
                
@@ -262,6 +273,11 @@ def initialize() {
             if(deviceAtt5b) subscribe(device5, deviceAtt5b, theDeviceHandler)
             if(deviceAtt5c) subscribe(device5, deviceAtt5c, theDeviceHandler)
         }
+        if(device6) {
+            if(deviceAtt6a) subscribe(device6, deviceAtt6a, theDeviceHandler)
+            if(deviceAtt6b) subscribe(device6, deviceAtt6b, theDeviceHandler)
+            if(deviceAtt6c) subscribe(device6, deviceAtt6c, theDeviceHandler)
+        }
     }
 }
 
@@ -300,7 +316,12 @@ def theDeviceHandler(evt) {
             currentDevice5b = device5.currentValue(deviceAtt5b) ?: ""
             currentDevice5c = device5.currentValue(deviceAtt5c) ?: ""
         }
-            
+        if(device6) { 
+            currentDevice6a = device6.currentValue(deviceAtt6a) ?: ""
+            currentDevice6b = device6.currentValue(deviceAtt6b) ?: ""
+            currentDevice6c = device6.currentValue(deviceAtt6c) ?: ""
+        }
+        
         if(device1) {
             theName1 = device1.displayName          
             if(bFilter1) { theName1 = theName1.replace("${bFilter1}", "") }
@@ -336,6 +357,13 @@ def theDeviceHandler(evt) {
             if(bFilter3) { theName5 = theName5.replace("${bFilter3}", "") }
             if(bFilter4) { theName5 = theName5.replace("${bFilter4}", "") }
         }
+        if(device6) {
+            theName6 = device6.displayName              
+            if(bFilter1) { theName6 = theName6.replace("${bFilter1}", "") }
+            if(bFilter2) { theName6 = theName6.replace("${bFilter2}", "") }
+            if(bFilter3) { theName6 = theName6.replace("${bFilter3}", "") }
+            if(bFilter4) { theName6 = theName6.replace("${bFilter4}", "") }
+        }
 
         if(showHeader) {
             if(hMA == 1) state.theTable = "<table width=100%><tr><td width=55% align=left><u><b>${headerName1}</u></b><td width=15% align=left><u><b>${headerName2}</u></b>"
@@ -368,6 +396,11 @@ def theDeviceHandler(evt) {
             if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}"
             if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}<td width=15% align=left>${currentDevice5b}"
             if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName5}<td width=15% align=left>${currentDevice5a}<td width=15% align=left>${currentDevice5b}<td width=15% align=left>${currentDevice5c}"
+        }
+        if(device6) {
+            if(hMA == 1) state.theTable += "<tr><td width=55% align=left>${theName6}<td width=15% align=left>${currentDevice6a}"
+            if(hMA == 2) state.theTable += "<tr><td width=55% align=left>${theName6}<td width=15% align=left>${currentDevice6a}<td width=15% align=left>${currentDevice6b}"
+            if(hMA == 3) state.theTable += "<tr><td width=55% align=left>${theName6}<td width=15% align=left>${currentDevice6a}<td width=15% align=left>${currentDevice6b}<td width=15% align=left>${currentDevice6c}"
         }
         state.theTable += "</table>"
         
