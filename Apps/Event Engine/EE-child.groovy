@@ -37,7 +37,9 @@
 *
 *  Changes:
 *
-*  3.1.0 - 05/29/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
+* * - Working on Denon AVR support.
+*  3.1.1 - 06/09/21 - Added iCal Event support
+*  3.1.0 - 06/02/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -49,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.0"
+    state.version = "3.1.1"
 }
 
 definition(
@@ -176,6 +178,7 @@ def pageConfig() {
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
                     ["tHoliday":"Holidays (Calendarific)"],
+                    ["tIcal":"iCal Events (beta)"],
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
                     ["tPeriodic":"Periodic Expression"],
@@ -199,13 +202,11 @@ def pageConfig() {
                 theData = "${triggerAndOr}"
                 state.conditionsMap.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ANY</b> Condition is true"
-                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
             } else {
                 theData = "${triggerAndOr}"
                 state.conditionsMap.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ALL</b> Conditions are true"
-                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
@@ -223,7 +224,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Periodic - Run: ${preMadePeriodic} - Reverse: ${preMadePeriodic2}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Periodic - Run: ${preMadePeriodic} - Reverse: ${preMadePeriodic2}<br>"
                 app.removeSetting("preMadePeriodic")
             }
 // -----------
@@ -241,7 +241,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
                 app.removeSetting("modeEvent")
                 app.removeSetting("modeCondition")
                 app.removeSetting("modeMatchRestriction")
@@ -295,8 +294,6 @@ def pageConfig() {
                 paragraph "<b>Reminder: You'll need to select a Time for the Cog to run on the Days selected here.</b>"
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
-                state.theCogTriggers -= "<b>-</b> By Weeks - ${days} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 app.removeSetting("days")
                 app.removeSetting("useDayWeek")
                 app.removeSetting("evenDays")
@@ -324,7 +321,6 @@ def pageConfig() {
                 if(startTime) theDate = toDateTime(startTime)
                 state.theCogTriggers += "<b>-</b> Certain Time - ${theDate} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Certain Time - ${theDate} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
                 app.removeSetting("startTime")
                 app.removeSetting("repeat")
                 app.removeSetting("repeatType")
@@ -352,7 +348,6 @@ def pageConfig() {
                 }
                 state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction} - just Condition: ${timeBetweenMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction} - just Condition: ${timeBetweenMatchConditionOnly}<br>"
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
                 app.removeSetting("timeBetweenRestriction")
@@ -377,7 +372,6 @@ def pageConfig() {
                             if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                             state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                         } else {
-                            state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                             app.removeSetting("sunriseDelayLow")
                             app.removeSetting("sunriseDelayHigh")
                         }
@@ -390,7 +384,6 @@ def pageConfig() {
                             if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                             state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                         } else {
-                            state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                             app.removeSetting("sunsetDelayLow")
                             app.removeSetting("sunsetDelayHigh")
                         }
@@ -404,7 +397,6 @@ def pageConfig() {
                             if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                             state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                         } else {
-                            state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                             app.removeSetting("sunsetDelayLow")
                             app.removeSetting("sunsetDelayHigh")
                         }
@@ -417,7 +409,6 @@ def pageConfig() {
                             if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                             state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                         } else {
-                            state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                             app.removeSetting("sunriseDelayLow")
                             app.removeSetting("sunriseDelayHigh")
                         }
@@ -427,7 +418,7 @@ def pageConfig() {
                     checkSunHandler()
                     input "sunsetSunriseMatchConditionOnly", "bool", defaultValue:false, title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     paragraph "<hr>"
-                    state.theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
+                    state.theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction} - just Condition: ${sunsetSunriseMatchConditionOnly}<br>"
                     if(fromSun) {
                         state.theCogTriggers += "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}<br>"
                     } else {
@@ -435,9 +426,6 @@ def pageConfig() {
                     }
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
-                state.theCogTriggers -= "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}<br>"
-                state.theCogTriggers -= "<b>-</b> After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}<br>"
                 app.removeSetting("timeBetweenSunRestriction")
                 app.removeSetting("timeBetweenSunMatchConditionOnly")
             }
@@ -458,7 +446,6 @@ def pageConfig() {
                     if(sunriseDelayHigh <= sunriseDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                     state.theCogTriggers += "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Sunrise Random Delay - Delay Low: ${sunriseDelayLow} - Delay High: ${sunriseDelayHigh}<br>"
                     app.removeSetting("sunriseDelayLow")
                     app.removeSetting("sunriseDelayHigh")
                 }
@@ -475,8 +462,6 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
                 state.theCogTriggers += "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise}<br>"
             } else if(timeDaysType.contains("tSunset")) {
-                state.theCogTriggers -= "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
-                state.theCogTriggers -= "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise}<br>"
                 paragraph "<b>Just Sunset</b>"
                 input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
@@ -486,7 +471,6 @@ def pageConfig() {
                     if(sunsetDelayHigh <= sunsetDelayLow) { paragraph "<b>Delay High must be greater than Delay Low.</b>" }
                     state.theCogTriggers += "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Sunset Random Delay - Delay Low: ${sunsetDelayLow} - Delay High: ${sunsetDelayHigh}<br>"
                     app.removeSetting("sunsetDelayLow")
                     app.removeSetting("sunsetDelayHigh")
                 }
@@ -503,8 +487,6 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${theDate}<br>"
                 state.theCogTriggers += "<b>-</b> After Offsets - timeSunset: ${state.timeSunset}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${theDate}<br>"
-                state.theCogTriggers -= "<b>-</b> After Offsets - timeSunset: ${state.timeSunset}<br>"
                 app.removeSetting("sunsetEndTime")
             }
 
@@ -544,12 +526,84 @@ def pageConfig() {
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Holidays: ${apiCountry} - ${apiYear} - Time: ${apiTime}<br>"
-                state.theCogTriggers -= " <b>-</b> Holidays: ${apiHolidays}<br>"
                 app.removeSetting("apiCountry")
                 app.removeSetting("apiYear")
                 app.removeSetting("apiHolidays")
                 app.removeSetting("apiTimeToTrigger")
+            }
+// -----------          
+            if(timeDaysType.contains("tIcal")) {
+                paragraph "<b>iCal Events</b>" 
+                input "iCalLinks", "text", title: "Enter in your iCal addresses. Seperate multiple addresses with a semicolon (;)", required:true, submitOnChange:true
+                theInstructions =  "Use the search field to search for a keyword or phrase within events.<br>"
+                theInstructions += " - Enter in a Asterisk, * for all events<br>"
+                theInstructions += " - Search in NOT case sensitive<br>"
+                theInstructions += " - Seperate each word or phrase by a semicolon (;)<br>"
+                theInstructions += " - ie. bryan, birthday, doctors appointment, red sox"
+                paragraph theInstructions
+                paragraph "Each morning at 12:02am, EE will check for events happening on that day and if they match your options. If it passes, events will be created."
+                input "iCalSearch", "text", title: "iCal Search Words or Phrases", required:true, submitOnChange:true
+                input "iCalTime", "time", title: "If event is an all day event, What time to trigger the actions", required:true, submitOnChange:true
+                input "iCalPrior", "number", title: "If event is scheduled for a specific time, How many minutes prior to event to trigger the actions", required:true, submitOnChange:true
+                if(iCalLinks) {
+                    input "showEvents", "bool", title: "Show Upcoming Events (Takes a few seconds to load)", defaultValue:false, submitOnChange:true
+                    if(showEvents) {
+                        getIcalDataHandler()
+                        tDate = new SimpleDateFormat("yyyyMMdd").parse(todaysDate)
+                        paragraph "<u><b>Today - ${tDate}:</b></u><br>"
+                        mapAllToday = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        state.iCalMap1.each { theMap ->
+                            theKey = theMap.key
+                            theValue = theMap.value
+                            (endDate, summary) = theValue.split(";")
+                            mapAllToday += "<tr><td>$theKey<td>$endDate<td>$summary"
+                        }
+                        mapAllToday += "</table>"
+                        paragraph mapAllToday
+
+                        tDate1 = new SimpleDateFormat("yyyyMMdd").parse(todaysDate1)
+                        paragraph "<u><b>Tomorrow - $tDate1}:</b></u><br>"
+                        mapAll1 = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        state.iCalMap2.each { theMap ->
+                            theKey = theMap.key
+                            theValue = theMap.value
+                            (endDate, summary) = theValue.split(";")
+                            mapAll1 += "<tr><td>$theKey<td>$endDate<td>$summary"
+                        }
+                        mapAll1 += "</table>"
+                        paragraph mapAll1
+
+                        tDate2 = new SimpleDateFormat("yyyyMMdd").parse(todaysDate2)
+                        paragraph "<u><b>Two Days Out - ${tDate2}:</b></u><br>"
+                        mapAll2 = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        state.iCalMap2.each { theMap ->
+                            theKey = theMap.key
+                            theValue = theMap.value
+                            (endDate, summary) = theValue.split(";")
+                            mapAll2 += "<tr><td>$theKey<td>$endDate<td>$summary"
+                        }
+                        mapAll2 += "</table>"
+                        paragraph mapAll2
+                        paragraph "<hr>"
+                        paragraph "<u><b>Way Out:</b></u><br>"
+                        mapAll = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        state.iCalMapAll.each { theMap ->
+                            theKey = theMap.key
+                            theValue = theMap.value
+                            (endDate, summary) = theValue.split(";")
+                            mapAll += "<tr><td>$theKey<td>$endDate<td>$summary"
+                        }
+                        mapAll += "</table>"
+                        paragraph mapAll
+                    }
+                    state.theCogTriggers += "<b>-</b> By iCal Events: Search: ${iCalSearch} - Time: ${iCalTime} - Prior: ${iCalPrior}<br>"
+                }
+                if(!iCalLinks) {
+                    app.removeSetting("iCalLinks")
+                    app.removeSetting("iCalSearch")
+                    app.removeSetting("iCalTime")
+                    app.removeSetting("iCalPrior")
+                }
             }
 // -----------
             if(triggerType.contains("xAcceleration")) {
@@ -570,7 +624,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Acceleration Sensor: ${accelerationEvent} - InactiveActive: ${asInactiveActive}, ANDOR: ${accelerationANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Acceleration Sensor: ${accelerationEvent} - InactiveActive: ${asInactiveActive}, ANDOR: ${accelerationANDOR}<br>"
                     app.removeSetting("accelerationEvent")
                     app.removeSetting("asInactiveActive")
                     app.removeSetting("accelerationANDOR")
@@ -591,7 +644,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Acceleration Sensor: ${accelerationRestrictionEvent} - InactiveActive: ${arInactiveActive}, ANDOR: ${accelerationRANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Acceleration Sensor: ${accelerationRestrictionEvent} - InactiveActive: ${arInactiveActive}, ANDOR: ${accelerationRANDOR}<br>"
                     app.removeSetting("accelerationRestrictionEvent")
                     app.removeSetting("arInactiveActive")
                     app.removeSetting("accelerationRANDOR")
@@ -599,8 +651,6 @@ def pageConfig() {
                 input "accelerationConditionOnly", "bool", defaultValue:false, title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(accelerationConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${accelerationConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${accelerationConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -638,12 +688,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
                 if(batteryConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${batteryConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${batteryConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
                 app.removeSetting("batteryEvent")
                 app.removeSetting("beSetPointHigh")
                 app.removeSetting("beSetPointLow")
@@ -675,7 +722,6 @@ def pageConfig() {
                     app.removeSetting("buttonNumber")
                     app.removeSetting("buttonAction")
                     app.removeSetting("buttonTaps")
-                    state.theCogTriggers -= "<b>-</b> By Button: ${buttonEvent} - Button Number: ${buttonNumber}, Button Action: ${buttonAction}}, Button Taps: ${buttonTaps}<br>"
                 }
                 paragraph "<hr>"
             }
@@ -698,7 +744,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Contact Sensor: ${contactEvent} - ClosedOpen: ${csClosedOpen}, ANDOR: ${contactANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Contact Sensor: ${contactEvent} - ClosedOpen: ${csClosedOpen}, ANDOR: ${contactANDOR}<br>"
                     app.removeSetting("contactEvent")
                     app.removeSetting("csClosedOpen")
                     app.removeSetting("contactANDOR")
@@ -732,7 +777,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Contact Sensor: ${contactRestrictionEvent} - ClosedOpen: ${crClosedOpen}, ANDOR: ${contactRANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Contact Sensor: ${contactRestrictionEvent} - ClosedOpen: ${crClosedOpen}, ANDOR: ${contactRANDOR}<br>"
                     app.removeSetting("contactRestrictionEvent")
                     app.removeSetting("crClosedOpen")
                     app.removeSetting("contactRANDOR")
@@ -740,8 +784,6 @@ def pageConfig() {
                 input "contactConditionOnly", "bool", defaultValue:false, title: "Use Contact as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(contactConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${contactConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${contactConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -773,7 +815,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Directional Condition: motion/contact 1: ${theType1} - device1: ${device1}, motion/contact 2: ${theType2} device2: ${device2}, theDirection: ${theDirection}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Directional Condition: motion/contact 1: ${theType1} - device1: ${device1}, motion/contact 2: ${theType2} device2: ${device2}, theDirection: ${theDirection}<br>"
                 app.removeSetting("theType1")
                 app.removeSetting("device1")
                 app.removeSetting("device2")
@@ -805,11 +846,8 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 if(energyConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${energyConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${energyConditionOnly}<br>"
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("energyEvent")
                 app.removeSetting("eeSetPointHigh")
                 app.removeSetting("eeSetPointLow")
@@ -836,7 +874,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Garage Door: ${garageDoorEvent} - ClosedOpen: ${gdClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Garage Door: ${garageDoorEvent} - ClosedOpen: ${gdClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                     app.removeSetting("garageDoorEvent")
                     app.removeSetting("gdClosedOpen")
                     app.removeSetting("garageDoorANDOR")
@@ -858,7 +895,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Garage Door: ${garageDoorRestrictionEvent} - ClosedOpen: ${gdrClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Garage Door: ${garageDoorRestrictionEvent} - ClosedOpen: ${gdrClosedOpen}, ANDOR: ${garageDoorANDOR}<br>"
                     app.removeSetting("garageDoorRestrictionEvent")
                     app.removeSetting("gdsClosedOpen")
                     app.removeSetting("garageDoorRANDOR")
@@ -866,8 +902,6 @@ def pageConfig() {
                 input "garageDoorConditionOnly", "bool", defaultValue:false, title: "Use Garage Door as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(garageDoorConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${garageDoorConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${garageDoorConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -907,7 +941,6 @@ def pageConfig() {
                             if(setGVPointLow) paragraph "Cog will trigger when Variable reading is below ${gvSetPointLow}"
                             if(setGVPointBetween) paragraph "Cog will trigger when Variable reading is between ${gvSetPointLow} and ${gvSetPointHigh}"
                             app.removeSetting("gvValue")
-                            state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                             state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                         }
                     } else {
@@ -916,7 +949,6 @@ def pageConfig() {
                         app.removeSetting("gvSetPointLow")
                         app.removeSetting("setGVPointHigh")
                         app.removeSetting("setGVPointLow")
-                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                         state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
                 } else {
@@ -924,8 +956,6 @@ def pageConfig() {
                 }
                 paragraph "<hr>"               
             } else {
-                state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
-                state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                 app.removeSetting("globalVariableEvent")
                 app.removeSetting("gvValue")
                 app.removeSetting("gvSetPointHigh")
@@ -942,7 +972,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By HSM Alert: ${hsmAlertEvent}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By HSM Alert: ${hsmAlertEvent}<br>"
                 app.removeSetting("hsmAlertEvent")
             }
 // -----------
@@ -963,7 +992,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By HSM Status: ${hsmStatusEvent}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By HSM Status: ${hsmStatusEvent}<br>"
                 app.removeSetting("hsmStatusEvent")
             }
 // -----------            
@@ -995,7 +1023,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
                 app.removeSetting("xhttpIP")
                 app.removeSetting("xhttpCommand")
                 app.removeSetting("xhubUsername")
@@ -1035,11 +1062,8 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
                 if(humidityConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${humidityConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${humidityConditionOnly}<br>"
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
@@ -1080,12 +1104,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
                 if(illuminanceConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${illuminanceConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${illuminanceConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
@@ -1114,7 +1135,6 @@ def pageConfig() {
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
                     state.theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                     app.removeSetting("lockUser")
                     app.removeSetting("lockEvent")
                     app.removeSetting("lUnlockedLocked")
@@ -1140,7 +1160,6 @@ def pageConfig() {
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                     state.theCogTriggers += "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Lock: ${lockRestrictionEvent} - UnlockedLocked: ${lrUnlockedLocked}, lock User: ${lockRestrictionUser}<br>"
                     app.removeSetting("lockRestrictionUser")
                     app.removeSetting("lockRestrictionEvent")
                     app.removeSetting("lrUnlockedLocked")
@@ -1149,8 +1168,6 @@ def pageConfig() {
                 input "lockConditionOnly", "bool", defaultValue:false, title: "Use Lock as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(lockConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${lockConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${lockConditionOnly}<br>"
                 }
                 paragraph "<hr>" 
             } else {
@@ -1183,7 +1200,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Motion Sensor: ${motionEvent} - InactiveActive: ${meInactiveActive}, ANDOR: ${motionANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Motion Sensor: ${motionEvent} - InactiveActive: ${meInactiveActive}, ANDOR: ${motionANDOR}<br>"
                     app.removeSetting("motionEvent")
                     app.removeSetting("meInactiveActive")
                     app.removeSetting("motionANDOR")
@@ -1205,7 +1221,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Motion Sensor: ${motionRestrictionEvent} - InactiveActive: ${mrInactiveActive}, ANDOR: ${motionRANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Motion Sensor: ${motionRestrictionEvent} - InactiveActive: ${mrInactiveActive}, ANDOR: ${motionRANDOR}<br>"
                     app.removeSetting("motionRestrictionEvent")
                     app.removeSetting("mrInactiveActive")
                     app.removeSetting("motionRANDOR")
@@ -1213,8 +1228,6 @@ def pageConfig() {
                 input "motionConditionOnly", "bool", defaultValue:false, title: "Use Motion as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(motionConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${motionConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${motionConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -1252,12 +1265,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
                 if(powerConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${powerConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${powerConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
@@ -1284,7 +1294,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presenceANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Presence Sensor: ${presenceEvent} - PresentNotPresent: ${psPresentNotPresent}, ANDOR: ${presenceANDOR}<br>"
                     app.removeSetting("presenceEvent")
                     app.removeSetting("psPresentNotPresent")
                     app.removeSetting("presenceANDOR")
@@ -1307,7 +1316,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Presence Sensor: ${presenceRestrictionEvent} - PresentNotPresent: ${prPresentNotPresent}, ANDOR: ${presentRANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Presence Sensor: ${presenceRestrictionEvent} - PresentNotPresent: ${prPresentNotPresent}, ANDOR: ${presentRANDOR}<br>"
                     app.removeSetting("presenceRestrictionEvent")
                     app.removeSetting("prPresentNotPresent")
                     app.removeSetting("presentRANDOR")
@@ -1315,8 +1323,6 @@ def pageConfig() {
                 input "presenceConditionOnly", "bool", defaultValue:false, title: "Use Presence as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(presenceConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${presenceConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${presenceConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -1349,7 +1355,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}, Physical: ${seType}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}, Physical: ${seType}<br>"
                     app.removeSetting("switchEvent")
                     app.removeSetting("seOffOn")
                     app.removeSetting("switchANDOR")
@@ -1373,7 +1378,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Switch: ${switchRestrictionEvent} - OffOn: ${srOffOn}, ANDOR: ${switchRANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Switch: ${switchRestrictionEvent} - OffOn: ${srOffOn}, ANDOR: ${switchRANDOR}<br>"
                     app.removeSetting("switchRestrictionEvent")
                     app.removeSetting("srOffOn")
                     app.removeSetting("switchRANDOR")
@@ -1381,8 +1385,6 @@ def pageConfig() {
                 input "switchConditionOnly", "bool", defaultValue:false, title: "Use Switch as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(switchConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${switchConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${switchConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -1405,7 +1407,6 @@ def pageConfig() {
                     state.theCogTriggers += "<b>-</b> At System Startup: ${startupEvent}<br>"
                 } else {
                     paragraph ""
-                    state.theCogTriggers -= "<b>-</b> At System Startup: ${startupEvent}<br>"
                 }
                 paragraph "<hr>"
             }
@@ -1442,12 +1443,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 if(tempConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${tempConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${tempConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 app.removeSetting("tempEvent")
                 app.removeSetting("teSetPointHigh")
                 app.removeSetting("teSetPointLow")
@@ -1469,12 +1467,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 if(thermoConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${thermoConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${thermoConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 app.removeSetting("thermoEvent")
             }
 // -----------
@@ -1520,7 +1515,6 @@ def pageConfig() {
                     state.theCogTriggers += "<b>-</b> By Transition: ${transitionType} - attTransitionEvent: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
                 }               
             } else {
-                state.theCogTriggers -= "<b>-</b> By Transition: ${transitionType} - attTransitionEvent: ${attTransitionEvent} - From: ${atAttribute1} - To: ${atAttribute2}<br>"
                 app.removeSetting("transitionType")
                 app.removeSetting("attTransitionEvent")
                 app.removeSetting("attTransitionAtt")
@@ -1552,12 +1546,9 @@ def pageConfig() {
                 state.theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
                 if(voltageConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${voltageConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${voltageConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
                 app.removeSetting("voltageEvent")
                 app.removeSetting("veSetPointHigh")
                 app.removeSetting("veSetPointLow")
@@ -1583,7 +1574,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> By Water Sensor: ${waterEvent} - DryWet: ${wsDryWet}, ANDOR: ${waterANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Water Sensor: ${waterEvent} - DryWet: ${wsDryWet}, ANDOR: ${waterANDOR}<br>"
                     app.removeSetting("waterEvent")
                     app.removeSetting("wsDryWet")
                     app.removeSetting("waterANDOR")
@@ -1605,7 +1595,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>Restriction:</b> By Water Sensor: ${waterRestrictionEvent} - DryWet: ${wrDryWet}, ANDOR: ${waterANDOR}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Restriction:</b> By Water Sensor: ${waterRestrictionEvent} - DryWet: ${wrDryWet}, ANDOR: ${waterANDOR}<br>"
                     app.removeSetting("waterRestrictionEvent")
                     app.removeSetting("wrDryWet")
                     app.removeSetting("waterRANDOR")
@@ -1613,8 +1602,6 @@ def pageConfig() {
                 input "waterConditionOnly", "bool", defaultValue:false, title: "Use Water as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(waterConditionOnly) {
                     state.theCogTriggers += " - Condition Only: ${waterConditionOnly}<br>"
-                } else {
-                    state.theCogTriggers -= " - Condition Only: ${waterConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -1653,7 +1640,6 @@ def pageConfig() {
                         if(setSDPointHigh) paragraph "Cog will trigger when Custom reading is above or equal to ${sdSetPointHigh}"
                         if(setSDPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
                         if(setSDPointBetween) paragraph "Cog will trigger when Custom reading is between ${sdSetPointLow} and ${sdSetPointHigh}"
-                        state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint Low: ${sdSetPointLow}, setpoint High: ${sdSetPointHigh}, inbetween: ${setSDPointBetween}<br>"          
                         app.removeSetting("custom1")
                         app.removeSetting("custom2")
@@ -1685,8 +1671,6 @@ def pageConfig() {
                     }
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint Low: ${sdSetPointLow}, setpoint High: ${sdSetPointHigh}, inBetween: ${setSDPointBetween}<br>"
-                state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                 app.removeSetting("customEvent")
                 app.removeSetting("specialAtt")
                 app.removeSetting("custom1")
@@ -1734,7 +1718,6 @@ def pageConfig() {
                 }
                 state.theCogTriggers += "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir} - Min Change: ${spDirMinValue}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Setpoint Options: Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime} - Direction: ${theDir} - Min Change: ${spDirMinValue}<br>"
                 app.removeSetting("spResetTime")
                 app.removeSetting("useWholeNumber")
                 app.removeSetting("setpointRollingAverage")
@@ -1757,7 +1740,6 @@ def pageConfig() {
                     }
                     state.theCogTriggers += "<b>-</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} ${minSecValue} - Random Delay: ${randomDelay}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} ${minSecValue} - Random Delay: ${randomDelay}<br>"
                     app.removeSetting("notifyDelay")
                     app.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
@@ -1768,7 +1750,6 @@ def pageConfig() {
                     paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
                     state.theCogTriggers += "<b>-</b> Random Delay: ${randomDelay} - Delay Low: ${delayLow} - Delay High: ${delayHigh}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> Random Delay: ${randomDelay} - Delay Low: ${delayLow} - Delay High: ${delayHigh}<br>"
                     app.removeSetting("delayLow")
                     app.removeSetting("delayHigh")
                     app.updateSetting("randomDelay",[value:"false",type:"bool"])
@@ -1813,29 +1794,17 @@ def pageConfig() {
                 paragraph "<small>* All helpers are considered 'OR'</small>"
                 if(myContacts2) {
                     state.theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
-                } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
                 }
                 if(myMotion2) {
                     state.theCogTriggers += "<b>-</b> Condition Helper - Motion: ${myMotion2} - Inactive/Active: ${motionOption2}<br>"
-                } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Inactive/Active: ${motionOption2}<br>"
                 }
                 if(myPresence2) {
                     state.theCogTriggers += "<b>-</b> Condition Helper - Presence: ${myPresence2} - Present/Not Active: ${presenceOption2}<br>"
-                } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Present/Not Active: ${presenceOption2}<br>"
                 }
                 if(mySwitches2) {
                     state.theCogTriggers += "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Off/On: ${switchesOption2}<br>"
-                } else {
-                    state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Off/On: ${switchesOption2}<br>"
                 }
             } else {
-                state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
-                state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
-                state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
-                state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
                 app.removeSetting("myContacts2")
                 app.removeSetting("myMotion2")
                 app.removeSetting("myPresence2")
@@ -1852,7 +1821,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
                 ["aBlueIris":"Blue Iris Control"],
-                ["aDenonAVR":"Denon AVR Control"],
+                ["aDenonAVR":"Denon AVR Control (Beta)"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -1892,7 +1861,6 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
                     } else {
                         app.removeSetting("switchProfileOn")
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
                     }
                     
                     if(biControl == "Switch_Schedule") {
@@ -1900,7 +1868,6 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
                     } else {
                         app.removeSetting("biScheduleName")
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
                     }
                                      
                     if(biControl == "Camera_Preset") {
@@ -1915,14 +1882,12 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
                     } else {
                         app.removeSetting("biCameraPreset")
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
                     }
 
                     if(biControl == "Camera_Snapshot"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
                     } else {
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
                     }
 
                     if(biControl == "Camera_Trigger"){
@@ -1931,7 +1896,6 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
                     } else {
                         app.removeSetting("useMethod")
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
                     }
 
                     if(biControl == "Camera_PTZ"){
@@ -1948,29 +1912,18 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
                     } else {
                         app.removeSetting("biCameraPTZ")
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
                     }
 
                     if(biControl == "Camera_Reboot"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
-                    } else {
-                        state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
                     }
-
                     paragraph "<hr>"
                 } else {
                     paragraph "<b>Be sure to fill out the Blue Iris Information in the EE Parent app before selecting this option.</b>"
                     paragraph "<hr>"
                 }
             } else {
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - Preset: ${biCameraPreset}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera} - PTZ Command: ${biCameraPTZ}<br>"
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
                 app.removeSetting("switchProfileOn")
                 app.removeSetting("biScheduleName")
                 app.removeSetting("biControl")
@@ -1983,6 +1936,8 @@ def pageConfig() {
 // Denon AVR Control
             if(actionType.contains("aDenonAVR")) {
                 paragraph "<b>Denon AVR Control</b>"
+                paragraph "Denon AVR support requires the <a href='https://community.hubitat.com/t/beta-release-denon-avr-driver/62150' target=_blank>Denon AVR Drivers</a>."
+                paragraph "Beta - Doesn't do anything yet!"
                 input "denonAVR", "capability.actuator", title: "Denon AVR Device", mutiple:false, submitOnchange:true
                 if(denonAVR) {
                     allAttrs1 = []
@@ -2006,8 +1961,6 @@ def pageConfig() {
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogActions -= "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
-                
                 app.removeSetting("biCameraPTZ")
             }
 // End Denon AVR Control
@@ -2018,7 +1971,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Set Fan: ${fanAction} - speed: ${fanSpeed}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Set Fan: ${fanAction} - speed: ${fanSpeed}<br>"
                 app.removeSetting("fanAction")
                 app.removeSetting("fanSpeed")
             }
@@ -2030,7 +1982,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Garage Door - Close Devices: ${garageDoorClosedAction} - Open Devices: ${garageDoorOpenAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Garage Door - Close Devices: ${garageDoorClosedAction} - Open Devices: ${garageDoorOpenAction}<br>"
                 app.removeSetting("garageDoorClosedAction")
                 app.removeSetting("garageDoorOpenAction")
             }
@@ -2049,7 +2000,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Set HSM state: ${setHSM}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Set HSM state: ${setHSM}<br>"
                 app.removeSetting("setHSM")
             }
 
@@ -2083,7 +2033,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Inovelli Light Strip: ${lzw45Action} - command: ${lzw45Command}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Inovelli Light Strip: ${lzw45Action} - command: ${lzw45Command}<br>"
                 app.removeSetting("lzw45Action")
                 app.removeSetting("lzw45Command")
             }
@@ -2095,7 +2044,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Lock Devices: ${lockAction} - Unlock Devices: ${unlockAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Lock Devices: ${lockAction} - Unlock Devices: ${unlockAction}<br>"
                 app.removeSetting("lockAction")
                 app.removeSetting("unlockAction")
             }
@@ -2106,7 +2054,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Change Mode to: ${modeAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Change Mode to: ${modeAction}<br>"
                 app.removeSetting("modeAction")
             }
 
@@ -2118,14 +2065,6 @@ def pageConfig() {
                     href "notificationOptions", title:"Notification Options", description:"Click here for options"
                 }
             } else {
-                if(state.theCogNotifications) {
-                    state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
-                    state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
-                    state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
-                    state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
-                    state.theCogNotifications -= "<b>-</b> Use Speech: ${fmSpeaker}<br>"
-                    state.theCogNotifications -= "<b>-</b> Send Push: ${sendPushMessage}<br>"
-                }
                 app.removeSetting("message")
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
@@ -2140,7 +2079,6 @@ def pageConfig() {
                 input "devicesToRefresh", "capability.refresh", title: "Devices to Refresh", multiple:true, submitOnChange:true
                 state.theCogActions += "<b>-</b> Devices to Refresh: ${devicesToRefresh}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Devices to Refresh: ${devicesToRefresh}<br>"
                 app.removeSetting("devicesToRefresh")
             }
 
@@ -2166,7 +2104,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Rule: ${rmRule} - Action: ${rmAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Rule: ${rmRule} - Action: ${rmAction}<br>"
                 app.removeSetting("rmRule")
             }
             if(actionType.contains("aSendHTTP")) {
@@ -2199,7 +2136,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Send HTTP: ${httpIP}:8080${httpCommand}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Send HTTP: ${httpIP}:8080${httpCommand}<br>"
                 app.removeSetting("httpIP")
                 app.removeSetting("httpCommand")
                 app.removeSetting("hubUsername")
@@ -2222,7 +2158,6 @@ def pageConfig() {
                     paragraph "<b>In order to use the Global Variables, please be sure to do the following</b><br>- Setup at least one Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
                 }
             } else {
-                state.theCogActions -= "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
                 app.removeSetting("setGVname")
                 app.removeSetting("setGVvalue")
             }
@@ -2258,7 +2193,6 @@ def pageConfig() {
                     }
                     if(permanentDim2) state.theCogActions += "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2} - Temp: ${pdTemp2}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2} - Temp: ${pdTemp2}<br>"
                     app.removeSetting("permanentDimLvl2")
                     app.removeSetting("pdColor2")
                     app.removeSetting("pdTemp2")
@@ -2268,8 +2202,6 @@ def pageConfig() {
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
                 if(switchesToggleAction) {
                     state.theCogActions += "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
-                } else {
-                    state.theCogActions -= "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
                 }
                 paragraph "<hr>"
                 input "setOnLC", "capability.switchLevel", title: "Dimmer to set", required:false, multiple:true, submitOnChange:true
@@ -2290,7 +2222,6 @@ def pageConfig() {
                     }
                     state.theCogActions += "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"   
                 } else {
-                    state.theCogActions -= "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
                     app.removeSetting("colorLC")
@@ -2316,7 +2247,6 @@ def pageConfig() {
                     input "targetDelay", "bool", defaultValue:false, title: "<b>Delay Until Finished</b>", description: "Target Delay", submitOnChange:true
                     state.theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelHigh} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelHigh} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
                     app.removeSetting("slowDimmerUp")
                     app.removeSetting("minutesUp")
                     app.removeSetting("startLevelHigh")
@@ -2348,7 +2278,6 @@ def pageConfig() {
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                     state.theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerUp} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Color: ${colorDn}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerUp} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Color: ${colorDn}<br>"
                     app.removeSetting("slowDimmerDn")
                     app.removeSetting("minutesDn")
                     app.removeSetting("startLevelLow")
@@ -2360,8 +2289,6 @@ def pageConfig() {
                 }
                 paragraph "<hr>"
             } else {
-                state.theCogActions -= "<b>-</b> Switches to turn On: ${switchesOnAction}<br>"
-                state.theCogActions -= "<b>-</b> Switches to turn Off: ${switchesOffAction}<br>"
                 app.removeSetting("switchesOnAction")
                 app.removeSetting("switchesOffAction")
                 app.removeSetting("switchesToggleAction")
@@ -2382,7 +2309,6 @@ def pageConfig() {
                 paragraph "<small>* Note: If Reverse Action is selected below, the switches selected here will turn off in reverse order. ie. 5,4,3,2,1</small>"
                 paragraph "<hr>"
             } else {
-                state.theCogActions -= "<b>-</b> Switches to turn On in order: ${deviceSeqAction1} - ${deviceSeqAction2} - ${deviceSeqAction3} - ${deviceSeqAction4} - ${deviceSeqAction5}<br>"
                 app.removeSetting("deviceSeqAction1")
                 app.removeSetting("deviceSeqAction2")
                 app.removeSetting("deviceSeqAction3")
@@ -2458,7 +2384,6 @@ def pageConfig() {
 
                 state.theCogActions += "<b>-</b> Switches Per Mode:<br>${state.thePerModeMap}<br>"   
             } else {
-                state.theCogActions -= "<b>-</b> Switches Per Mode:<br>${state.thePerModeMap}<br>"
                 app.removeSetting("setDimmersPerMode")
                 app.removeSetting("sdPerModeName")
                 app.removeSetting("sdPerModeLevel")
@@ -2488,10 +2413,7 @@ def pageConfig() {
                 if(setThermostatMode) state.theCogActions += "<b>-</b> Set Thermostats (${thermostatAction}) to mode: ${setThermostatMode}<br>"
                 if(coolingSetpoint) state.theCogActions += "<b>-</b> Set Thermostats Cooling Setpoint to: ${coolingSetpoint}<br>"
                 if(heatingSetpoint) state.theCogActions += "<b>-</b> Set Thermostats Heating Setpoint to: ${heatingSetpoint}<br>"
-            } else {
-                state.theCogActions -= "<b>-</b> Set Thermostats ${thermostatAction} to mode: ${setThermostatMode}<br>"
-                state.theCogActions -= "<b>-</b> Set Thermostats Cooling Setpoint to: ${coolingSetpoint}<br>"
-                state.theCogActions -= "<b>-</b> Set Thermostats Heating Setpoint to: ${heatingSetpoint}<br>"               
+            } else {            
                 app.removeSetting("thermostatAction")
                 app.removeSetting("setThermostatMode")
             }
@@ -2503,7 +2425,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Close Valves: ${valveClosedAction} - Open Valves: ${valveOpenAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Close Valves: ${valveClosedAction} - Open Valves: ${valveOpenAction}<br>"
                 app.removeSetting("valveClosedAction")
                 app.removeSetting("valveOpenAction")
             }
@@ -2515,7 +2436,6 @@ def pageConfig() {
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Virtual Contact Sensor - Close Sensors: ${contactClosedAction} - Open Sensors: ${contactOpenAction}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Virtual Contact Sensor - Close Sensors: ${contactClosedAction} - Open Sensors: ${contactOpenAction}<br>"
                 app.removeSetting("contactClosedAction")
                 app.removeSetting("contactOpenAction")
             }      
@@ -2603,35 +2523,22 @@ def pageConfig() {
                 // ***** Start Reverse Stuff *****
                 if(trueReverse) {
                     state.theCogActions += "<b>-</b> True Reverse: ${trueReverse}<br>"
-                } else {
-                    state.theCogActions -= "<b>-</b> True Reverse: ${trueReverse}<br>"
                 }
                 if(reverse) { 
                     state.theCogActions += "<b>-</b> Reverse: ${reverse}<br>" 
-                } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>" 
                 }
                 if(timeReverse) {
                     state.theCogActions += "<b>-</b> Reverse: ${timeReverseMinutes} minute(s), even if Conditions are still true<br>"
-                } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${timeReverseMinutes} minute(s), even if Conditions are still true<br>"
-                }        
+                }       
                 if(reverseWithDelay) {
                     if(reverseTimeType) {
-                        state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                         state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                     } else {
-                        state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                         state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                     }
-                } else {
-                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} second(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
-                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed} - Dim After Delayed: ${dimAfterDelayed} - Dim Length: ${warningDimSec} - Dim Level: ${warningDimLvl}<br>"
                 }
                 if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
                     state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Not Between: ${reverseWhenBetween}<br>"
-                } else {
-                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Not Between: ${reverseWhenBetween}<br>"
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || masterDimmersPerMode)){
                     paragraph "<hr>"
@@ -2663,8 +2570,6 @@ def pageConfig() {
                     if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
                     if(additionalSwitches) state.theCogActions += "<b>-</b> Addtional Switches to Turn Off: ${additionalSwitches}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
-                    state.theCogActions -= "<b>-</b> Addtional Switches to Turn Off: ${additionalSwitches}<br>"
                     app.removeSetting("permanentDimLvl")
                     app.removeSetting("pdColor")
                     app.updateSetting("permanentDim",[value:"false",type:"bool"])
@@ -2691,9 +2596,6 @@ def pageConfig() {
             actionDelayValue = parent.pActionDelay ?: 100
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:false, submitOnChange:true
             state.theCogActions += "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
-            if(actionDelay == null || actionDelay == "") {
-                state.theCogActions -= "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
-            }
         }                
         // ********** End Actions **********
 
@@ -2742,14 +2644,19 @@ def pageConfig() {
                     input "checkHoliday", "bool", title: "Check for Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
                     input "addTodayAsHoliday", "bool", title: "Add Today As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
                     input "addTomorrowAsHoliday", "bool", title: "Add Tomorrow As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
+                    // Testing iCal
+                    input "checkForIcal", "bool", title: "Check for iCal", description: "clear", defaultValue:false, submitOnChange:true
                     if(checkHoliday) { checkForHoliday() }
-                    //  End Testing Cal
+                    
                     if(clearMaps) {
                         state.oldMap = [:]
                         state.oldMapPer = [:]
                         atomicState.running = "Stopped"
                         atomicState.tryRunning = 0
                         app.updateSetting("clearMaps",[value:"false",type:"bool"])
+                    }
+                    if(checkForIcal) {
+                       // iCalHandler()
                     }
                 }
             } else {
@@ -2794,7 +2701,6 @@ def notificationOptions(){
                 input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required:true, submitOnChange:true
                 state.theCogNotifications += "<b>-</b> Use Speech: ${fmSpeaker}<br>"
             } else {
-                state.theCogNotifications -= "<b>-</b> Use Speech: ${fmSpeaker}<br>"
                 app.removeSetting("fmSpeaker")
             }
         }
@@ -2803,8 +2709,6 @@ def notificationOptions(){
             input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
             if(sendPushMessage) {
                 state.theCogNotifications += "<b>-</b> Send Push: ${sendPushMessage}<br>"
-            } else {
-                state.theCogNotifications -= "<b>-</b> Send Push: ${sendPushMessage}<br>"
             }
         }
 
@@ -2832,6 +2736,7 @@ def notificationOptions(){
                 wc += "%time1% - Will speak the current time in 12 h<br>"
                 if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
                 if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
+                if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
                 paragraph wc
                 if(triggerType) {
                     if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
@@ -2843,9 +2748,6 @@ def notificationOptions(){
                         if(messageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
                         if(messageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
                     } else {
-                        state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
-                        state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
-                        state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
                         app.removeSetting("messageH")
                         app.removeSetting("messageL")
                         app.removeSetting("messageB")
@@ -2863,7 +2765,6 @@ def notificationOptions(){
                             paragraph "${listMap}"
                         }
                     } else {
-                        state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
                         app.removeSetting("message")
                         app.removeSetting("msgList")
                     }
@@ -2895,7 +2796,6 @@ def notificationOptions(){
                     if(msgRepeatSwitch) { paragraph "<small>* Switch will turn off Repeat when changing to any state.</small>" }
                     state.theCogNotifications += "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
                 } else {
-                    state.theCogNotifications -= "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
                     app.removeSetting("msgRepeatMinutes")
                     app.removeSetting("msgRepeatContact")
                     app.removeSetting("msgRepeatSwitch")
@@ -2903,12 +2803,6 @@ def notificationOptions(){
                 }
             }
         } else {
-            state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
-            state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
-            state.theCogNotifications -= "<b>-</b> Message when reading is in between: ${messageB}<br>"
-            state.theCogNotifications -= "<b>-</b> Message: ${message}<br>"
-            state.theCogNotifications -= "<b>-</b> Use Speech: ${fmSpeaker}<br>"
-            state.theCogNotifications -= "<b>-</b> Send Push: ${sendPushMessage}<br>"
             app.removeSetting("message")
             app.removeSetting("messageH")
             app.removeSetting("messageL")
@@ -2931,7 +2825,6 @@ def notificationOptions(){
                 input "flashOnTriggerPreset", "number", title: "Select the Preset to use when Notifications are triggered (1..5)", required:true, submitOnChange:true
                 if(useTheFlasher) state.theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset When Triggered: ${flashOnTriggerPreset}<br>"
             } else {
-                state.theCogNotifications -= "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset When Triggered: ${flashOnTriggerPreset}<br>"
                 app.removeSetting("theFlasherDevice")
                 app.removeSetting("flashOnTriggerPreset")
             }
@@ -3068,6 +2961,12 @@ def initialize() {
                 if(logEnable) log.debug "In initialize - tHoliday - Creating Cron Jobs"
                 schedule("0 2 0 ? * * *", checkForHoliday)
                 checkForHoliday()
+            } else if(iCalLinks && iCalSearch) {
+                unschedule()
+                schedule("0 2 0 ? * * *", getIcalDataHandler)
+                schedule("0 5 0 ? * * *", iCalHandler)
+                getIcalDataHandler()
+                iCalHandler()
             }
         }
         
@@ -5153,7 +5052,8 @@ def messageHandler() {
                 state.message = state.message.replace('%time1%', state.theTime1)
             }
             if (state.message.contains("%lastDirection%")) {state.message = state.message.replace('%lastDirection%', state.lastDirection)}
-
+            if (state.message.contains("%iCalValue%")) {state.message = state.message.replace('%iCalValue%', state.currentIcalValue)}
+            
             if(logEnable) log.debug "In messageHandler - message: ${state.message}"
             if(state.message && state.message != "null") {
                 if(useSpeech) letsTalk(state.message)
@@ -6345,6 +6245,167 @@ def checkTransitionHandler() {
             state.transitionOK = false
         } else {
             state.transitionOK = true
+        }
+    }
+}
+
+void getIcalDataHandler() {
+    if(logEnable) log.debug "In getIcalDataHandler (${state.version})"
+    iCalMap1 = [:]
+    iCalMap2 = [:]
+    iCalMap3 = [:]
+    iCalMapAll = [:]
+    state.within = false
+    state.foundOne = false    
+    try {
+        iCLinks = iCalLinks.split(";")
+        iCLinks.each { it ->
+            if(it.startsWith(" ")) it = it.replaceFirst(" ","")
+            def params = [
+                uri: it,
+                timeout: 10
+            ]
+            httpGet(params) { resp ->
+                if(resp.status == 200) {
+                    if(logEnable) log.debug "In getIcalDataHandler - Response Status${resp.status}"
+                    theData = resp.data
+                    state.line = 0
+                    theData.eachLine {                      
+                        if(state.line <= 10) {
+                            if(it == "BEGIN:VEVENT" || state.within) {
+                                state.within = true
+                            } 
+                            if(it.contains("DTSTART:")) { 
+                                startDate = it.split(":")
+                                if(startDate[1]) {
+                                    state.startDate = startDate[1]
+                                } else {
+                                    state.startDate = "No Data"
+                                }
+                                state.foundOne = true
+                                state.line = state.line + 1
+                            }
+                            if(it.contains("DTEND:")) { 
+                                endDate = it.split(":")
+                                if(endDate[1]) {
+                                    state.endDate = endDate[1]
+                                } else {
+                                    state.endDate = "No Data"
+                                }
+                            }
+                            if(it.contains("SUMMARY:")) {
+                                summaryData = it.split(":")
+                                if(summaryData[1]) {
+                                    state.summary = summaryData[1]
+                                } else {
+                                    state.summary = "No Data"
+                                }
+                            }
+                            if(it == "END:VEVENT" && state.foundOne) {
+                                sDate = state.startDate.toString()
+                                eDate = state.endDate.toString()
+                                eSummary = state.summary.toString()
+                                todaysDate = new Date().format( 'yyyyMMdd' )
+                                tDate1 = new Date() + 1
+                                todaysDate1 = tDate1.format( 'yyyyMMdd' )
+                                tDate2 = new Date() + 2
+                                todaysDate2 = tDate2.format( 'yyyyMMdd' )
+                                workingDate = sDate.take(8)
+
+                                if(todaysDate.toString() == workingDate.toString()) {
+                                    newData = "${eDate};${state.summary}".toString()
+                                    iCalMap1.put(sDate, newData)
+                                    if(logEnable) log.debug "In getIcalDataHandler - Todays Map:<br>$sDate, $newData"
+                                }
+                                if(todaysDate1.toString() == workingDate.toString()) {
+                                    newData = "${eDate};${state.summary}".toString()
+                                    iCalMap2.put(sDate, newData)
+                                    if(logEnable) log.debug "In getIcalDataHandler - 2 Day Map:<br>$sDate, $newData"
+                                }
+                                if(todaysDate2.toString() == workingDate.toString()) {
+                                    newData = "${eDate};${state.summary}".toString()
+                                    iCalMap3.put(sDate, newData)
+                                    if(logEnable) log.debug "In getIcalDataHandler - 3 Day Map:<br>$sDate, $newData"
+                                }
+                                if(todaysDate && workingDate) {
+                                    if(workingDate.toInteger() > todaysDate2.toInteger()) {
+                                        newData = "${eDate};${state.summary}".toString()
+                                        iCalMapAll.put(sDate, newData) 
+                                    } else {
+                                        // log.info "Hmmm: td: ${todaysDate} - wd: ${workingDate} - sum: ${state.summary}"
+                                    }
+                                }
+                                state.within = false
+                                state.foundOne = false
+                                state.startDate = null
+                                state.endDate = null
+                                state.startDate = null
+                            }
+                        }
+                    }
+                } else {
+                    if(logEnable) log.debug "In getIcalDataHandler - Response code ${resp.status} - NOT Good!"
+                }
+            }
+        }
+    } catch (e) {
+        if(logEnable) log.debug "In getIcalDataHandler - Something went wrong"
+        log.error(getExceptionMessageWithLine(e))
+    }    
+    state.iCalMap1 = iCalMap1.sort{ a, b -> a.key <=> b.key}
+    state.iCalMap2 = iCalMap2.sort{ a, b -> a.key <=> b.key}
+    state.iCalMap3 = iCalMap3.sort{ a, b -> a.key <=> b.key}
+    state.iCalMapAll = iCalMapAll.sort{ a, b -> a.key <=> b.key}
+    if(logEnable) log.info "NEW iCalMap1 - ${todaysDate}:<br>${state.iCalMap1}"
+    if(logEnable) log.info "NEW iCalMap2 - ${todaysDate1}:<br>${state.iCalMap2}"
+    if(logEnable) log.info "NEW iCalMap3 - ${todaysDate2}:<br>${state.iCalMap3}"
+}
+
+def iCalHandler() {            // iCalLinks for search
+    if(logEnable) log.debug "In iCalHandler (${state.version})"
+    todaysDate = new Date().format( 'yyyyMMdd' )
+    tDate = todaysDate.toString()
+    state.iCalMap1.each { theKey, theValue ->       
+        tKey = theKey.substring(0,8).toString()
+        keyLength = theKey.length()
+        if(tDate == tKey) {
+            if(logEnable) log.debug "In iCalHandler - Passed for Today's Event"
+            icSearch = iCalSearch.split(";")
+            icSearch.each { theSearch ->
+                if(theSearch.startsWith(" ")) theSearch = theSearch.replaceFirst(" ","")
+                if(logEnable) log.debug "In iCalHandler - searching for: ${theSearch} in: ${theValue}"
+                if(theValue.toLowerCase().contains("${theSearch.toLowerCase()}") || theSearch == "*") {
+                    if(logEnable) log.debug "In iCalHandler - Match!"         
+                    if(keyLength > 8) {
+                        // Thanks to @mark.cockcroft for this block of code
+                        Date zDate
+                        if (theKey.contains("Z")) {
+                            zDate =  toDateTime(theKey)
+                        } else if (theKey.contains("T")) {
+                            zDate = new SimpleDateFormat("yyyyMMdd'T'kkmmss").parse(theKey)
+                        } else {
+                            zDate = new SimpleDateFormat("yyyyMMdd").parse(theKey)
+                        }
+                        // End block of code
+                        if(logEnable) log.debug "In iCalHandler - theKey: ${theKey} - zDate: ${zDate}"
+                        icp = iCalPrior.toInteger()
+                        use( TimeCategory ) { zOffset = zDate - icp.minutes }
+                        def (endDate, message) = theValue.split(";")
+                        state.currentIcalValue = message
+                        schedule(zOffset, startTheProcess, [overwrite: false])
+                        if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${zOffset}"
+                    } else {
+                        if(iCalTime) {
+                            if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${iCalTime}"
+                            def (endDate, message) = theValue.split(";")
+                            state.currentIcalValue = message
+                            schedule(iCalTime, startTheProcess, [overwrite: false])
+                        } else {
+                            if(logEnable) log.debug "In iCalHandler - No start time, not set to run"
+                        }
+                    }
+                }
+            }
         }
     }
 }
