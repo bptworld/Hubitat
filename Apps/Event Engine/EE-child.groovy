@@ -38,6 +38,7 @@
 *  Changes:
 *
 * * - Working on Denon AVR support.
+*  3.1.2 - 06/09/21 - Adjustment to sunsetSunriseMatchConditionOnly
 *  3.1.1 - 06/09/21 - Added iCal Event support
 *  3.1.0 - 06/02/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.1"
+    state.version = "3.1.2"
 }
 
 definition(
@@ -5184,13 +5185,17 @@ def checkSunHandler() {
         }
         
         if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
-            schedule(nextSunriseOffset, runAtTime1)
-            if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
-            if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
+            if(!sunsetSunriseMatchConditionOnly) {
+                schedule(nextSunriseOffset, runAtTime1)
+                if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
+            }
         } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
-            schedule(nextSunsetOffset, runAtTime1)
-            if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
-            if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2) 
+            if(!sunsetSunriseMatchConditionOnly) {
+                schedule(nextSunsetOffset, runAtTime1)
+                if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2) 
+            }
         } else {
             state.timeBetweenSun = true
         }
