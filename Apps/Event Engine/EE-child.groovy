@@ -40,6 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.4 - 06/16/21 - Adjustments to setpoint notifications
 *  3.1.3 - 06/15/21 - Added 'Event Engine' actions, Added more logging
 *  3.1.2 - 06/09/21 - Adjustment to sunsetSunriseMatchConditionOnly
 *  3.1.1 - 06/09/21 - Added iCal Event support
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.3"
+    state.version = "3.1.4"
 }
 
 definition(
@@ -2756,12 +2757,14 @@ def notificationOptions(){
                 wc += "%whatHappened% - Device status that caused the event to trigger<br>"
                 wc += "%time% - Will speak the current time in 24 h<br>"
                 wc += "%time1% - Will speak the current time in 12 h<br>"
+                wc += "%setPointHigh% - If using a setpoint, this will speak the actual High Setpoint<br>"
+                wc += "%setPointLow% - If using a setpoint, this will speak the actual Low Setpoint<br>"
                 if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
                 if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
                 if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
                 paragraph wc
                 if(triggerType) {
-                    if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+                    if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
                         paragraph "<b>Setpoint Message Options</b>"
                         input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
                         input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
@@ -2775,7 +2778,7 @@ def notificationOptions(){
                         app.removeSetting("messageB")
                     }
 
-                    if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
+                    if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
                         paragraph "<b>Random Message Options</b>"
                         input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                         input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
@@ -5048,7 +5051,7 @@ def messageHandler() {
     }
     if(state.doMessage) {   
         if(triggerType) {
-            if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+            if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
                 if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
                 if(state.setpointHighOK == "no") theMessage = "${messageH}"
                 if(state.setpointLowOK == "no") theMessage = "${messageL}"
@@ -5068,7 +5071,10 @@ def messageHandler() {
         if(state.message) { 
             if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
             if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
-            if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
+            if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}            
+            if (state.message.contains("%setPointHigh%")) {state.message = state.message.replace('%setPointHigh%', state.setpointHigh)}
+            if (state.message.contains("%setPointLow%")) {state.message = state.message.replace('%setPointLow%', state.setpointLow)}
+            
             if (state.message.contains("%time%")) {
                 currentDateTime()
                 state.message = state.message.replace('%time%', state.theTime)
