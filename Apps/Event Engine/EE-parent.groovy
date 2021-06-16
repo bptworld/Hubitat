@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 06/16/21 - Added code for EE actions
  *  1.0.7 - 05/23/21 - Added Calendarific Info
  *  1.0.6 - 05/13/21 - Added BI Control Info
  *  1.0.5 - 01/29/21 - Fixed something...
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -85,10 +86,7 @@ def updated() {
 }
 
 def initialize() {
-    //childApps.each {child ->
-    //	log.info "Cog: ${child.label}"
-    //}
-    //mapOfChildren()
+    mapOfChildren()
 }
 
 def mainPage() {
@@ -224,18 +222,34 @@ def selectCogtoParent(data) {
     app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
 }
 
-def mapOfChildren() {
-    mapOfChildren = []
-    childApps.each { it ->
-        if(it.label.contains("paused")) {
-            
-        } else {
-            theName = "${it.label}"
-            mapOfChildren << theName
+def mapOfChildren(data) {
+    theID = data.toString()
+    cMap = [:]
+    childApps.each { cog ->
+        cMap.put("${cog.id}", "${cog.label}")
+    }     
+    if(cMap) {
+        childApps.each { cog ->
+            cogID = cog.id.toString()
+            if(cogID == theID) {
+                if(logEnable) log.debug "In runEEHandler - Sending Map of Children to: ${cog.label} ($cog.id)"               
+                cog.mapOfChildrenHandler(cMap)
+            }
         }
     }
-    if(mapOfChildren) childApps.each { child ->
-        child.newChildAppsHandler(mapOfChildren)
+    log.debug cMap
+}
+
+def runEEHandler(data) {
+    if(logEnable) log.debug "In runEEHandler (${state.version}) - data: ${data}"
+    (theID, cogCommand) = data.split(":")
+    theID = theID.toString()
+    childApps.each { cog ->
+        cogID = cog.id.toString()
+        if(cogID == theID) {
+            if(logEnable) log.debug "In runEEHandler - Running Cog: ${cog.label} ($cog.id)"
+            cog.commandFromParentHandler(cogCommand)
+        }
     }
 }
 
