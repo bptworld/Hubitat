@@ -40,6 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.5 - 06/16/21 - Adjustments to setpoints
 *  3.1.4 - 06/16/21 - Adjustments to setpoint notifications
 *  3.1.3 - 06/15/21 - Added 'Event Engine' actions, Added more logging
 *  3.1.2 - 06/09/21 - Adjustment to sunsetSunriseMatchConditionOnly
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.4"
+    state.version = "3.1.5"
 }
 
 definition(
@@ -3710,6 +3711,7 @@ def customSetpointHandler() {
     state.spType = specialAtt
     state.setpointHigh = sdSetPointHigh
     state.setpointLow = sdSetPointLow
+    state.spInBetween = setSDPointBetween
     setpointHandler()
 }
 def batteryHandler() {
@@ -3717,6 +3719,7 @@ def batteryHandler() {
     state.spType = "battery"
     state.setpointHigh = beSetPointHigh
     state.setpointLow = beSetPointLow
+    state.spInBetween = setBEPointBetween
     setpointHandler()
 }
 def energyHandler() {
@@ -3724,6 +3727,7 @@ def energyHandler() {
     state.spType = "energy"
     state.setpointHigh = eeSetPointHigh
     state.setpointLow = eeSetPointLow
+    state.spInBetween = setEEPointBetween
     setpointHandler()
 }
 def globalVariablesNumberHandler() {
@@ -3731,6 +3735,7 @@ def globalVariablesNumberHandler() {
     state.spType = "globalVariable"
     state.setpointHigh = gvSetPointHigh
     state.setpointLow = gvSetPointLow
+    state.spInBetween = setGVPointBetween
     setpointHandler()
 }
 def humidityHandler() {
@@ -3738,6 +3743,7 @@ def humidityHandler() {
     state.spType = "humidity"
     state.setpointHigh = heSetPointHigh
     state.setpointLow = heSetPointLow
+    state.spInBetween = setHEPointBetween
     setpointHandler()
 }
 def illuminanceHandler() {
@@ -3745,6 +3751,7 @@ def illuminanceHandler() {
     state.spType = "illuminance"
     state.setpointHigh = ieSetPointHigh
     state.setpointLow = ieSetPointLow
+    state.spInBetween = setIEPointBetween
     setpointHandler()
 }
 def powerHandler() {
@@ -3752,6 +3759,7 @@ def powerHandler() {
     state.spType = "power"
     state.setpointHigh = peSetPointHigh
     state.setpointLow = peSetPointLow
+    state.spInBetween = setPEPointBetween
     setpointHandler()
 }
 def tempHandler() {
@@ -3759,6 +3767,7 @@ def tempHandler() {
     state.spType = "temperature"
     state.setpointHigh = teSetPointHigh
     state.setpointLow = teSetPointLow
+    state.spInBetween = setTEPointBetween
     setpointHandler()
 }
 def voltageHandler() {
@@ -3766,6 +3775,7 @@ def voltageHandler() {
     state.spType = "voltage"
     state.setpointHigh = veSetPointHigh
     state.setpointLow = veSetPointLow
+    state.spInBetween = setSDPointBetween
     setpointHandler()
 }
 
@@ -3851,7 +3861,7 @@ def setpointHandler() {
                         setpointRollingAverageHandler(maxReadingSize)
                         if(state.theAverage >= 0) setpointValue = state.theAverage
                     }
-                    if(state.setpointHigh && state.setpointLow) {
+                    if(state.setpointHigh && state.setpointLow && state.spInBetween) {
                         setpointLow = state.setpointLow
                         setpointHigh = state.setpointHigh
                         if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
@@ -3863,33 +3873,38 @@ def setpointHandler() {
                             state.setpointBetweenOK = "yes"
                             state.setpointOK = false
                         }
-                    } else if(state.setpointHigh) {
-                        setpointHigh = state.setpointHigh
-                        if(setpointValue >= setpointHigh) {  // bad
-                            if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
-                            state.setpointHighOK = "no"
-                            state.setpointOK = true
-                        } else {
-                            if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
-                            state.setpointHighOK = "yes"
-                            state.setpointOK = false
-                        }
-                    } else if(state.setpointLow) {
-                        setpointLow = state.setpointLow
-                        if(setpointValue < setpointLow) {  // bad
-                            if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
-                            state.setpointLowOK = "no"
-                            state.setpointOK = true
-                        } else {
-                            if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
-                            state.setpointLowOK = "yes"
-                            state.setpointOK = false
-                        }
                     } else {
-                        if(logEnable) log.debug "In setpointHandler - Oops - Nothing Found"
+                        if(state.setpointHigh) {
+                            setpointHigh = state.setpointHigh
+                            if(setpointValue >= setpointHigh) {  // bad
+                                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
+                                state.setpointHighOK = "no"
+                            } else {
+                                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
+                                state.setpointHighOK = "yes"
+                            }
+                        }
+                            
+                        if(state.setpointLow) {
+                            setpointLow = state.setpointLow
+                            if(setpointValue < setpointLow) {  // bad
+                                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
+                                state.setpointLowOK = "no"
+                            } else {
+                                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
+                                state.setpointLowOK = "yes"
+                            }
+                        }
+                        
+                        if(state.setpointHighOK == "yes" || state.setpointLowOK == "yes") {
+                            state.setpointOK = true
+                        } else {
+                            state.setpointOK = false
+                        }
                     }
                 } else {
                     if(logEnable) log.debug "In setpointHandler - Direction - Setpoint value is going in the wrong direction"
+                    state.setpointHighOK = "yes"
                     state.setpointLowOK = "yes"
                     state.setpointOK = false
                 }
@@ -5059,6 +5074,7 @@ def messageHandler() {
             } else {
                 theMessage = message
             }
+            if(theMessage == null) theMessage = message
             if(logEnable && extraLogs) log.debug "In messageHandler - Random - raw message: ${theMessage}"
             def values = "${theMessage}".split(";")
             vSize = values.size()
@@ -5080,7 +5096,7 @@ def messageHandler() {
                 spLow = state.setpointLow.toString()
                 state.message = state.message.replace('%setPointLow%', spLow)
             }
-            
+
             if (state.message.contains("%time%")) {
                 currentDateTime()
                 state.message = state.message.replace('%time%', state.theTime)
@@ -5091,11 +5107,13 @@ def messageHandler() {
             }
             if (state.message.contains("%lastDirection%")) {state.message = state.message.replace('%lastDirection%', state.lastDirection)}
             if (state.message.contains("%iCalValue%")) {state.message = state.message.replace('%iCalValue%', state.currentIcalValue)}
-            
-            if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-            if(state.message && state.message != "null") {
+
+            if(state.message) {
+                if(logEnable) log.debug "In messageHandler - message: ${state.message}"
                 if(useSpeech) letsTalk(state.message)
                 if(sendPushMessage) pushHandler(state.message)
+            } else {
+                if(logEnable) log.debug "In messageHandler - No message was found."
             }
         }
         if(msgRepeat) {
