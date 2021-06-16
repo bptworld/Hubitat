@@ -5072,8 +5072,14 @@ def messageHandler() {
             if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
             if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
             if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}            
-            if (state.message.contains("%setPointHigh%")) {state.message = state.message.replace('%setPointHigh%', state.setpointHigh)}
-            if (state.message.contains("%setPointLow%")) {state.message = state.message.replace('%setPointLow%', state.setpointLow)}
+            if (state.message.contains("%setPointHigh%")) {
+                spHigh = state.setpointHigh.toString()
+                state.message = state.message.replace('%setPointHigh%', spHigh)
+            }
+            if (state.message.contains("%setPointLow%")) {
+                spLow = state.setpointLow.toString()
+                state.message = state.message.replace('%setPointLow%', spLow)
+            }
             
             if (state.message.contains("%time%")) {
                 currentDateTime()
