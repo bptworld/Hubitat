@@ -38,6 +38,9 @@
 *  Changes:
 *
 * * - Working on Denon AVR support.
+* * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
+* * - Need to Fix sorting with event engine cog list
+*  3.1.3 - 06/15/21 - Added 'Event Engine' actions, Added more logging
 *  3.1.2 - 06/09/21 - Adjustment to sunsetSunriseMatchConditionOnly
 *  3.1.1 - 06/09/21 - Added iCal Event support
 *  3.1.0 - 06/02/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
@@ -52,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.2"
+    state.version = "3.1.3"
 }
 
 definition(
@@ -72,7 +75,6 @@ definition(
 preferences {
     page(name: "pageConfig")
     page name: "notificationOptions", title: "", install:false, uninstall:true, nextPage: "pageConfig"
-    page name: "copyCogOptions", title: "", install:false, uninstall:true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -535,6 +537,7 @@ def pageConfig() {
 // -----------          
             if(timeDaysType.contains("tIcal")) {
                 paragraph "<b>iCal Events</b>" 
+                paragraph "Note: Right now this does not work with Reoccuring Events. Hopefully will find a work around soon."
                 input "iCalLinks", "text", title: "Enter in your iCal addresses. Seperate multiple addresses with a semicolon (;)", required:true, submitOnChange:true
                 theInstructions =  "Use the search field to search for a keyword or phrase within events.<br>"
                 theInstructions += " - Enter in a Asterisk, * for all events<br>"
@@ -552,47 +555,51 @@ def pageConfig() {
                         getIcalDataHandler()
                         tDate = new SimpleDateFormat("yyyyMMdd").parse(todaysDate)
                         paragraph "<u><b>Today - ${tDate}:</b></u><br>"
-                        mapAllToday = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        mapAllToday = "<table width=100% align=center><tr><td width=30%><b>Start Date/Time</b><td width=70%><b>Summary</b>"
                         state.iCalMap1.each { theMap ->
                             theKey = theMap.key
+                            getZdate(theKey)
                             theValue = theMap.value
                             (endDate, summary) = theValue.split(";")
-                            mapAllToday += "<tr><td>$theKey<td>$endDate<td>$summary"
+                            mapAllToday += "<tr><td>$state.zDate<td>$summary"
                         }
                         mapAllToday += "</table>"
                         paragraph mapAllToday
 
                         tDate1 = new SimpleDateFormat("yyyyMMdd").parse(todaysDate1)
                         paragraph "<u><b>Tomorrow - $tDate1}:</b></u><br>"
-                        mapAll1 = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        mapAll1 = "<table width=100% align=center><tr><td width=30%><b>Start Date/Time</b><td width=70%><b>Summary</b>"
                         state.iCalMap2.each { theMap ->
                             theKey = theMap.key
+                            getZdate(theKey)
                             theValue = theMap.value
                             (endDate, summary) = theValue.split(";")
-                            mapAll1 += "<tr><td>$theKey<td>$endDate<td>$summary"
+                            mapAll1 += "<tr><td>$state.zDate<td>$summary"
                         }
                         mapAll1 += "</table>"
                         paragraph mapAll1
 
                         tDate2 = new SimpleDateFormat("yyyyMMdd").parse(todaysDate2)
                         paragraph "<u><b>Two Days Out - ${tDate2}:</b></u><br>"
-                        mapAll2 = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        mapAll2 = "<table width=100% align=center><tr><td width=30%><b>Start Date/Time</b><td width=70%><b>Summary</b>"
                         state.iCalMap2.each { theMap ->
                             theKey = theMap.key
+                            getZdate(theKey)
                             theValue = theMap.value
                             (endDate, summary) = theValue.split(";")
-                            mapAll2 += "<tr><td>$theKey<td>$endDate<td>$summary"
+                            mapAll2 += "<tr><td>$state.zDate<td>$summary"
                         }
                         mapAll2 += "</table>"
                         paragraph mapAll2
                         paragraph "<hr>"
                         paragraph "<u><b>Way Out:</b></u><br>"
-                        mapAll = "<table width=100% align=center><tr><td width=20%><b>Start Date/Time</b><td width=20%><b>End Date/Time</b><td width=60%><b>Summary</b>"
+                        mapAll = "<table width=100% align=center><tr><td width=30%><b>Start Date/Time</b><td width=70%><b>Summary</b>"
                         state.iCalMapAll.each { theMap ->
                             theKey = theMap.key
+                            getZdate(theKey)
                             theValue = theMap.value
                             (endDate, summary) = theValue.split(";")
-                            mapAll += "<tr><td>$theKey<td>$endDate<td>$summary"
+                            mapAll += "<tr><td>$state.zDate<td>$summary"
                         }
                         mapAll += "</table>"
                         paragraph mapAll
@@ -1823,6 +1830,7 @@ def pageConfig() {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
                 ["aBlueIris":"Blue Iris Control"],
                 ["aDenonAVR":"Denon AVR Control (Beta)"],
+                ["aEventEngine":"Event Engine"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
@@ -1965,6 +1973,19 @@ def pageConfig() {
                 app.removeSetting("biCameraPTZ")
             }
 // End Denon AVR Control
+            if(actionType.contains("aEventEngine")) {
+                paragraph "<b>Event Engine Control</b>"
+                data = app.id
+                parent.mapOfChildren(app.id)                
+                input "eeAction", "enum", title: "Event Engine Cog", options: state.mapOfChildren, multiple:true, submitOnChange:true
+                input "eeCommand", "enum", title: "Command", options: ["pause", "resume", "reverse", "run"], multiple:false, submitOnChange:true
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Event Engine: ${eeAction} - Command: ${eeCommand}<br>"
+            } else {
+                app.removeSetting("eeAction")
+                app.removeSetting("eeCommand")
+            }
+            
             if(actionType.contains("aFan")) {
                 paragraph "<b>Fan Control</b>"
                 input "fanAction", "capability.fanControl", title: "Fan Devices", multiple:true, submitOnChange:true
@@ -2992,7 +3013,7 @@ def initialize() {
         }
         if(runNow) {
             app.updateSetting("runNow",[value:"false",type:"bool"])
-            startTheProcess()
+            runIn(5, startTheProcess, [data: "runNow"])
         }
     }
 }
@@ -3031,14 +3052,14 @@ def startTheProcess(evt) {
                 state.totalMatch = 1
                 state.totalConditions = 1
             }
+            if(triggerType == null) triggerType = ""
 
             if(evt) {
                 if(evt == "runAfterDelay") {
-                    state.whoHappened = "NA"
-                    state.whatHappened = "NA"
+                    // Keeping original who and what happened
                 } else if(evt == "timeReverse" || evt == "reverse") {
                     state.whatToDo = "skipToReverse"
-                } else if(evt == "run") {
+                } else if(evt == "run" || evt == "runNow") {
                     state.whatToDo = "run"
                 } else {
                     try {
@@ -3046,19 +3067,20 @@ def startTheProcess(evt) {
                         state.whatHappened = evt.value
                         state.whoText = evt.descriptionText
                     } catch(e) {
-                        if(logEnable) log.debug "In startTheProcess - Whoops!"
-                        log.error(getExceptionMessageWithLine(e))
+                        if(logEnable) log.debug "In startTheProcess - Whoops! (evt: ${evt}"
+                        //log.error(getExceptionMessageWithLine(e))
                     }
-                    if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                     state.hasntDelayedYet = true
                     state.hasntDelayedReverseYet = true
                     state.whatToDo = "run"
                 }
+                if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
             } else {
+                if(logEnable || shortLog) log.debug "In startTheProcess - No EVT (evt: ${evt}"
                 state.whatToDo = "run"
-                state.whoHappened = ""
-                state.whatHappened = ""
-                state.whoText = ""
+                //state.whoHappened = ""
+                //state.whatHappened = ""
+                //state.whoText = ""
             }
             if(accelerationRestrictionEvent) { accelerationRestrictionHandler() }
             if(contactRestrictionEvent) { contactRestrictionHandler() }
@@ -3219,6 +3241,7 @@ def startTheProcess(evt) {
                             if(devicesToRefresh) devicesToRefreshActionHandler()
                             if(rmRule) ruleMachineHandler()
                             if(setGVname && setGVvalue) setGlobalVariableHandler()
+                            if(eeAction) eventEngineHandler()
                             state.hasntDelayedYet = true
                             if(timeReverse) {
                                 theDelay = timeReverseMinutes * 60
@@ -3363,14 +3386,16 @@ def buttonHandler(evt) {
     if(logEnable || shortLog) log.debug "In buttonEvent (${state.version})"
     def whichButton = evt.displayName
     def bNumber = evt.value
-    def pressType = evt.name
+    def pressType = evt.name    
+    state.whoHappened = evt.displayName
+    state.whatHappened = evt.value  
     if(logEnable || shortLog) log.debug "In buttonEvent - ${whichButton}: bNumber: ${bNumber} - pressType ${pressType}"    
     if(buttonAction == "taps") {
         bNum = bNumber.toInteger()
         bTap = buttonTaps.toInteger()
         if(bNum == bTap) {
             if(logEnable || shortLog) log.debug "In buttonEvent - Number of Presses: ${bNum} matches presses Needed: ${bTap}"
-            startTheProcess()
+            startTheProcess("button")
         } else {
             if(logEnable || shortLog) log.debug "In buttonEvent - Number of Presses: ${bNum} does NOT match presses Needed: ${bTap} - stopping"
         }
@@ -3378,7 +3403,7 @@ def buttonHandler(evt) {
         if(logEnable || shortLog) log.debug "In buttonEvent - Button Pressed: ${bNumber} matches Button Needed: ${buttonNumber}"
         if(pressType == buttonAction) {
             if(logEnable || shortLog) log.debug "In buttonEvent - Press Type: ${pressType} matches event Needed: ${buttonAction}"
-            startTheProcess()
+            startTheProcess("button")
         } else {
             if(logEnable || shortLog) log.debug "In buttonEvent - Press Type: ${pressType} did NOT match event Needed: ${buttonAction} - stopping"
         }
@@ -5229,7 +5254,7 @@ def endTimeBetween() {
 
 def certainTime() {
     if(logEnable) log.debug "In certainTime (${state.version})"  
-    startTheProcess()
+    startTheProcess("certainTime")
 }
 
 def dayOfTheWeekHandler() {
@@ -5644,7 +5669,7 @@ def sendSettingsToParentHandler() {
 
 def globalVariablesHandler(data) {
     if(data) { state.gvMap = data }
-    if(globalVariableEvent) startTheProcess()
+    if(globalVariableEvent) startTheProcess("global")
 }
 
 def versionIsGoodHandler(data) {
@@ -5813,12 +5838,12 @@ def activeHandler() {
         if(theDirection == "Right" && state.direction == "right") { 
             state.totalMatch = 1
             state.totalConditions = 1
-            startTheProcess() 
+            startTheProcess("direction") 
         }
         if(theDirection == "Left" && state.direction == "left") {
             state.totalMatch = 1
             state.totalConditions = 1
-            startTheProcess() 
+            startTheProcess("direction") 
         }
     }
 }
@@ -6275,12 +6300,14 @@ void getIcalDataHandler() {
                     if(logEnable) log.debug "In getIcalDataHandler - Response Status${resp.status}"
                     theData = resp.data
                     state.line = 0
-                    theData.eachLine {                      
+                    if(logEnable) log.info "---------- ---------- ---------- ---------- ----------"
+                    theData.eachLine {
+                        log.trace it
                         if(state.line <= 10) {
                             if(it == "BEGIN:VEVENT" || state.within) {
                                 state.within = true
                             } 
-                            if(it.contains("DTSTART:")) { 
+                            if(it.contains("DTSTART")) { 
                                 startDate = it.split(":")
                                 if(startDate[1]) {
                                     state.startDate = startDate[1]
@@ -6290,7 +6317,7 @@ void getIcalDataHandler() {
                                 state.foundOne = true
                                 state.line = state.line + 1
                             }
-                            if(it.contains("DTEND:")) { 
+                            if(it.contains("DTEND")) { 
                                 endDate = it.split(":")
                                 if(endDate[1]) {
                                     state.endDate = endDate[1]
@@ -6298,13 +6325,22 @@ void getIcalDataHandler() {
                                     state.endDate = "No Data"
                                 }
                             }
-                            if(it.contains("SUMMARY:")) {
+                            if(it.contains("SUMMARY")) {
                                 summaryData = it.split(":")
                                 if(summaryData[1]) {
                                     state.summary = summaryData[1]
                                 } else {
                                     state.summary = "No Data"
                                 }
+                            }
+                            if(it.contains("RRULE:FREQ")) {
+                                summaryData = it.split("=")
+                                if(summaryData[1]) {
+                                    state.RR = summaryData[1]
+                                } else {
+                                    state.RR = "No Data"
+                                }
+                                log.info "RR: $state.RR"
                             }
                             if(it == "END:VEVENT" && state.foundOne) {
                                 sDate = state.startDate.toString()
@@ -6316,7 +6352,7 @@ void getIcalDataHandler() {
                                 tDate2 = new Date() + 2
                                 todaysDate2 = tDate2.format( 'yyyyMMdd' )
                                 workingDate = sDate.take(8)
-
+                                log.info "---------- ---------- ---------- ---------- ----------"
                                 if(todaysDate.toString() == workingDate.toString()) {
                                     newData = "${eDate};${state.summary}".toString()
                                     iCalMap1.put(sDate, newData)
@@ -6361,12 +6397,12 @@ void getIcalDataHandler() {
     state.iCalMap2 = iCalMap2.sort{ a, b -> a.key <=> b.key}
     state.iCalMap3 = iCalMap3.sort{ a, b -> a.key <=> b.key}
     state.iCalMapAll = iCalMapAll.sort{ a, b -> a.key <=> b.key}
-    if(logEnable) log.info "NEW iCalMap1 - ${todaysDate}:<br>${state.iCalMap1}"
-    if(logEnable) log.info "NEW iCalMap2 - ${todaysDate1}:<br>${state.iCalMap2}"
-    if(logEnable) log.info "NEW iCalMap3 - ${todaysDate2}:<br>${state.iCalMap3}"
+    //if(logEnable) log.info "NEW iCalMap1 - ${todaysDate}:<br>${state.iCalMap1}"
+    //if(logEnable) log.info "NEW iCalMap2 - ${todaysDate1}:<br>${state.iCalMap2}"
+    //if(logEnable) log.info "NEW iCalMap3 - ${todaysDate2}:<br>${state.iCalMap3}"
 }
 
-def iCalHandler() {            // iCalLinks for search
+def iCalHandler() {            // tCal for search
     if(logEnable) log.debug "In iCalHandler (${state.version})"
     todaysDate = new Date().format( 'yyyyMMdd' )
     tDate = todaysDate.toString()
@@ -6382,29 +6418,22 @@ def iCalHandler() {            // iCalLinks for search
                 if(theValue.toLowerCase().contains("${theSearch.toLowerCase()}") || theSearch == "*") {
                     if(logEnable) log.debug "In iCalHandler - Match!"         
                     if(keyLength > 8) {
-                        // Thanks to @mark.cockcroft for this block of code
-                        Date zDate
-                        if (theKey.contains("Z")) {
-                            zDate =  toDateTime(theKey)
-                        } else if (theKey.contains("T")) {
-                            zDate = new SimpleDateFormat("yyyyMMdd'T'kkmmss").parse(theKey)
-                        } else {
-                            zDate = new SimpleDateFormat("yyyyMMdd").parse(theKey)
-                        }
-                        // End block of code
-                        if(logEnable) log.debug "In iCalHandler - theKey: ${theKey} - zDate: ${zDate}"
+                        getZdate(theKey)                      
+                        if(logEnable) log.debug "In iCalHandler - theKey: ${theKey} - zDate: ${state.zDate}"
                         icp = iCalPrior.toInteger()
-                        use( TimeCategory ) { zOffset = zDate - icp.minutes }
+                        use( TimeCategory ) { zOffset = state.zDate - icp.minutes }
                         def (endDate, message) = theValue.split(";")
                         state.currentIcalValue = message
-                        schedule(zOffset, startTheProcess, [overwrite: false])
+                        if(logEnable) log.debug "In iCalHandler - zOffset: ${zOffset}"
+                        runOnce(zOffset, startTheProcess, [overwrite: false])
                         if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${zOffset}"
                     } else {
                         if(iCalTime) {
+                            //zDate = new SimpleDateFormat("yyyy-MM-dd'T'kkmmss").parse(iCalTime)
                             if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${iCalTime}"
                             def (endDate, message) = theValue.split(";")
                             state.currentIcalValue = message
-                            schedule(iCalTime, startTheProcess, [overwrite: false])
+                            runOnce(iCalTime, startTheProcess, [overwrite: false])
                         } else {
                             if(logEnable) log.debug "In iCalHandler - No start time, not set to run"
                         }
@@ -6412,6 +6441,57 @@ def iCalHandler() {            // iCalLinks for search
                 }
             }
         }
+    }
+}
+
+def getZdate(theKey) {
+    Date zDate
+    c = theKey.length()
+    keypart1 = theKey.substring(0,4)
+    keypart2 = theKey.substring(4,6)
+    keypart3 = theKey.substring(6,8)
+    if(c > 8) {
+        keypart4 = theKey.substring(8,c)
+    } else {
+        keypart4 = ""
+    }  
+    workingDate = "$keypart1" + "-" + "$keypart2" + "-" + "$keypart3" + "$keypart4"
+    if(logEnable) log.debug "In getZdate - Length: $c - 1: $keypart1 - 2: $keypart2 - $keypart3 ------- workingDate: $workingDate"    
+    if(c > 8) {
+        zDate = new SimpleDateFormat("yyyy-MM-dd'T'kkmmss").parse(workingDate)
+    } else {
+        zDate = new SimpleDateFormat("yyyy-MM-dd").parse(workingDate)
+    }    
+    if(logEnable) log.debug "In getZdate - ***** zDate: $zDate *****"
+    state.zDate = zDate
+}
+
+def mapOfChildrenHandler(data) {
+    if(logEnable) log.debug "In mapOfChildrenHandler (${state.version})"
+    log.trace "Received: ${data}"
+    state.mapOfChildren = data
+    log.error state.mapOfChildren
+}
+
+def eventEngineHandler() {
+    if(logEnable) log.debug "In eventEngineHandler (${state.version})"
+    eeAction.each { it ->
+        if(logEnable) log.debug "In eventEngineHandler - Sending Cog Number: ${it} - Command: ${eeCommand}"
+        data = "$it:$eeCommand"
+        parent.runEEHandler(data)
+    }
+}
+
+def commandFromParentHandler(data) {
+    if(logEnable) log.debug "In commandFromParentHandler (${state.version}) - data: ${data}"
+    if(data == "pause") {
+        app.updateSetting("pauseApp",[value:"true",type:"bool"])
+    } else if(data == "resume") {
+        app.updateSetting("pauseApp",[value:"false",type:"bool"])
+    } else if(data == "reverse") {
+        startTheProcess("reverse")
+    } else if(data == "run") {
+        startTheProcess("run")
     }
 }
 
