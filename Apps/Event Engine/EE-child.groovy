@@ -40,6 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.6 - 06/16/21 - More adjustments to setpoints
 *  3.1.5 - 06/16/21 - Adjustments to setpoints
 *  3.1.4 - 06/16/21 - Adjustments to setpoint notifications
 *  3.1.3 - 06/15/21 - Added 'Event Engine' actions, Added more logging
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.5"
+    state.version = "3.1.6"
 }
 
 definition(
@@ -3867,11 +3868,9 @@ def setpointHandler() {
                         if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
                             if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
                             state.setpointBetweenOK = "no"
-                            state.setpointOK = true
                         } else {
                             if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
                             state.setpointBetweenOK = "yes"
-                            state.setpointOK = false
                         }
                     } else {
                         if(state.setpointHigh) {
@@ -3896,7 +3895,7 @@ def setpointHandler() {
                             }
                         }
                         
-                        if(state.setpointHighOK == "yes" || state.setpointLowOK == "yes") {
+                        if(state.setpointHighOK == "no" || state.setpointLowOK == "no" || state.setpointBetweenOK == "no") {
                             state.setpointOK = true
                         } else {
                             state.setpointOK = false
