@@ -40,6 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.7 - 06/17/21 - Added 'Certain Time Has Passed' to Time Conditions
 *  3.1.6 - 06/16/21 - More adjustments to setpoints
 *  3.1.5 - 06/16/21 - Adjustments to setpoints
 *  3.1.4 - 06/16/21 - Adjustments to setpoint notifications
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.6"
+    state.version = "3.1.7"
 }
 
 definition(
@@ -183,6 +184,7 @@ def pageConfig() {
                     ["tMode":"By Mode"],
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
+                    ["tcertainTimeHasPassed":"Certain Time Has Passed"],
                     ["tHoliday":"Holidays (Calendarific)"],
                     ["tIcal":"iCal Events (beta)"],
                     ["tSunrise":"Just Sunrise"],
@@ -339,7 +341,6 @@ def pageConfig() {
                 input "toTime", "time", title: "To <small><abbr title='Exact time for the Cog to End'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
                 input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
                 input "timeBetweenMatchConditionOnly", "bool", defaultValue:false, title: "Use Time Between as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
-                paragraph "<hr>"
                 if(fromTime && toTime) {
                     theDate1 = toDateTime(fromTime)
                     theDate2 = toDateTime(toTime)            
@@ -352,6 +353,7 @@ def pageConfig() {
                     state.betweenTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
                     paragraph "From: ${theDate1} - To: ${nextToDate}<br>Currently, Between equals ${state.betweenTime}"
                 }
+                paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction} - just Condition: ${timeBetweenMatchConditionOnly}<br>"
             } else {
                 app.removeSetting("fromTime")
@@ -615,6 +617,15 @@ def pageConfig() {
                     app.removeSetting("iCalTime")
                     app.removeSetting("iCalPrior")
                 }
+            }
+// -----------
+            if(timeDaysType.contains("tcertainTimeHasPassed")) {
+                paragraph "<b>Certain Time Has Passed</b>"
+                input "certainTimeHasPassedEvent", "number", title: "Number of Minutes until this Cog can trigger again (minutes) <small><abbr title='Cog can not run until xx minutes has passed since the last time it ran.'><b>- INFO -</b></abbr></small>", description: "1-60", range: '1..60', submitOnChange:true
+                paragraph "<hr>"
+                state.theCogTriggers += "<b>-</b> Certain Time Has Passed - ${certainTimeHasPassedEvent}<br>"
+            } else {
+                app.removeSetting("certainTimeHasPassedEvent")
             }
 // -----------
             if(triggerType.contains("xAcceleration")) {
@@ -3058,7 +3069,6 @@ def startTheProcess(evt) {
                 state.totalConditions = 1
             }
             if(triggerType == null) triggerType = ""
-
             if(evt) {
                 if(evt == "runAfterDelay") {
                     // Keeping original who and what happened
@@ -3203,55 +3213,63 @@ def startTheProcess(evt) {
                             state.setpointBetweenOK = "yes"
                             runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                         } else {
-                            if(actionType) {
-                                if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType}"
-                                unschedule(permanentDimHandler)
-                                if(actionType.contains("aFan")) { fanActionHandler() }
-                                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                                if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                                if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                                if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                                if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                                if(state.betweenTime) {
-                                    if(actionType.contains("aNotification")) { 
-                                        state.doMessage = true
-                                        messageHandler() 
-                                        if(useTheFlasher) theFlasherHandler()
+                            certainTimeHasPassedHandler()
+                            if(state.certainTimeHasPassed) {
+                                state.lastRunTime = new Date()
+                                if(actionType) {
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
+                                    unschedule(permanentDimHandler)
+                                    if(actionType.contains("aFan")) { fanActionHandler() }
+                                    if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                    if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                                    if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                                    if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                    if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                                    if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                    if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                                    if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                                    if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                                    if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                                    if(state.betweenTime) {
+                                        if(actionType.contains("aNotification")) { 
+                                            state.doMessage = true
+                                            messageHandler() 
+                                            if(useTheFlasher) theFlasherHandler()
+                                        }
                                     }
+                                    if(actionType.contains("aBlueIris")) {
+                                        if(biControl == "Switch_Profile") { profileSwitchHandler() }
+                                        if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
+                                        if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
+                                        if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
+                                        if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
+                                        if(biControl == "Camera_PTZ") { cameraPTZHandler() }
+                                        if(biControl == "Camera_Reboot") { cameraRebootHandler() }
+                                    }
+
+                                    if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                                 }
-                                if(actionType.contains("aBlueIris")) {
-                                    if(biControl == "Switch_Profile") { profileSwitchHandler() }
-                                    if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
-                                    if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
-                                    if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
-                                    if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
-                                    if(biControl == "Camera_PTZ") { cameraPTZHandler() }
-                                    if(biControl == "Camera_Reboot") { cameraRebootHandler() }
+                                if(setHSM) hsmChangeActionHandler()
+                                if(modeAction) modeChangeActionHandler()
+                                if(devicesToRefresh) devicesToRefreshActionHandler()
+                                if(rmRule) ruleMachineHandler()
+                                if(setGVname && setGVvalue) setGlobalVariableHandler()
+                                if(eeAction) eventEngineHandler()
+                                state.hasntDelayedYet = true
+                                if(timeReverse) {
+                                    theDelay = timeReverseMinutes * 60
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
+                                    runIn(theDelay, startTheProcess, [data: "timeReverse"])
                                 }
-                                
-                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                            }
-                            if(setHSM) hsmChangeActionHandler()
-                            if(modeAction) modeChangeActionHandler()
-                            if(devicesToRefresh) devicesToRefreshActionHandler()
-                            if(rmRule) ruleMachineHandler()
-                            if(setGVname && setGVvalue) setGlobalVariableHandler()
-                            if(eeAction) eventEngineHandler()
-                            state.hasntDelayedYet = true
-                            if(timeReverse) {
-                                theDelay = timeReverseMinutes * 60
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
-                                runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                            } else {
+                                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+                                lastRan = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
                             }
                         }
                         state.appStatus = "active"
@@ -6426,9 +6444,6 @@ void getIcalDataHandler() {
     state.iCalMap2 = iCalMap2.sort{ a, b -> a.key <=> b.key}
     state.iCalMap3 = iCalMap3.sort{ a, b -> a.key <=> b.key}
     state.iCalMapAll = iCalMapAll.sort{ a, b -> a.key <=> b.key}
-    //if(logEnable) log.info "NEW iCalMap1 - ${todaysDate}:<br>${state.iCalMap1}"
-    //if(logEnable) log.info "NEW iCalMap2 - ${todaysDate1}:<br>${state.iCalMap2}"
-    //if(logEnable) log.info "NEW iCalMap3 - ${todaysDate2}:<br>${state.iCalMap3}"
 }
 
 def iCalHandler() {            // tCal for search
@@ -6521,6 +6536,33 @@ def commandFromParentHandler(data) {
         startTheProcess("reverse")
     } else if(data == "run") {
         startTheProcess("run")
+    }
+}
+
+def certainTimeHasPassedHandler() {
+    if(logEnable) log.debug "In certainTimeHasPassedHandler (${state.version})"
+    if(certainTimeHasPassedEvent) {
+        if(state.lastRunTime == null) state.lastRunTime = new Date()
+        if(logEnable) log.debug "In certainTimeHasPassedHandler - lastRunTime: ${state.lastRunTime}"
+        date1 = new Date()
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        date2 = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
+        use(TimeCategory) {
+            def duration = date1 - date2
+            if(logEnable) log.debug "In certainTimeHasPassedHandler - ***** Minutes: ${duration.minutes} *****"
+            dur = duration.minutes
+        }
+        nwt = certainTimeHasPassedEvent.toInteger()
+        if(dur >= nwt) {
+            state.certainTimeHasPassed = true
+            if(logEnable) log.debug "In certainTimeHasPassedHandler - state.certainTimeHasPassed: true"
+        } else {
+            state.certainTimeHasPassed = false
+            if(logEnable) log.debug "In certainTimeHasPassedHandler - state.certainTimeHasPassed: false"
+        }
+    } else {
+        state.certainTimeHasPassed = true
+        if(logEnable) log.debug "In certainTimeHasPassedHandler - state.certainTimeHasPassed: true"
     }
 }
 
