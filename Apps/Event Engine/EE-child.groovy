@@ -40,6 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.8 - 06/19/21 - Adjustments
 *  3.1.7 - 06/17/21 - Added 'Certain Time Has Passed' to Time Conditions
 *  3.1.6 - 06/16/21 - More adjustments to setpoints
 *  3.1.5 - 06/16/21 - Adjustments to setpoints
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.7"
+    state.version = "3.1.8"
 }
 
 definition(
@@ -621,7 +622,7 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tcertainTimeHasPassed")) {
                 paragraph "<b>Certain Time Has Passed</b>"
-                input "certainTimeHasPassedEvent", "number", title: "Number of Minutes until this Cog can trigger again (minutes) <small><abbr title='Cog can not run until xx minutes has passed since the last time it ran.'><b>- INFO -</b></abbr></small>", description: "1-60", range: '1..60', submitOnChange:true
+                input "certainTimeHasPassedEvent", "number", title: "Number of Minutes until this Cog can trigger again (minutes) <small><abbr title='Cog can not run until xx minutes has passed since the last time it ran.'><b>- INFO -</b></abbr></small>", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> Certain Time Has Passed - ${certainTimeHasPassedEvent}<br>"
             } else {
