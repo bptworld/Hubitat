@@ -38,8 +38,9 @@
 *  Changes:
 *
 * * - Working on Denon AVR support.
-* * - Still more to do with iCal (stuff is happening daily instead of one time, work on reoccuring)
+* * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*  3.1.9 - 06/20/21 - Adjustments to iCal
 *  3.1.8 - 06/19/21 - Adjustments
 *  3.1.7 - 06/17/21 - Added 'Certain Time Has Passed' to Time Conditions
 *  3.1.6 - 06/16/21 - More adjustments to setpoints
@@ -57,10 +58,11 @@ import groovy.json.*
 import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
+import java.util.TimeZone
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.8"
+    state.version = "3.1.9"
 }
 
 definition(
@@ -610,7 +612,7 @@ def pageConfig() {
                         mapAll += "</table>"
                         paragraph mapAll
                     }
-                    state.theCogTriggers += "<b>-</b> By iCal Events: Search: ${iCalSearch} - Time: ${iCalTime} - Prior: ${iCalPrior}<br>"
+                    state.theCogTriggers += "<b>-</b> By iCal Events: Search: ${iCalSearch} - Time: ${state.zDate} - Prior: ${iCalPrior}<br>"
                 }
                 if(!iCalLinks) {
                     app.removeSetting("iCalLinks")
@@ -6455,7 +6457,7 @@ def iCalHandler() {            // tCal for search
         tKey = theKey.substring(0,8).toString()
         keyLength = theKey.length()
         if(tDate == tKey) {
-            if(logEnable) log.debug "In iCalHandler - Passed for Today's Event"
+            if(logEnable) log.debug "In iCalHandler - Passed for Today's Event - $tKey"
             icSearch = iCalSearch.split(";")
             icSearch.each { theSearch ->
                 if(theSearch.startsWith(" ")) theSearch = theSearch.replaceFirst(" ","")
@@ -6463,7 +6465,7 @@ def iCalHandler() {            // tCal for search
                 if(theValue.toLowerCase().contains("${theSearch.toLowerCase()}") || theSearch == "*") {
                     if(logEnable) log.debug "In iCalHandler - Match!"         
                     if(keyLength > 8) {
-                        getZdate(theKey)                      
+                        getZdate(theKey)                    
                         if(logEnable) log.debug "In iCalHandler - theKey: ${theKey} - zDate: ${state.zDate}"
                         icp = iCalPrior.toInteger()
                         use( TimeCategory ) { zOffset = state.zDate - icp.minutes }
@@ -6474,7 +6476,6 @@ def iCalHandler() {            // tCal for search
                         if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${zOffset}"
                     } else {
                         if(iCalTime) {
-                            //zDate = new SimpleDateFormat("yyyy-MM-dd'T'kkmmss").parse(iCalTime)
                             if(logEnable) log.debug "In iCalHandler - Setting time to run @ ${iCalTime}"
                             def (endDate, message) = theValue.split(";")
                             state.currentIcalValue = message
@@ -6489,25 +6490,17 @@ def iCalHandler() {            // tCal for search
     }
 }
 
-def getZdate(theKey) {
+def getZdate(data) {            // Modified from iCal Viewer Driver - @mark.cockcroft
+    if(logEnable) log.debug "In getZdate - $data"
     Date zDate
-    c = theKey.length()
-    keypart1 = theKey.substring(0,4)
-    keypart2 = theKey.substring(4,6)
-    keypart3 = theKey.substring(6,8)
-    if(c > 8) {
-        keypart4 = theKey.substring(8,c)
+    if(data.contains("Z")) {
+        zDate =  toDateTime(data)
+    } else if(data.contains("T")) {
+        zDate = new SimpleDateFormat("yyyyMMdd'T'kkmmss").parse(data)
     } else {
-        keypart4 = ""
-    }  
-    workingDate = "$keypart1" + "-" + "$keypart2" + "-" + "$keypart3" + "$keypart4"
-    if(logEnable) log.debug "In getZdate - Length: $c - 1: $keypart1 - 2: $keypart2 - $keypart3 ------- workingDate: $workingDate"    
-    if(c > 8) {
-        zDate = new SimpleDateFormat("yyyy-MM-dd'T'kkmmss").parse(workingDate)
-    } else {
-        zDate = new SimpleDateFormat("yyyy-MM-dd").parse(workingDate)
-    }    
-    if(logEnable) log.debug "In getZdate - ***** zDate: $zDate *****"
+        zDate = new SimpleDateFormat("yyyy-MM-dd").parse(data)
+    }
+    if(logEnable) log.debug "in getZdate - zDate: ${zDate}"    
     state.zDate = zDate
 }
 
