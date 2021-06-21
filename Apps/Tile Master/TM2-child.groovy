@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.6 - 06/21/21 - Adjustment to color options
  *  2.5.5 - 04/25/21 - Fixed an issue with the last merge.
  *  2.5.4 - 04/25/21 - Added pushbutton control (up to 4 buttons per device, only push event) - Thank you @ilkeraktuna
  *  2.5.3 - 03/27/21 - Sorted Attributes
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.5"
+	state.version = "2.5.6"
 }
 
 definition(
@@ -384,12 +385,7 @@ def pageConfig() {
                                 input "color2Name_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Value_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
                                 color1 = app."color1Value_$x"
-                                color2 = app."color2Value_$x"
-                                paragraph "<hr>"
-                            
-                                input "valueOrCell_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
-                                input "useColorsBEF_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
-                                input "useColorsAFT_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
+                                color2 = app."color2Value_$x"                               
                             }
                             
                             if(textORnumber) {
@@ -405,6 +401,10 @@ def pageConfig() {
                             }
                         }
 
+                        paragraph "<hr>"
+                        input "valueOrCell_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
+                        input "useColorsBEF_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
+                        input "useColorsAFT_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
                         input "useIcons_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
                         uI = app."useIcons_$x"
                         if(uI) {                      
@@ -634,10 +634,6 @@ def pageConfig() {
 		                        input "color1Valuea_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
                                 input "color2Namea_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valuea_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
-                                paragraph "<hr>"
-                                input "valueOrCella_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
-                                input "useColorsBEFa_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
-                                input "useColorsAFTa_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
                             }
                             
                             if(textORnumbera) {
@@ -652,7 +648,10 @@ def pageConfig() {
                                 input "colorNumHigha_$x", "text", title: "Choose a Color for High", submitOnChange: true, width: 4
                             }
                         }
-
+                        paragraph "<hr>"
+                        input "valueOrCella_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
+                        input "useColorsBEFa_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
+                        input "useColorsAFTa_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
                         input "useIconsa_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
                         uIa = app."useIconsa_$x"
                         if(uIa) {                      
@@ -882,11 +881,6 @@ def pageConfig() {
 		                        input "color1Valueb_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
                                 input "color2Nameb_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valueb_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
-                                
-                                paragraph "<hr>"
-                                input "valueOrCellb_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
-                                input "useColorsBEFb_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
-                                input "useColorsAFTb_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
                             }
                             
                             if(textORnumberb) {
@@ -901,7 +895,10 @@ def pageConfig() {
                                 input "colorNumHighb_$x", "text", title: "Choose a Color for High", submitOnChange: true, width: 4
                             }                          
                         }
-
+                        paragraph "<hr>"
+                        input "valueOrCellb_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
+                        input "useColorsBEFb_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
+                        input "useColorsAFTb_$x", "bool", title: "Use custom colors on 'Text AFTER Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
                         input "useIconsb_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
                         uIb = app."useIconsb_$x"
                         if(uIb) {                      
