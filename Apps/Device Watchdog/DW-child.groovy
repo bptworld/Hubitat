@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  2.4.0 - 05/24/21 - Add second switch option to Run Reports on Demand, fixed typo with Activity push
+ *  2.4.1 - 06/23/21 - Added a pause to refresh
+ *  2.4.0 - 05/24/21 - Added second switch option to Run Reports on Demand, fixed typo with Activity push
  *  ---
  *  1.0.0 - 12/21/18 - Initial release.
  *
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.0"
+	state.version = "2.4.1"
 }
 
 definition(
@@ -1591,6 +1592,8 @@ def refreshDevices(devices) {
             if(logEnable) log.debug "In refreshDevices - ${it} not updated - Time since was only ${state.totalHours} hours."
         }
     }
+    if(logEnable) log.debug "In refreshDevices - Pausing 3 seconds, so devices have time to respond."
+    pauseExecution(3000)
     if(logEnable) log.debug "---------- ---------- --------- --------- End REFRESH ---------- --------- --------- ---------- ---------"
     if(logEnable) log.debug "In refreshDevices - Finished refreshing!"
 }
