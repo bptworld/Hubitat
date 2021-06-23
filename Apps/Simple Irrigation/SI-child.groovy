@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.8 - 06/23/21 - Fixed a typo
  *  2.0.7 - 05/26/21 - Added switch option
  *  2.0.6 - 06/16/20 - Added more push options
  *  2.0.5 - 06/02/20 - Fixed issues with scheduling
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.7"
+	state.version = "2.0.8"
 }
 
 definition(
@@ -159,7 +160,7 @@ def turnValveOn() {
     if(state.valveTry == null) state.valveTry = 0
     if(state.valveTry == 0) { if(logEnable) log.warn "*************** Start Valve On - Simple Irrigation Child - (${state.version}) ***************" }	
     if(valveORswitch) {
-        if(switchDevice) state.switchStatus = valveDevice.switchDevice("switch")
+        if(switchDevice) state.switchStatus = switchDevice.currentValue("switch")
     } else {
         if(valveDevice) state.valveStatus = valveDevice.currentValue("valve")
     }
@@ -247,7 +248,7 @@ def turnValveOff() {
 	if(state.daysMatch) {
         if(logEnable) log.debug "In turnValveOff (${state.version})"
         if(valveORswitch) {
-        if(switchDevice) state.switchStatus = valveDevice.switchDevice("switch")
+        if(switchDevice) state.switchStatus = switchDevice.currentValue("switch")
     } else {
         if(valveDevice) state.valveStatus = valveDevice.currentValue("valve")
     }
