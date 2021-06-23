@@ -32,13 +32,6 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
-   		"name": "BI Control",
-   		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/packageManifest.json",
-   		"description": "Designed to work locally with Blue Iris security software.",
-         "tags": [ "Alarm Systems", "LAN", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "CATT Director",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/packageManifest.json",
