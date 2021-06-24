@@ -37,15 +37,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 04/03/21 - Fixed error
- *  1.0.8 - 03/13/21 - Added Contacts as a Presence option
- *  1.0.7 - 09/24/20 - Lots of Adjustments
- *  1.0.6 - 05/12/20 - Added separate delays for Present and Not Present
- *  1.0.5 - 05/05/20 - Added Advanced Present section giving users a second set of Present options
- *  1.0.4 - 05/05/20 - Added number of sensors required to change status
- *  1.0.3 - 05/05/20 - Added delay before status is updated
- *  1.0.2 - 04/27/20 - Cosmetic changes
- *  1.0.1 - 12/05/19 - Tightening up some code.
+ *  1.1.0 - 06/24/21 - Added IP Ping option, Added Motion to options, Reversed how Contacts work, upgraded device creation and logging options
+ *  ---
  *  1.0.0 - 11/01/19 - Initial release.
  *
  */
@@ -55,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -88,10 +81,21 @@ def pageConfig() {
             paragraph "Also, it's <i>always</i> a good idea to go into the newly created device and set the initial presence state."
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for this child app", required:false, submitOnChange:true
-            paragraph "Note: What ever name you place in here will also be the name of the device automaticaly created."
-            if(app.label) createChildDevice()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
+            paragraph "Each child app needs a virtual device to store the results. This device can also be used in other apps, like Rule Machine or Event Engine."
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have PP create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'PP - Bryan')", required:true, submitOnChange:true
+                paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Presence Plus Driver'.</small>"
+            }
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Present Options")) {
@@ -99,9 +103,21 @@ def pageConfig() {
             if(ArrTriggerType) paragraph "<b>using 'AND'</b>"
             if(!ArrTriggerType) paragraph "<b>using 'OR'</b>"
 			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
-            input "ArrConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (present when closed)", multiple:true, required:false
+            input "ArrConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (present when open)", multiple:true, required:false
+            input "ArrMotionPresenceSensors", "capability.motionSensor", title: "Motion Sensors to combine (present when active)", multiple:true, required:false
             if(ArrTriggerType) input "arrNumOfSensors", "number", title: "How many sensors does it take to change status for Present (leave blank for All)", required:false, submitOnChange:true 
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Ping Options")) {
+            paragraph "PP can also Ping an IP Address to see if it is Present or not. This will be included in both Arrival and Departure options.<br><small>* ONLY available for hub model C-7 running version 2.2.6.140 or above.</small>"
+            if(location.hub.firmwareVersionString > "2.2.6.140") {
+                input "ipAddress", "text", title: "Enter in IP Addresses", required:false
+                input "numPings", "number", title: "Number of Ping attempts (1 to 5)", required:false, range: '1..5'
+                input "pingEvery", "enum", title: "Ping every X minutes", description: "pingEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
+            } else {
+                paragraph "Ping Options are only available for hub model C-7 running version 2.2.6.140 or above."
+            }
+        }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Present Options")) {
             paragraph "Advanced Present Options give you a second set of Present Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
@@ -111,7 +127,7 @@ def pageConfig() {
                 if(ArrTriggerType2) paragraph "<b>using 'AND'</b>"
                 if(!ArrTriggerType2) paragraph "<b>using 'OR'</b>"
                 input "ArrPresenceSensors2", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
-                input "ArrConPresenceSensors2", "capability.contactSensor", title: "Contact Sensors to combine (present when closed)", multiple:true, required:false
+                input "ArrConPresenceSensors2", "capability.contactSensor", title: "Contact Sensors to combine (present when open)", multiple:true, required:false
                 if(ArrTriggerType2) input "arrNumOfSensors2", "number", title: "How many sensors does it take to change status for Present (leave blank for All)", required:false, submitOnChange:true 
             } else {
                 app.removeSetting("ArrTriggerType2")
@@ -126,7 +142,8 @@ def pageConfig() {
 			if(DepTriggerType) paragraph "<b>using 'AND'</b>"
             if(!DepTriggerType) paragraph "<b>using 'OR'</b>"
             input "DepPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (not present)", multiple:true, required:false
-            input "DepConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (not present when open)", multiple:true, required:false
+            input "DepConPresenceSensors", "capability.contactSensor", title: "Contact Sensors to combine (not present when closed)", multiple:true, required:false
+            input "DepMotionPresenceSensors", "capability.motionSensor", title: "Motion Sensors to combine (not present when inactive)", multiple:true, required:false
             if(DepTriggerType) input "depNumOfSensors", "number", title: "How many sensors does it take to change status for Not Present (leave blank for All)", required:false, submitOnChange:true
 		}
         
@@ -137,30 +154,37 @@ def pageConfig() {
             input "theDelayDep", "number", title: "Delay setting Not Present status by (seconds)", required:false, submitOnChange:true
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            input "mySensor", "capability.presenceSensor", title: "Select device created to hold the combined presence value", multiple:false, required:true
-            paragraph "<small>* This device was automaticaly created when you entered in the app name. Look for a device with the same name as this app.</small>"
-        }
-        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
                 }
             }
+        }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            input "logEnable", "bool", title: "Enable Debug Logging", description: "Debugging", defaultValue:true, submitOnChange:true
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
         }
         display2()
 	}
@@ -180,21 +204,30 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
     } else {
         setDefaults()
         if(ArrPresenceSensors) subscribe(ArrPresenceSensors, "presence.present", arrSensorHandler)
-        if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence.present", arrSensorHandler2)
-        if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact.closed", arrSensorHandler)
         if(DepPresenceSensors) subscribe(DepPresenceSensors, "presence.not present", depSensorHandler)
-        if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact.open", arrSensorHandler)
+        
+        if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence.present", arrSensorHandler2)
+        
+        if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact.open", arrSensorHandler)        
+        if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact.closed", depSensorHandler)
+        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion.active", arrSensorHandler)
+        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion.inactive", depSensorHandler)
 
         if(runEvery == "Every 1 Minute") runEvery1Minute(arrSensorHandler)
         if(runEvery == "Every 5 Minutes") runEvery5Minutes(arrSensorHandler)
@@ -203,6 +236,15 @@ def initialize() {
         if(runEvery == "Every 30 Minutes") runEvery30Minutes(arrSensorHandler)
         if(runEvery == "Every 1 Hour") runEvery1Hour(arrSensorHandler)
         if(runEvery == "Every 3 Hours") runEvery3Hours(arrSensorHandler)
+        
+        if(pingEvery == "Every 1 Minute") runEvery1Minute(pingHandler)
+        if(pingEvery == "Every 5 Minutes") runEvery5Minutes(pingHandler)
+        if(pingEvery == "Every 10 Minutes") runEvery10Minutes(pingHandler)
+        if(pingEvery == "Every 15 Minutes") runEvery15Minutes(pingHandler)
+        if(pingEvery == "Every 30 Minutes") runEvery30Minutes(pingHandler)
+        if(pingEvery == "Every 1 Hour") runEvery1Hour(pingHandler)
+        if(pingEvery == "Every 3 Hours") runEvery3Hours(pingHandler)
+        if(ipAddress) pingHandler()
     }
 }
 
@@ -215,14 +257,11 @@ def arrSensorHandler(evt) {
         if(ArrTriggerType2 == null || ArrTriggerType2 == "") ArrTriggerType2 = false
         if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType} - ArrTriggerType2: ${ArrTriggerType2}"	
 
-        unschedule()
         int theDelayArr = theDelayArr ?: 1
         int pCount = 0
         int pCount2 = 0
-	int theArrNum = 0
-	int theArrNum2 = 0
 
-        if(ArrPresenceSensors || ArrConPresenceSensors) {
+        if(ArrPresenceSensors || ArrConPresenceSensors || ArrMotionPresenceSensors || ipAddress) {
             if(ArrPresenceSensors) {
                 preSensors = ArrPresenceSensors.size()
             } else {
@@ -233,8 +272,19 @@ def arrSensorHandler(evt) {
             } else {
                 conSensors = 0
             }
-            asCount = preSensors + conSensors
-            theArrNum = arrNumOfSensors ?: asCount
+            if(ArrMotionPresenceSensors) {
+                 motSensors = ArrMotionPresenceSensors.size()
+            } else {
+                motSensors = 0
+            }
+            if(ipAddress) {
+                ipSensors = 1
+            } else {
+                ipSensors = 0
+            }
+            
+            asCount = preSensors + conSensors + + motSensors + ipSensors
+            int theArrNum = arrNumOfSensors ?: asCount
         }
 
         if(ArrPresenceSensors2 || ArrConPresenceSensors2) {
@@ -249,7 +299,7 @@ def arrSensorHandler(evt) {
                 conSensors2 = 0
             }
             asCount2 = preSensors2 + conSensors2
-            theArrNum2 = arrNumOfSensors2 ?: asCount2
+            int theArrNum2 = arrNumOfSensors2 ?: asCount2
         }
 
         if(ArrTriggerType == false) {    // or
@@ -263,9 +313,21 @@ def arrSensorHandler(evt) {
             }
             if(ArrConPresenceSensors) {
                 ArrConPresenceSensors.each { it ->
-                    if(it.currentValue("contact") == "closed") {
+                    if(it.currentValue("contact") == "open") {
                         state.pStatus = true	
                     }
+                }
+            }
+            if(ArrMotPresenceSensors) {
+                ArrMotPresenceSensors.each { it ->
+                    if(it.currentValue("motion") == "active") {
+                        state.pStatus = true	
+                    }
+                }
+            }
+            if(ipAddress) {
+                if(state.ipStatus == "present") {
+                    state.pStatus = true
                 }
             }
         }
@@ -281,9 +343,21 @@ def arrSensorHandler(evt) {
             }
             if(ArrConPresenceSensors) {
                 ArrConPresenceSensors.each { it ->
-                    if(it.currentValue("contact") == "closed") {
+                    if(it.currentValue("contact") == "open") {
                         pCount = pCount + 1	
                     }
+                }
+            }
+            if(ArrMotPresenceSensors) {
+                ArrMotPresenceSensors.each { it ->
+                    if(it.currentValue("motion") == "active") {
+                        pCount = pCount + 1	
+                    }
+                }
+            }
+            if(ipAddress) {
+                if(state.ipStatus == "present") {
+                    pCount = pCount + 1
                 }
             }
             if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
@@ -302,7 +376,7 @@ def arrSensorHandler(evt) {
                 }
                 if(ArrConPresenceSensors2) {
                     ArrConPresenceSensors2.each { it ->
-                        if(it.currentValue("contact") == "closed") {
+                        if(it.currentValue("contact") == "open") {
                             state.pStatus = true	
                         }
                     }
@@ -320,12 +394,12 @@ def arrSensorHandler(evt) {
                 }
                 if(ArrConPresenceSensors2) {
                     ArrConPresenceSensors2.each { it ->
-                        if(it.currentValue("contact") == "closed") {
+                        if(it.currentValue("contact") == "open") {
                             pCount2 = pCount2 + 1	
                         }
                     }
                 }
-                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount2} - presentCount: ${pCount2} - theArrNum2: ${theArrNum2}"
+                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
                 if(pCount2 >= theArrNum2) state.pStatus = true       
             }
         }
@@ -345,7 +419,6 @@ def depSensorHandler(evt) {
         if(DepTriggerType == null || DepTriggerType == "") DepTriggerType = false
         if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
 
-        unschedule()
         if(DepPresenceSensors) {
             depSensors = DepPresenceSensors.size()
         } else {
@@ -356,7 +429,17 @@ def depSensorHandler(evt) {
         } else {
             depConSensors = 0
         }
-        dsCount = depSensors + depConSensors
+        if(DepMonPresenceSensors) {
+            depMonSensors = DepMonPresenceSensors.size()
+        } else {
+            depMonSensors = 0
+        }
+        if(ipAddress) {
+            depIpSensors = 1
+        } else {
+            depIpSensors = 0
+        }
+        dsCount = depSensors + depConSensors + depMonSensors + depIpSensors
         int theDelayDep = theDelayDep ?: 1
         int theDepNum = depNumOfSensors ?: dsCount
         int pCount = 0
@@ -372,9 +455,21 @@ def depSensorHandler(evt) {
             }
             if(DepConPresenceSensors) {
                 DepConPresenceSensors.each { it ->
-                    if(it.currentValue("contact") == "open") {
+                    if(it.currentValue("contact") == "closed") {
                         state.pStatus = false	
                     }
+                }
+            }
+            if(DepMotPresenceSensors) {
+                DepMotPresenceSensors.each { it ->
+                    if(it.currentValue("motion") == "inactive") {
+                        state.pStatus = false	
+                    }
+                }
+            }
+            if(ipAddress) {
+                if(state.ipStatus == "not present") {
+                    state.pStatus = false
                 }
             }
         }
@@ -390,9 +485,21 @@ def depSensorHandler(evt) {
             }
             if(DepConPresenceSensors) {
                 DepConPresenceSensors.each { it ->
-                    if(it.currentValue("contact") == "open") {
+                    if(it.currentValue("contact") == "closed") {
                         pCount = pCount + 1	
                     }
+                }
+            }
+            if(DepMonPresenceSensors) {
+                DepMonPresenceSensors.each { it ->
+                    if(it.currentValue("motion") == "inactive") {
+                        pCount = pCount + 1	
+                    }
+                }
+            }
+            if(ipAddress) {
+                if(state.ipStatus == "not present") {
+                    pCount = pCount + 1
                 }
             }
             if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${dsCount} - notPresentCount: ${pCount} - theDepNum: ${theDepNum}"
@@ -413,26 +520,66 @@ def statusUpdateHandler() {
     } else {
         if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus: ${state.pStatus}"
         if(state.pStatus == true) {
-            def mySensorStatus = mySensor.currentValue("switch")
-            if(logEnable) log.debug "In statusUpdateHandler - Sending ON for Present if needed (switch is ${mySensorStatus})"
-            if(mySensorStatus == "off") mySensor.on()
+            try {
+                def mySensorStatus = dataDevice.currentValue("switch")
+                if(logEnable) log.debug "In statusUpdateHandler - Sending ON for Present if needed (switch is ${mySensorStatus})"
+                if(mySensorStatus == "off" || mySensorStatus == null) dataDevice.on()
+            } catch (e) {
+                log.warn "In statusUpdateHandler - Something went wrong"
+            }
         } else {
-            def mySensorStatus = mySensor.currentValue("switch")
-            if(logEnable) log.debug "In statusUpdateHandler - Sending OFF for Not Present if needed (switch is ${mySensorStatus})"
-            if(mySensorStatus == "on") mySensor.off()
+            try {
+                def mySensorStatus = dataDevice.currentValue("switch")
+                if(logEnable) log.debug "In statusUpdateHandler - Sending OFF for Not Present if needed (switch is ${mySensorStatus})"
+                if(mySensorStatus == "on" || mySensorStatus == null) dataDevice.off()
+            } catch (e) {
+                log.warn "In statusUpdateHandler - Something went wrong"
+            }    
         }
     }
 }
 
-def createChildDevice() {
-    if(logEnable) log.debug "In createChildDevice (${state.version})"
-    if (!getChildDevice("PP" + app.getId())) {
-        if(logEnable) log.warn "In createChildDevice - Child device not found - Creating device ${app.label}"
-        try {
-            addChildDevice("BPTWorld", "Presence Plus Driver", "PP" + app.getId(), 1234, ["name": "${app.label}", isComponent: false])
-            if(logEnable) log.debug "In createChildDevice - Child device has been created! (${app.label})"
-        } catch (e) { log.warn "Presence Plus unable to create device - ${e}" }
+def pingHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In pingHandler (${state.version}) - firmwareVersion: $location.hub.firmwareVersionString (Needs to be above 2.2.6.140)"
+        if(logEnable) log.debug "In pingHandler - Trying: ${ipAddress}"
+        hubitat.helper.NetworkUtils.PingData pingData = hubitat.helper.NetworkUtils.ping(ipAddress, numPings.toInteger())
+        int pTran = pingData.packetsTransmitted.toInteger()
+        if (pTran == 0){ // 2.2.7.121 bug returns all zeroes on not found per @thebearmay
+            pingData.packetsTransmitted = numPings
+            pingData.packetLoss = 100
+        }
+        if(logEnable) log.debug "In pingHandler - Pinging $ipAddress - Transmitted: ${pingData.packetsTransmitted}, Received: ${pingData.packetsReceived}, %Lost: ${pingData.packetLoss}"
+
+        if(pingData.packetLoss < 100) {
+            if(logEnable) log.debug "In pingHandler - Present"
+            state.ipStatus = "present"
+            arrSensorHandler()
+        } else {
+            if(logEnable) log.debug "In pingHandler - Not Present"
+            state.ipStatus = "not present"
+            depSensorHandler()
+        }
     }
+}
+
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "Presence Plus Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Presence Plus unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
 }
 
 // ********** Normal Stuff **********
@@ -444,16 +591,15 @@ def logsOff() {
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
             if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
         }
     }
 }
 
-def setDefaults(){
-	if(logEnable == null) logEnable = false
+def setDefaults() {
     if(state.pStatus == null) state.pStatus = false
 }
 
@@ -473,15 +619,23 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
