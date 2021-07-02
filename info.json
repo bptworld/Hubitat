@@ -7,11 +7,11 @@
    "packages": [
       {
          "name": "Post App",
-         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json"
+         "bundle": ""
       },
       {
          "name": "Test 2",
-         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
+         "bundle": "",
       }
    ]
 }
