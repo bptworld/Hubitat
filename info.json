@@ -7,17 +7,11 @@
    "packages": [
       {
          "name": "Post App",
-         "category": "Utility",
-         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json",
-         "description": "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!",
-         "tags": [ "Dashboards", "Monitoring", "Timers" ]
+         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json"
       },
       {
          "name": "Test 2",
-         "category": "Utility",
          "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
-         "description": "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
-         "tags": [ "Dashboards", "Monitoring", "Timers" ]
       }
    ]
 }
