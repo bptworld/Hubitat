@@ -6,18 +6,18 @@
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
    "packages": [
       {
-   		"name": "Post App",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json",
-   		"description": "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!",
+         "name": "Post App",
+         "category": "Utility",
+         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json",
+         "description": "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!",
          "tags": [ "Dashboards", "Monitoring", "Timers" ]
-   	},
+      },
       {
-   		"name": "Test 2",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
-   		"description": "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
+         "name": "Test 2",
+         "category": "Utility",
+         "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
+         "description": "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
          "tags": [ "Dashboards", "Monitoring", "Timers" ]
-   	}
+      }
    ]
 }
