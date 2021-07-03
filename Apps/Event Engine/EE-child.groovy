@@ -40,16 +40,7 @@
 * * - Working on Denon AVR support.
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
-*  3.1.9 - 06/20/21 - Adjustments to iCal
-*  3.1.8 - 06/19/21 - Adjustments
-*  3.1.7 - 06/17/21 - Added 'Certain Time Has Passed' to Time Conditions
-*  3.1.6 - 06/16/21 - More adjustments to setpoints
-*  3.1.5 - 06/16/21 - Adjustments to setpoints
-*  3.1.4 - 06/16/21 - Adjustments to setpoint notifications
-*  3.1.3 - 06/15/21 - Added 'Event Engine' actions, Added more logging
-*  3.1.2 - 06/09/21 - Adjustment to sunsetSunriseMatchConditionOnly
-*  3.1.1 - 06/09/21 - Added iCal Event support
-*  3.1.0 - 06/02/21 - Added more options to Days condition, fixed issue with using 'or' between conditions
+*  3.2.0 - 07/03/21 - Added BIControl - Enable/Disable Camera 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -62,7 +53,7 @@ import java.util.TimeZone
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.1.9"
+    state.version = "3.2.0"
 }
 
 definition(
@@ -1872,7 +1863,7 @@ def pageConfig() {
             if(actionType.contains("aBlueIris")) {
                 paragraph "<b>Blue Iris Control</b>"
                 if(parent.biServer && parent.biUser && parent.biPass) {
-                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot"], required:true, Multiple:false
+                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot", "Camera_Enable", "Camera_Disable"], required:true, Multiple:false
                     if(biControl == "Switch_Profile") {
                         input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
                             [Pon0:"Profile 0"],
@@ -1943,6 +1934,16 @@ def pageConfig() {
                     if(biControl == "Camera_Reboot"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
+                    }
+                    paragraph "<hr>"
+                    if(biControl == "Camera_Enable"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Enable Camera: ${biCamera}<br>"
+                    }
+                    paragraph "<hr>"
+                    if(biControl == "Camera_Disable"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                        state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Disable Camera: ${biCamera}<br>"
                     }
                     paragraph "<hr>"
                 } else {
@@ -2486,8 +2487,8 @@ def pageConfig() {
                     tdType = true
                 }
             }
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action) {
-                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType) {
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable") {
+                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     paragraph "<small><b>Please only select ONE Reverse Action option</b></small>"
@@ -3253,6 +3254,8 @@ def startTheProcess(evt) {
                                         if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
                                         if(biControl == "Camera_PTZ") { cameraPTZHandler() }
                                         if(biControl == "Camera_Reboot") { cameraRebootHandler() }
+                                        if(biControl == "Camera_Enable") { biChangeProfile("1") }
+                                        if(biControl == "Camera_Disable") { biChangeProfile("0") }
                                     }
 
                                     if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
@@ -3378,6 +3381,10 @@ def startTheProcess(evt) {
                                         if(useTheFlasher) theFlasherHandler()
                                     }
                                 }
+                            }
+                            if(actionType.contains("aBlueIris")) {
+                                if(biControl == "Camera_Enable") { biChangeProfile("0") }
+                                if(biControl == "Camera_Disable") { biChangeProfile("1") }
                             }
                             if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                         }
@@ -6086,6 +6093,10 @@ def biChangeProfile(num) {
         if(logEnable) log.debug "I'm in Camera_Reboot"
         biRawCommand = "/admin?camera=${biCamera}&reboot&user=${parent.biUser}&pw=${parent.biPass}"
         // /admin?camera=x&reboot
+    } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") {
+        if(logEnable) log.debug "I'm in Camera_Enable/Disable"
+              biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"           
+        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name)
     } else {
         biRawCommand = "*** Something went wrong! ***"
     }
@@ -6506,9 +6517,8 @@ def getZdate(data) {            // Modified from iCal Viewer Driver - @mark.cock
 
 def mapOfChildrenHandler(data) {
     if(logEnable) log.debug "In mapOfChildrenHandler (${state.version})"
-    log.trace "Received: ${data}"
+    state.mapOfChildren = [:]
     state.mapOfChildren = data
-    log.error state.mapOfChildren
 }
 
 def eventEngineHandler() {
