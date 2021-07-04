@@ -5,7 +5,7 @@
       {
          "name": "Post App",
          "version": "1.0.1",
-         "bundle": ""
+         "bundle": "https://github.com/bptworld/Hubitat/blob/master/Bundles/Blank.zip"
       },
       {
          "name": "Test 2",
