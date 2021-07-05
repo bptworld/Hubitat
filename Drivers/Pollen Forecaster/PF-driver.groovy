@@ -48,6 +48,9 @@
  *
  */
 
+import groovy.json.*
+import groovy.transform.Field
+
 def setVersion(){
     appName = "PollenForecaster"
 	version = "v2.0.6" 
@@ -55,6 +58,7 @@ def setVersion(){
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
 
+@SuppressWarnings('unused')
 def updateVersion() {
     log.info "In updateVersion"
     setVersion()
@@ -94,22 +98,34 @@ metadata {
 	}
 }
 
+@SuppressWarnings('unused')
 def installed() {
-	runEvery1Hour(poll)
 	poll()
 }
 
+@SuppressWarnings('unused')
 def updated() {
+	unschedule()
+	updateVersion()
+	runEvery3Hours(poll)
+	if((Boolean)settings.logEnable) runIn(3600, "logsOff")
 	poll()
 }
 
+@SuppressWarnings('unused')
+void logsOff() {
+	device.updateSetting("logEnable",[value:'false',type:"bool"])	
+	log.debug "Diabling debug logs"
+}
+
+@SuppressWarnings('unused')
 def uninstalled() {
 	unschedule()
 }
 
-def poll() {
-	if(logEnable) log.debug "In poll..."
-	def pollenZip = null
+void poll() {
+	if((Boolean)settings.logEnable) log.debug "In poll..."
+	String pollenZip
 
 	// Use hub zipcode if user has not defined their own
 	if(zipCode) {
@@ -118,96 +134,116 @@ def poll() {
 		pollenZip = location.zipCode
 	}
 	
-	if(logEnable) log.debug "Getting pollen data for ZIP: ${pollenZip}"
+	if((Boolean)settings.logEnable) log.debug "Getting pollen data for ZIP: ${pollenZip}"
 
 	def params = [
 		uri: 'https://www.pollen.com/api/forecast/current/pollen/',
 		path: pollenZip,
-		headers: [Referer:'https://www.pollen.com']
+		headers: [Referer:'https://www.pollen.com'],
+		timeout: 20
 	]
 
 	try {
-		httpGet(params) {resp ->
-			resp.data.Location.periods.each {period ->
-				if(period.Type == 'Yesterday') {
-					def catName = ""
-					def indexNum = period.Index.toFloat()
-					
-					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
-					
-					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
-						result << "${entry.Name}"
-					}.join(", ")
-					state.indexYesterday = period.Index
-					state.categoryYesterday = catName
-					state.triggersYesterday = triggersList
-					
-					sendEvent(name: "indexYesterday", value: state.indexYesterday, displayed: true)
-					sendEvent(name: "categoryYesterday", value: state.categoryYesterday, displayed: true)
-					sendEvent(name: "triggersYesterday", value: state.triggersYesterday, displayed: true)
-				}
-				
-				if(period.Type == 'Today') {
-					def catName = ""
-					def indexNum = period.Index.toFloat()
-					
-					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
-					
-					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
-						result << "${entry.Name}"
-					}.join(", ")
-					state.indexToday = period.Index
-					state.categoryToday = catName
-					state.triggersToday = triggersList
-					
-					sendEvent(name: "indexToday", value: state.indexToday, displayed: true)
-					sendEvent(name: "categoryToday", value: state.categoryToday, displayed: true)
-					sendEvent(name: "triggersToday", value: state.triggersToday, displayed: true)
-				}
-				
-				if(period.Type == 'Tomorrow') {
-					def catName = ""
-					def indexNum = period.Index.toFloat()
-					
-					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
-					
-					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
-						result << "${entry.Name}"
-					}.join(", ")
-					state.indexTomorrow = period.Index
-					state.categoryTomorrow = catName
-					state.triggersTomorrow = triggersList
-					
-					sendEvent(name: "indexTomorrow", value: state.indexTomorrow, displayed: true)
-					sendEvent(name: "categoryTomorrow", value: state.categoryTomorrow, displayed: true)
-					sendEvent(name: "triggersTomorrow", value: state.triggersTomorrow, displayed: true)
-				}
-				state.location = resp.data.Location.DisplayLocation
-				sendEvent(name: "location", value: state.location, displayed: true)
-			}
-		}
+		asynchttpGet('ahandler', params, [:])
 	}
+	catch (e) {
+		if((Boolean)settings.logEnable) log.debug "Could not retrieve pollen data: $e"
+		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
+	}
+}
+
+@SuppressWarnings('unused')
+void ahandler(resp, Map edata) {
+	Integer responseCode = resp.status
+	if(responseCode == 200 && resp.data) {
+		Map rData = (Map)new JsonSlurper().parseText((String)resp.data)
+		rData.Location.periods.each { period ->
+			if(period.Type == 'Yesterday') {
+				String catName
+				Float indexNum = period.Index.toFloat()
+				
+				// Set the category according to index thresholds
+				if (indexNum < 2.5) {catName = "Low"}
+				else if (indexNum < 4.9) {catName = "Low-Medium"}
+				else if (indexNum < 7.3) {catName = "Medium"}
+				else if (indexNum < 9.7) {catName = "Medium-High"}
+				else if (indexNum < 12) {catName = "High"}
+				else {catName = "Unknown"}
+				
+				// Build the list of allergen triggers
+				def triggersList = period.Triggers.inject([]) { result, entry ->
+					result << "${entry.Name}"
+				}.join(", ")
+				state.indexYesterday = period.Index
+				state.categoryYesterday = catName
+				state.triggersYesterday = triggersList
+				
+				sendEvent(name: "indexYesterday", value: state.indexYesterday, displayed: true)
+				sendEvent(name: "categoryYesterday", value: state.categoryYesterday, displayed: true)
+				sendEvent(name: "triggersYesterday", value: state.triggersYesterday, displayed: true)
+			}
+			
+			if(period.Type == 'Today') {
+				String catName
+				Float indexNum = period.Index.toFloat()
+				
+				// Set the category according to index thresholds
+				if (indexNum < 2.5) {catName = "Low"}
+				else if (indexNum < 4.9) {catName = "Low-Medium"}
+				else if (indexNum < 7.3) {catName = "Medium"}
+				else if (indexNum < 9.7) {catName = "Medium-High"}
+				else if (indexNum < 12) {catName = "High"}
+				else {catName = "Unknown"}
+				
+				// Build the list of allergen triggers
+				def triggersList = period.Triggers.inject([]) { result, entry ->
+					result << "${entry.Name}"
+				}.join(", ")
+				state.indexToday = period.Index
+				state.categoryToday = catName
+				state.triggersToday = triggersList
+				
+				sendEvent(name: "indexToday", value: state.indexToday, displayed: true)
+				sendEvent(name: "categoryToday", value: state.categoryToday, displayed: true)
+				sendEvent(name: "triggersToday", value: state.triggersToday, displayed: true)
+			}
+			
+			if(period.Type == 'Tomorrow') {
+				String catName
+				Float indexNum = period.Index.toFloat()
+				
+				// Set the category according to index thresholds
+				if (indexNum < 2.5) {catName = "Low"}
+				else if (indexNum < 4.9) {catName = "Low-Medium"}
+				else if (indexNum < 7.3) {catName = "Medium"}
+				else if (indexNum < 9.7) {catName = "Medium-High"}
+				else if (indexNum < 12) {catName = "High"}
+				else {catName = "Unknown"}
+				
+				// Build the list of allergen triggers
+				def triggersList = period.Triggers.inject([]) { result, entry ->
+					result << "${entry.Name}"
+				}.join(", ")
+				state.indexTomorrow = period.Index
+				state.categoryTomorrow = catName
+				state.triggersTomorrow = triggersList
+				
+				sendEvent(name: "indexTomorrow", value: state.indexTomorrow, displayed: true)
+				sendEvent(name: "categoryTomorrow", value: state.categoryTomorrow, displayed: true)
+				sendEvent(name: "triggersTomorrow", value: state.triggersTomorrow, displayed: true)
+			}
+			state.location = rData.Location.DisplayLocation
+			sendEvent(name: "location", value: state.location, displayed: true)
+		}
+	} else {
+		if((Boolean)settings.logEnable) log.debug "Bad Response Could not retrieve pollen data: $e"
+		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
+	}
+	yesterdayTileMap()
+	todayTileMap()
+	tomorrowTileMap()
+}
+/*	}
 	catch (SocketTimeoutException e) {
 		if(logEnable) log.debug "Connection to Pollen.com API timed out."
 		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
@@ -219,14 +255,15 @@ def poll() {
 	yesterdayTileMap()
 	todayTileMap()
 	tomorrowTileMap()
-}
+}*/
 
+@SuppressWarnings('unused')
 def configure() {
 	poll()
 }
 
-def yesterdayTileMap() {
-	if(logEnable) log.debug "In yesterdayTileMap..."
+void yesterdayTileMap() {
+	if((Boolean)settings.logEnable) log.debug "In yesterdayTileMap..."
 	state.appDataYesterday = "<table width='100%'>"
 	state.appDataYesterday+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>Pollen Forecast Today<br>${state.location}</div></td></tr>"
 	state.appDataYesterday+= "<tr><td><div style='font-size:.${fontSizeIndex}em;'>${state.indexYesterday} - ${state.categoryYesterday}</div></td></tr>"
@@ -235,8 +272,8 @@ def yesterdayTileMap() {
 	sendEvent(name: "yesterdayTile", value: state.appDataYesterday, displayed: true)
 }
 
-def todayTileMap() {
-	if(logEnable) log.debug "In todayTileMap..."
+void todayTileMap() {
+	if((Boolean)settings.logEnable) log.debug "In todayTileMap..."
 	state.appDataToday = "<table width='100%'>"
 	state.appDataToday+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>Pollen Forecast Today<br>${state.location}</div></td></tr>"
 	state.appDataToday+= "<tr><td><div style='font-size:.${fontSizeIndex}em;'>${state.indexToday} - ${state.categoryToday}</div></td></tr>"
@@ -245,12 +282,12 @@ def todayTileMap() {
 	sendEvent(name: "todayTile", value: state.appDataToday, displayed: true)
 }
 
-def tomorrowTileMap() {
-	if(logEnable) log.debug "In tomorrowTileMap..."
+void tomorrowTileMap() {
+	if((Boolean)settings.logEnable) log.debug "In tomorrowTileMap..."
 	state.appDataTomorrow = "<table width='100%'>"
 	state.appDataTomorrow+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>Pollen Forecast Tomorrow<br>${state.location}</div></td></tr>"
 	state.appDataTomorrow+= "<tr><td><div style='font-size:.${fontSizeIndex}em;'>${state.indexTomorrow} - ${state.categoryTomorrow}</div></td></tr>"
 	state.appDataTomorrow+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>${state.triggersTomorrow}</div></td></tr>"
 	state.appDataTomorrow+= "</table>"
 	sendEvent(name: "tomorrowTile", value: state.appDataTomorrow, displayed: true)
-}	
+}
