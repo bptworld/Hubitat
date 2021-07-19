@@ -3,7 +3,7 @@
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
    "bundles": [
       {
-         "name": "Post App",
+         "name": "Auto Update App",
          "version": "1.0.1",
          "bundle": "https://github.com/bptworld/Hubitat/blob/master/Bundles/Blank.zip"
       },
