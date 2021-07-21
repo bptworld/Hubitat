@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Average just about anything. Get notifications based on Setpoints.
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 07/21/21 - No longer rounding the original number
  *  1.1.2 - 12/04/20 - Added one decimal point to average
  *  1.1.1 - 07/18/20 - Added 'Off' options to setpoints, cosmetic changes
  *  1.1.0 - 07/09/20 - Fixed Disable switch
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -341,7 +342,7 @@ def averageHandler(evt) {
                 if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib}"
                 num1 = it.currentValue("${attrib}")
                 if(num1) {
-                    int num = num1
+                    num = num1.toDouble()
                     if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib} - num: ${num}"
                     if(num) {
                         numOfDev += 1
