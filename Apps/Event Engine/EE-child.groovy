@@ -37,9 +37,10 @@
 *
 *  Changes:
 *
-* * - Working on Denon AVR support.
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
+*
+* * 3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
 *  3.2.0 - 07/03/21 - Added BIControl - Enable/Disable Camera 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -51,9 +52,9 @@ import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
+
 def setVersion(){
-    state.name = "Event Engine"
-    state.version = "3.2.0"
+    state.name = "Event Engine"; state.version = "3.2.1"
 }
 
 definition(
@@ -79,7 +80,6 @@ def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
         testLogEnable = false
-        state.spmah = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
         state.theCogTriggers = "<b><u>Conditions</u></b><br>"
         section("Instructions:", hideable:true, hidden:true) {
@@ -130,8 +130,7 @@ def pageConfig() {
             rf += "The light goes back to color:blue - level:70, then turns off."
             paragraph "${rf}"
             paragraph "<hr>"
-        }
-        
+        }        
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Conditions")) {
             input "triggerType", "enum", title: "Condition Type <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>", options: [
                 ["tTimeDays":"Time/Days/Mode/Holidays - Sub-Menu"],
@@ -141,6 +140,7 @@ def pageConfig() {
                 ["xContact":"Contact Sensors"],
                 ["xDirectional":"Directional Condition"],
                 ["xEnergy":"Energy Setpoint"],
+                ["xEventLogWatchdog":"Event/Log Watchdog (beta)"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xGVar":"Global Variables"],
                 ["xHSMAlert":"HSM Alerts (Beta)"],
@@ -164,7 +164,6 @@ def pageConfig() {
 
             if(triggerType == null) triggerType = ""
             if(timeDaysType == null) timeDaysType = ""
-
             if(triggerType != "") {
                 theData = "${triggerType}"
                 state.conditionsMap.put("triggerType",theData)
@@ -870,6 +869,26 @@ def pageConfig() {
                 app.removeSetting("setEEPointHigh")
                 app.removeSetting("setEEPointLow")
                 app.removeSetting("energyconditionOnly")
+            }
+// -----------
+            if(triggerType.contains("xEventLogWatchdog")) {
+                paragraph "<b>Event/Log Watchdog</b> <small><abbr title='Check if anything special is going on in the event or Log system.'><b>- INFO -</b></abbr></small>"
+                createDeviceSection("Event Watchdog for EE Driver")
+                input "eventLog", "bool", title: "Watch for Events (off) or the Log (on)", defaultValue:false, submitOnChange:true
+                paragraph "<b>Note: Right now the Log watchdog doesn't work. It tends to run wild!</b>"
+                paragraph "<b>Primary Check</b> - Select Keyword or Phrase to Watch<br> - seperate multiple keywords with a semi-colon (;)<br> - If multiple keywords are used, they are considered 'or'"
+                input "ewKeyword1", "text", title: "Primary Keyword",  required:false, submitOnChange:true                 
+                paragraph "<b>AND</b>"   
+                paragraph "<b>Secondary Check</b>"
+                input "ewKeyword2", "text", title: "Secondary Keyword - seperate multiple keywords with a semi-colon (;)",  required:false, submitOnChange:true
+                paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+                input "ewKeyword3", "text", title: "Third Keyword - seperate multiple keywords with a semi-colon (;)",  required:false, submitOnChange:true
+                paragraph "<hr>"
+                state.theCogTriggers += "<b>-</b> By Event Watchdog: ${ewKeyword1} - AND - ${ewKeyword2}, BUT NOT - ${ewKeyword3}<br>"
+            } else {
+                app.removeSetting("ewKeyword1")
+                app.removeSetting("ewKeyword2")
+                app.removeSetting("ewKeyword3")
             }
 // -----------
             if(triggerType.contains("xGarageDoor")) {
@@ -1837,7 +1856,6 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform <small><abbr title='This is what will happen once the conditions are met. Choose as many as you need.'><b>- INFO -</b></abbr></small>", options: [
                 ["aBlueIris":"Blue Iris Control"],
-                ["aDenonAVR":"Denon AVR Control (Beta)"],
                 ["aEventEngine":"Event Engine"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
@@ -1853,6 +1871,7 @@ def pageConfig() {
                 ["aSwitch":"Switches"],
                 ["aSwitchSequence":"Switches In Sequence"],
                 ["aSwitchesPerMode":"Switches Per Mode"],
+                ["aSwitchesToSync":"Switches To Sync"],
                 ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"],
                 ["aVirtualContact":"* Virtual Contact Sensor"]
@@ -1878,15 +1897,13 @@ def pageConfig() {
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Profile: ${switchProfileOn}<br>"
                     } else {
                         app.removeSetting("switchProfileOn")
-                    }
-                    
+                    }                    
                     if(biControl == "Switch_Schedule") {
                         input "biScheduleName", "text", title: "Schedule Name", description: "The exact name of the BI schedule"
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Schedule: ${biScheduleName}<br>"
                     } else {
                         app.removeSetting("biScheduleName")
-                    }
-                                     
+                    }                                    
                     if(biControl == "Camera_Preset") {
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         input "biCameraPreset", "enum", title: "Preset number", options: [
@@ -1900,13 +1917,11 @@ def pageConfig() {
                     } else {
                         app.removeSetting("biCameraPreset")
                     }
-
                     if(biControl == "Camera_Snapshot"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Camera: ${biCamera}<br>"
                     } else {
                     }
-
                     if(biControl == "Camera_Trigger"){
                         paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
                         input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
@@ -1914,7 +1929,6 @@ def pageConfig() {
                     } else {
                         app.removeSetting("useMethod")
                     }
-
                     if(biControl == "Camera_PTZ"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         input "biCameraPTZ", "enum", title: "PTZ Command", options: [
@@ -1930,7 +1944,6 @@ def pageConfig() {
                     } else {
                         app.removeSetting("biCameraPTZ")
                     }
-
                     if(biControl == "Camera_Reboot"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         state.theCogActions += "<b>-</b> Blue Iris: ${biControl} - Reboot Camera: ${biCamera}<br>"
@@ -1960,37 +1973,6 @@ def pageConfig() {
                 app.removeSetting("biCameraPTZ")
             }
 // End BI Control
-// Denon AVR Control
-            if(actionType.contains("aDenonAVR")) {
-                paragraph "<b>Denon AVR Control</b>"
-                paragraph "Denon AVR support requires the <a href='https://community.hubitat.com/t/beta-release-denon-avr-driver/62150' target=_blank>Denon AVR Drivers</a>."
-                paragraph "Beta - Doesn't do anything yet!"
-                input "denonAVR", "capability.actuator", title: "Denon AVR Device", mutiple:false, submitOnchange:true
-                if(denonAVR) {
-                    allAttrs1 = []
-                    allAttrs1 = denonAVR.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                    allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
-                    input "denonControl", "enum", title: "Select Control Type", submitOnChange:true, options: allAttrs1a, required:true, Multiple:false
-                    
-                    if(denonControl) {
-                        if(denonControl == "switch") { input "denonSwitch", "enum", title: "Set Switch to", options: ["on","off"] }
-                        
-                        else if(denonControl == "volume") { 
-                            paragraph "Pleasee only use ONE of the following options"
-                            input "denonSetVolume", "number", title: "Set Volume to (1 to 100)", range:'1..100'
-                            input "denonVolumeDown", "number", title: "Volume Down - How Many Step Down (1 to 10)", range:'1..10'
-                            input "dononVolumeUp", "number", title: "Volume up - How Many Steps Up (1 to 10)", range:'1..10' 
-                        }
-                        
-                        else { paragraph "${denonControl} isn't supported yet. Please contact BPtWorld to get it added." }
-                        
-                    }
-                }
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("biCameraPTZ")
-            }
-// End Denon AVR Control
             if(actionType.contains("aEventEngine")) {
                 paragraph "<b>Event Engine Control</b>"
                 data = app.id
@@ -2201,7 +2183,20 @@ def pageConfig() {
                 app.removeSetting("setGVname")
                 app.removeSetting("setGVvalue")
             }
-            
+
+            if(actionType.contains("aSwitchesToSync")) {
+                paragraph "<b>Switches to Sync</b>"
+                paragraph " - Works with on/off, level, hue, saturation and colorTemperature Attributes.<br> - Each attribute can only change once every 3 seconds<br> - ie. If one switch turns on, all switches will turn on"
+                input "switchesToSync", "capability.switch", title: "Switches to Sync", multiple:true, submitOnChange:true
+                if(switchEvent && switchConditionOnly == false) {
+                    paragraph "Note: When using this option, any Switches selected in the 'By Switch' Condition section above, will not be used to trigger this Cog. Only the switches selected here (Switches to Sync) will trigger this Cog. All other conditions will still be used."
+                }
+                paragraph "<hr>"
+                if(switchesToSync) state.theCogActions +=  "<b>-</b> Switches To Sync: ${switchesToSync}<br>"
+            } else {
+                app.removeSetting("switchesToSync")
+            }
+                       
             if(actionType.contains("aSwitch")) {
                 paragraph "<b>Switch Devices</b>"
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
@@ -2546,7 +2541,7 @@ def pageConfig() {
                     app.removeSetting("warningDimLvl")
                     app.updateSetting("timeReverse",[value:"false",type:"bool"])
                     app.removeSetting("timeToReverse")
-                    app.removeSetting("timeReverseMinutes")
+                    app.removeSetting("timeReverseMinutes") 
                 } else {
                     app.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
                     app.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
@@ -2676,29 +2671,6 @@ def pageConfig() {
                 input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
                 paragraph "<hr>"
-                input "testEnable", "bool", title: "Enable Testing Options", description: "Debug Testing", defaultValue:false, submitOnChange:true
-                if(testEnable) {
-                    paragraph "Note: All of the debug options below are made just for me to test things. But, you may find some of them useful too. Just remember to not complain/post/ask questions about them. They are for testing only and may or may not work at any given time."
-                    input "clearMaps", "bool", title: "Clear oldMaps and atomicStates", description: "clear", defaultValue:false, submitOnChange:true
-                    //  testing Calendarific               
-                    input "checkHoliday", "bool", title: "Check for Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                    input "addTodayAsHoliday", "bool", title: "Add Today As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                    input "addTomorrowAsHoliday", "bool", title: "Add Tomorrow As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                    // Testing iCal
-                    input "checkForIcal", "bool", title: "Check for iCal", description: "clear", defaultValue:false, submitOnChange:true
-                    if(checkHoliday) { checkForHoliday() }
-                    
-                    if(clearMaps) {
-                        state.oldMap = [:]
-                        state.oldMapPer = [:]
-                        atomicState.running = "Stopped"
-                        atomicState.tryRunning = 0
-                        app.updateSetting("clearMaps",[value:"false",type:"bool"])
-                    }
-                    if(checkForIcal) {
-                       // iCalHandler()
-                    }
-                }
             } else {
                 app.updateSetting("logEnable",[value:"false",type:"bool"])
                 app.updateSetting("shortLog",[value:"false",type:"bool"])
@@ -2708,6 +2680,31 @@ def pageConfig() {
             }
         }
         
+        section() {
+            input "testEnable", "bool", title: "Enable Testing Options", description: "Debug Testing", defaultValue:false, submitOnChange:true
+            if(testEnable) {
+                paragraph "Note: All of the debug options below are made just for me to test things. But, you may find some of them useful too. Just remember to not complain/post/ask questions about them. They are for testing only and may or may not work at any given time."
+                input "clearMaps", "bool", title: "Clear oldMaps and atomicStates", description: "clear", defaultValue:false, submitOnChange:true
+                //  testing Calendarific               
+                input "checkHoliday", "bool", title: "Check for Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
+                input "addTodayAsHoliday", "bool", title: "Add Today As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
+                input "addTomorrowAsHoliday", "bool", title: "Add Tomorrow As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
+                // Testing iCal
+                input "checkForIcal", "bool", title: "Check for iCal", description: "clear", defaultValue:false, submitOnChange:true
+                if(checkHoliday) { checkForHoliday() }
+
+                if(clearMaps) {
+                    state.oldMap = [:]
+                    state.oldMapPer = [:]
+                    atomicState.running = "Stopped"
+                    atomicState.tryRunning = 0
+                    app.updateSetting("clearMaps",[value:"false",type:"bool"])
+                }
+                if(checkForIcal) {
+                    // iCalHandler()
+                }
+            }
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a break down on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
@@ -2731,7 +2728,7 @@ def pageConfig() {
     }
 }
 
-def notificationOptions(){
+def notifications(){
     dynamicPage(name: "notificationOptions", title: "Notification Options", install:false, uninstall:false){
         state.theCogNotifications = "<b><u>Notifications</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
@@ -2896,6 +2893,13 @@ def initialize() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.trace "***** Initialize (${state.version}) - ${app.label} *****"
+        atomicState.syncOnRunning = "no"
+        atomicState.syncOffRunning = "no"
+        atomicState.syncColorRunning = "no"
+        atomicState.syncHueRunning = "no"
+        atomicState.syncLevelRunning = "no"
+        atomicState.syncSaturationRunning = "no"
+        
         if(accelerationConditionOnly == null) accelerationConditionOnly = false
         if(batteryConditionOnly == null) batteryConditionOnly = false
         if(buttonConditionOnly == null) buttonConditionOnly = false
@@ -2939,7 +2943,6 @@ def initialize() {
         if(powerEvent && powerConditionOnly == false) subscribe(powerEvent, "power", startTheProcess)
         if(presenceEvent && presenceConditionOnly == false) subscribe(presenceEvent, "presence", startTheProcess)
         if(startupEvent && startupConditionOnly == false) subscribe(location, "systemStart", startTheProcess)
-        if(switchEvent && switchConditionOnly == false) subscribe(switchEvent, "switch", startTheProcess)
         if(voltageEvent && voltageConditionOnly == false) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent && tempConditionOnly == false) subscribe(tempEvent, "temperature", startTheProcess)
         if(thermoEvent && thermoConditionOnly == false) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
@@ -2949,6 +2952,19 @@ def initialize() {
         if(myMotion2) subscribe(myMotion2, "motion.inactive", startTheProcess)
         if(myPresence2) subscribe(myPresence2, "presence.not present", startTheProcess)
         if(mySwitches2) subscribe(mySwitches2, "switch.off", startTheProcess)
+        
+        if(switchesToSync) {
+            subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
+            subscribe(switchesToSync, "hue", switchesToSyncHueHandler)
+            subscribe(switchesToSync, "level", switchesToSyncLevelHandler)
+            subscribe(switchesToSync, "saturation", switchesToSyncSaturationHandler)
+            subscribe(switchesToSync, "switch.on", switchesToSyncOnHandler)
+            subscribe(switchesToSync, "switch.off", switchesToSyncOffHandler)
+        } else {
+            if(switchEvent && switchConditionOnly == false) {
+                subscribe(switchEvent, "switch", startTheProcess)
+            }
+        }
         
         if(repeat) {
             startTheProcess()
@@ -3011,7 +3027,23 @@ def initialize() {
                 iCalHandler()
             }
         }
-        
+       
+        if(dataDevice && ewKeyword1) {
+            if(eventLog) {
+                elStatus = "log"
+            } else {
+                elStatus = "event"
+            }
+            // Log doesn't work yet!
+            if(elStatus == "event") {
+                dataDevice.sendEvent(name: "watching", value: elStatus, isStateChange: true)
+                dataDevice.keywordInfo("$ewKeyword1:$ewKeyword2:$ewKeyword3")
+                subscribe(dataDevice, "bpt-lastEventMessage", startTheProcess)
+                dataDevice.appStatus("active")
+                dataDevice.initialize()
+            }
+        }
+
         checkSunHandler() 
         if(fromTime && toTime) {
             schedule(fromTime, startTimeBetween)
@@ -3039,381 +3071,386 @@ def initialize() {
 }
 
 def startTheProcess(evt) {
-    if(atomicState.running == null) atomicState.running = "Stopped"
-    if(atomicState.tryRunning == null) atomicState.tryRunning = 0
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else if(atomicState.running == "Running") {
-        atomicState.tryRunning += 1
-        if(atomicState.tryRunning > 2) {
+    if(switchesToSync) {
+        if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
+            if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running"
+        }
+    } else {
+        if(logEnable || shortLog) log.trace "Starting..."
+        if(atomicState.running == null) atomicState.running = "Stopped"
+        if(atomicState.tryRunning == null) atomicState.tryRunning = 0
+        checkEnableHandler()
+        if(pauseApp || state.eSwitch) {
+            log.info "${app.label} is Paused or Disabled"
+        } else if(atomicState.running == "Running") {
+            atomicState.tryRunning += 1
+            if(atomicState.tryRunning > 2) {
+                atomicState.tryRunning = 0
+                atomicState.running = "Stopped"
+                if(logEnable || shortLog) log.trace "*** ${app.label} - Was already running, will run again next time ***"
+            } else {
+                if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
+            }
+        } else if(state.whatToDo == "stop") {
             atomicState.tryRunning = 0
             atomicState.running = "Stopped"
-            if(logEnable || shortLog) log.trace "*** ${app.label} - Was already running, will run again next time ***"
-        } else {
-            if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
-        }
-    } else if(actionType) {
-        try {
-            atomicState.running = "Running"
-            atomicState.tryRunning = 0
-            if(logEnable || shortLog) log.trace "*"
-            if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
-            if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
-            state.rCount = 0
-            state.restrictionMatch = 0
-            state.isThereDevices = false
-            state.isThereSPDevices = false
-            state.areRestrictions = false
-            state.setpointLow = null
-            state.setpointHigh = null
-            state.whoText = ""
-            if(startTime || preMadePeriodic) {
-                state.totalMatch = 1
-                state.totalConditions = 1
-            }
-            if(triggerType == null) triggerType = ""
-            if(evt) {
-                if(evt == "runAfterDelay") {
-                    // Keeping original who and what happened
-                } else if(evt == "timeReverse" || evt == "reverse") {
-                    state.whatToDo = "skipToReverse"
-                } else if(evt == "run" || evt == "runNow") {
-                    state.whatToDo = "run"
-                } else {
-                    try {
-                        state.whoHappened = evt.displayName
-                        state.whatHappened = evt.value
-                        state.whoText = evt.descriptionText
-                    } catch(e) {
-                        if(logEnable) log.debug "In startTheProcess - Whoops! (evt: ${evt}"
-                        //log.error(getExceptionMessageWithLine(e))
-                    }
-                    state.hasntDelayedYet = true
-                    state.hasntDelayedReverseYet = true
-                    state.whatToDo = "run"
+            if(logEnable || shortLog) log.trace "*** whatToDo: ${state.whatToDo} ***"
+            state.whatToDo = ""
+        } else if(actionType) {
+            try {
+                atomicState.running = "Running"
+                atomicState.tryRunning = 0
+                if(logEnable || shortLog) log.trace "*"
+                if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+                if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
+                state.isThereDevices = false;    state.isThereSPDevices = false;    state.areRestrictions = false;    state.setpointLow = null;    state.setpointHigh = null;    state.whoText = ""
+                if(startTime || preMadePeriodic) {
+                    state.totalMatch = 1;    state.totalConditions = 1
                 }
-                if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
-            } else {
-                if(logEnable || shortLog) log.debug "In startTheProcess - No EVT (evt: ${evt}"
-                state.whatToDo = "run"
-                //state.whoHappened = ""
-                //state.whatHappened = ""
-                //state.whoText = ""
-            }
-            if(accelerationRestrictionEvent) { accelerationRestrictionHandler() }
-            if(contactRestrictionEvent) { contactRestrictionHandler() }
-            if(garageDoorRestrictionEvent) { garageDoorRestrictionHandler() }
-            if(lockRestrictionEvent) { lockRestrictionHandler() }
-            if(motionRestrictionEvent) { motionRestrictionHandler() }
-            if(motionRestrictionEvent2) { motionRestrictionHandler2() }
-            if(presenceRestrictionEvent) { presenceRestrictionHandler() }
-            if(switchRestrictionEvent) { switchRestrictionHandler() }
-            if(watereRestrictionEvent) { waterRestrictionHandler() }
-
-            if(state.areRestrictions) {
-                if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
-                state.whatToDo = "stop"
-            } else {
-                if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
-                    if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
-                } else {
-                    checkSunHandler()
-                    dayOfTheWeekHandler()
-                    modeHandler()
-                    hsmAlertHandler(state.whatHappened)
-                    hsmStatusHandler(state.whatHappened)
-                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
-                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
-                }           
-                if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
-                if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-
-                if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
-                    if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
-                } else {
-                    if(accelerationEvent) { accelerationHandler() }
-                    if(contactEvent) { contactHandler() }
-                    if(myContacts2) { contact2Handler() }
-                    if(garageDoorEvent) { garageDoorHandler() }
-                    if(lockEvent) { lockHandler() }
-                    if(motionEvent) { motionHandler() }
-                    if(myMotion2) { motion2Handler() }
-                    if(presenceEvent) { presenceHandler() }
-                    if(myPresence2) { presence2Handler() }
-                    if(switchEvent) { switchHandler() }
-                    if(mySwitches2) { switch2Handler() }
-                    if(thermoEvent) { thermostatHandler() }
-                    if(waterEvent) { waterHandler() }
-
-                    if(batteryEvent) { batteryHandler() }
-                    if(energyEvent) { energyHandler() }
-                    if(humidityEvent) { humidityHandler() }
-                    if(illuminanceEvent) { illuminanceHandler() }
-                    if(powerEvent) { powerHandler() }
-                    if(tempEvent) { tempHandler() }
-                    if(voltageEvent) { voltageHandler() }
-
-                    if(!state.isThereSPDevices) {
-                        if(triggerAndOr) {
-                            state.setpointOK = false
-                        } else {
-                            state.setpointOK = true
+                if(triggerType == null) triggerType = ""
+                if(evt) {
+                    if(evt == "runAfterDelay") {
+                        // Keeping original who and what happened
+                    } else if(evt == "timeReverse" || evt == "reverse") {
+                        state.whatToDo = "skipToReverse"
+                    } else if(evt == "run" || evt == "runNow") {
+                        state.whatToDo = "run"
+                    } else {
+                        try {
+                            state.whoHappened = evt.displayName
+                            state.whatHappened = evt.value
+                            state.whoText = evt.descriptionText
+                        } catch(e) {
+                            if(logEnable) log.debug "In startTheProcess - Whoops! (evt: ${evt}"
+                            //log.error(getExceptionMessageWithLine(e))
                         }
-                        state.setpointHighOK = "yes"
-                        state.setpointLowOK = "yes"
-                        state.setpointBetweenOK = "yes"
+                        state.hasntDelayedYet = true
+                        state.hasntDelayedReverseYet = true
+                        state.whatToDo = "run"
                     }
-
-                    if(deviceORsetpoint) {
-                        if(customEvent) { customSetpointHandler() }
-                    } else {
-                        if(customEvent) { customDeviceHandler() }
-                    }                
-                    if(gvStyle) { 
-                        if(globalVariableEvent) { globalVariablesNumberHandler() }
-                    } else {
-                        if(globalVariableEvent) { globalVariablesTextHandler() }
-                    }               
-                    if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
-                    checkTransitionHandler()
-                    checkingWhatToDo()     // Putting it all together!       
+                    if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
+                } else {
+                    if(logEnable || shortLog) log.debug "In startTheProcess - No EVT (evt: ${evt}"
+                    state.whatToDo = "run"
                 }
-            }
+                if(accelerationRestrictionEvent) { accelerationHandler("restriction") }
+                if(contactRestrictionEvent) { contactHandler("restriction") }
+                if(garageDoorRestrictionEvent) { garageDoorHandler("restriction") }
+                if(lockRestrictionEvent) { lockHandler("restriction") }
+                if(motionRestrictionEvent) { motionHandler("restriction") }
+                if(motionRestrictionEvent2) { motionHandler2"restriction"() }
+                if(presenceRestrictionEvent) { presenceHandler("restriction") }
+                if(switchRestrictionEvent) { switchHandler("restriction") }
+                if(watereRestrictionEvent) { waterHandler("restriction") }
+                if(state.areRestrictions) {
+                    if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
+                    state.whatToDo = "stop"
+                } else {
+                    if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                        if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
+                    } else {
+                        checkSunHandler()
+                        dayOfTheWeekHandler()
+                        modeHandler()
+                        hsmAlertHandler(state.whatHappened)
+                        hsmStatusHandler(state.whatHappened)
+                        if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                        if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                        if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
+                        if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                        if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                    }           
+                    if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
+                    if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
 
-            if(state.whatToDo == "stop") {
-                if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
-            } else {
-                if(state.whatToDo == "run") {
-                    if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
-                        if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
-                        if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                        if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
-                            if(notifyDelay && minSec) {
-                                theDelay = notifyDelay
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
-                            } else if(notifyDelay && !minSec) {
-                                theDelay = notifyDelay * 60
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
-                            } else if(randomDelay) {
-                                newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                                theDelay = newDelay * 60
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
-                            } else if(targetDelay) {
-                                theDelay = minutesUp * 60
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                    if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                        if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
+                    } else {
+                        if(accelerationEvent) { accelerationHandler("condition") }
+                        if(contactEvent) { contactHandler("condition") }
+                        if(myContacts2) { contactHandler("helper") }
+                        if(garageDoorEvent) { garageDoorHandler("condition") }
+                        if(lockEvent) { lockHandler("condition") }
+                        if(motionEvent) { motionHandler("condition") }
+                        if(myMotion2) { motionHandler("helper") }
+                        if(presenceEvent) { presenceHandler("condition") }
+                        if(myPresence2) { presenceHandler("helper") }
+                        if(switchEvent) { switchHandler("condition") }
+                        if(mySwitches2) { switchHandler("helper") }
+                        if(thermoEvent) { thermostatHandler("condition") }
+                        if(waterEvent) { waterHandler("condition") }
+                        if(batteryEvent) { batteryHandler() }
+                        if(energyEvent) { energyHandler() }
+                        if(humidityEvent) { humidityHandler() }
+                        if(illuminanceEvent) { illuminanceHandler() }
+                        if(powerEvent) { powerHandler() }
+                        if(tempEvent) { tempHandler() }
+                        if(voltageEvent) { voltageHandler() }
+
+                        if(!state.isThereSPDevices) {
+                            if(triggerAndOr) {
+                                state.setpointOK = false
                             } else {
-                                if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                                state.setpointOK = true
                             }
-                            if(actionType) {
-                                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                            }                              
-                            state.hasntDelayedYet = false
                             state.setpointHighOK = "yes"
                             state.setpointLowOK = "yes"
                             state.setpointBetweenOK = "yes"
-                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                        }
+
+                        if(deviceORsetpoint) {
+                            if(customEvent) { customSetpointHandler() }
                         } else {
-                            certainTimeHasPassedHandler()
-                            if(state.certainTimeHasPassed) {
-                                state.lastRunTime = new Date()
+                            if(customEvent) { customDeviceHandler("condition") }
+                        }                
+                        if(gvStyle) { 
+                            if(globalVariableEvent) { globalVariablesNumberHandler() }
+                        } else {
+                            if(globalVariableEvent) { globalVariablesTextHandler() }
+                        }               
+                        if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
+                        checkTransitionHandler()
+                        checkingWhatToDo()     // Putting it all together!       
+                    }
+                }
+
+                if(state.whatToDo == "stop") {
+                    if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
+                } else {
+                    if(state.whatToDo == "run") {
+                        if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
+                            if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
+                            if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+                            if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                                if(notifyDelay && minSec) {
+                                    theDelay = notifyDelay
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                                } else if(notifyDelay && !minSec) {
+                                    theDelay = notifyDelay * 60
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                                } else if(randomDelay) {
+                                    newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                                    theDelay = newDelay * 60
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                                } else if(targetDelay) {
+                                    theDelay = minutesUp * 60
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                                } else {
+                                    if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                                }
                                 if(actionType) {
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
-                                    unschedule(permanentDimHandler)
-                                    if(actionType.contains("aFan")) { fanActionHandler() }
-                                    if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                                    if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                                    if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                                    if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                                    if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                                    if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
                                     if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                                    if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                                    if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                                    if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                                    if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                                    if(state.betweenTime) {
+                                }                              
+                                state.hasntDelayedYet = false
+                                state.setpointHighOK = "yes"
+                                state.setpointLowOK = "yes"
+                                state.setpointBetweenOK = "yes"
+                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                            } else {
+                                certainTimeHasPassedHandler()
+                                if(state.certainTimeHasPassed) {
+                                    state.lastRunTime = new Date()
+                                    if(actionType) {
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
+                                        unschedule(permanentDimHandler)
+                                        if(actionType.contains("aFan")) { fanActionHandler() }
+                                        if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                        if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                                        if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                                        if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                        if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                                        if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                                        if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                        if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                                        if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                                        if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                                        if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                                        if(state.betweenTime) {
+                                            if(actionType.contains("aNotification")) { 
+                                                state.doMessage = true
+                                                messageHandler() 
+                                                if(useTheFlasher) theFlasherHandler()
+                                            }
+                                        }
+                                        if(actionType.contains("aBlueIris")) {
+                                            if(biControl == "Switch_Profile") { profileSwitchHandler() }
+                                            if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
+                                            if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
+                                            if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
+                                            if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
+                                            if(biControl == "Camera_PTZ") { cameraPTZHandler() }
+                                            if(biControl == "Camera_Reboot") { cameraRebootHandler() }
+                                            if(biControl == "Camera_Enable") { biChangeHandler("1") }
+                                            if(biControl == "Camera_Disable") { biChangeHandler("0") }
+                                        }
+                                        if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
+                                    }
+                                    if(setHSM) hsmChangeActionHandler()
+                                    if(modeAction) modeChangeActionHandler()
+                                    if(devicesToRefresh) devicesToRefreshActionHandler()
+                                    if(rmRule) ruleMachineHandler()
+                                    if(setGVname && setGVvalue) setGlobalVariableHandler()
+                                    if(eeAction) eventEngineHandler()
+                                    state.hasntDelayedYet = true
+                                    if(timeReverse) {
+                                        theDelay = timeReverseMinutes * 60
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
+                                        runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                                    }
+                                } else {
+                                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+                                    lastRan = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
+                                }
+                            }
+                            state.appStatus = "active"
+                        } else {
+                            if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
+                        }
+                    } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
+                        if(reverseWithDelay && state.hasntDelayedReverseYet) {
+                            if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
+                            if(reverseWithDelay) {
+                                if(sdTimePerMode) {
+                                    if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode"
+                                    masterDimmersPerMode.each { itOne ->
+                                        def theData = "${state.sdPerModeMap}".split(",")        
+                                        theData.each { itTwo -> 
+                                            def pieces = itTwo.split(":")
+                                            try {
+                                                theMode = pieces[0]
+                                                theTime = pieces[5]
+                                                theTimeType = pieces[6].replace("]","")
+                                            } catch (e) {
+                                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
+                                                log.error(getExceptionMessageWithLine(e))
+                                            }
+                                            if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                                            theTime = theTime.replace("]","")
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
+                                            currentMode = location.mode
+                                            def modeCheck = currentMode.contains(theMode)
+                                            if(modeCheck) {
+                                                if(theTimeType == "false") {    // Minutes
+                                                    timeTo = theTime ?: 2
+                                                    theDelay = timeTo.toInteger() * 60
+                                                } else {
+                                                    timeTo = theTime ?: 120
+                                                    theDelay = timeTo.toInteger()
+                                                }
+                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-sdTimePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
+                                                if(theTimeType) {
+                                                    if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                                } else {
+                                                    if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                                }
+                                            } else {
+                                                if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode - No Match"
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    if(reverseTimeType) {
+                                        timeTo = timeToReverse ?: 60
+                                        theDelay = timeTo.toInteger()
+                                    } else {
+                                        timeTo = timeToReverse ?: 2
+                                        theDelay = timeTo.toInteger() * 60
+                                    }                   
+                                    if(logEnable || shortLog) {
+                                        log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
+                                        if(reverseTimeType) {
+                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                        } else {
+                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                        }
+                                    }
+                                }
+                            } else {
+                                if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
+                            }
+                            state.hasntDelayedReverseYet = false
+                            if(dimWhileDelayed && (state.appStatus == "active")) { 
+                                permanentDimHandler() 
+                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                            } else if(dimAfterDelayed && (state.appStatus == "active")) { 
+                                theDelay = theDelay ?: 60
+                                wds = warningDimSec ?: 30
+                                firstDelay = theDelay - wds
+                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
+                                runIn(firstDelay, permanentDimHandler)
+                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                            } else {
+                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                            }
+                        } else {             
+                            if(actionType) {
+                                if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
+                                if(actionType.contains("aFan")) { fanReverseActionHandler() }
+                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
+                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
+                                if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
+                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
+                                if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
+                                if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
+                                if(additionalSwitches) { additionalSwitchesHandler() }
+                                if(state.betweenTime) {
+                                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                                         if(actionType.contains("aNotification")) { 
                                             state.doMessage = true
                                             messageHandler() 
                                             if(useTheFlasher) theFlasherHandler()
                                         }
                                     }
-                                    if(actionType.contains("aBlueIris")) {
-                                        if(biControl == "Switch_Profile") { profileSwitchHandler() }
-                                        if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
-                                        if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
-                                        if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
-                                        if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
-                                        if(biControl == "Camera_PTZ") { cameraPTZHandler() }
-                                        if(biControl == "Camera_Reboot") { cameraRebootHandler() }
-                                        if(biControl == "Camera_Enable") { biChangeProfile("1") }
-                                        if(biControl == "Camera_Disable") { biChangeProfile("0") }
-                                    }
-
-                                    if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                                 }
-                                if(setHSM) hsmChangeActionHandler()
-                                if(modeAction) modeChangeActionHandler()
-                                if(devicesToRefresh) devicesToRefreshActionHandler()
-                                if(rmRule) ruleMachineHandler()
-                                if(setGVname && setGVvalue) setGlobalVariableHandler()
-                                if(eeAction) eventEngineHandler()
-                                state.hasntDelayedYet = true
-                                if(timeReverse) {
-                                    theDelay = timeReverseMinutes * 60
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
-                                    runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                                if(actionType.contains("aBlueIris")) {
+                                    if(biControl == "Camera_Enable") { biChangeHandler("0") }
+                                    if(biControl == "Camera_Disable") { biChangeHandler("1") }
                                 }
-                            } else {
-                                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                                lastRan = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
+                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                             }
+                            state.hasntDelayedReverseYet = true
+                            state.appStatus = "inactive"
                         }
-                        state.appStatus = "active"
                     } else {
-                        if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
+                        if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
                     }
-                } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
-                    if(reverseWithDelay && state.hasntDelayedReverseYet) {
-                        if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
-                        if(reverseWithDelay) {
-                            if(sdTimePerMode) {
-                                if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-sdTimePerMode"
-                                masterDimmersPerMode.each { itOne ->
-                                    def theData = "${state.sdPerModeMap}".split(",")        
-                                    theData.each { itTwo -> 
-                                        def pieces = itTwo.split(":")
-                                        try {
-                                            theMode = pieces[0]
-                                            theTime = pieces[5]
-                                            theTimeType = pieces[6].replace("]","")
-                                        } catch (e) {
-                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
-                                            log.error(getExceptionMessageWithLine(e))
-                                        }
-                                        if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
-                                        theTime = theTime.replace("]","")
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
-                                        currentMode = location.mode
-                                        def modeCheck = currentMode.contains(theMode)
-                                        if(modeCheck) {
-                                            if(theTimeType == "false") {    // Minutes
-                                                timeTo = theTime ?: 2
-                                                theDelay = timeTo.toInteger() * 60
-                                            } else {
-                                                timeTo = theTime ?: 120
-                                                theDelay = timeTo.toInteger()
-                                            }
-                                            if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-sdTimePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
-                                            if(theTimeType) {
-                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
-                                            } else {
-                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                                            }
-                                        } else {
-                                            if(logEnable && state.spmah) log.debug "In startTheProcess - Reverse-sdTimePerMode - No Match"
-                                        }
-                                    }
-                                }
-                            } else {
-                                if(reverseTimeType) {
-                                    timeTo = timeToReverse ?: 60
-                                    theDelay = timeTo.toInteger()
-                                } else {
-                                    timeTo = timeToReverse ?: 2
-                                    theDelay = timeTo.toInteger() * 60
-                                }                   
-                                if(logEnable || shortLog) {
-                                    log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
-                                    if(reverseTimeType) {
-                                        log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                                    } else {
-                                        log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
-                                    }
-                                }
-                            }
-                        } else {
-                            if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
-                        }
-                        state.hasntDelayedReverseYet = false
-                        if(dimWhileDelayed && (state.appStatus == "active")) { 
-                            permanentDimHandler() 
-                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                        } else if(dimAfterDelayed && (state.appStatus == "active")) { 
-                            theDelay = theDelay ?: 60
-                            wds = warningDimSec ?: 30
-                            firstDelay = theDelay - wds
-                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
-                            runIn(firstDelay, permanentDimHandler)
-                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                        } else {
-                            runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                        }
-                    } else {             
-                        if(actionType) {
-                            if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
-                            if(actionType.contains("aFan")) { fanReverseActionHandler() }
-                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
-                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
-                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
-                            if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
-                            if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
-                            if(additionalSwitches) { additionalSwitchesHandler() }
-                            if(state.betweenTime) {
-                                if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                                    if(actionType.contains("aNotification")) { 
-                                        state.doMessage = true
-                                        messageHandler() 
-                                        if(useTheFlasher) theFlasherHandler()
-                                    }
-                                }
-                            }
-                            if(actionType.contains("aBlueIris")) {
-                                if(biControl == "Camera_Enable") { biChangeProfile("0") }
-                                if(biControl == "Camera_Disable") { biChangeProfile("1") }
-                            }
-                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
-                        }
-                        state.hasntDelayedReverseYet = true
-                        state.appStatus = "inactive"
-                    }
-                } else {
-                    if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
                 }
+                resetStatesHandler()
+                if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+                if(logEnable || shortLog) log.trace "*"
+                atomicState.running = "Stopped"
+            } catch(e) {
+                resetStatesHandler()
+                log.error(getExceptionMessageWithLine(e))
             }
-            state.totalMatch = 0
-            state.totalMatchHelper = 0
-            state.totalConditions = 0
-            if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
-            if(logEnable || shortLog) log.trace "*"
-            atomicState.running = "Stopped"
-        } catch(e) {
-            atomicState.running = "Stopped"
-            log.error(getExceptionMessageWithLine(e))
+        } else {
+            resetStatesHandler()
+            if(logEnable || shortLog) log.trace "No Actions selected. Ending"
         }
-    } else {
-        atomicState.running = "Stopped"
-        if(logEnable || shortLog) log.trace "No Actions selected. Ending"
-    }
-    if(timeDaysType) {
-        if(timeDaysType.contains("tHoliday")) { unschedule(startTheProcess) }
+        if(timeDaysType) {
+            if(timeDaysType.contains("tHoliday")) { unschedule(startTheProcess) }
+        }
     }
 }
 
+def resetStatesHandler() {
+    state.totalMatch = 0
+    state.totalMatchHelper = 0
+    state.totalConditions = 0
+    state.totalRestrictionMatch = 0
+    state.totalRestrictions = 0
+    state.whatToDo = ""
+    atomicState.running = "Stopped"
+}
 // ********** Start Conditions **********
 def buttonHandler(evt) {
     if(logEnable || shortLog) log.debug "In buttonEvent (${state.version})"
@@ -3445,153 +3482,139 @@ def buttonHandler(evt) {
     }
 }
 
-def customDeviceHandler() {
-    state.eventName = customEvent
-    state.eventType = specialAtt
-    state.type = sdCustom1Custom2
-    state.typeValue1 = custom1
-    state.typeValue2 = custom2
-    state.typeAO = customANDOR
-    devicesGoodHandler("condition")
+def customDeviceHandler(type) {
+    if(type == "condition") {
+        state.eventName = customEvent;       state.type = sdCustom1Custom2;    state.typeAO = customANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        //
+    }       
+    state.eventType = specialAtt;    state.typeValue1 = custom1;    state.typeValue2 = custom2    
+    deviceHandler(type)
 }
-def accelerationHandler() {
-    state.eventName = accelerationEvent
-    state.eventType = "acceleration"
-    state.type = asInactiveActive
-    state.typeValue1 = "active"
-    state.typeValue2 = "inactive"
-    state.typeAO = accelerationANDOR
-    devicesGoodHandler("condition")
+def accelerationHandler(type) {
+    if(type == "condition") {
+        state.eventName = accelerationEvent;    state.type = asInactiveActive;    state.typeAO = accelerationANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        state.eventName = accelerationRestrictionEvent;    state.type = arInactiveActive;    state.typeAO = accelerationRANDOR
+    }
+    state.eventType = "acceleration";    state.typeValue1 = "active";    state.typeValue2 = "inactive"
+    deviceHandler(type)
 }
-def contactHandler() {
-    state.eventName = contactEvent
-    state.eventType = "contact"
-    state.type = csClosedOpen
-    state.typeValue1 = "open"
-    state.typeValue2 = "closed"
-    state.typeAO = contactANDOR
-    devicesGoodHandler("condition")
+def contactHandler(type) {
+    if(type == "condition") {
+        state.eventName = contactEvent;    state.type = csClosedOpen;    state.typeAO = contactANDOR
+    } else if(type == "helper") {
+        state.eventName = myContacts2;    state.type = contactOption2;    state.typeAO = false
+    } else if(type == "restriction") {
+        state.eventName = contactRestrictionEvent;    state.type = crClosedOpen;    state.typeAO = contactRANDOR
+    }
+    state.eventType = "contact";    state.typeValue1 = "open";    state.typeValue2 = "closed"
+    deviceHandler(type)
 }
-def contact2Handler() {
-    state.eventName = myContacts2
-    state.eventType = "contact"
-    state.type = contactOption2
-    state.typeValue1 = "open"
-    state.typeValue2 = "closed"
-    state.typeAO = false
-    devicesGoodHandler("helper")
+def garageDoorHandler(type) {
+    if(type == "condition") {
+        state.eventName = garageDoorEvent;    state.type = gdClosedOpen;    state.typeAO = garageDoorANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        state.eventName = garageDoorRestrictionEvent;    state.type = gdrClosedOpen;    state.typeAO = garageDoorRANDOR
+    }
+    state.eventType = "door";    state.typeValue1 = "open";    state.typeValue2 = "closed"
+    deviceHandler(type)
 }
-def garageDoorHandler() {
-    state.eventName = garageDoorEvent
-    state.eventType = "door"
-    state.type = gdClosedOpen
-    state.typeValue1 = "open"
-    state.typeValue2 = "closed"
-    state.typeAO = garageDoorANDOR
-    devicesGoodHandler("condition")
+def globalVariablesTextHandler(type) {
+    if(type == "condition") {
+        state.eventName = globalVariableEvent;    state.type = true;    state.typeAO = false
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        //
+    }
+    state.eventType = "globalVariable";    state.typeValue1 = gvValue;    state.typeValue2 = "noData"
+    deviceHandler(type)
 }
-def globalVariablesTextHandler() {
-    state.eventName = globalVariableEvent
-    state.eventType = "globalVariable"
-    state.type = true
-    state.typeValue1 = gvValue
-    state.typeValue2 = "noData"
-    state.typeAO = false
-    devicesGoodHandler("condition")
+def lockHandler(type) {
+    if(type == "condition") {
+        state.eventName = lockEvent;    state.type = lUnlockedLocked;    state.typeAO = lockANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        state.eventName = lockRestrictionEvent;    state.type = lrUnlockedLocked;    state.typeAO = false
+    }
+    state.eventType = "lock";    state.typeValue1 = "locked";    state.typeValue2 = "unlocked"
+    deviceHandler(type)
 }
-def lockHandler() {
-    state.eventName = lockEvent
-    state.eventType = "lock"
-    state.type = lUnlockedLocked
-    state.typeValue1 = "locked"
-    state.typeValue2 = "unlocked"
-    state.typeAO = lockANDOR
-    devicesGoodHandler("condition")
+def motionHandler(type) {
+    if(type == "condition") {
+        state.eventName = motionEvent;    state.type = meInactiveActive;    state.typeAO = motionANDOR
+    } else if(type == "helper") {
+        state.eventName = myMotion2;    state.type = motionOption2;    state.typeAO = false
+    } else if(type == "restriction") {
+        state.eventName = motionRestrictionEvent;    state.type = mrInactiveActive;    state.typeAO = motionRANDOR
+    }
+    state.eventType = "motion";    state.typeValue1 = "active";    state.typeValue2 = "inactive"
+    deviceHandler(type)
 }
-def motionHandler() {
-    state.eventName = motionEvent
-    state.eventType = "motion"
-    state.type = meInactiveActive
-    state.typeValue1 = "active"
-    state.typeValue2 = "inactive"
-    state.typeAO = motionANDOR
-    devicesGoodHandler("condition")
+def presenceHandler(type) {
+    if(type == "condition") {
+        state.eventName = presenceEvent;    state.type = pePresentNotPresent;    state.typeAO = presenceANDOR
+    } else if(type == "helper") {
+        state.eventName = myPresence2;    state.type = presenceOption2;    state.typeAO = false
+    } else if(type == "restriction") {
+        state.eventName = presenceRestrictionEvent;    state.type = prPresentNotPresent;    state.typeAO = presenceRANDOR
+    }    
+    state.eventType = "presence";    state.typeValue1 = "not present";    state.typeValue2 = "present"
+    deviceHandler(type)
 }
-def motion2Handler() {
-    state.eventName = myMotion2
-    state.eventType = "motion"
-    state.type = motionOption2
-    state.typeValue1 = "active"
-    state.typeValue2 = "inactive"
-    state.typeAO = false
-    devicesGoodHandler("helper")
+def switchHandler(type) {
+    if(type == "condition") {
+        state.eventName = switchEvent;    state.type = seOffOn;    state.typeAO = switchANDOR
+    } else if(type == "helper") {
+        state.eventName = mySwitches2;    state.type = switchesOption2;    state.typeAO = false
+    } else if(type == "restriction") {
+        state.eventName = switchRestrictionEvent;    state.type = srOffOn;    state.typeAO = switchRANDOR
+    }
+    state.eventType = "switch";    state.typeValue1 = "on";    state.typeValue2 = "off"
+    deviceHandler(type)
 }
-def presenceHandler() {
-    state.eventName = presenceEvent
-    state.eventType = "presence"
-    state.type = pePresentNotPresent
-    state.typeValue1 = "not present"
-    state.typeValue2 = "present"
-    state.typeAO = presenceANDOR
-    devicesGoodHandler("condition")
+def thermostatHandler(type) {
+    if(type == "condition") {
+        state.eventName = thermoEvent;    state.type = false;    state.typeAO = thermoANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        //
+    }
+    state.eventType = "thermostatOperatingState";    state.typeValue1 = "idle";    state.typeValue2 = "thermostatEvent"
+    deviceHandler(type)
 }
-def presence2Handler() {
-    state.eventName = myPresence2
-    state.eventType = "presence"
-    state.type = presenceOption2
-    state.typeValue1 = "not present"
-    state.typeValue2 = "present"
-    state.typeAO = false
-    devicesGoodHandler("helper")
-}
-def switchHandler() {
-    state.eventName = switchEvent
-    state.eventType = "switch"
-    state.type = seOffOn
-    state.typeValue1 = "on"
-    state.typeValue2 = "off"
-    state.typeAO = switchANDOR
-    devicesGoodHandler("condition")
-}
-def switch2Handler() {
-    state.eventName = mySwitches2
-    state.eventType = "switch"
-    state.type = switchesOption2
-    state.typeValue1 = "on"
-    state.typeValue2 = "off"
-    state.typeAO = false
-    devicesGoodHandler("helper")
-}
-def thermostatHandler() {
-    state.eventName = thermoEvent
-    state.eventType = "thermostatOperatingState"
-    state.type = false
-    state.typeValue1 = "idle"
-    state.typeValue2 = "thermostatEvent"
-    state.typeAO = thermoANDOR
-    devicesGoodHandler("condition")
-}
-def waterHandler() {
-    state.eventName = waterEvent
-    state.eventType = "water"
-    state.type = weDryWet
-    state.typeValue1 = "Wet"
-    state.typeValue2 = "Dry"
-    state.typeAO = waterANDOR
-    devicesGoodHandler("condition")
+def waterHandler(type) {
+    if(type == "condition") {
+        state.eventName = waterEvent;    state.type = weDryWet;    state.typeAO = waterANDOR
+    } else if(type == "helper") {
+        //
+    } else if(type == "restriction") {
+        state.eventName = waterRestrictionEvent;    state.type = wrDryWet;    state.typeAO = waterRANDOR
+    }
+    state.eventType = "water";    state.typeValue1 = "Wet";    state.typeValue2 = "Dry"
+    deviceHandler(type)
 }
 
-def devicesGoodHandler(data) {
-    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()} - data: ${data}"
-    state.deviceMatch = 0
-    state.count = 0
-    deviceTrue1 = 0
-    deviceTrue2 = 0
+def deviceHandler(data) {
+    if(logEnable) log.debug "In deviceHandler (${state.version}) - ${state.eventType.toUpperCase()} - data: ${data}"
+    state.deviceMatch = 0;    state.restrictionMatch = 0;    state.count = 0;    deviceTrue1 = 0;    deviceTrue2 = 0
     if(state.totalConditions == null) state.totalConditions = 0
     if(state.totalMatch == null) state.totalMatch = 0
     if(state.totalMatchHelper == null) state.totalMatchHelper = 0
+    if(state.totalRestrictions == null) state.totalRestrictions = 0
+    if(state.totalRestrictionMatch == null) state.totalRestrictionMatch = 0
     state.isThereDevices = true
     if(data == "condition") { state.totalConditions = state.totalConditions + 1 }
+    if(data == "restriction") { state.totalRestrictions = state.totalRestrictions + 1 }
     try {
         if(state.eventType == "globalVariable") {
             theList = []
@@ -3613,23 +3636,23 @@ def devicesGoodHandler(data) {
             } else {
                 theValue = it.currentValue("${state.eventType}").toString()
             }
-            if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
+            if(logEnable) log.debug "In deviceHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
             if(theValue == state.typeValue1) {
-                if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
+                if(logEnable) log.debug "In deviceHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "switch") {
                     if(seType) {
-                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
+                        if(logEnable) log.trace "In deviceHandler - Switch - Only Physical"
                         if(state.whoText.contains("[physical]")) { deviceTrue1 = deviceTrue1 + 1 }
                     } else {
-                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
+                        if(logEnable) log.trace "In deviceHandler - Switch - Digital and Physical"
                         deviceTrue1 = deviceTrue1 + 1
                     }  
                 } else {
                     deviceTrue1 = deviceTrue1 + 1
-                    if(logEnable) log.trace "In devicesGoodHandler - Adding to deviceTrue1: ${deviceTrue1}"
+                    if(logEnable) log.trace "In deviceHandler - Adding to deviceTrue1: ${deviceTrue1}"
                 }
             } else if(theValue == state.typeValue2) { 
-                if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
+                if(logEnable) log.debug "In deviceHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
                     if(state.whoText.contains("unlocked by")) {
                         if(lockUser) {
@@ -3642,30 +3665,30 @@ def devicesGoodHandler(data) {
                                 }
                             }
                         } else {
-                            if(logEnable) log.trace "In devicesGoodHandler - No user selected, no notifications necessary"
+                            if(logEnable) log.trace "In deviceHandler - No user selected, no notifications necessary"
                             deviceTrue2 = deviceTrue2 + 1
                         }
                     } else {
-                        if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
+                        if(logEnable) log.trace "In deviceHandler - Lock was manually unlocked, no notifications necessary"
                         deviceTrue2 = deviceTrue2 + 1
                     }
                 } else if(state.eventType == "switch") {
                     if(seType) {
-                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
+                        if(logEnable) log.trace "In deviceHandler - Switch - Only Physical"
                         if(state.whoText.contains("[physical]")) { deviceTrue2 = deviceTrue2 + 1 }
                     } else {
-                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
+                        if(logEnable) log.trace "In deviceHandler - Switch - Digital and Physical"
                         deviceTrue2 = deviceTrue2 + 1
                     }  
                 } else {
                     deviceTrue2 = deviceTrue2 + 1
-                    if(logEnable) log.trace "In devicesGoodHandler - Adding to deviceTrue2: ${deviceTrue2}"
+                    if(logEnable) log.trace "In deviceHandler - Adding to deviceTrue2: ${deviceTrue2}"
                 }
             } else {
                 if(state.eventType == "thermostatOperatingState") {
                     if(theValue != "idle") {
                         deviceTrue2 = deviceTrue2 + 1
-                        if(logEnable && extraLogs) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
+                        if(logEnable && extraLogs) log.debug "In deviceHandler - Thermostat - Working 2: Current Value: ${theValue}"
                     }
                 } else {
                     // next option
@@ -3678,24 +3701,44 @@ def devicesGoodHandler(data) {
     } else {
         state.deviceMatch = state.deviceMatch + deviceTrue2
     }
-    if(logEnable) log.debug "In devicesGoodHandler - type: ${state.type} - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - type: ${state.typeAO}" 
+    if(logEnable) log.debug "In deviceHandler - ($data) - type: ${state.type} - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - typeAO: ${state.typeAO}"
     if(state.typeAO) {  // OR (true)
+        if(logEnable) log.debug "In deviceHandler - ($data) - Using OR"
         if(state.deviceMatch >= 1) {
-            if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
             if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
             if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
+            if(data == "restriction") {
+                state.totalRestrictionMatch = state.totalRestrictionMatch + 1
+                state.areRestrictions = true
+            }
         }
     } else {  // AND (False)
-        if(state.deviceMatch == state.theCount) {
-            if(logEnable) log.debug "In devicesGoodHandler - Using AND1"
+        if(logEnable) log.debug "In deviceHandler - ($data) - Using AND"
+        if(state.deviceMatch == state.theCount) {           
             if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
-            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
+            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }        
+            if(data == "restriction") {
+                state.totalRestrictionMatch = state.totalRestrictionMatch + 1
+                state.areRestrictions = true
+            }
         }
     }
     if(state.typeAO) {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        if(data == "condition") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        } else if(data == "helper") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
+        } else if(data == "restriction") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
+        }
     } else {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        if(data == "condition") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - AND - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        } else if(data == "helper") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
+        } else if(data == "restriction") { 
+            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
+        }    
     }
 }
 
@@ -3736,75 +3779,39 @@ def ruleMachineHandler() {
 
 // ***** Start Setpoint Handlers *****
 def customSetpointHandler() {
-    state.spName = customEvent
-    state.spType = specialAtt
-    state.setpointHigh = sdSetPointHigh
-    state.setpointLow = sdSetPointLow
-    state.spInBetween = setSDPointBetween
+    state.spName = customEvent; state.spType = specialAtt; state.setpointHigh = sdSetPointHigh; state.setpointLow = sdSetPointLow; state.spInBetween = setSDPointBetween
     setpointHandler()
 }
 def batteryHandler() {
-    state.spName = batteryEvent
-    state.spType = "battery"
-    state.setpointHigh = beSetPointHigh
-    state.setpointLow = beSetPointLow
-    state.spInBetween = setBEPointBetween
+    state.spName = batteryEvent; state.spType = "battery"; state.setpointHigh = beSetPointHigh; state.setpointLow = beSetPointLow; state.spInBetween = setBEPointBetween
     setpointHandler()
 }
 def energyHandler() {
-    state.spName = energyEvent
-    state.spType = "energy"
-    state.setpointHigh = eeSetPointHigh
-    state.setpointLow = eeSetPointLow
-    state.spInBetween = setEEPointBetween
+    state.spName = energyEvent; state.spType = "energy"; state.setpointHigh = eeSetPointHigh; state.setpointLow = eeSetPointLow; state.spInBetween = setEEPointBetween
     setpointHandler()
 }
 def globalVariablesNumberHandler() {
-    state.spName = globalVariableEvent
-    state.spType = "globalVariable"
-    state.setpointHigh = gvSetPointHigh
-    state.setpointLow = gvSetPointLow
-    state.spInBetween = setGVPointBetween
+    state.spName = globalVariableEvent; state.spType = "globalVariable"; state.setpointHigh = gvSetPointHigh; state.setpointLow = gvSetPointLow; state.spInBetween = setGVPointBetween
     setpointHandler()
 }
 def humidityHandler() {
-    state.spName = humidityEvent
-    state.spType = "humidity"
-    state.setpointHigh = heSetPointHigh
-    state.setpointLow = heSetPointLow
-    state.spInBetween = setHEPointBetween
+    state.spName = humidityEvent; state.spType = "humidity"; state.setpointHigh = heSetPointHigh; state.setpointLow = heSetPointLow; state.spInBetween = setHEPointBetween
     setpointHandler()
 }
 def illuminanceHandler() {
-    state.spName = illuminanceEvent
-    state.spType = "illuminance"
-    state.setpointHigh = ieSetPointHigh
-    state.setpointLow = ieSetPointLow
-    state.spInBetween = setIEPointBetween
+    state.spName = illuminanceEvent; state.spType = "illuminance"; state.setpointHigh = ieSetPointHigh; state.setpointLow = ieSetPointLow; state.spInBetween = setIEPointBetween
     setpointHandler()
 }
 def powerHandler() {
-    state.spName = powerEvent
-    state.spType = "power"
-    state.setpointHigh = peSetPointHigh
-    state.setpointLow = peSetPointLow
-    state.spInBetween = setPEPointBetween
+    state.spName = powerEvent; state.spType = "power"; state.setpointHigh = peSetPointHigh; state.setpointLow = peSetPointLow; state.spInBetween = setPEPointBetween
     setpointHandler()
 }
 def tempHandler() {
-    state.spName = tempEvent
-    state.spType = "temperature"
-    state.setpointHigh = teSetPointHigh
-    state.setpointLow = teSetPointLow
-    state.spInBetween = setTEPointBetween
+    state.spName = tempEvent; state.spType = "temperature"; state.setpointHigh = teSetPointHigh; state.setpointLow = teSetPointLow; state.spInBetween = setTEPointBetween
     setpointHandler()
 }
 def voltageHandler() {
-    state.spName = voltageEvent
-    state.spType = "voltage"
-    state.setpointHigh = veSetPointHigh
-    state.setpointLow = veSetPointLow
-    state.spInBetween = setSDPointBetween
+    state.spName = voltageEvent; state.spType = "voltage"; state.setpointHigh = veSetPointHigh; state.setpointLow = veSetPointLow; state.spInBetween = setSDPointBetween
     setpointHandler()
 }
 
@@ -3984,152 +3991,6 @@ def setpointRollingAverageHandler(data) {
     if(logEnable) log.debug "In setpointRollingAverageHandler - theAverage: ${state.theAverage} - readingSize: ${readingsSize} - readings: ${readings}"
 }
 
-// ********** Start Restrictions **********
-def accelerationRestrictionHandler() {
-    state.rEventName = accelerationRestrictionEvent
-    state.rEventType = "acceleration"
-    state.rType = arInactiveActive
-    state.rTypeValue1 = "active"
-    state.rTypeValue2 = "inactive"
-    state.rTypeAO = accelerationRANDOR
-    restrictionHandler()
-}
-def contactRestrictionHandler() {
-    state.rEventName = contactRestrictionEvent
-    state.rEventType = "contact"
-    state.rType = crClosedOpen
-    state.rTypeValue1 = "open"
-    state.rTypeValue2 = "closed"
-    state.rTypeAO = contactRANDOR
-    restrictionHandler()
-}
-def garageDoorRestrictionHandler() {
-    state.rEventName = garageDoorRestrictionEvent
-    state.rEventType = "door"
-    state.rEype = gdrClosedOpen
-    state.rTypeValue1 = "open"
-    state.rTypeValue2 = "closed"
-    state.rTypeAO = garageDoorRANDOR
-    restrictionHandler()
-}
-def lockRestrictionHandler() {
-    state.rEventName = lockRestrictionEvent
-    state.rEventType = "lock"
-    state.rType = lrUnlockedLocked
-    state.rTypeValue1 = "locked"
-    state.rTypeValue2 = "unlocked"
-    state.rTypeAO = false
-    restrictionHandler()
-}
-def motionRestrictionHandler() {
-    state.rEventName = motionRestrictionEvent
-    state.rEventType = "motion"
-    state.rType = mrInactiveActive
-    state.rTypeValue1 = "active"
-    state.rTypeValue2 = "inactive"
-    state.rTypeAO = motionRANDOR
-    restrictionHandler()
-}
-def motionRestrictionHandler2() {
-    state.rEventName = motionRestrictionEvent2
-    state.rEventType = "motion"
-    state.rType = mrInactiveActive2
-    state.rTypeValue1 = "active"
-    state.rTypeValue2 = "inactive"
-    state.rTypeAO = motionRANDOR2
-    restrictionHandler()
-}
-def presenceRestrictionHandler() {
-    state.rEventName = presenceRestrictionEvent
-    state.rEventType = "presence"
-    state.rType = prPresentNotPresent
-    state.rTypeValue1 = "not present"
-    state.rTypeValue2 = "present"
-    state.rTypeAO = presenceRANDOR
-    restrictionHandler()
-}
-def switchRestrictionHandler() {
-    state.rEventName = switchRestrictionEvent
-    state.rEventType = "switch"
-    state.rType = srOffOn
-    state.rTypeValue1 = "on"
-    state.rTypeValue2 = "off"
-    state.rTypeAO = switchRANDOR
-    restrictionHandler()
-}
-def waterRestrictionHandler() {
-    state.rEventName = waterRestrictionEvent
-    state.rEventType = "water"
-    state.rType = wrDryWet
-    state.rTypeValue1 = "Wet"
-    state.rTypeValue2 = "Dry"
-    state.rTypeAO = waterRANDOR
-    restrictionHandler()
-}
-
-def restrictionHandler() {
-    if(logEnable) log.debug "In restrictionHandler (${state.version}) - ${state.rEventType.toUpperCase()}"
-    restrictionMatch1 = 0
-    restrictionMatch2 = 0
-    try {
-        theCount = state.rEventName.size()
-    } catch(e) {
-        theCount = 1
-    }
-    state.rCount = state.rCount + theCount
-    state.rEventName.each { it ->
-        theValue = it.currentValue("${state.rEventType}")
-        if(logEnable && extraLogs) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
-        if(theValue == state.rTypeValue1) { 
-            if(state.rEventType == "lock") {
-                if(logEnable && extraLogs) log.debug "In restrictionHandler - Lock"
-                state.whoUnlocked = it.currentValue("lastCodeName")
-                lockRestrictionUser.each { us ->
-                    if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                    if(us == state.whoUnlocked) { 
-                        if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
-                        restrictionMatch1 = restrictionMatch1 + 1
-                    }
-                }
-            } else {
-                if(logEnable && extraLogs) log.debug "In restrictionHandler - Everything Else 1"
-                restrictionMatch1 = restrictionMatch1 + 1
-            }
-        } else if(theValue == state.rTypeValue2) { 
-            if(state.rEventType == "lock") {
-                state.whoUnlocked = it.currentValue("lastCodeName")
-                lockRestrictionUser.each { us ->
-                    if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                    if(us == state.whoUnlocked) { 
-                        if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
-                        restrictionMatch2 = restrictionMatch2 + 1
-                    }
-                }
-            } else {
-                if(logEnable && extraLogs) log.debug "In restrictionHandler - Everything Else 2"
-                restrictionMatch2 = restrictionMatch2 + 1
-            }
-        }
-    }
-    if(logEnable && extraLogs) log.debug "In restrictionHandler - theCount: ${theCount} - theValue: ${theValue} vs 1: ${state.restrictionMatch1} or 2: ${state.restrictionMatch2}"
-    if(state.rType) {
-        state.restrictionMatch = state.restrictionMatch + restrictionMatch1
-    } else {
-        state.restrictionMatch = state.restrictionMatch + restrictionMatch2
-    }
-    if(logEnable && extraLogs) log.debug "In devicesGoodHandler - restrictionMatch: ${state.restrictionMatch} - rCount: ${state.rCount} - type: ${state.rTypeAO}" 
-    if(state.rTypeAO) {  // OR (true)
-        if(state.restrictionMatch >= 1) {
-            state.areRestrictions = true
-        } 
-    } else {  // AND (False)
-        if(state.restrictionMatch == state.rCount) {
-            state.areRestrictions = true
-        }
-    }
-    if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"
-}
-
 // ********** Start Actions **********
 def switchesPerModeActionHandler() {
     if(logEnable) log.debug "In switchesPerModeActionHandler - (${state.version})"
@@ -4153,7 +4014,7 @@ def switchesPerModeActionHandler() {
             }
             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             def modeCheck = currentMode.contains(theMode)
-            if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
+            if(logEnable) log.debug "In switchesPerModeActionHandler - currentMode: ${currentMode} - modeCheck: ${modeCheck}"
             if(modeCheck) {
                 state.modeMatch = true
                 theColor = theColor.replace("]","")
@@ -4162,9 +4023,9 @@ def switchesPerModeActionHandler() {
                 def cleanTwo = theDevice.replace("[","").replace("]","").split(";")
                 cleanTwo.each { itThree ->
                     if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
-                    if(logEnable && state.spmah) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
+                    if(logEnable) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
                     if(cleanOne == itThree) {
-                        if((logEnable && state.spmah) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
+                        if((logEnable) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
                         state.fromWhere = "switchesPerMode"
                         state.sPDM = itOne
                         state.onColor = "${theColor}"
@@ -4355,11 +4216,7 @@ def switchesInSequenceReverseHandler() {
 
 def dimmerOnActionHandler() {
     if(logEnable) log.debug "In dimmerOnActionHandler (${state.version})"
-    state.fromWhere = "dimmerOn"
-    state.dimmerDevices = setOnLC
-    state.onColor = "${colorLC}"
-    state.onLevel = levelLC
-    state.onTemp = tempLC
+    state.fromWhere = "dimmerOn"; state.dimmerDevices = setOnLC; state.onColor = "${colorLC}"; state.onLevel = levelLC; state.onTemp = tempLC
     setLevelandColorHandler()
 }
 
@@ -4718,14 +4575,12 @@ def sendHttpHandler() {
             cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
             //log.info "cookie: ${cookie}"
         }
-    }
-    
+    }   
     def params = [
         uri: "${xhttpIP}:8080",
         path: xhttpCommand,
         headers: ["Cookie": cookie]
     ]
-
     theData = ""
     if(xhttpCommand.contains("freeOSMemory")) {       
         httpGet(params) { resp ->
@@ -4736,7 +4591,6 @@ def sendHttpHandler() {
         state.theData = theData
         if(logEnable) log.debug "In sendHttpHandler (freeOSMemory) - theCommand: ${xhttpCommand} - theData: ${state.theData}"
     }
-    
     if(xhttpCommand.contains("freeOSMemory")) {        
         if(setpointRollingAverage && theData) {
             theReadings = state.readings
@@ -4785,21 +4639,18 @@ def actionHttpHandler() {
             cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
             //log.info "cookie: ${cookie}"
         }
-    }
-    
+    }   
     def params = [
         uri: "${httpIP}:8080",
         path: httpCommand,
         headers: ["Cookie": cookie]
     ]
-
     theData = ""
     if(httpCommand.contains("zwaveRepair")) {
         httpGet(params) { resp ->
             log.info "${app.label} - Zwave repair has started"
         }
-    }
-    
+    }    
     if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
         httpPost(params) { resp ->
             if(logEnable) log.debug "In actionHttpHandler (post) - theCommand: ${httpCommand} - actionData:<br>${state.actionData}"
@@ -4820,7 +4671,7 @@ def switchesOnActionHandler() {
 }
 
 def switchesOnReverseActionHandler() {
-    log.info "switchesOnMap: ${state.switchesOnMap}"
+    if(logEnable) log.debug "In switchesOnReverseActionHandler - switchesOnMap: ${state.switchesOnMap}"
     switchesOnAction.each { it ->
         name = (it.displayName).replace(" ","")
         data = state.switchesOnMap.get(name)
@@ -4885,10 +4736,7 @@ def slowOnHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In slowOnHandler (${state.version})"
-        state.fromWhere = "slowOn"
-        state.currentLevel = startLevelHigh ?: 1
-        state.onLevel = state.currentLevel
-        state.onColor = "${colorUp}"
+        state.fromWhere = "slowOn"; state.currentLevel = startLevelHigh ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
         setLevelandColorHandler()
         if(minutesUp == 0) return
         seconds = (minutesUp * 60) - 10
@@ -5083,7 +4931,6 @@ def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version}) - doMessage: ${state.doMessage}"
     if(msgRepeatContact) { subscribe(msgRepeatContact, "contact", repeatCheck) }    
     if(msgRepeatSwitch) { subscribe(msgRepeatSwitch, "switch", repeatCheck) }
-
     if(msgRepeat) {
         state.msgRepMax = msgRepeatMax ?: 2
         if(state.repeatCount == null) state.repeatCount = 0
@@ -5123,7 +4970,6 @@ def messageHandler() {
                 spLow = state.setpointLow.toString()
                 state.message = state.message.replace('%setPointLow%', spLow)
             }
-
             if (state.message.contains("%time%")) {
                 currentDateTime()
                 state.message = state.message.replace('%time%', state.theTime)
@@ -5134,7 +4980,6 @@ def messageHandler() {
             }
             if (state.message.contains("%lastDirection%")) {state.message = state.message.replace('%lastDirection%', state.lastDirection)}
             if (state.message.contains("%iCalValue%")) {state.message = state.message.replace('%iCalValue%', state.currentIcalValue)}
-
             if(state.message) {
                 if(logEnable) log.debug "In messageHandler - message: ${state.message}"
                 if(useSpeech) letsTalk(state.message)
@@ -5213,8 +5058,7 @@ def checkSunHandler() {
             state.theOffsetSunset = sunsetDelay ?: 1
         } else {
             state.theOffsetSunset = offsetSunset ?: 1
-        }
-        
+        }       
         if(offsetSunrise == 99) {
             sunsetHigh = sunsetDelayHigh ?: 5
             sunsetLow = sunsetDelayLow ?: 1
@@ -5226,8 +5070,7 @@ def checkSunHandler() {
             state.theOffsetSunrise = sunriseDelay ?: 1
         } else {
             state.theOffsetSunrise = offsetSunrise ?: 1
-        }
-        
+        }       
         if(fromSun) {
             sunriseTime = getSunriseAndSunset().sunrise
         } else {
@@ -5245,7 +5088,6 @@ def checkSunHandler() {
             state.timeSunset = new Date(sunsetTime.time - (oSunset * 60 * 1000))
             use( TimeCategory ) { nextSunsetOffset = sunsetTime - oSunset.minutes }
         }    
-
         if(riseBeforeAfter) {
             oSunrise = state.theOffsetSunrise.toInteger()
             state.timeSunrise = new Date(sunriseTime.time + (oSunrise * 60 * 1000))
@@ -5255,7 +5097,6 @@ def checkSunHandler() {
             state.timeSunrise = new Date(sunriseTime.time - (oSunrise * 60 * 1000))
             use( TimeCategory ) { nextSunriseOffset = sunriseTime - oSunrise.minutes }
         }
-
         if(triggerType.contains("tTimeDays")) {
             if(fromSun) {    // Sunrise to Sunset
                 state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
@@ -5264,8 +5105,7 @@ def checkSunHandler() {
                 state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
                 if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} --- nextSunriseOffset: ${nextSunriseOffset}"
             }
-        }
-        
+        }        
         if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
             if(!sunsetSunriseMatchConditionOnly) {
                 schedule(nextSunriseOffset, runAtTime1)
@@ -5954,21 +5794,21 @@ def profileSwitchHandler() {
         if(logEnable) log.debug "In switchChangeHandler (${state.version})"
         if(logEnable) log.debug "In switchChangeHandler - switchProfileOn: ${switchProfileOn}"
         if(switchProfileOn == "Pon0") {
-            biChangeProfile("0")
+            biChangeHandler("0")
         } else if(switchProfileOn == "Pon1") {
-            biChangeProfile("1")
+            biChangeHandler("1")
         } else if(switchProfileOn == "Pon2") {
-            biChangeProfile("2")
+            biChangeHandler("2")
         } else if(switchProfileOn == "Pon3") {
-            biChangeProfile("3")
+            biChangeHandler("3")
         } else if(switchProfileOn == "Pon4") {
-            biChangeProfile("4")
+            biChangeHandler("4")
         } else if(switchProfileOn == "Pon5") {
-            biChangeProfile("5")
+            biChangeHandler("5")
         } else if(switchProfileOn == "Pon6") {
-            biChangeProfile("6")
+            biChangeHandler("6")
         } else if(switchProfileOn == "Pon7") {
-            biChangeProfile("7")
+            biChangeHandler("7")
         }
     }
 }
@@ -5980,7 +5820,7 @@ def scheduleSwitchHandler() {
     } else {
         if(logEnable) log.debug "In switchChangeHandler (${state.version})"
         if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn: ${biScheduleName}"
-        biChangeSchedule(biScheduleName)
+        biChangeHandler(biScheduleName)
     }
 }
 
@@ -5991,15 +5831,15 @@ def cameraPresetHandler() {
     } else {
         if(logEnable) log.debug "In cameraPresetHandler (${state.version}) - biCameraPreset: ${biCameraPreset}"
         if(biCameraPreset == "PS1") {
-            biChangeProfile("1")
+            biChangeHandler("1")
         } else if(biCameraPreset == "PS2") {
-            biChangeProfile("2")
+            biChangeHandler("2")
         } else if(biCameraPreset == "PS3") {
-            biChangeProfile("3")
+            biChangeHandler("3")
         } else if(biCameraPreset == "PS4") {
-            biChangeProfile("4")
+            biChangeHandler("4")
         } else if(biCameraPreset == "PS5") {
-            biChangeProfile("5")
+            biChangeHandler("5")
         }
     }
 }
@@ -6011,7 +5851,7 @@ def cameraSnapshotHandler() {
     } else {
         if(logEnable) log.debug "In cameraSnapshotHandler (${state.version})"
         if(logEnable) log.debug "In cameraSnapshotHandler - Switch on"
-        biChangeProfile("0")
+        biChangeHandler("0")
     }
 }
 
@@ -6022,7 +5862,7 @@ def cameraTriggerHandler() {
     } else {
         if(logEnable) log.debug "In cameraTriggerHandler (${state.version})"
         if(logEnable) log.debug "cameraTriggerHandler - On"
-        biChangeProfile("1")
+        biChangeHandler("1")
     }
 }
 
@@ -6034,19 +5874,19 @@ def cameraPTZHandler() {
         if(logEnable) log.debug "In cameraPTZHandler (${state.version})"
         if(logEnable) log.debug "In cameraPTZHandler - biCameraPTZ: ${biCameraPTZ}"
         if(biCameraPTZ == "PTZ0") {
-            biChangeProfile("0")
+            biChangeHandler("0")
         } else if(biCameraPTZ == "PTZ1") {
-            biChangeProfile("1")
+            biChangeHandler("1")
         } else if(biCameraPTZ == "PTZ2") {
-            biChangeProfile("2")
+            biChangeHandler("2")
         } else if(biCameraPTZ == "PTZ3") {
-            biChangeProfile("3")
+            biChangeHandler("3")
         } else if(biCameraPTZ == "PTZ4") {
-            biChangeProfile("4")
+            biChangeHandler("4")
         } else if(biCameraPTZ == "PTZ5") {
-            biChangeProfile("5")
+            biChangeHandler("5")
         } else if(biCameraPTZ == "PTZ6") {
-            biChangeProfile("6")
+            biChangeHandler("6")
         }
     }
 }
@@ -6058,12 +5898,12 @@ def cameraRebootHandler() {
     } else {
         if(logEnable) log.debug "In cameraRebootHandler (${state.version})"
         if(logEnable) log.debug "In cameraRebootHandler - Switch on"
-        biChangeProfile("0")
+        biChangeHandler("0")
     }
 }
 
-def biChangeProfile(num) {
-	if(logEnable) log.debug "In biChangeProfile (${state.version})"
+def biChangeHandler(num) {
+	if(logEnable) log.debug "In biChangeHandler (${state.version})"
 	biHost = "${parent.biServer}:${parent.biPort}"
 	if(biControl == "Mode") {
 		if(logEnable) log.debug "I'm in Mode"
@@ -6095,13 +5935,16 @@ def biChangeProfile(num) {
         // /admin?camera=x&reboot
     } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") {
         if(logEnable) log.debug "I'm in Camera_Enable/Disable"
-              biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"           
+        biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"           
         // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name)
+    } else if(biControl == "Switch_Schedule") {    
+        if(logEnable) log.debug "I'm in Switch_Schedule"
+        biRawCommand = "/admin?schedule=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
     } else {
         biRawCommand = "*** Something went wrong! ***"
     }
-    if(logEnable) log.debug "In biChangeProfile - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
-	if(logEnable) log.debug "In biChangeProfile - sending GET to URL: ${biHost}${biRawCommand}"
+    if(logEnable) log.debug "In biChangeHandler - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
+	if(logEnable) log.debug "In biChangeHandler - sending GET to URL: ${biHost}${biRawCommand}"
 	def httpMethod = "GET"
 	def httpRequest = [
 		method:		httpMethod,
@@ -6113,26 +5956,6 @@ def biChangeProfile(num) {
 	]
 	def hubAction = new hubitat.device.HubAction(httpRequest)
 	sendHubCommand(hubAction)
-}
-
-def biChangeSchedule(schedule) {
-    if(logEnable) log.debug "In biChangeSchedule (${state.version})"
-	biHost = "${parent.biServer}:${parent.biPort}"
-    if(logEnable) log.debug "In biChangeSchedule - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
-	biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
-	if(logEnable) log.debug "In biChangeSchedule - sending GET to URL: ${biHost}${biRawCommand}"
-	
-	def httpMethod = "GET"
-	def httpRequest = [
-		method:		httpMethod,
-		path: 		biRawCommand,
-		headers:	[
-			HOST:		biHost,
-			Accept: 	"*/*",
-		]
-	]
-	def hubAction = new hubitat.device.HubAction(httpRequest)
-    sendHubCommand(hubAction)
 }
 
 // ***** Calendarific *****
@@ -6214,8 +6037,7 @@ def getHolidayInfo() {
                         if(logEnable) log.info "In getHolidayInfo - ${theName} IS IN ${apiHolidays} - MATCH"
                         theDate = rec.date.iso
                         theDesc = rec.description
-                        state.holidayInfo += "<tr><td>${theDate}<td>${theName}<td>${theDesc}"
-                        
+                        state.holidayInfo += "<tr><td>${theDate}<td>${theName}<td>${theDesc}"                      
                         theData = "${theName}::${theDesc}"
                         state.myHolidays.put("$theDate", theData)
                     }
@@ -6225,19 +6047,14 @@ def getHolidayInfo() {
             } 
         }
         if(addTodayAsHoliday) {
-            theDate = new Date().format( 'yyyy-MM-dd' )
-            theName = "Test Holiday"
-            theDesc = "Testing today as Holdiday"
+            theDate = new Date().format( 'yyyy-MM-dd' ); theName = "Test Holiday"; theDesc = "Testing today as Holdiday"
             state.holidayInfo += "<tr><td>${theDate}<td>${theName}<td>${theDesc}"
             theData = "${theName}::${theDesc}"
             state.myHolidays.put("$theDate", theData)
             if(logEnable) log.info "In getHolidayInfo - Adding ${theName} to Holidays for Testing - MATCH"
         }
         if(addTomorrowAsHoliday) {
-            theDate1 = new Date() + 1
-            theDate = theDate1.format( 'yyyy-MM-dd' )
-            theName = "Test Holiday 2"
-            theDesc = "Testing tomorrow as Holdiday"
+            theDate1 = new Date() + 1; theDate = theDate1.format( 'yyyy-MM-dd' ); theName = "Test Holiday 2"; theDesc = "Testing tomorrow as Holdiday"
             state.holidayInfo += "<tr><td>${theDate}<td>${theName}<td>${theDesc}"
             theData = "${theName}::${theDesc}"
             state.myHolidays.put("$theDate", theData)
@@ -6570,6 +6387,162 @@ def certainTimeHasPassedHandler() {
     }
 }
 
+def switchesToSyncOnHandler(evt) {
+    if(atomicState.syncOnRunning == null) atomicState.syncOnRunning = "no"
+    if(atomicState.syncOnRunning == "no") {
+        atomicState.syncOnRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncOnRunning: ${atomicState.syncOnRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncOnHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value
+        if(logEnable) log.debug "In switchesToSyncOnHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened}"
+        switchesToSync.each {
+            if(it.deviceId.toString() != whoID.toString()) {
+                if(logEnable) log.debug "In switchesToSyncOnHandler - Turning ${it.displayName} - ${whatHappened}"
+                it.on()
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncOnRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncOnHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncOnRunning: ${atomicState.syncOnRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
+def switchesToSyncOffHandler(evt) {
+    if(atomicState.syncOffRunning == null) atomicState.syncOffRunning = "no"
+    if(atomicState.syncOffRunning == "no") {
+        atomicState.syncOffRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncOffRunning: ${atomicState.syncOffRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncOffHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value
+        if(logEnable) log.debug "In switchesToSyncOffHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened}"
+        switchesToSync.each {
+            if(it.deviceId.toString() != whoID.toString()) {
+                if(logEnable) log.debug "In switchesToSyncOffHandler - Turning ${it.displayName} - ${whatHappened}"
+                it.off()
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncOffRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncOffHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncOffRunning: ${atomicState.syncOffRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
+def switchesToSyncColorTempHandler(evt) {
+    if(atomicState.syncColorRunning == null) atomicState.syncColorRunning = "no"
+    if(atomicState.syncColorRunning == "no") {
+        atomicState.syncColorRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncColorRunning: ${atomicState.syncColorRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncColorTempHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value.toInteger()
+        switchesToSync.each {
+            if(it.hasCommand("setColorTemperature")) {
+                if(it.deviceId.toString() != whoID.toString()) {
+                    if(logEnable) log.debug "In switchesToSyncColorTempHandler - Setting Color Temperature on ${it.displayName} - to ${whatHappened}"
+                    it.setColorTemperature(whatHappened)
+                }
+            } else {
+                if(logEnable) log.debug "In switchesToSyncColorTempHandler - ${it.displayName} doesn't have attribute 'colorTemperature', so Skipping."
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncColorRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncColorRunning: ${atomicState.syncColorRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
+def switchesToSyncHueHandler(evt) {
+    if(atomicState.syncHueRunning == null) atomicState.syncHueRunning = "no"
+    if(atomicState.syncHueRunning == "no") {
+        atomicState.syncHueRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncHueRunning: ${atomicState.syncHueRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncHueHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value.toInteger()
+        switchesToSync.each {
+            if(it.hasCommand("setHue")) {
+                if(it.deviceId.toString() != whoID.toString()) {
+                    if(logEnable) log.debug "In switchesToSyncHueHandler - Setting Hue on ${it.displayName} - to ${whatHappened}"
+                    it.setHue(whatHappened)
+                }
+            } else {
+                if(logEnable) log.debug "In switchesToSyncHueHandler - ${it.displayName} doesn't have attribute 'hue', so Skipping."
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncHueRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncHueRunning: ${atomicState.syncHueRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
+def switchesToSyncLevelHandler(evt) {
+    if(atomicState.syncLevelRunning == null) atomicState.syncLevelRunning = "no"
+    if(atomicState.syncLevelRunning == "no") {
+        atomicState.syncLevelRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncLevelRunning: ${atomicState.syncLevelRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncLevelHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value.toInteger()
+        switchesToSync.each {
+            if(it.hasCommand("setLevel")) {
+                if(it.deviceId.toString() != whoID.toString()) {
+                    if(logEnable) log.debug "In switchesToSyncLevelHandler - Setting Level on ${it.displayName} - to ${whatHappened}"
+                    it.setLevel(whatHappened)
+                }
+            } else {
+                if(logEnable) log.debug "In switchesToSyncLevelHandler - ${it.displayName} doesn't have attribute 'level', so Skipping."
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncLevelRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncLevelRunning: ${atomicState.syncLevelRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
+def switchesToSyncSaturationHandler(evt) {
+    if(atomicState.syncSaturationRunning == null) atomicState.syncSaturationRunning = "no"
+    if(atomicState.syncSaturationRunning == "no") {
+        atomicState.syncSaturationRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${atomicState.syncSaturationRunning} ----------------------"
+        if(logEnable) log.debug "In switchesToSyncSaturationHandler (${state.version})"
+        whoHappened = evt.displayName
+        whoID = evt.deviceId
+        whatHappened = evt.value.toInteger()
+        switchesToSync.each {
+            if(it.hasCommand("setSaturation")) {
+                if(it.deviceId.toString() != whoID.toString()) {
+                    if(logEnable) log.debug "In switchesToSyncSaturationHandler - Setting Saturation on ${it.displayName} - to ${whatHappened}"
+                    it.setSaturation(whatHappened)
+                }
+            } else {
+                if(logEnable) log.debug "In switchesToSyncSaturationHandler - ${it.displayName} doesn't have attribute 'saturation', so Skipping."
+            }
+        }
+        pauseExecution(3000)
+        atomicState.syncSaturationRunning = "no"
+        if(logEnable) log.debug "In switchesToSyncSaturationHandler - All Done!"
+        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${atomicState.syncSaturationRunning} ----------------------"
+        startTheProcess(evt)
+    }
+}
+
 def checkingWhatToDo() {
     if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
     state.jumpToStop = false
@@ -6632,101 +6605,163 @@ def checkingWhatToDo() {
     if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
 }
 
-// ********** Normal Stuff **********
-def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
-    app.updateSetting("logEnable",[value:"false",type:"bool"])
-}
+// ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
+library ( // library marker BPTWorld.bpt-normalStuff, line 1
+        base: "app", // library marker BPTWorld.bpt-normalStuff, line 2
+        author: "Bryan Turcotte", // library marker BPTWorld.bpt-normalStuff, line 3
+        category: "Apps", // library marker BPTWorld.bpt-normalStuff, line 4
+        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-normalStuff, line 5
+        name: "bpt-normalStuff", // library marker BPTWorld.bpt-normalStuff, line 6
+        namespace: "BPTWorld", // library marker BPTWorld.bpt-normalStuff, line 7
+        documentationLink: "", // library marker BPTWorld.bpt-normalStuff, line 8
+        version: "1.0.0", // library marker BPTWorld.bpt-normalStuff, line 9
+        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-normalStuff, line 10
+) // library marker BPTWorld.bpt-normalStuff, line 11
 
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            theStatus = it.currentValue("switch")
-            if(theStatus == "on") { state.eSwitch = true }
-        }
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
-    }
-}
+def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 13
+    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 14
+    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 15
+    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 16
+} // library marker BPTWorld.bpt-normalStuff, line 17
 
-def getImage(type) {					// Modified from @Stephack Code
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
-}
+def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 19
+    paragraph "This child app needs a virtual device to store values." // library marker BPTWorld.bpt-normalStuff, line 20
+    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 21
+    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 22
+        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 23
+        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 24
+        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 25
+        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 26
+        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 27
+    } // library marker BPTWorld.bpt-normalStuff, line 28
+    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 29
+    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 30
+        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 31
+        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 32
+    } // library marker BPTWorld.bpt-normalStuff, line 33
+} // library marker BPTWorld.bpt-normalStuff, line 34
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
-}
+def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 36
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 37
+    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 38
+    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 39
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 40
+        try { // library marker BPTWorld.bpt-normalStuff, line 41
+            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 42
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 43
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 44
+        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 45
+    } else { // library marker BPTWorld.bpt-normalStuff, line 46
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 47
+    } // library marker BPTWorld.bpt-normalStuff, line 48
+    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 49
+} // library marker BPTWorld.bpt-normalStuff, line 50
 
-def display(data) {
-    if(data == null) data = ""
-    setVersion()
-    getHeaderAndFooter()
-    if(app.label) {
-        if(app.label.contains("(Paused)")) {
-            theName = app.label - " <span style='color:red'>(Paused)</span>"
-        } else {
-            theName = app.label
-        }
-    }
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
-        paragraph "${state.headerMessage}"
-        paragraph getFormat("line")
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-    }
-}
+def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 52
+	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 53
+} // library marker BPTWorld.bpt-normalStuff, line 54
 
-def display2() {
-    section() {
-        paragraph getFormat("line")
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
-        paragraph "${state.footerMessage}"
-    }
-}
+private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 56
+	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 57
+} // library marker BPTWorld.bpt-normalStuff, line 58
 
-def getHeaderAndFooter() {
-    timeSinceNewHeaders()
-    if(state.totalHours > 4) {
-        def params = [
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-            requestContentType: "application/json",
-            contentType: "application/json",
-            timeout: 30
-        ]
-        try {
-            def result = null
-            httpGet(params) { resp ->
-                state.headerMessage = resp.data.headerMessage
-                state.footerMessage = resp.data.footerMessage
-            }
-        } catch (e) { }
-    }
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
-}
+// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 60
+def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 61
+    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 62
+    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 63
+} // library marker BPTWorld.bpt-normalStuff, line 64
 
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
-        prev = new Date()
-    } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
-    }
-    def now = new Date()
-    use(TimeCategory) {
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.totalHours = (state.days * 24) + state.hours
-    }
-    state.previous = now
-}
+def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 66
+    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 67
+    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 68
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 69
+        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 70
+            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 71
+            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 72
+        } // library marker BPTWorld.bpt-normalStuff, line 73
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 74
+    } // library marker BPTWorld.bpt-normalStuff, line 75
+} // library marker BPTWorld.bpt-normalStuff, line 76
+
+def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 78
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 79
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 80
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 81
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 82
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 83
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 84
+    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 85
+} // library marker BPTWorld.bpt-normalStuff, line 86
+
+def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 88
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 89
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 90
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 91
+} // library marker BPTWorld.bpt-normalStuff, line 92
+
+def display(data) { // library marker BPTWorld.bpt-normalStuff, line 94
+    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 95
+    setVersion() // library marker BPTWorld.bpt-normalStuff, line 96
+    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 97
+    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 98
+        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 99
+            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 100
+        } else { // library marker BPTWorld.bpt-normalStuff, line 101
+            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 102
+        } // library marker BPTWorld.bpt-normalStuff, line 103
+    } // library marker BPTWorld.bpt-normalStuff, line 104
+    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 105
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 106
+        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 107
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 108
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 109
+    } // library marker BPTWorld.bpt-normalStuff, line 110
+} // library marker BPTWorld.bpt-normalStuff, line 111
+
+def display2() { // library marker BPTWorld.bpt-normalStuff, line 113
+    section() { // library marker BPTWorld.bpt-normalStuff, line 114
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 115
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 116
+        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 117
+    } // library marker BPTWorld.bpt-normalStuff, line 118
+} // library marker BPTWorld.bpt-normalStuff, line 119
+
+def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 121
+    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 122
+    if(state.totalHours > 4) { // library marker BPTWorld.bpt-normalStuff, line 123
+        def params = [ // library marker BPTWorld.bpt-normalStuff, line 124
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 125
+            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 126
+            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 127
+            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 128
+        ] // library marker BPTWorld.bpt-normalStuff, line 129
+        try { // library marker BPTWorld.bpt-normalStuff, line 130
+            def result = null // library marker BPTWorld.bpt-normalStuff, line 131
+            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 132
+                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 133
+                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 134
+            } // library marker BPTWorld.bpt-normalStuff, line 135
+        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 136
+    } // library marker BPTWorld.bpt-normalStuff, line 137
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 138
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 139
+} // library marker BPTWorld.bpt-normalStuff, line 140
+
+def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 142
+    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 143
+        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 144
+    } else { // library marker BPTWorld.bpt-normalStuff, line 145
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 146
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 147
+    } // library marker BPTWorld.bpt-normalStuff, line 148
+    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 149
+    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 150
+        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 151
+        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 152
+        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 153
+        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 154
+    } // library marker BPTWorld.bpt-normalStuff, line 155
+    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 156
+} // library marker BPTWorld.bpt-normalStuff, line 157
+
+// ~~~~~ end include (2) BPTWorld.bpt-normalStuff ~~~~~
