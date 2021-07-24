@@ -46,7 +46,7 @@
 import groovy.json.*
     
 metadata {
-	definition (name: "Event Watchdog for EE Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Event Watchdog for EE Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-EWDriver.groovy") {
    		capability "Actuator"
         capability "Initialize"
         
