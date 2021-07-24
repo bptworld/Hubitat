@@ -40,7 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
-* * 3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
+*  3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
 *  3.2.0 - 07/03/21 - Added BIControl - Enable/Disable Camera 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
