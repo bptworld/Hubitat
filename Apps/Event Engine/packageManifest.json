@@ -28,5 +28,13 @@
 		}
 	],
 	"drivers" : [
+		{
+			"id": "085180a9-f229-49a1-a596-c91cc395d1cf",
+			"name": "Event Watchdog for EE Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-EWDriver.groovy",
+			"required": true,
+			"version": "1.0.0"
+		}
 	]
 }
