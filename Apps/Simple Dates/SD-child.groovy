@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Create a simple countdown to your most important dates.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.4 - 07/30/21 - Added Long Range Dates, app now runs when saved.
  *  2.0.3 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 11/30/19 - Removed 'is this a school day/work day' (they didn't do anything), added device to control
  *  2.0.1 - 11/16/19 - Date output now available in two formats - MM/DD/YYYY or DD/MM/YYY
@@ -49,7 +50,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Simple Dates"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -78,6 +79,7 @@ def pageConfig() {
             paragraph "* Remember, all dates can control the same switch if you want"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Event Dates")) {
+            paragraph "Events will count down to the next occurrence of the date."
 			input "month1", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 			if(month1 == "1" || month1 == "3" || month1 == "5" || month1 == "7" || month1 == "8" || month1 == "10" || month1 == "12") input "day1", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
 			if(month1 == "4" || month1 == "6" || month1 == "9" || month1 == "11") input "day1", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
@@ -87,92 +89,118 @@ def pageConfig() {
             if(month1) input "dControl1", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
 		paragraph getFormat("line")
             
-			input "month2", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month2 == "1" || month2 == "3" || month2 == "5" || month2 == "7" || month2 == "8" || month2 == "10" || month2 == "12") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month2 == "4" || month2 == "6" || month2 == "9" || month2 == "11") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month2 == "2") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month2) input "reminder2", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month2) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month2) input "dControl2", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month3", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month3 == "1" || month3 == "3" || month3 == "5" || month3 == "7" || month3 == "8" || month3 == "10" || month3 == "12") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month3 == "4" || month3 == "6" || month3 == "9" || month3 == "11") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month3 == "2") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month3) input "reminder3", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month3) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month3) input "dControl3", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month4", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month4 == "1" || month4 == "3" || month4 == "5" || month4 == "7" || month4 == "8" || month4 == "10" || month4 == "12") input "day4", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month4 == "4" || month4 == "6" || month4 == "9" || month4 == "11") input "day4", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month4 == "2") input "day4", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month4) input "reminder4", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month4) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month4) input "dControl4", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month5", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month5 == "1" || month5 == "3" || month5 == "5" || month5 == "7" || month5 == "8" || month5 == "10" || month5 == "12") input "day5", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month5 == "4" || month5 == "6" || month5 == "9" || month5 == "11") input "day5", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month5 == "2") input "day5", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month5) input "reminder5", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month5) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month5) input "dControl5", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month6", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month6 == "1" || month6 == "3" || month6 == "5" || month6 == "7" || month6 == "8" || month6 == "10" || month6 == "12") input "day6", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month6 == "4" || month6 == "6" || month6 == "9" || month6 == "11") input "day6", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month6 == "2") input "day6", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month6) input "reminder6", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month6) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month6) input "dControl6", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month7", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month7 == "1" || month7 == "3" || month7 == "5" || month7 == "7" || month7 == "8" || month7 == "10" || month7 == "12") input "day7", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month7 == "4" || month7 == "6" || month7 == "9" || month7 == "11") input "day7", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month7 == "2") input "day7", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month7) input "reminder7", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month7) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month7) input "dControl7", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month8", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month8 == "1" || month8 == "3" || month8 == "5" || month8 == "7" || month8 == "8" || month8 == "10" || month8 == "12") input "day8", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month8 == "4" || month8 == "6" || month8 == "9" || month8 == "11") input "day8", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month8 == "2") input "day8", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month8) input "reminder8", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month8) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month8) input "dControl8", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month9", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month9 == "1" || month9 == "3" || month9 == "5" || month9 == "7" || month9 == "8" || month9 == "10" || month9 == "12") input "day9", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month9 == "4" || month9 == "6" || month9 == "9" || month9 == "11") input "day9", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month9 == "2") input "day9", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month9) input "reminder9", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month9) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month9) input "dControl9", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
-		paragraph getFormat("line")
-            
-			input "month10", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-			if(month10 == "1" || month10 == "3" || month10 == "5" || month10 == "7" || month10 == "8" || month10 == "10" || month10 == "12") input "day10", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-			if(month10 == "4" || month10 == "6" || month10 == "9" || month10 == "11") input "day10", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-			if(month10 == "2") input "day10", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-			if(month10) input "reminder10", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
-            if(month10) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
-            if(month10) input "dControl10", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+            if(month1) {
+                input "month2", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month2 == "1" || month2 == "3" || month2 == "5" || month2 == "7" || month2 == "8" || month2 == "10" || month2 == "12") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month2 == "4" || month2 == "6" || month2 == "9" || month2 == "11") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month2 == "2") input "day2", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month2) input "reminder2", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month2) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month2) input "dControl2", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month2) {
+                input "month3", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month3 == "1" || month3 == "3" || month3 == "5" || month3 == "7" || month3 == "8" || month3 == "10" || month3 == "12") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month3 == "4" || month3 == "6" || month3 == "9" || month3 == "11") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month3 == "2") input "day3", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month3) input "reminder3", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month3) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month3) input "dControl3", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month3) {
+                input "month4", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month4 == "1" || month4 == "3" || month4 == "5" || month4 == "7" || month4 == "8" || month4 == "10" || month4 == "12") input "day4", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month4 == "4" || month4 == "6" || month4 == "9" || month4 == "11") input "day4", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month4 == "2") input "day4", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month4) input "reminder4", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month4) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month4) input "dControl4", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month4) {
+                input "month5", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month5 == "1" || month5 == "3" || month5 == "5" || month5 == "7" || month5 == "8" || month5 == "10" || month5 == "12") input "day5", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month5 == "4" || month5 == "6" || month5 == "9" || month5 == "11") input "day5", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month5 == "2") input "day5", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month5) input "reminder5", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month5) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month5) input "dControl5", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month5) {
+                input "month6", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month6 == "1" || month6 == "3" || month6 == "5" || month6 == "7" || month6 == "8" || month6 == "10" || month6 == "12") input "day6", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month6 == "4" || month6 == "6" || month6 == "9" || month6 == "11") input "day6", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month6 == "2") input "day6", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month6) input "reminder6", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month6) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month6) input "dControl6", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month6) {
+                input "month7", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month7 == "1" || month7 == "3" || month7 == "5" || month7 == "7" || month7 == "8" || month7 == "10" || month7 == "12") input "day7", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month7 == "4" || month7 == "6" || month7 == "9" || month7 == "11") input "day7", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month7 == "2") input "day7", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month7) input "reminder7", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month7) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month7) input "dControl7", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month7) {
+                input "month8", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month8 == "1" || month8 == "3" || month8 == "5" || month8 == "7" || month8 == "8" || month8 == "10" || month8 == "12") input "day8", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month8 == "4" || month8 == "6" || month8 == "9" || month8 == "11") input "day8", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month8 == "2") input "day8", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month8) input "reminder8", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month8) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month8) input "dControl8", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month8) {
+                input "month9", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month9 == "1" || month9 == "3" || month9 == "5" || month9 == "7" || month9 == "8" || month9 == "10" || month9 == "12") input "day9", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month9 == "4" || month9 == "6" || month9 == "9" || month9 == "11") input "day9", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month9 == "2") input "day9", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month9) input "reminder9", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month9) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month9) input "dControl9", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+                paragraph getFormat("line")
+            }
+            if(month9) {
+                input "month10", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month10 == "1" || month10 == "3" || month10 == "5" || month10 == "7" || month10 == "8" || month10 == "10" || month10 == "12") input "day10", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month10 == "4" || month10 == "6" || month10 == "9" || month10 == "11") input "day10", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month10 == "2") input "day10", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                if(month10) input "reminder10", "text", title: "Event", required: false, multiple: false, defaultValue: "", width: 4
+                if(month10) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+                if(month10) input "dControl10", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+            }
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Long Range Dates")) {
+            paragraph "For use with dates that are over a year out."
+            
+            input "longMonth", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+			if(longMonth == "1" || longMonth == "3" || longMonth == "5" || longMonth == "7" || longMonth == "8" || longMonth == "10" || longMonth == "12") input "longDay", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+			if(longMonth == "4" || longMonth == "6" || longMonth == "9" || longMonth == "11") input "longDay", "enum", title: "Select Day", required: false, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+			if(longMonth == "2") input "longDay", "enum", title: "Select Day", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+            if(longMonth) input "longYear", "text", title: "Select Year", required: true, multiple: false, defaultValue: "", width: 4
+            
+			if(longMonth) input "longReminder", "text", title: "Event", required: false, multiple: false, defaultValue: ""
+            if(longMonth) paragraph "Use this option to override lighting, turn off alarms and more!<br><small>* Automaticaly turns 'on' on the selected day(s), else turns off</small>"
+            if(longMonth) input "dControlL", "capability.switch", title: "Turn this Switch on/off based on the day", submitOnChange: true, multiple: false
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Text Color Options")) {
             paragraph "When date is getting close, the text color can be changed so it stands out.<br>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White, etc."
 			input "sevenDayColor", "text", title: "Seven Days Out", required: true, defaultValue: "Green", width:4
             input "threeDayColor", "text", title: "Three Days Out", required: true, defaultValue: "Orange", width:4
             input "theDayColor", "text", title: "The Days Of", required: true, defaultValue: "Red", width:4
 		}
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" When to Run")) {
 			input "timeToRun", "time", title: "Check daily at", required: true
 		}
@@ -205,6 +233,7 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
+    startTheProcess()
 	initialize()
 }
 
@@ -266,6 +295,7 @@ def startTheProcess() {
                     if(dControl == "8") dControl8.on()
                     if(dControl == "9") dControl9.on()
                     if(dControl == "10") dControl10.on()
+                    if(dControl == "L") dControlL.on()
                 }
 			
 				nfDate = futureDate.getDateString()
@@ -480,6 +510,21 @@ def createMaps(){
             }
         }
 	}
+    
+    if(longMonth) {
+        longDay.each { it ->
+		    Date futureDate = Date.parse('MM/dd/yyyy', "${longMonth}/${it}/${longYear}").clearTime()
+            def daysLeft = TimeCategory.minus(futureDate, todayDate)
+		    def daysLefta = daysLeft.days
+            if(logEnable) log.debug "In createMaps - LongEvent - Days Left: ${daysLefta}"
+            if(daysLefta < 0) {
+                state.reminderMap.remove(futureDate)
+            } else {
+                reminder = "$longReminder:L"
+		        state.reminderMap.put(futureDate, reminder)
+            }
+        }
+	}
 }
 
 def turnDevicesOff() {
@@ -494,6 +539,7 @@ def turnDevicesOff() {
     if(dControl8) dControl8.off()
     if(dControl9) dControl9.off()
     if(dControl10) dControl10.off()
+    if(dControlL) dControl10.off()
 }
 
 def pushHandler(){
