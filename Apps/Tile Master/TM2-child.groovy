@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.7 - 07/03/21 - Minor adjustment
  *  2.5.6 - 06/21/21 - Adjustment to color options
  *  2.5.5 - 04/25/21 - Fixed an issue with the last merge.
  *  2.5.4 - 04/25/21 - Added pushbutton control (up to 4 buttons per device, only push event) - Thank you @ilkeraktuna
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.6"
+	state.version = "2.5.7"
 }
 
 definition(
@@ -2109,8 +2110,14 @@ def makeTile() {
     
     if(logEnable) log.debug "In makeTile - tileData: ${tileData}"
     if(tileDevice) {
-        tileDevice.sendTile01(tileData)
-        if(logEnable) log.debug "In makeTile - tileData sent"
+        try {
+            tileDevice.sendTile01(tileData)
+            if(logEnable) log.debug "In makeTile - tileData sent"
+        } catch (e) {
+            log.warn "Tile Master - Be sure the Tile Device selected is using the 'Tile Master Driver'. It's best to let TM create this device for you."
+        }
+    } else {
+        log.warn "Tile Master - Please select a Tile Device in the first section of the app."
     }
     if(logEnable) log.debug "*************************************** In makeTile - End ***************************************"
     return tileData
