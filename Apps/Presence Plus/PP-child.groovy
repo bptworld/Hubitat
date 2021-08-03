@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 08/03/21 - Many changes
  *  1.1.0 - 06/24/21 - Added IP Ping option, Added Motion to options, Reversed how Contacts work, upgraded device creation and logging options
  *  ---
  *  1.0.0 - 11/01/19 - Initial release.
@@ -45,10 +46,11 @@
 
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
+#include BPTWorld.bpt-normalStuff
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -82,24 +84,12 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
-            paragraph "Each child app needs a virtual device to store the results. This device can also be used in other apps, like Rule Machine or Event Engine."
-            input "useExistingDevice", "bool", title: "Use existing device (off) or have PP create a new one for you (on)", defaultValue:false, submitOnChange:true
-            if(useExistingDevice) {
-			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'PP - Bryan')", required:true, submitOnChange:true
-                paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
-                if(dataName) createDataChildDevice()
-                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
-                paragraph "${statusMessageD}"
-            }
-            input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false
-            if(!useExistingDevice) {
-                app.removeSetting("dataName")
-                paragraph "<small>* Device must use the 'Presence Plus Driver'.</small>"
-            }
+            createDeviceSection("Presence Plus Driver")
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Present Options")) {
-            input "ArrTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
+            paragraph "This is the First check. If what is selected here returns true, then Present. Regardless of what the other sections return."
+            input "ArrTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, defualtValue:false, submitOnChange:true
             if(ArrTriggerType) paragraph "<b>using 'AND'</b>"
             if(!ArrTriggerType) paragraph "<b>using 'OR'</b>"
 			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
@@ -123,7 +113,7 @@ def pageConfig() {
             paragraph "Advanced Present Options give you a second set of Present Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
             input "useAdvancedArr", "bool", title: "Use Advanced Present Options", description: "Advanced Present", required:false, submitOnChange:true
             if(useAdvancedArr) {
-                input "ArrTriggerType2", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
+                input "ArrTriggerType2", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, defualtValue:false, submitOnChange:true
                 if(ArrTriggerType2) paragraph "<b>using 'AND'</b>"
                 if(!ArrTriggerType2) paragraph "<b>using 'OR'</b>"
                 input "ArrPresenceSensors2", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
@@ -195,11 +185,6 @@ def installed() {
 	initialize()
 }
 
-def uninstalled() {
-    if(logEnable) log.debug "Uninstalled ${app.label}."
-	for (device in getChildDevices()) deleteChildDevice(device.deviceNetworkId)	
-}
-
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
@@ -218,24 +203,23 @@ def initialize() {
     if(pauseApp) {
         log.info "${app.label} is Paused"
     } else {
-        setDefaults()
-        if(ArrPresenceSensors) subscribe(ArrPresenceSensors, "presence.present", arrSensorHandler)
-        if(DepPresenceSensors) subscribe(DepPresenceSensors, "presence.not present", depSensorHandler)
+        if(ArrPresenceSensors) subscribe(ArrPresenceSensors, "presence", statusUpdateHandler)
+        if(DepPresenceSensors) subscribe(DepPresenceSensors, "presence", statusUpdateHandler)
         
-        if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence.present", arrSensorHandler2)
+        if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence", statusUpdateHandler)
         
-        if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact.open", arrSensorHandler)        
-        if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact.closed", depSensorHandler)
-        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion.active", arrSensorHandler)
-        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion.inactive", depSensorHandler)
+        if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact", statusUpdateHandler)        
+        if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact", statusUpdateHandler)
+        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion", statusUpdateHandler)
+        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion", statusUpdateHandler)
 
-        if(runEvery == "Every 1 Minute") runEvery1Minute(arrSensorHandler)
-        if(runEvery == "Every 5 Minutes") runEvery5Minutes(arrSensorHandler)
-        if(runEvery == "Every 10 Minutes") runEvery10Minutes(arrSensorHandler)
-        if(runEvery == "Every 15 Minutes") runEvery15Minutes(arrSensorHandler)
-        if(runEvery == "Every 30 Minutes") runEvery30Minutes(arrSensorHandler)
-        if(runEvery == "Every 1 Hour") runEvery1Hour(arrSensorHandler)
-        if(runEvery == "Every 3 Hours") runEvery3Hours(arrSensorHandler)
+        if(runEvery == "Every 1 Minute") runEvery1Minute(statusUpdateHandler)
+        if(runEvery == "Every 5 Minutes") runEvery5Minutes(statusUpdateHandler)
+        if(runEvery == "Every 10 Minutes") runEvery10Minutes(statusUpdateHandler)
+        if(runEvery == "Every 15 Minutes") runEvery15Minutes(statusUpdateHandler)
+        if(runEvery == "Every 30 Minutes") runEvery30Minutes(statusUpdateHandler)
+        if(runEvery == "Every 1 Hour") runEvery1Hour(statusUpdateHandler)
+        if(runEvery == "Every 3 Hours") runEvery3Hours(statusUpdateHandler)
         
         if(pingEvery == "Every 1 Minute") runEvery1Minute(pingHandler)
         if(pingEvery == "Every 5 Minutes") runEvery5Minutes(pingHandler)
@@ -253,81 +237,89 @@ def arrSensorHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        if(evt) {
+            whoHappened = evt.displayName
+            whatHappened = evt.value
+        } else {
+            whoHappened = "NA"
+            whatHappened = "NA"
+        }
+        state.pStatus1 = false
         if(ArrTriggerType == null || ArrTriggerType == "") ArrTriggerType = false
         if(ArrTriggerType2 == null || ArrTriggerType2 == "") ArrTriggerType2 = false
-        if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType} - ArrTriggerType2: ${ArrTriggerType2}"	
+        if(logEnable) log.debug "----- In arrSensorHandler (${state.version}) -----"
+        if(logEnable) log.debug "In arrSensorHandler - ArrTriggerType: ${ArrTriggerType} - ArrTriggerType2: ${ArrTriggerType2}"
+        if(logEnable) log.debug "In arrSensorHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened}"	
 
         int theDelayArr = theDelayArr ?: 1
         int pCount = 0
         int pCount2 = 0
 
-        if(ArrPresenceSensors || ArrConPresenceSensors || ArrMotionPresenceSensors || ipAddress) {
-            if(ArrPresenceSensors) {
-                preSensors = ArrPresenceSensors.size()
-            } else {
-                preSensors = 0
-            }
-            if(ArrConPresenceSensors) {
-                conSensors = ArrConPresenceSensors.size()
-            } else {
-                conSensors = 0
-            }
-            if(ArrMotionPresenceSensors) {
-                 motSensors = ArrMotionPresenceSensors.size()
-            } else {
-                motSensors = 0
-            }
-            if(ipAddress) {
-                ipSensors = 1
-            } else {
-                ipSensors = 0
-            }
-            
-            asCount = preSensors + conSensors + + motSensors + ipSensors
-            int theArrNum = arrNumOfSensors ?: asCount
+        if(ArrPresenceSensors) {
+            preSensors = ArrPresenceSensors.size()
+        } else {
+            preSensors = 0
         }
+        if(ArrConPresenceSensors) {
+            conSensors = ArrConPresenceSensors.size()
+        } else {
+            conSensors = 0
+        }
+        if(ArrMotionPresenceSensors) {
+            motSensors = ArrMotionPresenceSensors.size()
+        } else {
+            motSensors = 0
+        }
+        if(ipAddress) {
+            ipSensors = 1
+        } else {
+            ipSensors = 0
+        }
+        if(logEnable) log.debug "In arrSensorHandler - preSensors: $preSensors - conSensors: $conSensors - motSensors: $motSensors - ipSensors: $ipSensors"
+        asCount = preSensors + conSensors + + motSensors + ipSensors
+        int theArrNum = arrNumOfSensors ?: asCount
+        if(logEnable) log.debug "In arrSensorHandler - asCount: $asCount - arrNumOfSensors: $arrNumOfSensors - theArrNum: $theArrNum"
 
-        if(ArrPresenceSensors2 || ArrConPresenceSensors2) {
-            if(ArrPresenceSensors2) {
-                preSensors2 = ArrPresenceSensors2.size()
-            } else {
-                preSensors2 = 0
-            }
-            if(ArrConPresenceSensors2) {
-                conSensors2 = ArrConPresenceSensors2.size()
-            } else {
-                conSensors2 = 0
-            }
-            asCount2 = preSensors2 + conSensors2
-            int theArrNum2 = arrNumOfSensors2 ?: asCount2
+        if(ArrPresenceSensors2) {
+            preSensors2 = ArrPresenceSensors2.size()
+        } else {
+            preSensors2 = 0
         }
+        if(ArrConPresenceSensors2) {
+            conSensors2 = ArrConPresenceSensors2.size()
+        } else {
+            conSensors2 = 0
+        }
+        asCount2 = preSensors2 + conSensors2
+        int theArrNum2 = arrNumOfSensors2 ?: asCount2
+        if(logEnable) log.debug "In arrSensorHandler - asCount2: $asCount2 - arrNumOfSensors2: $arrNumOfSensors2 - theArrNum2: $theArrNum2"
 
         if(ArrTriggerType == false) {    // or
             //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
             if(ArrPresenceSensors) {
                 ArrPresenceSensors.each { it ->
                     if(it.currentValue("presence") == "present") {
-                        state.pStatus = true	
+                        state.pStatus1 = true	
                     }
                 }
             }
             if(ArrConPresenceSensors) {
                 ArrConPresenceSensors.each { it ->
                     if(it.currentValue("contact") == "open") {
-                        state.pStatus = true	
+                        state.pStatus1 = true	
                     }
                 }
             }
             if(ArrMotPresenceSensors) {
                 ArrMotPresenceSensors.each { it ->
                     if(it.currentValue("motion") == "active") {
-                        state.pStatus = true	
+                        state.pStatus1 = true	
                     }
                 }
             }
             if(ipAddress) {
                 if(state.ipStatus == "present") {
-                    state.pStatus = true
+                    state.pStatus1 = true
                 }
             }
         }
@@ -360,8 +352,9 @@ def arrSensorHandler(evt) {
                     pCount = pCount + 1
                 }
             }
-            if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
-            if(pCount >= theArrNum) state.pStatus = true       
+            
+            if(pCount >= theArrNum) state.pStatus1 = true
+            if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum} -- pStatus: ${state.pStatus1}"
         }
 
         if(useAdvancedArr) {
@@ -370,14 +363,14 @@ def arrSensorHandler(evt) {
                 if(ArrPresenceSensors2) {
                     ArrPresenceSensors2.each { it ->
                         if(it.currentValue("presence") == "present") {
-                            state.pStatus = true	
+                            state.pStatus1 = true	
                         }
                     }
                 }
                 if(ArrConPresenceSensors2) {
                     ArrConPresenceSensors2.each { it ->
                         if(it.currentValue("contact") == "open") {
-                            state.pStatus = true	
+                            state.pStatus1 = true	
                         }
                     }
                 }
@@ -399,15 +392,12 @@ def arrSensorHandler(evt) {
                         }
                     }
                 }
-                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
-                if(pCount2 >= theArrNum2) state.pStatus = true       
+                
+                if(pCount2 >= theArrNum2) state.pStatus1 = true
+                if(logEnable) log.debug "In arrSensorHandler - Adv Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum} -- pStatus: ${state.pStatus1}"
             }
         }
-
-        if(state.pStatus == true) {
-            if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelayArr} second delay"
-            runIn(theDelayArr, statusUpdateHandler)
-        }
+        if(logEnable) log.debug "----- In arrSensorHandler - Returns: ${state.pStatus1} -----"
     }
 }
 
@@ -416,8 +406,18 @@ def depSensorHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        if(evt) {
+            whoHappened = evt.displayName
+            whatHappened = evt.value
+        } else {
+            whoHappened = "NA"
+            whatHappened = "NA"
+        }
+        state.pStatus2 = false
         if(DepTriggerType == null || DepTriggerType == "") DepTriggerType = false
-        if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
+        if(logEnable) log.debug "----- In depSensorHandler (${state.version}) -----"
+        if(logEnable) log.debug "In depSensorHandler - DepTriggerType: ${DepTriggerType}"	
+        if(logEnable) log.debug "In arrSensorHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened}"	
 
         if(DepPresenceSensors) {
             depSensors = DepPresenceSensors.size()
@@ -449,27 +449,27 @@ def depSensorHandler(evt) {
             if(DepPresenceSensors) {
                 DepPresenceSensors.each { it ->
                     if(it.currentValue("presence") == "not present") {
-                        state.pStatus = false	
+                        state.pStatus2 = true	
                     }
                 }
             }
             if(DepConPresenceSensors) {
                 DepConPresenceSensors.each { it ->
                     if(it.currentValue("contact") == "closed") {
-                        state.pStatus = false	
+                        state.pStatus2 = true	
                     }
                 }
             }
             if(DepMotPresenceSensors) {
                 DepMotPresenceSensors.each { it ->
                     if(it.currentValue("motion") == "inactive") {
-                        state.pStatus = false	
+                        state.pStatus2 = true	
                     }
                 }
             }
             if(ipAddress) {
                 if(state.ipStatus == "not present") {
-                    state.pStatus = false
+                    state.pStatus2 = true
                 }
             }
         }
@@ -503,40 +503,54 @@ def depSensorHandler(evt) {
                 }
             }
             if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${dsCount} - notPresentCount: ${pCount} - theDepNum: ${theDepNum}"
-            if(pCount >= theDepNum) state.pStatus = false       
+            if(pCount >= theDepNum) state.pStatus2 = true       
         }
-
-        if(state.pStatus == false) {
-            if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelayDep} second delay"
-            runIn(theDelayDep, statusUpdateHandler)
-        }
+        if(logEnable) log.debug "----- In depSensorHandler - Returns: ${state.pStatus2} -----"
     }
 }
 
-def statusUpdateHandler() {
+def statusUpdateHandler(evt) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus: ${state.pStatus}"
-        if(state.pStatus == true) {
-            try {
-                def mySensorStatus = dataDevice.currentValue("switch")
-                if(logEnable) log.debug "In statusUpdateHandler - Sending ON for Present if needed (switch is ${mySensorStatus})"
-                if(mySensorStatus == "off" || mySensorStatus == null) dataDevice.on()
-            } catch (e) {
-                log.warn "In statusUpdateHandler - Something went wrong"
-            }
+        if(logEnable) log.debug "----- Starting Presence Plus - ${app.label} -----"
+        arrSensorHandler(evt)
+        depSensorHandler(evt)       
+        if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus1: ${state.pStatus1} - pStatus2: ${state.pStatus2}"
+        if(state.pStatus1 == true) {
+            theDelay = theDelayArr ?: 1
+            if(logEnable) log.debug "In arrSensorHandler - Arr - Will set status to ${state.pStatus1} after a ${theDelay} second delay"
+            runIn(theDelay, switchOn)
+        } else if(state.pStatus2 == true) {
+            theDelay = theDelayDep ?: 1
+            if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus2} after a ${theDelay} second delay"
+            runIn(theDelay, switchOff)
         } else {
-            try {
-                def mySensorStatus = dataDevice.currentValue("switch")
-                if(logEnable) log.debug "In statusUpdateHandler - Sending OFF for Not Present if needed (switch is ${mySensorStatus})"
-                if(mySensorStatus == "on" || mySensorStatus == null) dataDevice.off()
-            } catch (e) {
-                log.warn "In statusUpdateHandler - Something went wrong"
-            }    
+            if(logEnable) log.debug "In statusUpdateHandler - Neither Arr or Dep returned True. Please check your settings."
         }
+        if(logEnable) log.debug "----- Finisehd with Presence Plus - ${app.label} -----"
     }
+}
+
+def switchOn() {
+    try {
+        def mySensorStatus = dataDevice.currentValue("switch")
+        if(logEnable) log.debug "In switchOn - Sending ON for Present if needed (switch is ${mySensorStatus})"
+        if(mySensorStatus == "off" || mySensorStatus == null) dataDevice.on()
+    } catch (e) {
+        log.warn "In switchOn - pStatus1 - Something went wrong"
+    }
+}
+
+def switchOff() {
+    try {
+        def mySensorStatus = dataDevice.currentValue("switch")
+        if(logEnable) log.debug "In switchOff - Sending OFF for Not Present if needed (switch is ${mySensorStatus})"
+        if(mySensorStatus == "on" || mySensorStatus == null) dataDevice.off()
+    } catch (e) {
+        log.warn "In switchOff - pStatus2 - Something went wrong"
+    } 
 }
 
 def pingHandler() {
@@ -557,132 +571,9 @@ def pingHandler() {
         if(pingData.packetLoss < 100) {
             if(logEnable) log.debug "In pingHandler - Present"
             state.ipStatus = "present"
-            arrSensorHandler()
         } else {
             if(logEnable) log.debug "In pingHandler - Not Present"
             state.ipStatus = "not present"
-            depSensorHandler()
         }
     }
-}
-
-def createDataChildDevice() {    
-    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
-    statusMessageD = ""
-    if(!getChildDevice(dataName)) {
-        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
-        try {
-            addChildDevice("BPTWorld", "Presence Plus Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
-            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
-            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
-        } catch (e) { if(logEnable) log.debug "Presence Plus unable to create device - ${e}" }
-    } else {
-        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
-    }
-    return statusMessageD
-}
-
-// ********** Normal Stuff **********
-def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
-    app?.updateSetting("logEnable",[value:"false",type:"bool"])
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { state.eSwitch = true }
-            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
-        }
-    }
-}
-
-def setDefaults() {
-    if(state.pStatus == null) state.pStatus = false
-}
-
-def getImage(type) {					// Modified from @Stephack Code
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
-}
-
-def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
-}
-
-def display(data) {
-    if(data == null) data = ""
-    setVersion()
-    getHeaderAndFooter()
-    if(app.label) {
-        if(app.label.contains("(Paused)")) {
-            theName = app.label - " <span style='color:red'>(Paused)</span>"
-        } else {
-            theName = app.label
-        }
-    }
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
-        paragraph "${state.headerMessage}"
-        paragraph getFormat("line")
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-    }
-}
-
-def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
-        paragraph "${state.footerMessage}"
-	}       
-}
-
-def getHeaderAndFooter() {
-    timeSinceNewHeaders()   
-    if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-        def params = [
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-            requestContentType: "application/json",
-            contentType: "application/json",
-            timeout: 30
-        ]
-
-        try {
-            def result = null
-            httpGet(params) { resp ->
-                state.headerMessage = resp.data.headerMessage
-                state.footerMessage = resp.data.footerMessage
-            }
-        }
-        catch (e) { }
-    }
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
-}
-
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
-        prev = new Date()
-    } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
-    }
-    def now = new Date()
-    use(TimeCategory) {       
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.totalHours = (state.days * 24) + state.hours
-    }
-    state.previous = now
 }
