@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM2-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.5.6"
+			"version": "2.5.7"
 		}
 	],
 	"drivers" : [
