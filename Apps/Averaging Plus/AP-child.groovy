@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 08/03/21 - Fixed averaging issue
  *  1.1.3 - 07/21/21 - No longer rounding the original number
  *  1.1.2 - 12/04/20 - Added one decimal point to average
  *  1.1.1 - 07/18/20 - Added 'Off' options to setpoints, cosmetic changes
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -80,7 +81,7 @@ def pageConfig() {
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Average just about anything. Get notifications based on Setpoints."
-            paragraph "<b>How the Averaging works</b><br>- Select a bunch of devices that share an attribute (ie. temperature)<br>- Select the Attribute to average<br>- Select the time frame between averages<br><br>For each device that has the attribute, the value will be added to the total value, then divided by the number of devices that had the attribute."
+            paragraph "<b>How the Averaging works</b><br>- Select a bunch of devices that share an attribute (ie. temperature)<br>- Select the Attribute to average<br>- Select the time frame between averages<br><br>For each device that has the attribute, the value will be added to the total value, then divided by the number of devices that have the attribute."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
             paragraph "Each child app needs a virtual device to store the averaging results. This device can also be selected below in the Setpoint options to be used as a switch to control other things."
@@ -337,19 +338,23 @@ def averageHandler(evt) {
             state.low = false
             state.high = false
             floatingPoint = false
-
+            if(logEnable) log.debug "In averageHandler - Attribute: ${attrib}"
             theDevices.each { it ->
-                if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib}"
                 num1 = it.currentValue("${attrib}")
                 if(num1) {
                     num = num1.toDouble()
-                    if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib} - num: ${num}"
+                    if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
                     if(num) {
                         numOfDev += 1
                         totalNum += num
                     }
+                } else {
+                    if(num == null) num = "0"
+                    if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
+                    numOfDev += 1
                 }
             }
+            
             if(totalNum == 0 || totalNum == null) {
                 state.theAverage = 0
             } else {
@@ -378,79 +383,85 @@ def averageHandler(evt) {
             if(logEnable) log.debug "In averageHandler - Sending theData: ${theData}"
             dataDevice.virtualAverage(theData)
 
-            if(state.theAverage <= lowSetpoint) {
-                if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
-                state.low = true
-                state.nTimes = 0
-                
-                if(state.lTimes == null) state.lTimes = 0
-                state.lTimes = state.lTimes + 1
-                
-                if(spLowDevices) {
-                    spLowDevices.each {
-                        if(offORonLow) {
-                            it.on()
-                        } else {
+            if(lowSetpoint) {
+                if(state.theAverage <= lowSetpoint) {
+                    if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
+                    state.low = true
+                    state.nTimes = 0
+
+                    if(state.lTimes == null) state.lTimes = 0
+                    state.lTimes = state.lTimes + 1
+
+                    if(spLowDevices) {
+                        spLowDevices.each {
+                            if(offORonLow) {
+                                it.on()
+                            } else {
+                                it.off()
+                            }
+                        }
+                    }
+                    if(pushMessage && !state.sentPush) {
+                        state.theMsg = spLowMessage
+                        messageHandler()
+                        pushNow()
+                    }
+                    if(useSpeech && fmSpeaker) letsTalk()
+                }
+            }
+
+            if(highSetpoint) {
+                if(state.theAverage >= highSetpoint) {
+                    if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
+                    state.high = true
+                    state.nTimes = 0
+
+                    if(state.hTimes == null) state.hTimes = 0
+                    state.hTimes = state.hTimes + 1
+
+                    if(spHighDevices) {
+                        spHighDevices.each {
+                            if(offORonHigh) {
+                                it.on()
+                            } else {
+                                it.off()
+                            }
+                        }
+                    }
+                    if(pushMessage && !state.sentPush) {
+                        messageHandler = spHighMessage
+                        messageHandler()
+                        pushNow()
+                    }
+                    if(useSpeech && fmSpeaker) letsTalk()
+                }
+            }
+
+            if(highSetpoint && lowSetpoint) {
+                if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
+                    if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
+
+                    state.hTimes = 0
+                    state.lTimes = 0
+
+                    if(state.nTimes == null) state.nTimes = 0
+                    state.nTimes = state.nTimes + 1
+
+                    if(spHighDevices && highDeviceAutoOff && state.nTimes >= highTimesOff) {               
+                        spHighDevices.each {
                             it.off()
                         }
                     }
-                }
-                if(pushMessage && !state.sentPush) {
-                    state.theMsg = spLowMessage
-                    messageHandler()
-                    pushNow()
-                }
-                if(useSpeech && fmSpeaker) letsTalk()
-            }
 
-            if(state.theAverage >= highSetpoint) {
-                if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
-                state.high = true
-                state.nTimes = 0
-                
-                if(state.hTimes == null) state.hTimes = 0
-                state.hTimes = state.hTimes + 1
-                
-                if(spHighDevices) {
-                    spHighDevices.each {
-                        if(offORonHigh) {
-                            it.on()
-                        } else {
+                    if(spLowDevices && lowDeviceAutoOff && state.nTimes >= lowTimesOff) {                
+                        spLowDevices.each {
                             it.off()
                         }
                     }
-                }
-                if(pushMessage && !state.sentPush) {
-                    messageHandler = spHighMessage
-                    messageHandler()
-                    pushNow()
-                }
-                if(useSpeech && fmSpeaker) letsTalk()
+
+                    state.sentPush = false
+                } 
             }
-
-            if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
-                if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
-
-                state.hTimes = 0
-                state.lTimes = 0
-                
-                if(state.nTimes == null) state.nTimes = 0
-                state.nTimes = state.nTimes + 1
-
-                if(spHighDevices && highDeviceAutoOff && state.nTimes >= highTimesOff) {               
-                    spHighDevices.each {
-                        it.off()
-                    }
-                }
-
-                if(spLowDevices && lowDeviceAutoOff && state.nTimes >= lowTimesOff) {                
-                    spLowDevices.each {
-                        it.off()
-                    }
-                }
-
-                state.sentPush = false
-            }               
             if(logEnable) log.debug "     - - - - - End (Averaging) - - - - -     "
         }
     }
@@ -619,5 +630,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
