@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 08/20/21 - Added decimal option
  *  1.1.4 - 08/03/21 - Fixed averaging issue
  *  1.1.3 - 07/21/21 - No longer rounding the original number
  *  1.1.2 - 12/04/20 - Added one decimal point to average
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -118,6 +119,7 @@ def pageConfig() {
                 }
                 allAttrsa = allAttrs.unique().sort()
                 input "attrib", "enum", title: "Attribute to Average", required:true, multiple:false, submitOnChange:true, options:allAttrsa
+                input "decimals", "bool", title: "Use Decimal Points (off) or Round (On)", defaultValue:false, submitOnChange:true
             }
             if(theDevices && attrib) { 
                 match = false
@@ -362,6 +364,7 @@ def averageHandler(evt) {
                 ? (totalNum / numOfDev).toDouble().round(1)
                 : (totalNum / numOfDev).toDouble().round(1)
             }
+            if(decimals) state.theAverage = state.theAverage.toInteger()
             if(logEnable) log.debug "In averageHandler - theAverage: ${state.theAverage}"
 
             todaysHigh = dataDevice.currentValue("todaysHigh")
