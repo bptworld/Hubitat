@@ -41,7 +41,8 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
-* * 3.2.2 - 07/24/21 - More code optimization, Fix to BIControl
+*  3.2.3 - 08/21/21 - Added support for RM5, attempt to fix other issue
+*  3.2.2 - 07/24/21 - More code optimization, Fix to BIControl
 *  3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
 *  3.2.0 - 07/03/21 - Added BIControl - Enable/Disable Camera 
 *  ---
@@ -57,7 +58,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.2"
+    state.name = "Event Engine"; state.version = "3.2.3"
 }
 
 definition(
@@ -2131,25 +2132,46 @@ def pageConfig() {
 
             if(actionType.contains("aRule")) {
                 paragraph "<b>Rule Machine</b>"
-                def rules = RMUtils.getRuleList()
-                if(rules) {
-                    input "rmRule", "enum", title: "Select rules", required:false, multiple:true, options: rules, submitOnChange:true
-                    if(rmRule) {
-                        input "rmAction", "enum", title: "Action", required:false, multiple:false, options: [
-                            ["runRuleAct":"Run"],
-                            ["stopRuleAct":"Stop"],
-                            ["pauseRule":"Pause"],
-                            ["resumeRule":"Resume"],
-                            ["runRule":"Evaluate"],
-                            ["setRuleBooleanTrue":"Set Boolean True"],
-                            ["setRuleBooleanFalse":"Set Boolean False"]
-                        ]
+                input "rmRuleType", "bool", title: "Rule Type: Legacy Rules (off) or Rule 5.x and Over (on)", defaultValue:false, submitOnChange:true
+                if(rmRuleType) {
+                    def rules50 = RMUtils.getRuleList('5.0')
+                    if(rules50) {
+                        input "rmRule", "enum", title: "Select Rules 5.x", required:false, multiple:true, options: rules50, submitOnChange:true
+                        if(rmRule) {
+                            input "rmAction", "enum", title: "Action", required:false, multiple:false, options: [
+                                ["runRuleAct":"Run"],
+                                ["stopRuleAct":"Stop"],
+                                ["pauseRule":"Pause"],
+                                ["resumeRule":"Resume"],
+                                ["runRule":"Evaluate"],
+                                ["setRuleBooleanTrue":"Set Boolean True"],
+                                ["setRuleBooleanFalse":"Set Boolean False"]
+                            ], submitOnChange:true
+                        }
+                    } else {
+                        paragraph "No active Rule 5.x found."
                     }
                 } else {
-                    paragraph "No active rules found."
+                    def rules = RMUtils.getRuleList()
+                    if(rules) {
+                        input "rmRule", "enum", title: "Select Legacy Rules", required:false, multiple:true, options: rules, submitOnChange:true
+                        if(rmRule) {
+                            input "rmAction", "enum", title: "Action", required:false, multiple:false, options: [
+                                ["runRuleAct":"Run"],
+                                ["stopRuleAct":"Stop"],
+                                ["pauseRule":"Pause"],
+                                ["resumeRule":"Resume"],
+                                ["runRule":"Evaluate"],
+                                ["setRuleBooleanTrue":"Set Boolean True"],
+                                ["setRuleBooleanFalse":"Set Boolean False"]
+                            ], submitOnChange:true
+                        }
+                    } else {
+                        paragraph "No active Legacy Rules found."
+                    }
                 }
                 paragraph "<hr>"
-                theCogActions += "<b>-</b> Rule: ${rmRule} - Action: ${rmAction}<br>"
+                theCogActions += "<b>-</b> Rule Machine: ${rmRuleType} - ${rmRule} - Action: ${rmAction}<br>"
             } else {
                 app.removeSetting("rmRule")
             }
@@ -3938,8 +3960,12 @@ def hsmStatusHandler(data) {
 }
 
 def ruleMachineHandler() {
-    if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
-    RMUtils.sendAction(rmRule, rmAction, app.label)
+    if(logEnable) log.debug "In ruleMachineHandler - rmRuleType: ${rmRuleType} - Rule: ${rmRule} - Action: ${rmAction}"
+    if(rmRuleType) {
+        RMUtils.sendAction(rmRule, rmAction, app.label, '5.0')
+    } else {
+        RMUtils.sendAction(rmRule, rmAction, app.label)
+    }
 }
 
 // ***** Start Setpoint Handlers *****
@@ -6212,47 +6238,57 @@ def checkForHoliday() {
 // ***** End Calendarific *****
 
 def checkTransitionHandler() {
-    if(logEnable) log.debug "In checkTransitionHandler (${state.version})"
-    if(transitionType == "Device Attribute") {
-        if(attTransitionEvent) {
-            if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
-            state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-            if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-                if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-                state.transitionOK = true
-            } else {
-                if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-                state.previousAtt = state.currentAtt
-                state.transitionOK = false
+    if(logEnable) log.debug "In checkTransitionHandler (${state.version}) - transitionType: ${transitionType}"
+    if(triggerType) {
+        if(triggerType.contains("xTransition")) {
+            if(transitionType == "Device Attribute") {
+                if(attTransitionEvent) {
+                    if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
+                    state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
+                    if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+                    if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+                    if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                        if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+                        state.transitionOK = true
+                    } else {
+                        if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                        state.previousAtt = state.currentAtt
+                        state.transitionOK = false
+                    }
+                }
+            } else if(transitionType == "HSM Status") {
+                if(state.previousAtt == null) state.previousAtt = location.hsmStatus
+                state.currentAtt = location.hsmStatus
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+                if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                    if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+                    state.transitionOK = true
+                } else {
+                    if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                    state.previousAtt = state.currentAtt
+                    state.transitionOK = false
+                }      
+            } else if(transitionType == "Mode") {
+                if(state.previousAtt == null) state.previousAtt = location.mode
+                state.currentAtt = location.mode
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+                if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                    if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+                    state.transitionOK = true
+                } else {
+                    if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                    state.previousAtt = state.currentAtt
+                    state.transitionOK = false
+                }
             }
-        }
-    } else if(transitionType == "HSM Status") {
-        if(state.previousAtt == null) state.previousAtt = location.hsmStatus
-        state.currentAtt = location.hsmStatus
-        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-            state.transitionOK = true
         } else {
-            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-            state.previousAtt = state.currentAtt
-            state.transitionOK = false
-        }      
-    } else if(transitionType == "Mode") {
-        if(state.previousAtt == null) state.previousAtt = location.mode
-        state.currentAtt = location.mode
-        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-            state.transitionOK = true
-        } else {
-            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-            state.previousAtt = state.currentAtt
-            state.transitionOK = false
+            if(triggerAndOr) {
+                state.transitionOK = false
+            } else {
+                state.transitionOK = true
+            }
         }
     } else {
         if(triggerAndOr) {
@@ -6261,6 +6297,7 @@ def checkTransitionHandler() {
             state.transitionOK = true
         }
     }
+    if(logEnable) log.debug "In checkTransitionHandler - transitionOK: ${state.transitionOK}"
 }
 
 void getIcalDataHandler() {
