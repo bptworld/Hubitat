@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.4 - 08/22/21 - Lots of little changes mainly to logging and sunset/sunrise handlers
 *  3.2.3 - 08/21/21 - Added support for RM5, attempt to fix other issue
 *  3.2.2 - 07/24/21 - More code optimization, Fix to BIControl
 *  3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
@@ -58,7 +59,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.3"
+    state.name = "Event Engine"; state.version = "3.2.4"
 }
 
 definition(
@@ -426,10 +427,11 @@ def pageConfig() {
                     checkSunHandler()
                     input "sunsetSunriseMatchConditionOnly", "bool", defaultValue:false, title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     paragraph "<hr>"
-                    theCogTriggers += "<b>-</b> Sunset/Sunrise - FromSunriseToSunset: ${fromSun}, Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction} - just Condition: ${sunsetSunriseMatchConditionOnly}<br>"
                     if(fromSun) {
+                        theCogTriggers += "<b>-</b> Sunrise to Sunset - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Sunset Offset: ${offsetSunset} - BeforeAfter: ${setBeforeAfter} - with Restriction: ${timeBetweenSunRestriction} - just Condition: ${sunsetSunriseMatchConditionOnly}<br>"
                         theCogTriggers += "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise} - timeSunset: ${state.timeSunset}<br>"
                     } else {
+                        theCogTriggers += "<b>-</b> Sunset to Sunrise - Sunset Offset: ${offsetSunset} - BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise} - BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction} - just Condition: ${sunsetSunriseMatchConditionOnly}<br>"
                         theCogTriggers += "<b>-</b> After Offsets - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}<br>"
                     }
                 }
@@ -3828,10 +3830,10 @@ def deviceHandler(data) {
                 if(logEnable) log.debug "In deviceHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "switch") {
                     if(seType) {
-                        if(logEnable) log.trace "In deviceHandler - Switch - Only Physical"
+                        if(logEnable) log.debug "In deviceHandler - Switch - ONLY Physical"
                         if(state.whoText.contains("[physical]")) { deviceTrue1 = deviceTrue1 + 1 }
                     } else {
-                        if(logEnable) log.trace "In deviceHandler - Switch - Digital and Physical"
+                        if(logEnable) log.debug "In deviceHandler - Switch - Digital AND Physical"
                         deviceTrue1 = deviceTrue1 + 1
                     }  
                 } else {
@@ -3940,8 +3942,10 @@ def hsmAlertHandler(data) {
                 state.totalConditions = 1
             }
         }
+        if(logEnable) log.debug "In hsmAlertHandler - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+    } else {
+        if(logEnable) log.debug "In hsmAlertHandler - NOT being used."
     }
-    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus}"
 }
 
 def hsmStatusHandler(data) {
@@ -3955,8 +3959,10 @@ def hsmStatusHandler(data) {
                 state.totalConditions = 1
             }
         }
+    if(logEnable) log.debug "In hsmStatusHandler - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+    } else {
+        if(logEnable) log.debug "In hsmStatusHandler - NOT being used."
     }
-    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
 }
 
 def ruleMachineHandler() {
@@ -5189,9 +5195,8 @@ def currentDateTime() {
 }
 
 def checkSunHandler() {
-    if(logEnable) log.debug "In checkSunHandler (${state.version})"
     if(timeDaysType == null) timeDaysType = ""
-    if(logEnable) log.debug "In checkSunHandler - timeDaysType: ${timeDaysType}"
+    if(logEnable) log.debug "In checkSunHandler (${state.version}) - timeDaysType: ${timeDaysType}"
     if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
         if(offsetSunset == 99) {
             sunsetHigh = sunsetDelayHigh ?: 5
@@ -5201,9 +5206,9 @@ def checkSunHandler() {
             } catch(e) { 
                 // nothing
             }
-            state.theOffsetSunset = sunsetDelay ?: 1
+            theOffsetSunset = sunsetDelay ?: 1
         } else {
-            state.theOffsetSunset = offsetSunset ?: 1
+            theOffsetSunset = offsetSunset ?: 1
         }       
         if(offsetSunrise == 99) {
             sunsetHigh = sunsetDelayHigh ?: 5
@@ -5213,9 +5218,9 @@ def checkSunHandler() {
             } catch(e) { 
                 // nothing
             }
-            state.theOffsetSunrise = sunriseDelay ?: 1
+            theOffsetSunrise = sunriseDelay ?: 1
         } else {
-            state.theOffsetSunrise = offsetSunrise ?: 1
+            theOffsetSunrise = offsetSunrise ?: 1
         }       
         if(fromSun) {
             sunriseTime = getSunriseAndSunset().sunrise
@@ -5223,24 +5228,18 @@ def checkSunHandler() {
             sunriseTime = (getSunriseAndSunset().sunrise)+1
         }
         sunsetTime = getSunriseAndSunset().sunset
-        if(logEnable) log.debug "Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
+        oSunset = theOffsetSunset.toInteger()
+        oSunrise = theOffsetSunrise.toInteger()
+        if(logEnable) log.debug "In checkSunHandler - Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
 
         if(setBeforeAfter) {
-            oSunset = state.theOffsetSunset.toInteger()
-            state.timeSunset = new Date(sunsetTime.time + (oSunset * 60 * 1000))       // checkSunHandler
-            use( TimeCategory ) { nextSunsetOffset = sunsetTime + oSunset.minutes }    // checkTimeSun
+            use( TimeCategory ) { nextSunsetOffset = sunsetTime + oSunset.minutes }
         } else {
-            oSunset = state.theOffsetSunset.toInteger()
-            state.timeSunset = new Date(sunsetTime.time - (oSunset * 60 * 1000))
             use( TimeCategory ) { nextSunsetOffset = sunsetTime - oSunset.minutes }
         }    
-        if(riseBeforeAfter) {
-            oSunrise = state.theOffsetSunrise.toInteger()
-            state.timeSunrise = new Date(sunriseTime.time + (oSunrise * 60 * 1000))
+        if(riseBeforeAfter) {          
             use( TimeCategory ) { nextSunriseOffset = sunriseTime + oSunrise.minutes }
         } else {
-            oSunrise = state.theOffsetSunrise.toInteger()
-            state.timeSunrise = new Date(sunriseTime.time - (oSunrise * 60 * 1000))
             use( TimeCategory ) { nextSunriseOffset = sunriseTime - oSunrise.minutes }
         }
         if(triggerType.contains("tTimeDays")) {
@@ -5268,9 +5267,17 @@ def checkSunHandler() {
             state.timeBetweenSun = true
         }
         schedule("0 5 12 ? * * *", checkSunHandler)
+        if(state.timeBetweenSun) {
+            if(logEnable) log.debug "In checkSunHandler - timeBetweenSun PASSED - timeBetweenSun: ${state.timeBetweenSun}"
+        } else {
+            if(logEnable) log.warn "In checkSunHandler - timeBetweenSun FAILED - timeBetweenSun: ${state.timeBetweenSun}"
+        }
     } else {
         state.timeBetweenSun = true
+        if(logEnable) log.debug "In checkSunHandler - sunrise/sunset NOT being used - timeBetweenSun: ${state.timeBetweenSun}"
     }
+    state.timeSunset = nextSunsetOffset
+    state.timeSunrise = nextSunriseOffset
 }
 
 def runAtTime1() {
@@ -5350,7 +5357,11 @@ def dayOfTheWeekHandler() {
         if(logEnable) log.debug "In dayOfTheWeekHandler - Odd - nDay: ${nDay} - ${state.daysMatch} (${hmmm})"
     }
     if(state.daysMatch == null) state.daysMatch = true
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+    if(state.daysMatch) {
+        if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch PASSED - daysMatch: ${state.daysMatch}"
+    } else {
+        if(logEnable) log.warn "In dayOfTheWeekHandler - daysMatch FAILED - daysMatch: ${state.daysMatch}"
+    }
 }
 
 def modeHandler() {
@@ -5372,10 +5383,14 @@ def modeHandler() {
             }
         }
     } else {
-        if(logEnable) log.debug "In modeHandler - No Mode selected so modeMatch = true"
         state.modeMatch = true
+        if(logEnable) log.debug "In modeHandler - Mode NOT being used - modeMatch: ${state.modeMatch}"
     }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch}"
+    if(state.modeMatch) {
+        if(logEnable) log.debug "In modeHandler - modeMatch PASSED - modeMatch: ${state.modeMatch}"
+    } else {
+        if(logEnable) log.warn "In modeHandler - modeMatch FAILED - modeMatch: ${state.modeMatch}"
+    }
 }
 // *****  End Time Handlers *****
 
@@ -6297,7 +6312,11 @@ def checkTransitionHandler() {
             state.transitionOK = true
         }
     }
-    if(logEnable) log.debug "In checkTransitionHandler - transitionOK: ${state.transitionOK}"
+    if(state.transitionOK) {
+        if(logEnable) log.debug "In checkTransitionHandler - Transition PASSED - transitionOK: ${state.transitionOK}"
+    } else {
+        if(logEnable) log.warn "In checkTransitionHandler - Transition FAILED - transitionOK: ${state.transitionOK}"
+    }
 }
 
 void getIcalDataHandler() {
@@ -6738,7 +6757,12 @@ def checkingWhatToDo() {
         if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
     }
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${transitionOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
+        theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${transitionOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
+        if(theStatus.contains("true")) {
+            if(logEnable) log.debug "${theStatus}"
+        } else {
+            if(logEnable) log.warn "${theStatus}"
+        }
         if(state.timeOK) {
             if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK || state.securityOK) {
                 state.everythingOK = true
@@ -6751,9 +6775,15 @@ def checkingWhatToDo() {
             }
         } else {
             state.everythingOK = false
+            if(logEnable) log.warn "In checkingWhatToDo - USING OR - timeOK FAILED - everythingOK: ${state.everythingOK}"
         }
     } else {
-        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
+        theStatus = "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
+        if(theStatus.contains("false")) {
+            if(logEnable) log.warn "${theStatus}"
+        } else {
+            if(logEnable) log.debug "${theStatus}"
+        }
         if(state.timeOK) {
             if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK && state.securityOK) {
                 state.everythingOK = true
@@ -6766,22 +6796,28 @@ def checkingWhatToDo() {
             }
         } else {
             state.everythingOK = false
+            if(logEnable) log.warn "In checkingWhatToDo - USING AND - timeOK FAILED - everythingOK: ${state.everythingOK}"
         }
     }   
-    if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
+    theStatus = "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
+    if(theStatus.contains("false")) {
+            if(logEnable) log.warn "${theStatus}"
+        } else {
+            if(logEnable) log.debug "${theStatus}"
+        }
     if(state.everythingOK) {
         state.whatToDo = "run"
-        if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
+        if(logEnable) log.debug "In checkingWhatToDo - Run"
     } else {
         if(state.jumpToStop) {
             state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Using B - Stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Stop"
         } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingWhatToDo - Using C - Reverse"
+            if(logEnable) log.debug "In checkingWhatToDo - Reverse"
         } else {
             state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Using D - Stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Stop"
         }
     }   
     if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
