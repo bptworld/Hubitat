@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.5 - 08/22/21 - Change to transition handler
 *  3.2.4 - 08/22/21 - Lots of little changes mainly to logging and sunset/sunrise handlers
 *  3.2.3 - 08/21/21 - Added support for RM5, attempt to fix other issue
 *  3.2.2 - 07/24/21 - More code optimization, Fix to BIControl
@@ -59,7 +60,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.4"
+    state.name = "Event Engine"; state.version = "3.2.5"
 }
 
 definition(
@@ -3261,7 +3262,7 @@ def startTheProcess(evt) {
             if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running"
         }
     } else {
-        if(logEnable || shortLog) log.trace "Starting..."
+        if(logEnable || shortLog) log.debug "Starting..."
         if(atomicState.running == null) atomicState.running = "Stopped"
         if(atomicState.tryRunning == null) atomicState.tryRunning = 0
         checkEnableHandler()
@@ -3272,14 +3273,14 @@ def startTheProcess(evt) {
             if(atomicState.tryRunning > 2) {
                 atomicState.tryRunning = 0
                 atomicState.running = "Stopped"
-                if(logEnable || shortLog) log.trace "*** ${app.label} - Was already running, will run again next time ***"
+                if(logEnable || shortLog) log.debug "*** ${app.label} - Was already running, will run again next time ***"
             } else {
-                if(logEnable || shortLog) log.trace "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
+                if(logEnable || shortLog) log.debug "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
             }
         } else if(state.whatToDo == "stop") {
             atomicState.tryRunning = 0
             atomicState.running = "Stopped"
-            if(logEnable || shortLog) log.trace "*** whatToDo: ${state.whatToDo} ***"
+            if(logEnable || shortLog) log.debug "*** whatToDo: ${state.whatToDo} ***"
             state.whatToDo = ""
         } else if(actionType) {
             try {
@@ -3838,7 +3839,7 @@ def deviceHandler(data) {
                     }  
                 } else {
                     deviceTrue1 = deviceTrue1 + 1
-                    if(logEnable) log.trace "In deviceHandler - Adding to deviceTrue1: ${deviceTrue1}"
+                    if(logEnable) log.debug "In deviceHandler - Adding to deviceTrue1: ${deviceTrue1}"
                 }
             } else if(theValue == state.typeValue2) { 
                 if(logEnable) log.debug "In deviceHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
@@ -3854,24 +3855,24 @@ def deviceHandler(data) {
                                 }
                             }
                         } else {
-                            if(logEnable) log.trace "In deviceHandler - No user selected, no notifications necessary"
+                            if(logEnable) log.debug "In deviceHandler - No user selected, no notifications necessary"
                             deviceTrue2 = deviceTrue2 + 1
                         }
                     } else {
-                        if(logEnable) log.trace "In deviceHandler - Lock was manually unlocked, no notifications necessary"
+                        if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, no notifications necessary"
                         deviceTrue2 = deviceTrue2 + 1
                     }
                 } else if(state.eventType == "switch") {
                     if(seType) {
-                        if(logEnable) log.trace "In deviceHandler - Switch - Only Physical"
+                        if(logEnable) log.debug "In deviceHandler - Switch - Only Physical"
                         if(state.whoText.contains("[physical]")) { deviceTrue2 = deviceTrue2 + 1 }
                     } else {
-                        if(logEnable) log.trace "In deviceHandler - Switch - Digital and Physical"
+                        if(logEnable) log.debug "In deviceHandler - Switch - Digital and Physical"
                         deviceTrue2 = deviceTrue2 + 1
                     }  
                 } else {
                     deviceTrue2 = deviceTrue2 + 1
-                    if(logEnable) log.trace "In deviceHandler - Adding to deviceTrue2: ${deviceTrue2}"
+                    if(logEnable) log.debug "In deviceHandler - Adding to deviceTrue2: ${deviceTrue2}"
                 }
             } else {
                 if(state.eventType == "thermostatOperatingState") {
@@ -5725,7 +5726,7 @@ def sdPerModeHandler(data) {
         if(sdReverseTimeType == null) sdReverseTimeType = "false"
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
         theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
-        if(logEnable) log.trace "mode: ${theMode} - theValue: ${theValue}"
+        if(logEnable) log.debug "mode: ${theMode} - theValue: ${theValue}"
         state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
         if(logEnable) log.debug "In sdPerModeHandler - DELETE"
@@ -5767,7 +5768,7 @@ def sdPerModeHandler(data) {
             if(theTimeType == null) theTimeType = "false"
             dpm = theDevices.toString().replace("[","").replace("]","").replace(", ",";")
             theValue = "${dpm}:${theLevel}:${theTemp}:${theColor}:${theTime}:${theTimeType}"
-            if(logEnable) log.trace "Rebuilding: mode: ${tMode} - theValue: ${theValue}"
+            if(logEnable) log.debug "Rebuilding: mode: ${tMode} - theValue: ${theValue}"
             state.sdPerModeMap.put(tMode,theValue)
         }
     }
@@ -6254,6 +6255,7 @@ def checkForHoliday() {
 
 def checkTransitionHandler() {
     if(logEnable) log.debug "In checkTransitionHandler (${state.version}) - transitionType: ${transitionType}"
+    if(triggerAndOr == null) triggerAndOr = false
     if(triggerType) {
         if(triggerType.contains("xTransition")) {
             if(transitionType == "Device Attribute") {
@@ -6342,7 +6344,7 @@ void getIcalDataHandler() {
                     state.line = 0
                     if(logEnable) log.info "---------- ---------- ---------- ---------- ----------"
                     theData.eachLine {
-                        log.trace it
+                        log.debug it
                         if(state.line <= 10) {
                             if(it == "BEGIN:VEVENT" || state.within) {
                                 state.within = true
