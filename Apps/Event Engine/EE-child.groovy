@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.7 - 08/23/21 - More changes to checkSunHandler
 *  3.2.6 - 08/22/21 - Another change to transitions
 *  3.2.5 - 08/22/21 - Change to transition handler
 *  3.2.4 - 08/22/21 - Lots of little changes mainly to logging and sunset/sunrise handlers
@@ -61,7 +62,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.6"
+    state.name = "Event Engine"; state.version = "3.2.7"
 }
 
 definition(
@@ -5198,7 +5199,7 @@ def currentDateTime() {
 
 def checkSunHandler() {
     if(timeDaysType == null) timeDaysType = ""
-    if(logEnable) log.debug "In checkSunHandler (${state.version}) - timeDaysType: ${timeDaysType}"
+    if(logEnable) log.debug "********** In checkSunHandler (${state.version}) - timeDaysType: ${timeDaysType} - **********"
     if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
         if(offsetSunset == 99) {
             sunsetHigh = sunsetDelayHigh ?: 5
@@ -5232,8 +5233,10 @@ def checkSunHandler() {
         sunsetTime = getSunriseAndSunset().sunset
         oSunset = theOffsetSunset.toInteger()
         oSunrise = theOffsetSunrise.toInteger()
-        if(logEnable) log.debug "In checkSunHandler - Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
-
+        if(logEnable) {
+            log.debug "In checkSunHandler - Sunrise: ${sunriseTime} - Sunset: ${sunsetTime}"
+            log.debug "In checkSunHandler - oSunrise: ${oSunrise} - oSunset: ${oSunset}"
+        }
         if(setBeforeAfter) {
             use( TimeCategory ) { nextSunsetOffset = sunsetTime + oSunset.minutes }
         } else {
@@ -5244,13 +5247,16 @@ def checkSunHandler() {
         } else {
             use( TimeCategory ) { nextSunriseOffset = sunriseTime - oSunrise.minutes }
         }
+        cDate = new Date()
+        if(logEnable) log.debug "In checkSunHandler - NEW Sunrise: ${nextSunriseOffset} - NEW Sunset: ${nextSunsetOffset}"
+        if(logEnable) log.debug "In checkSunHandler - Date to Check: ${cDate}"
         if(triggerType.contains("tTimeDays")) {
-            if(fromSun) {    // Sunrise to Sunset
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunriseOffset: ${nextSunriseOffset} --- nextSunsetOffset: ${nextSunsetOffset}"
+            if(fromSun) {    // Sunrise to Sunset                
+                state.timeBetweenSun = timeOfDayIsBetween(nextSunriseOffset, nextSunsetOffset, cDate, location.timeZone)
+                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun}"
             } else {        // Sunset to Sunrise
-                state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, new Date(), location.timeZone)
-                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} - nextSunsetOffset: ${nextSunsetOffset} --- nextSunriseOffset: ${nextSunriseOffset}"
+                state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunriseOffset, cDate, location.timeZone)
+                if(logEnable) log.debug "In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun}"
             }
         }        
         if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
@@ -5280,6 +5286,7 @@ def checkSunHandler() {
     }
     state.timeSunset = nextSunsetOffset
     state.timeSunrise = nextSunriseOffset
+    if(logEnable) log.debug "********** In checkSunHandler - timeBetweenSun: ${state.timeBetweenSun} **********"
 }
 
 def runAtTime1() {
@@ -5460,7 +5467,7 @@ def setLevelandColorHandler() {
     if(state.oldMap == null) state.oldMap = [:]
     theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
     theMap = theSetOldMap.split(",")
-    if(logEnable) log.info "In setLevelandColorHandler - theMap: ${theMap}"
+    if(logEnable) log.debug "In setLevelandColorHandler - theMap: ${theMap}"
     
     if(state.fromWhere == "switchesPerMode") {
         if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - Working on: ${state.sPDM}"
