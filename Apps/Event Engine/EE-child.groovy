@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.6 - 08/22/21 - Another change to transitions
 *  3.2.5 - 08/22/21 - Change to transition handler
 *  3.2.4 - 08/22/21 - Lots of little changes mainly to logging and sunset/sunrise handlers
 *  3.2.3 - 08/21/21 - Added support for RM5, attempt to fix other issue
@@ -60,7 +61,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.5"
+    state.name = "Event Engine"; state.version = "3.2.6"
 }
 
 definition(
@@ -6255,42 +6256,14 @@ def checkForHoliday() {
 
 def checkTransitionHandler() {
     if(logEnable) log.debug "In checkTransitionHandler (${state.version}) - transitionType: ${transitionType}"
-    if(triggerAndOr == null) triggerAndOr = false
-    if(triggerType) {
-        if(triggerType.contains("xTransition")) {
-            if(transitionType == "Device Attribute") {
-                if(attTransitionEvent) {
-                    if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
-                    state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
-                    if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-                    if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-                    if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-                        if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-                        state.transitionOK = true
-                    } else {
-                        if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-                        state.previousAtt = state.currentAtt
-                        state.transitionOK = false
-                    }
-                }
-            } else if(transitionType == "HSM Status") {
-                if(state.previousAtt == null) state.previousAtt = location.hsmStatus
-                state.currentAtt = location.hsmStatus
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-                if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-                    if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-                    state.transitionOK = true
-                } else {
-                    if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-                    state.previousAtt = state.currentAtt
-                    state.transitionOK = false
-                }      
-            } else if(transitionType == "Mode") {
-                if(state.previousAtt == null) state.previousAtt = location.mode
-                state.currentAtt = location.mode
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+    if(triggerAndOr == null) app.updateSetting("triggerAndOr",[value:"false",type:"bool"])
+    if(transitionType) {
+        if(transitionType == "Device Attribute") {
+            if(attTransitionEvent) {
+                if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
+                state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
                 if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
                     if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
                     state.transitionOK = true
@@ -6300,11 +6273,31 @@ def checkTransitionHandler() {
                     state.transitionOK = false
                 }
             }
-        } else {
-            if(triggerAndOr) {
-                state.transitionOK = false
-            } else {
+        } else if(transitionType == "HSM Status") {
+            if(state.previousAtt == null) state.previousAtt = location.hsmStatus
+            state.currentAtt = location.hsmStatus
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+            if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
                 state.transitionOK = true
+            } else {
+                if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                state.previousAtt = state.currentAtt
+                state.transitionOK = false
+            }      
+        } else if(transitionType == "Mode") {
+            if(state.previousAtt == null) state.previousAtt = location.mode
+            state.currentAtt = location.mode
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+            if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+                if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+                state.transitionOK = true
+            } else {
+                if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+                state.previousAtt = state.currentAtt
+                state.transitionOK = false
             }
         }
     } else {
