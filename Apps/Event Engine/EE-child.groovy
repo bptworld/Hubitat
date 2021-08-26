@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.8 - 08/26/21 - Hey, lets make some changes to Transitions
 *  3.2.7 - 08/23/21 - More changes to checkSunHandler
 *  3.2.6 - 08/22/21 - Another change to transitions
 *  3.2.5 - 08/22/21 - Change to transition handler
@@ -62,7 +63,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.7"
+    state.name = "Event Engine"; state.version = "3.2.8"
 }
 
 definition(
@@ -6263,9 +6264,9 @@ def checkForHoliday() {
 
 def checkTransitionHandler() {
     if(logEnable) log.debug "In checkTransitionHandler (${state.version}) - transitionType: ${transitionType}"
-    if(triggerAndOr == null) app.updateSetting("triggerAndOr",[value:"false",type:"bool"])
-    if(transitionType) {
+    if(attTransitionEvent) {
         if(transitionType == "Device Attribute") {
+            if(logEnable) log.debug "In checkTransitionHandler - Device Attribute"
             if(attTransitionEvent) {
                 if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
                 state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
@@ -6281,6 +6282,7 @@ def checkTransitionHandler() {
                 }
             }
         } else if(transitionType == "HSM Status") {
+            if(logEnable) log.debug "In checkTransitionHandler - HSM Status"
             if(state.previousAtt == null) state.previousAtt = location.hsmStatus
             state.currentAtt = location.hsmStatus
             if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
@@ -6294,6 +6296,7 @@ def checkTransitionHandler() {
                 state.transitionOK = false
             }      
         } else if(transitionType == "Mode") {
+            if(logEnable) log.debug "In checkTransitionHandler - Mode"
             if(state.previousAtt == null) state.previousAtt = location.mode
             state.currentAtt = location.mode
             if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
@@ -6306,8 +6309,16 @@ def checkTransitionHandler() {
                 state.previousAtt = state.currentAtt
                 state.transitionOK = false
             }
+        } else {
+            if(logEnable) log.debug "In checkTransitionHandler - No transitionType Matched - triggerAndOr: ${triggerAndOr}"
+            if(triggerAndOr) {
+                state.transitionOK = false
+            } else {
+                state.transitionOK = true
+            }
         }
     } else {
+        if(logEnable) log.debug "In checkTransitionHandler - NOT using transitions - triggerAndOr: ${triggerAndOr}"
         if(triggerAndOr) {
             state.transitionOK = false
         } else {
