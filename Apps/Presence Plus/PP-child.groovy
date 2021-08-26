@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 08/26/21 - Adjustments
  *  1.1.2 - 08/05/21 - More changes
  *  1.1.1 - 08/03/21 - Many changes
  *  1.1.0 - 06/24/21 - Added IP Ping option, Added Motion to options, Reversed how Contacts work, upgraded device creation and logging options
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -104,7 +105,6 @@ def pageConfig() {
             if(location.hub.firmwareVersionString > "2.2.6.140") {
                 input "ipAddress", "text", title: "Enter in IP Addresses", required:false
                 input "numPings", "number", title: "Number of Ping attempts (1 to 5)", required:false, range: '1..5'
-                input "pingEvery", "enum", title: "Ping every X minutes", description: "pingEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
             } else {
                 paragraph "Ping Options are only available for hub model C-7 running version 2.2.6.140 or above."
             }
@@ -213,7 +213,7 @@ def initialize() {
         
         if(ArrConPresenceSensors) subscribe(ArrConPresenceSensors, "contact", statusUpdateHandler)        
         if(DepConPresenceSensors) subscribe(DepConPresenceSensors, "contact", statusUpdateHandler)
-        if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion", statusUpdateHandler)
+        if(ArrMotionPresenceSensors) subscribe(ArrMotionPresenceSensors, "motion", statusUpdateHandler)
         if(DepMotionPresenceSensors) subscribe(DepMotionPresenceSensors, "motion", statusUpdateHandler)
 
         if(runEvery == "Every 1 Minute") runEvery1Minute(statusUpdateHandler)
@@ -223,15 +223,6 @@ def initialize() {
         if(runEvery == "Every 30 Minutes") runEvery30Minutes(statusUpdateHandler)
         if(runEvery == "Every 1 Hour") runEvery1Hour(statusUpdateHandler)
         if(runEvery == "Every 3 Hours") runEvery3Hours(statusUpdateHandler)
-        
-        if(pingEvery == "Every 1 Minute") runEvery1Minute(pingHandler)
-        if(pingEvery == "Every 5 Minutes") runEvery5Minutes(pingHandler)
-        if(pingEvery == "Every 10 Minutes") runEvery10Minutes(pingHandler)
-        if(pingEvery == "Every 15 Minutes") runEvery15Minutes(pingHandler)
-        if(pingEvery == "Every 30 Minutes") runEvery30Minutes(pingHandler)
-        if(pingEvery == "Every 1 Hour") runEvery1Hour(pingHandler)
-        if(pingEvery == "Every 3 Hours") runEvery3Hours(pingHandler)
-        if(ipAddress) pingHandler()
     }
 }
 
@@ -518,6 +509,7 @@ def statusUpdateHandler(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "----- Starting Presence Plus - ${app.label} -----"
+        pingHandler()
         arrSensorHandler(evt)
         depSensorHandler(evt)       
         if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus1: ${state.pStatus1} - pStatus2: ${state.pStatus2}"
@@ -567,27 +559,31 @@ def switchOff() {
 }
 
 def pingHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In pingHandler (${state.version}) - firmwareVersion: $location.hub.firmwareVersionString (Needs to be above 2.2.6.140)"
-        if(logEnable) log.debug "In pingHandler - Trying: ${ipAddress}"
-        hubitat.helper.NetworkUtils.PingData pingData = hubitat.helper.NetworkUtils.ping(ipAddress, numPings.toInteger())
-        int pTran = pingData.packetsTransmitted.toInteger()
-        if (pTran == 0){ // 2.2.7.121 bug returns all zeroes on not found per @thebearmay
-            pingData.packetsTransmitted = numPings
-            pingData.packetLoss = 100
-        }
-        if(logEnable) log.debug "In pingHandler - Pinging $ipAddress - Transmitted: ${pingData.packetsTransmitted}, Received: ${pingData.packetsReceived}, %Lost: ${pingData.packetLoss}"
-
-        if(pingData.packetLoss < 100) {
-            if(logEnable) log.debug "In pingHandler - Present"
-            state.ipStatus = "present"
+    if(ipAddress) {
+        checkEnableHandler()
+        if(pauseApp || state.eSwitch) {
+            log.info "${app.label} is Paused or Disabled"
         } else {
-            if(logEnable) log.debug "In pingHandler - Not Present"
-            state.ipStatus = "not present"
+            if(logEnable) log.debug "In pingHandler (${state.version}) - firmwareVersion: $location.hub.firmwareVersionString (Needs to be above 2.2.6.140)"
+            if(logEnable) log.debug "In pingHandler - Trying: ${ipAddress}"
+            hubitat.helper.NetworkUtils.PingData pingData = hubitat.helper.NetworkUtils.ping(ipAddress, numPings.toInteger())
+            int pTran = pingData.packetsTransmitted.toInteger()
+            if (pTran == 0){ // 2.2.7.121 bug returns all zeroes on not found per @thebearmay
+                pingData.packetsTransmitted = numPings
+                pingData.packetLoss = 100
+            }
+            if(logEnable) log.debug "In pingHandler - Pinging $ipAddress - Transmitted: ${pingData.packetsTransmitted}, Received: ${pingData.packetsReceived}, %Lost: ${pingData.packetLoss}"
+
+            if(pingData.packetLoss < 100) {
+                if(logEnable) log.debug "In pingHandler - Present"
+                state.ipStatus = "present"
+            } else {
+                if(logEnable) log.debug "In pingHandler - Not Present"
+                state.ipStatus = "not present"
+            }
         }
+    } else {
+        if(logEnable) log.debug "In pingHandler - Ping not used."
     }
 }
 
