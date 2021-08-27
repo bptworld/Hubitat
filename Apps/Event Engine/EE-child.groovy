@@ -41,6 +41,7 @@
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
 *
+*  3.2.9 - 08/26/21 - Changes to the whatToDo logic
 *  3.2.8 - 08/26/21 - Hey, lets make some changes to Transitions
 *  3.2.7 - 08/23/21 - More changes to checkSunHandler
 *  3.2.6 - 08/22/21 - Another change to transitions
@@ -63,7 +64,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.8"
+    state.name = "Event Engine"; state.version = "3.2.9"
 }
 
 definition(
@@ -2895,7 +2896,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a break down on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
-            paragraph "<b>Event Engine Cog (${state.version}) - ${app.label}</b>"
+            paragraph "<b>Event Engine Cog (${state.version}) - ${app.label} (${app.id})</b>"
             if(longDescription) paragraph "<b>Description:</b> ${longDescription}<br>"
             if(theCogTriggers) paragraph theCogTriggers.replaceAll("null","NA")
             if(theCogActions) paragraph theCogActions.replaceAll("null","NA")
@@ -3378,9 +3379,15 @@ def startTheProcess(evt) {
                         if(keypadEvent) { 
                             securityKeypadHandler(evt)
                         } else {
-                            state.securityOK = true
+                            if(logEnable) log.debug "In startTheProcess - NOT using Security Keypad - Setting value based on triggerAndOr: ${triggerAndOr}"
+                            if(triggerAndOr) {
+                                state.securityOK = false
+                            } else {
+                                state.securityOK = true
+                            }
                         }
                         if(!state.isThereSPDevices) {
+                            if(logEnable) log.debug "In startTheProcess - NOT using Setpoint Devices - Setting value based on triggerAndOr: ${triggerAndOr}"
                             if(triggerAndOr) {
                                 state.setpointOK = false
                             } else {
@@ -3390,6 +3397,16 @@ def startTheProcess(evt) {
                             state.setpointLowOK = "yes"
                             state.setpointBetweenOK = "yes"
                         }
+                        if(attTransitionEvent) {
+                            checkTransitionHandler()
+                        } else {
+                            if(logEnable) log.debug "In startTheProcess - NOT using transitions - Setting value based on triggerAndOr: ${triggerAndOr}"
+                            if(triggerAndOr) {
+                                state.transitionOK = false
+                            } else {
+                                state.transitionOK = true
+                            }
+                        }  
                         if(deviceORsetpoint) {
                             if(customEvent) { customSetpointHandler() }
                         } else {
@@ -3401,8 +3418,7 @@ def startTheProcess(evt) {
                             if(globalVariableEvent) { globalVariablesTextHandler() }
                         }               
                         if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
-                        checkTransitionHandler()
-                        
+                                             
                         checkingWhatToDo()     // Putting it all together!       
                     }
                 }
@@ -3633,6 +3649,85 @@ def startTheProcess(evt) {
             if(timeDaysType.contains("tHoliday")) { unschedule(startTheProcess) }
         }
     }
+}
+
+def checkingWhatToDo() {
+    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
+    state.jumpToStop = false
+    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
+        state.timeOK = true
+    } else {
+        state.timeOK = false
+        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
+        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
+        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
+        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
+    }
+    if(triggerAndOr) {
+        theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - securityOK: ${state.securityOK}"
+        if(theStatus.contains("true")) {
+            if(logEnable) log.debug "${theStatus}"
+        } else {
+            if(logEnable) log.warn "${theStatus}"
+        }
+        if(state.timeOK) {
+            if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK || state.securityOK) {
+                state.everythingOK = true
+            } else {
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
+            }
+        } else {
+            state.everythingOK = false
+            if(logEnable) log.warn "In checkingWhatToDo - USING OR - timeOK FAILED - everythingOK: ${state.everythingOK}"
+        }
+    } else {
+        theStatus = "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - securityOK: ${state.securityOK}"
+        if(theStatus.contains("false")) {
+            if(logEnable) log.warn "${theStatus}"
+        } else {
+            if(logEnable) log.debug "${theStatus}"
+        }
+        if(state.timeOK) {
+            if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK && state.securityOK) {
+                state.everythingOK = true
+            } else {
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
+            }
+        } else {
+            state.everythingOK = false
+            if(logEnable) log.warn "In checkingWhatToDo - USING AND - timeOK FAILED - everythingOK: ${state.everythingOK}"
+        }
+    }   
+    theStatus = "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
+    if(theStatus.contains("false")) {
+            if(logEnable) log.warn "${theStatus}"
+        } else {
+            if(logEnable) log.debug "${theStatus}"
+        }
+    if(state.everythingOK) {
+        state.whatToDo = "run"
+        if(logEnable) log.debug "In checkingWhatToDo - Run"
+    } else {
+        if(state.jumpToStop) {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Stop"
+        } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+            state.whatToDo = "reverse"
+            if(logEnable) log.debug "In checkingWhatToDo - Reverse"
+        } else {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Stop"
+        }
+    }   
+    if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
 }
 
 def resetStatesHandler() {
@@ -6264,29 +6359,13 @@ def checkForHoliday() {
 
 def checkTransitionHandler() {
     if(logEnable) log.debug "In checkTransitionHandler (${state.version}) - transitionType: ${transitionType}"
-    if(attTransitionEvent) {
-        if(transitionType == "Device Attribute") {
-            if(logEnable) log.debug "In checkTransitionHandler - Device Attribute"
-            if(attTransitionEvent) {
-                if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
-                state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-                if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-                if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-                    if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-                    state.transitionOK = true
-                } else {
-                    if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-                    state.previousAtt = state.currentAtt
-                    state.transitionOK = false
-                }
-            }
-        } else if(transitionType == "HSM Status") {
-            if(logEnable) log.debug "In checkTransitionHandler - HSM Status"
-            if(state.previousAtt == null) state.previousAtt = location.hsmStatus
-            state.currentAtt = location.hsmStatus
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+    if(transitionType == "Device Attribute") {
+        if(logEnable) log.debug "In checkTransitionHandler - Device Attribute"
+        if(attTransitionEvent) {
+            if(state.previousAtt == null) state.previousAtt = attTransitionEvent.currentValue(attTransitionAtt)
+            state.currentAtt = attTransitionEvent.currentValue(attTransitionAtt)
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Att: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Att: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
             if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
                 if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
                 state.transitionOK = true
@@ -6294,31 +6373,38 @@ def checkTransitionHandler() {
                 if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
                 state.previousAtt = state.currentAtt
                 state.transitionOK = false
-            }      
-        } else if(transitionType == "Mode") {
-            if(logEnable) log.debug "In checkTransitionHandler - Mode"
-            if(state.previousAtt == null) state.previousAtt = location.mode
-            state.currentAtt = location.mode
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
-            if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
-            if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
-                if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
-                state.transitionOK = true
-            } else {
-                if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
-                state.previousAtt = state.currentAtt
-                state.transitionOK = false
-            }
-        } else {
-            if(logEnable) log.debug "In checkTransitionHandler - No transitionType Matched - triggerAndOr: ${triggerAndOr}"
-            if(triggerAndOr) {
-                state.transitionOK = false
-            } else {
-                state.transitionOK = true
             }
         }
+    } else if(transitionType == "HSM Status") {
+        if(logEnable) log.debug "In checkTransitionHandler - HSM Status"
+        if(state.previousAtt == null) state.previousAtt = location.hsmStatus
+        state.currentAtt = location.hsmStatus
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous HSM Status: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current HSM Status: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+            state.transitionOK = true
+        } else {
+            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+            state.previousAtt = state.currentAtt
+            state.transitionOK = false
+        }      
+    } else if(transitionType == "Mode") {
+        if(logEnable) log.debug "In checkTransitionHandler - Mode"
+        if(state.previousAtt == null) state.previousAtt = location.mode
+        state.currentAtt = location.mode
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Previous Mode: ${state.previousAtt} to condition Att 1: ${atAttribute1}"
+        if(logEnable) log.debug "In checkTransitionHandler - Comparing Current Mode: ${state.currentAtt} to condition Att 2: ${atAttribute2}"
+        if(state.previousAtt == atAttribute1 && state.currentAtt == atAttribute2) {
+            if(logEnable) log.debug "In checkTransitionHandler - We have a MATCH!"
+            state.transitionOK = true
+        } else {
+            if(logEnable) log.debug "In checkTransitionHandler - Transition does not match."
+            state.previousAtt = state.currentAtt
+            state.transitionOK = false
+        }
     } else {
-        if(logEnable) log.debug "In checkTransitionHandler - NOT using transitions - triggerAndOr: ${triggerAndOr}"
+        if(logEnable) log.debug "In checkTransitionHandler - No transitionType Matched - triggerAndOr: ${triggerAndOr}"
         if(triggerAndOr) {
             state.transitionOK = false
         } else {
@@ -6755,85 +6841,6 @@ def securityKeypadHandler(evt) {
         }
     }
     if(logEnable) log.debug "In securityKeypadHandler - securityOK: ${state.securityOK}"
-}
-
-def checkingWhatToDo() {
-    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
-    state.jumpToStop = false
-    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
-        state.timeOK = true
-    } else {
-        state.timeOK = false
-        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
-        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
-        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
-        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
-    }
-    if(triggerAndOr) {
-        theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${transitionOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
-        if(theStatus.contains("true")) {
-            if(logEnable) log.debug "${theStatus}"
-        } else {
-            if(logEnable) log.warn "${theStatus}"
-        }
-        if(state.timeOK) {
-            if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK || state.securityOK) {
-                state.everythingOK = true
-            } else {
-                if(state.totalMatchHelper >= 1) {
-                    state.everythingOK = true
-                } else {
-                    state.everythingOK = false
-                }
-            }
-        } else {
-            state.everythingOK = false
-            if(logEnable) log.warn "In checkingWhatToDo - USING OR - timeOK FAILED - everythingOK: ${state.everythingOK}"
-        }
-    } else {
-        theStatus = "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK} - securityOK: ${state.securityOK}"
-        if(theStatus.contains("false")) {
-            if(logEnable) log.warn "${theStatus}"
-        } else {
-            if(logEnable) log.debug "${theStatus}"
-        }
-        if(state.timeOK) {
-            if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK && state.securityOK) {
-                state.everythingOK = true
-            } else {
-                if(state.totalMatchHelper >= 1) {
-                    state.everythingOK = true
-                } else {
-                    state.everythingOK = false
-                }
-            }
-        } else {
-            state.everythingOK = false
-            if(logEnable) log.warn "In checkingWhatToDo - USING AND - timeOK FAILED - everythingOK: ${state.everythingOK}"
-        }
-    }   
-    theStatus = "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
-    if(theStatus.contains("false")) {
-            if(logEnable) log.warn "${theStatus}"
-        } else {
-            if(logEnable) log.debug "${theStatus}"
-        }
-    if(state.everythingOK) {
-        state.whatToDo = "run"
-        if(logEnable) log.debug "In checkingWhatToDo - Run"
-    } else {
-        if(state.jumpToStop) {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Stop"
-        } else if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-            state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingWhatToDo - Reverse"
-        } else {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingWhatToDo - Stop"
-        }
-    }   
-    if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
 }
 
 // ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
