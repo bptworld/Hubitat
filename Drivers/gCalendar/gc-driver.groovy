@@ -38,6 +38,8 @@
  *  Original concept by @TechMedX
  *
  *  Changes:
+ *
+ *  1.0.2 - 09/05/21 - Added urlSize Attribute, added additional language for 255 character limit.
  *  1.0.1 - 03/01/21 - Fixed a typo
  *  1.0.0 - 02/28/21 - Initial release
 */
@@ -47,13 +49,18 @@ metadata {
         capability "Actuator"
         attribute "bpt-gCal", "text"
         attribute "lastUpdated", "text"
+        attribute "urlSize", "text"
         command "refresh"
     }
 }
 
 preferences {
     input title:"<b>Google Calendar Tile</b>", description:"Note: Calendar will be updated once every hour or when 'Refresh' button is pushed.<br><br><b>Setup:</b><br>1) Go to your Google Calendar<br>2) For the calendar you want to display, click Settings<br>3) Scroll down until you see the Embed Code<br>4) Copy that code and paste it into URL field here<br>5) Press 'Save Preferences'", type:"paragraph", element:"paragraph"
-    input "gCal", "text", title: "Google Calendar URL",  required: true
+    input "gCal", "text", title: "Google Calendar URL (URL must be less than 256 characters or it won't work. See urlSize in Attributes.)", required:true, submitOnChange:true
+    if(gCal) {
+        theCount = gCal.size()
+        sendEvent(name: "urlSize", value: theCount)
+    }
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false, submitOnChange: true
     input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"], defaultValue: "1 Hour"
 }
