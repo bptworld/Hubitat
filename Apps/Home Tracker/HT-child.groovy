@@ -8,7 +8,7 @@
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.2 - 09/10/21 - Adjustments to timeDiff
  *  2.4.1 - 01/01/21 - Adjustment to disable switch
  *  2.4.0 - 08/02/20 - Cosmetic changes
  *  ---
@@ -47,7 +48,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.1"
+	state.version = "2.4.2"
 }
 
 definition(
@@ -424,8 +425,6 @@ def presenceSensorHandler(evt){
                 if(logEnable) log.debug " --------------------  presenceSensorHandler - sensor ${x}  --------------------"
                 pSensor = parent.presenceSensors[x].currentValue("presence")           
                 getTimeDiff(x)
-                timeDiff = Math.round(timeDiffSecs/60)    // Minutes
-
                 name = "sensor" + x + "Name"
                 tempName = theGvDevice.currentValue("${name}")
                 tempNames = tempName.split(";")
@@ -449,8 +448,8 @@ def presenceSensorHandler(evt){
 
                 if(pSensor == "present") {
                     if(logEnable) log.debug "In presenceSensorHandler (${x}) - Working On: ${parent.presenceSensors[x]} - fName: ${fName} - pSensor: ${pSensor} - status: ${status[1]} - TtimeDiffSecs: ${timeDiffSecs} - timeDiff: ${timeDiff}"
-                    if(timeDiffSecs < 20) {
-                        if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${timeDiff}"
+                    if(state.timeDiff < 20) {
+                        if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHome) {
                             flashData = "Preset::${flashOnHomePreset}"
                             theFlasherDevice.sendPreset(flashData)
@@ -465,24 +464,24 @@ def presenceSensorHandler(evt){
                         }
                         globalStatus = "${x};justArrived"
                     } else {
-                        if(timeDiff < timeHome) { 
+                        if(state.timeDiff < timeHome) { 
                             if(status[1] == "justArrived") { 
-                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${state.timeDiff}"
                                 addNameToPresenceMap(fName)
                             } else {
                                 if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
                             }
                         } else {
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${state.timeDiff}). No home announcements needed."
                         }
                         globalStatus = "${x};beenHome"
                     }
                 }
 
                 if(pSensor == "not present") {
-                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Time Diff: ${timeDiff} - pSensor: ${pSensor}"            
-                    if(timeDiff < 20) {
-                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${timeDiff}"   
+                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Time Diff: ${state.timeDiff} - pSensor: ${pSensor}"            
+                    if(state.timeDiff < 20) {
+                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${state.timeDiff}"   
                         if(useTheFlasher && flashOnDep) {
                             flashData = "Preset::${flashOnDepPreset}"
                             theFlasherDevice.sendPreset(flashData)
@@ -501,7 +500,7 @@ def presenceSensorHandler(evt){
                             runIn(120, messageDeparted)
                         }
                     } else {
-                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Gone too long (${timeDiff}). No away announcements needed."
+                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Gone too long (${state.timeDiff}). No away announcements needed."
                     }  
                     globalStatus = "${x};notHome"
                 }
@@ -557,8 +556,6 @@ def lockPresenceHandler(evt){
                 if(logEnable) log.trace " --------------------  lockPresenceHandler - sensor ${x}  --------------------"
                 state.lock = parent.locks[x].currentValue("lock")
                 getTimeDiff(x)
-                timeDiff = Math.round(timeDiffSecs/60)    // Minutes
-
                 name = "lock" + x + "Name"
                 tempName = theGvDevice.currentValue("${name}")
                 tempNames = tempName.split(";")
@@ -581,8 +578,8 @@ def lockPresenceHandler(evt){
 
                 if(state.lock == "unlocked") {            
                     if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 2 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock} - status: ${status[1]}"
-                    if(timeDiffSecs < 20) {
-                        if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${timeDiff}"
+                    if(state.timeDiff < 20) {
+                        if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHome) {
                             flashData = "Preset::${flashOnHomePreset}"
                             theFlasherDevice.sendPreset(flashData)
@@ -597,15 +594,15 @@ def lockPresenceHandler(evt){
                         }
                         globalStatus = "${x};justArrived"
                     } else {
-                        if(timeDiff < timeHome) { 
+                        if(state.timeDiff < timeHome) { 
                             if(status[1] == "justArrived") { 
-                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${state.timeDiff}"
                                 addNameToPresenceMap(fName)
                             } else {
                                 if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
                             }
                         } else {
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${state.timeDiff}). No home announcements needed."
                         }
                         globalStatus = "${x};beenHome"
                     }
@@ -688,21 +685,15 @@ def motionSensorHandler(evt) {
 
 def getTimeDiff(x) {
     if(logEnable) log.debug "In getTimeDiff (${state.version}) - (${x})"
-    lastActivity = parent.presenceSensors[x].getLastActivity()
-    
-    long timeDiff
-   	def now = new Date()
+    lastActivity = parent.presenceSensors[x].getLastActivity()    
+    def now = new Date()
     def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
-
-    long unxNow = now.getTime()
-    long unxPrev = prev.getTime()
-    unxNow = unxNow/1000
-    unxPrev = unxPrev/1000
-    timeDiffSecs = Math.abs(unxNow-unxPrev)         // Seconds
-    timeDiff = Math.round(timeDiffSecs/60)    // Minutes
-    
-    if(logEnable) log.debug "In getTimeDiff - ${x} - timeDiff: ${timeDiff} - timeDiffSecs: ${timeDiffSecs} - lastActivity: ${lastActivity}"
-    return timeDiffSecs
+    if(logEnable) log.debug "In getTimeDiff - ${x} - now: ${now} - prev: ${prev}"    
+    use(groovy.time.TimeCategory) {
+        def theTime = now - prev
+        state.timeDiff = Math.abs(theTime.minutes)
+        if(logEnable) log.debug "*********** - In getTimeDiff - ${x} - timeDiff: ${state.timeDiff} - ***********"
+    }
 }
 
 def messageHomeNow() {
