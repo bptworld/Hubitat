@@ -40,17 +40,10 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 * * - Working on Keypad
+* * - Screwed up switches per mode with 3.3.0, need to fix
 *
-*  3.2.9 - 08/26/21 - Changes to the whatToDo logic
-*  3.2.8 - 08/26/21 - Hey, lets make some changes to Transitions
-*  3.2.7 - 08/23/21 - More changes to checkSunHandler
-*  3.2.6 - 08/22/21 - Another change to transitions
-*  3.2.5 - 08/22/21 - Change to transition handler
-*  3.2.4 - 08/22/21 - Lots of little changes mainly to logging and sunset/sunrise handlers
-*  3.2.3 - 08/21/21 - Added support for RM5, attempt to fix other issue
-*  3.2.2 - 07/24/21 - More code optimization, Fix to BIControl
-*  3.2.1 - 07/23/21 - Lots of behind the scene changes (less code!), Added Event Watchdog intergration. Added Switch Syncing
-*  3.2.0 - 07/03/21 - Added BIControl - Enable/Disable Camera 
+*  3.3.1 - 09/14/21 - Adjustment to BI Camera_Trigger
+*  3.3.0 - 09/02/21 - Added IP Ping condition, Changes to switchesOnReverseActionHandler / switchesOffReverseActionHandler
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -64,7 +57,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.2.9"
+    state.name = "Event Engine"; state.version = "3.3.1"
 }
 
 definition(
@@ -161,6 +154,7 @@ def pageConfig() {
                 ["xHubCheck":"Hub Check Options"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
+                ["xIPPing":"IP Ping"],
                 ["xLock":"Locks"],
                 ["xMotion":"Motion Sensors"],
                 ["xPower":"Power Setpoint"],
@@ -1163,6 +1157,24 @@ def pageConfig() {
                 app.removeSetting("setIEPointLow")
             }
 // -----------
+            if(triggerType.contains("xIPPing")) {
+                paragraph "<b>IP Ping</b>"
+                if(location.hub.firmwareVersionString > "2.2.6.140") {
+                    input "ipAddress", "text", title :"URL (ie. 192.168.68.5", required: true
+                    input "numPings", "number", title: "Number of Ping attempts per trigger (1 to 5)", required:true, range: '1..5'
+                    input "timeToPing", "enum", title: "Time between ping events (minutes)",  options: ["1","5","10","15","30", "60"], required:true, Multiple:false, submitOnChange:true
+                    paragraph "<small>* Minimum recommended interval is 5 minutes.</small>"
+                    if(timeToPing == "1") paragraph "<b>1 minute interval is not recommended and might slow down your hub.</b>"
+                    theCogTriggers += "<b>-</b> By IP Ping: ${ipAddress} - num of Pings: ${numPings} - time To Ping: ${timeToPing}<br>"
+                    paragraph "<hr>"
+                } else {
+                    paragraph "Ping Options are only available for hub model C-7 running version 2.2.6.140 or above."
+                }
+            } else {
+                app.removeSetting("ipAddress")
+                app.removeSetting("timeToPing")
+            }
+// -----------            
             if(triggerType.contains("xLock")) {
                 paragraph "<b>Lock</b>"
                 input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:true, submitOnChange:true
@@ -1956,6 +1968,7 @@ def pageConfig() {
                     } else {
                     }
                     if(biControl == "Camera_Trigger"){
+                        input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
                         input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
                         theCogActions += "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
@@ -3234,6 +3247,11 @@ def initialize() {
             }
         }
 
+        if(ipAddress) {
+            schedule("0 0/${timeToPing} * * * ?", pingHandler)
+            runIn(2, pingHandler)
+        }
+        
         checkSunHandler() 
         if(fromTime && toTime) {
             schedule(fromTime, startTimeBetween)
@@ -4931,8 +4949,13 @@ def switchesOnReverseActionHandler() {
         if(trueReverse) {
             it.off()
         } else {
-            if(data == "off") it.off()
-            if(data == "on") it.on()
+            if(data) {
+                if(data == "off") it.off()
+                if(data == "on") it.on()
+            } else {
+                if(logEnable) log.debug "In switchesOnReverseActionHandler - Reversing ${it} - Previous status: ${data}, so turning off by default"
+                it.off()
+            }
         }
     }
     state.switchesOnMap = [:]
@@ -4959,8 +4982,13 @@ def switchesOffReverseActionHandler() {
         if(trueReverse) {
             it.on()
         } else {
-            if(data == "off") it.off()
-            if(data == "on") it.on()
+            if(data) {
+                if(data == "off") it.off()
+                if(data == "on") it.on()
+            } else {
+                if(logEnable) log.debug "In switchesOffReverseActionHandler - Reversing ${it} - Previous status: ${data}, so turning on by default"
+                it.on()
+            }
         }
     }
     state.switchesOffMap = [:]
@@ -6841,6 +6869,48 @@ def securityKeypadHandler(evt) {
         }
     }
     if(logEnable) log.debug "In securityKeypadHandler - securityOK: ${state.securityOK}"
+}
+
+def pingHandler() {
+    if(ipAddress) {
+        checkEnableHandler()
+        if(pauseApp || state.eSwitch) {
+            log.info "${app.label} is Paused or Disabled"
+        } else {
+            if(location.hub.firmwareVersionString > "2.2.6.140") {
+                try {
+                    if(logEnable) log.debug "In pingHandler (${state.version}) - Trying: ${ipAddress}"
+                    hubitat.helper.NetworkUtils.PingData pingData = hubitat.helper.NetworkUtils.ping(ipAddress, numPings.toInteger())
+                    int pTran = pingData.packetsTransmitted.toInteger()
+                    if (pTran == 0){ // 2.2.7.121 bug returns all zeroes on not found per @thebearmay
+                        pingData.packetsTransmitted = numPings
+                        pingData.packetLoss = 100
+                    }
+                    if(logEnable) log.debug "In pingHandler - Pinging $ipAddress - Transmitted: ${pingData.packetsTransmitted}, Received: ${pingData.packetsReceived}, %Lost: ${pingData.packetLoss}"
+
+                    if(pingData.packetLoss < 100) {
+                        if(logEnable) log.debug "In pingHandler - Passed"
+                        state.ipStatusOK = true
+                    } else {
+                        if(logEnable) log.debug "In pingHandler - Failed"
+                        state.ipStatusOK = false
+                    }
+                } catch(e) {
+                    if(logEnable) log.debug "In pingHandler - Something went wrong"
+                    log.error(getExceptionMessageWithLine(e))
+                }
+            } else {
+                if(logEnable) log.debug "In pingHandler - firmwareVersion: $location.hub.firmwareVersionString - Needs to be above 2.2.6.140"
+            }
+        }
+    } else {
+        if(logEnable) log.debug "In pingHandler - NOT using IP Ping - Setting value based on triggerAndOr: ${triggerAndOr}"
+        if(triggerAndOr) {
+            state.ipStatusOK = false
+        } else {
+            state.ipStatusOK = true
+        }
+    }
 }
 
 // ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
