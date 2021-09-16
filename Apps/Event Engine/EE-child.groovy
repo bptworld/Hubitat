@@ -39,9 +39,9 @@
 *
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
-* * - Working on Keypad
-* * - Screwed up switches per mode with 3.3.0, need to fix
+* * - Working on Keypad - Need HE to fix/update their driver - Don't hold your breath :( 
 *
+*  3.3.2 - 09/16/21 - Reworked Switches per Mode - you'll need to recreate your switches per mode
 *  3.3.1 - 09/14/21 - Adjustment to BI Camera_Trigger
 *  3.3.0 - 09/02/21 - Added IP Ping condition, Changes to switchesOnReverseActionHandler / switchesOffReverseActionHandler
 *  ---
@@ -57,7 +57,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine"; state.version = "3.3.1"
+    state.name = "Event Engine"; state.version = "3.3.2"
 }
 
 definition(
@@ -2416,97 +2416,10 @@ def pageConfig() {
                 app.removeSetting("deviceSeqAction3")
                 app.removeSetting("deviceSeqAction4")
                 app.removeSetting("deviceSeqAction5")
-            }
-
-            
-// ***** Start Switches per Mode *****   
-            if(actionType.contains("aSwitchesPerMode")) {
-                paragraph "<b>Switches Per Mode</b>"
-                input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
-                masterList = masterDimmersPerMode.toString().replace("[","").replace("]","").split(",")
-                paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
-                input "sdPerModeName", "mode", title: "Mode", required:false, width:6                 
-                input "setDimmersPerMode", "enum", title: "Dimmers to set for this Mode", required:false, multiple:true, options:masterList, submitOnChange:true
-                input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, range: '1..99'
-                input "sdPerModeColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
-                if(sdPerModeColorTemp) {
-                    input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
-                    app.removeSetting("sdPerModeColor")
-                } else {
-                    input "sdPerModeColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
-                    app.removeSetting("sdPerModeTemp")
-                }
-                input "sdTimePerMode", "bool", title: "Use Time to Reverse Per Mode <small><abbr title='Switches and Virtual Contact Sensor can also be Reversed! More info below in the Reverse Feature section.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
-                if(sdTimePerMode) {
-                    app.removeSetting("timeToReverse")
-                    input "sdReverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", defaultValue:false, submitOnChange:true
-                    if(sdReverseTimeType) {
-                        input "sdPerModeTime", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
-                    } else {
-                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
-                    }
-                    paragraph "<small>* For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.</small>"
-                } else {
-                    app.removeSetting("sdPerModeTime")
-                    app.removeSetting("sdReverseTimeType")
-                }
-// *** Start Mode Map ***
-                input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
-                input "sdPerModeDel", "button", title: "Delete Mode", width: 3
-                input "sdPerModeClear", "button", title: "Clear Table <small><abbr title='This will delete all Modes, use with caution. This can not be undone.'><b>- INFO -</b></abbr></small>", width: 3
-                //input "refreshMap", "bool", defaultValue:false, title: "Refresh the Map", description: "Map", submitOnChange:true, width:3               
-                //input "sdPerModeRebuild", "button", title: "Rebuild Table <small><abbr title='This should only be needed when changes to the table are made by the developer.'><b>- INFO -</b></abbr></small>", width: 3
-                if(refreshMap) {
-                    app.removeSetting("setDimmersPerMode")
-                    app.removeSetting("sdPerModeName")
-                    app.removeSetting("sdPerModeLevel")
-                    app.removeSetting("sdPerModeTemp")
-                    app.removeSetting("sdPerModeColor")
-                    app.removeSetting("sdPerModeTime")
-                    app.removeSetting("sdPerModeTimeType")
-                    app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
-                    app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
-                    app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])                  
-                    app.updateSetting("refreshMap",[value:"false",type:"bool"])
-                }
-                paragraph "<small>* Remember to click outside all fields before pressing a button. Also, most of the time the button needs to be pushed twiced to add/edit. Need to work on that!</small>"
-                paragraph "<hr>"
-                if(state.thePerModeMap == null) {
-                    theMap = "No devices are setup"
-                } else {
-                    theMap = state.thePerModeMap
-                }
-                paragraph "${theMap}"
-                // *** End Mode Map ***
-                paragraph "<hr>"
-
-                state.theCogActions += "<b>-</b> Switches Per Mode:<br>${state.thePerModeMap}<br>"   
-            } else {
-                app.removeSetting("setDimmersPerMode")
-                app.removeSetting("sdPerModeName")
-                app.removeSetting("sdPerModeLevel")
-                app.removeSetting("sdPerModeTemp")
-                app.removeSetting("sdPerModeColor")
-                app.removeSetting("sdPerModeTime")
-                app.removeSetting("sdPerModeTimeType")
-                app.updateSetting("sdPerModeColorTemp",[value:"false",type:"bool"])
-                app.updateSetting("sdTimePerMode",[value:"false",type:"bool"])
-                app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])                  
-                app.updateSetting("refreshMap",[value:"false",type:"bool"])
-                state.sdPerModeMap = [:]
-                state.thePerModeMap = null
-            }
-// ***** End SwitchLevel per Mode *****  
+            }                
                 
-                
-/*                
 // ***** Start Switches per Mode - NEW *****   
-            if(actionType.contains("aSwitchesPerModeNew")) {
+            if(actionType.contains("aSwitchesPerMode")) {
                 paragraph "<b>Switches Per Mode - NEW</b>"
                 input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
                 masterList = masterDimmersPerMode.toString().replace("[","").replace("]","").split(",")
@@ -2517,7 +2430,6 @@ def pageConfig() {
                     input "sdPerModeName", "mode", title: "Mode", required:false, width:6, submitOnChange:true
                 }
 
-                log.info state.sdPerModeMap
                 if(sdPerModeName && state.sdPerModeMap && !atomicState.working) {
                     state.found = false
                     app.removeSetting("setDimmersPerMode")
@@ -2529,31 +2441,19 @@ def pageConfig() {
                     app.removeSetting("sdPerModeTime")
                     theMap = state.sdPerModeMap.toString().replace("[","").replace("]","")
                     theData = theMap.split(",")
-                    theData.each { data -> 
+                    theData.each { data ->
                         def pieces = data.split(":")
-                        tMode = pieces[0]
-                        log.info "sdPerModeName: $sdPerModeName - tMode: $tMode"
-                        if(sdPerModeName.toString() == tMode.toString()) {
-                            log.info "*** NOW Working ***"
+                        theMode = pieces[0]
+                        if(sdPerModeName.toString() == theMode.toString()) {
                             atomicState.working = true
-                            theDevices = pieces[1]
-                            theLevel = pieces[2]
-                            theTempType = pieces[3]
-                            theTemp = pieces[4]
-                            theColor = pieces[5]
-                            theTime = pieces[6]
-                            theTimeType = pieces[7]
-                            
-                            log.info theDevices
-                           // app.updateSetting("setDimmersPerMode",[type:"capability",value:[theDevices]])
+                            theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
                             app.updateSetting("sdPerModeLevel", theLevel)
                             app.updateSetting("sdPerModeColorTemp", [value:"${theTempType}",type:"bool"])
                             app.updateSetting("sdPerModeTemp", theTemp)
                             app.updateSetting("sdPerModeColor", theColor)
                             if(theTime) { app.updateSetting("sdReverseTimeType",[value:"true",type:"bool"]) }
                             app.updateSetting("sdTimePerMode", theTime) 
-                            app.updateSetting("sdReverseTimeType",[value:"${theTimeType}",type:"bool"])
-                            
+                            app.updateSetting("sdReverseTimeType",[value:"${theTimeType}",type:"bool"])                            
                             state.found = true
                         }
                     }
@@ -2637,7 +2537,7 @@ def pageConfig() {
                 state.thePerModeMap = null
             }
 // ***** End SwitchLevel per Mode *****                 
-*/
+
             if(actionType.contains("aThermostat")) {
                 paragraph "<b>Thermostat</b>"
                 input "thermostatAction", "capability.thermostat", title: "Thermostats", multiple:true, submitOnChange:true
@@ -3549,15 +3449,13 @@ def startTheProcess(evt) {
                                         theData.each { itTwo -> 
                                             def pieces = itTwo.split(":")
                                             try {
-                                                theMode = pieces[0]
-                                                theTime = pieces[6]
-                                                theTimeType = pieces[7].replace("]","")
+                                                theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
                                             } catch(e) {
                                                 if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
                                                 log.error(getExceptionMessageWithLine(e))
                                             }
                                             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
-                                            theTime = theTime.replace("]","")
+                                            theTimeType = theTimeType.replace("]","")
                                             if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
                                             currentMode = location.mode
                                             def modeCheck = currentMode.contains(theMode)
@@ -4315,18 +4213,11 @@ def switchesPerModeActionHandler() {
         theData.each { itTwo -> 
             def pieces = itTwo.split(":")
             try {
-                theMode = pieces[0]
-                theDevice = pieces[1]
-                theLevel = pieces[2]
-                theTempType = pieces[3]
-                theTemp = pieces[4]
-                theColor = pieces[5]
-                theTime = pieces[6]
-                theTimeType = pieces[7]
+                theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
             } catch(e) {
                 log.error(getExceptionMessageWithLine(e))
                 log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
-                if(logEnable) log.warn "In switchesPerModeActionHandler - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTempType} - 4: ${theTemp} - 5: ${theColor} - 6: ${theTime} - 7: ${theTimeType}"
+                if(logEnable) log.warn "In switchesPerModeActionHandler - Oops 1 - 0: ${theMode} - 1: ${theDevices} - 2: ${theLevel} - 3: ${theTempType} - 4: ${theTemp} - 5: ${theColor} - 6: ${theTime} - 7: ${theTimeType}"
             }
             if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             def modeCheck = currentMode.contains(theMode)
@@ -4336,7 +4227,7 @@ def switchesPerModeActionHandler() {
                 theColor = theColor.replace("]","")
                 theTime = theTime.replace("]","")
                 def cleanOne = "${itOne}"
-                def cleanTwo = theDevice.replace("[","").replace("]","").split(";")
+                def cleanTwo = theDevices.replace("[","").replace("]","").split(";")
                 cleanTwo.each { itThree ->
                     if(itThree.startsWith(" ") || itThree.startsWith("[")) itThree = itThree.substring(1)
                     if(logEnable) log.debug "In switchesPerModeActionHandler - Comparing cleanOne: ${cleanOne} - itThree: ${itThree}"
@@ -4613,7 +4504,7 @@ def permanentDimHandler() {
             if(logEnable) log.debug "In permanentDimHandler - Working on $it"
             def theData = "${state.sdPerModeMap}".split(",")
             theData.each { itTwo -> 
-                def (theMode, theDevice, theLevel, theTempType, theTemp, theColor) = itTwo.split(":")
+                def (theMode, theDevice, theLevel, theTempType, theTemp, theColor,theTime,theTimeType) = itTwo.split(":")
                 if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
                 theColor = theColor.replace("]","")           
                 def cleandevices = theDevice.split(";")
@@ -5852,12 +5743,13 @@ def sdPerModeHandler(data) {
     if(theType == "add") {
         if(logEnable) log.debug "In sdPerModeHandler - ADD"
         if(sdPerModeLevel == null) sdPerModeLevel = "NA"
-        if(sdPerModeTemp == null) sdPerModeTemp = "NA"
+        if(sdPerModeTempType == null) theTempType = "false"
+        if(sdPerModeTemp == null) sdPerModeTemp = "NA"        
         if(sdPerModeColor == null) sdPerModeColor = "NA"
         if(sdPerModeTime == null) sdPerModeTime = "NA"
         if(sdReverseTimeType == null) sdReverseTimeType = "false"
         dpm = setDimmersPerMode.toString().replace("[","").replace("]","").replace(", ",";")
-        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
+        theValue = "${dpm}:${sdPerModeLevel}:${sdPerModeTempType}:${sdPerModeTemp}:${sdPerModeColor}:${sdPerModeTime}:${sdReverseTimeType}"
         if(logEnable) log.debug "mode: ${theMode} - theValue: ${theValue}"
         state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
@@ -5872,13 +5764,7 @@ def sdPerModeHandler(data) {
         theData.each { it -> 
             def pieces = it.split(":")
             try {
-                tMode = pieces[0]
-                theDevices = pieces[1]
-                theLevel = pieces[2]
-                theTemp = pieces[3]
-                theColor = pieces[4]
-                theTime = pieces[5]
-                theTimeType = pieces[6]
+                theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
             } catch (e) {
                 if(theTime == null) theTime = "NA"
                 if(theTimeType == null) theTimeType = "false"
@@ -5888,22 +5774,24 @@ def sdPerModeHandler(data) {
                     if(theTimeType == null) theTimeType = "false"
                 }
             }
-            if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
+            if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
             theColor = theColor.replace("]","")
             theTime = theTime.replace("]","")
             theTimeType = theTimeType.replace("]","")       
             if(theDevices == null) theDevices = "NA"
             if(theLevel == null) theLevel = "NA"
+            if(theTempType == null) theTempType = false
             if(theTemp == null) theTemp = "NA"
             if(theColor == null) theColor = "NA"
             if(theTime == null) theTime = "NA"
             if(theTimeType == null) theTimeType = "false"
             dpm = theDevices.toString().replace("[","").replace("]","").replace(", ",";")
-            theValue = "${dpm}:${theLevel}:${theTemp}:${theColor}:${theTime}:${theTimeType}"
-            if(logEnable) log.debug "Rebuilding: mode: ${tMode} - theValue: ${theValue}"
-            state.sdPerModeMap.put(tMode,theValue)
+            theValue = "${dpm}:${theLevel}:${theTempType}:${theTemp}:${theColor}:${theTime}:${theTimeType}"
+            if(logEnable) log.debug "Rebuilding: mode: ${theMode} - theValue: ${theValue}"
+            state.sdPerModeMap.put(theMode,theValue)
         }
     }
+    if(state.sdPerModeMap) state.sdPerModeMap = state.sdPerModeMap.sort { a, b -> a.key <=> b.key }
 // ***** Make Map *****    
     if(logEnable) log.debug "In sdPerModeHandler - Map: ${state.sdPerModeMap}"
     if(state.sdPerModeMap) {
@@ -5912,21 +5800,14 @@ def sdPerModeHandler(data) {
         theData.each { it -> 
             def pieces = it.split(":")
             try {
-                tMode = pieces[0]
-                theDevices = pieces[1]
-                theLevel = pieces[2]
-                theTemp = pieces[3]
-                theColor = pieces[4]
-                theTime = pieces[5]
-                theTimeType = pieces[6]
+                theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
             } catch (e) {
                 log.warn "${app.label} - Something went wrong, please rebuild your Switches Per Mode table"
-                if(logEnable) log.warn "In Make Map - Oops 1 - 0: ${theMode} - 1: ${theDevice} - 2: ${theLevel} - 3: ${theTemp} - 4: ${theColor} - 5: ${theTime} - 6: ${theTimeType}"
+                if(logEnable) log.warn "In Make Map - Oops - theMode(0): ${theMode} - theDevice(1): ${theDevice} - theLevel(2): ${theLevel} - theTemp(3): ${theTemp} - theColor(4): ${theColor} - theTime(5): ${theTime} - theTimeType(6): ${theTimeType}"
             }
-            if(tMode.startsWith(" ") || tMode.startsWith("[")) tMode = tMode.substring(1)
-            theColor = theColor.replace("]","")
-            theTime = theTime.replace("]","")
-            theTimeType = theTimeType.replace("]","")
+            if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+            if(theColor) theColor = theColor.replace("]","")
+            if(theTimeType) theTimeType = theTimeType.replace("]","")
             if(theTimeType == "false") {
                 timeType = "Min"
             } else {
@@ -5938,7 +5819,7 @@ def sdPerModeHandler(data) {
                 if(d.startsWith(" ") || d.startsWith("[")) d = d.substring(1)
                 theDevicesList += "${d}<br>"
             }
-            thePerModeMap += "<tr><td>${tMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}<td>${timeType}"
+            thePerModeMap += "<tr><td>${theMode}<td>${theDevicesList}<td>${theLevel}<td>${theTemp}<td>${theColor}<td>${theTime}<td>${timeType}"
         }                
         thePerModeMap += "</table>"
     } else {
@@ -5948,6 +5829,7 @@ def sdPerModeHandler(data) {
     app.removeSetting("setDimmersPerMode")
     app.removeSetting("sdPerModeName")
     app.removeSetting("sdPerModeLevel")
+    app.removeSetting("sdPerModeTempType")
     app.removeSetting("sdPerModeTemp")
     app.removeSetting("sdPerModeColor")
     app.removeSetting("sdPerModeTime")
