@@ -6245,24 +6245,26 @@ def metaCodeIssue(code) {
 }
 
 def checkForHoliday() {
-    if(logEnable) log.debug "In checkForHoliday (${state.version})"
-    todaysDate = new Date().format( 'yyyy-MM-dd' )
-    if(logEnable) log.debug "In checkForHoliday - todaysDate: ${todaysDate}"
-    state.apiMatch = false
-    theDates = state.myHolidays.keySet()
-    theDates.each { it ->
-        if(logEnable) log.debug "In checkForHoliday - it: ${it} vs ${todaysDate}"
-        if(it == todaysDate) {
-            if(logEnable) log.debug "In checkForHoliday - It's a MATCH!"
-            state.apiMatch = true
+    if(state.myHolidays) {
+        if(logEnable) log.debug "In checkForHoliday (${state.version})"
+        todaysDate = new Date().format( 'yyyy-MM-dd' )
+        if(logEnable) log.debug "In checkForHoliday - todaysDate: ${todaysDate}"
+        state.apiMatch = false
+        theDates = state.myHolidays.keySet()
+        theDates.each { it ->
+            if(logEnable) log.debug "In checkForHoliday - it: ${it} vs ${todaysDate}"
+            if(it == todaysDate) {
+                if(logEnable) log.debug "In checkForHoliday - It's a MATCH!"
+                state.apiMatch = true
+            }
+        } 
+        if(state.apiMatch) {
+            if(logEnable) log.debug "In checkForHoliday - Setting up trigger at ${apiTimeToTrigger} to startTheProcess."
+            schedule(apiTimeToTrigger, startTheProcess)
+        } else {
+            if(logEnable) log.debug "In checkForHoliday - Today is not a holiday, will check again tomorrow."
+            unschedule(startTheProcess)
         }
-    } 
-    if(state.apiMatch) {
-        if(logEnable) log.debug "In checkForHoliday - Setting up trigger at ${apiTimeToTrigger} to startTheProcess."
-        schedule(apiTimeToTrigger, startTheProcess)
-    } else {
-        if(logEnable) log.debug "In checkForHoliday - Today is not a holiday, will check again tomorrow."
-        unschedule(startTheProcess)
     }
 }
 // ***** End Calendarific *****
