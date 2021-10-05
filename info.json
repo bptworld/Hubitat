@@ -6,9 +6,9 @@
          "name": "Event Engine",
          "version": "1.0.8",
          "child1Version": "3.3.3",
-         "child2Version": "",
+         "child2Version": "0.0.0",
          "driver1Version": "1.0.0",
-         "driver2Version": "",
+         "driver2Version": "0.0.0",
          "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip"
       },
       {
