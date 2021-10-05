@@ -3,8 +3,12 @@
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
    "bundles": [
       {
-         "name": "Auto Update App",
-         "version": "1.0.1",
+         "name": "Event Engine",
+         "version": "1.0.8",
+         "child1Version": "3.3.3",
+         "child2Version": "",
+         "driver1Version": "1.0.0",
+         "driver2Version": "",
          "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip"
       },
       {
