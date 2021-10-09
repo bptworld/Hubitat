@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.8 - 10/09/21 - Adjustment
  *  2.5.7 - 07/03/21 - Minor adjustment
  *  2.5.6 - 06/21/21 - Adjustment to color options
  *  2.5.5 - 04/25/21 - Fixed an issue with the last merge.
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.7"
+	state.version = "2.5.8"
 }
 
 definition(
@@ -1242,8 +1243,7 @@ def sendChildSettings() {           // this is then requested from the parent ap
 def doTheTileCopy(newSettings) {    // and finally the parent app sends the settings!
     if(logEnable) log.info "In doTheTileCopy (${state.version})"
     if(copyTile) {
-        if(logEnable) log.info "In doTheTileCopy - Received: ${newSettings}"
-        
+        if(logEnable) log.info "In doTheTileCopy - Received: ${newSettings}"       
         newSettings.each { theOption ->
             name = theOption.key
             nameValue = theOption.value
@@ -1265,11 +1265,11 @@ def doTheTileCopy(newSettings) {    // and finally the parent app sends the sett
                     if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capability"  
                 } else if(name.contains("devicea_") && !name.contains("tileDevice")) {
                     nameIda = nameValue.id   
-                    app.updateSetting("${name}",[type:"capability",value:[nameId]])
+                    app.updateSetting("${name}",[type:"capability",value:[nameIda]])
                     if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capabilitya"  
                 } else if(name.contains("deviceb_") && !name.contains("tileDevice")) {
                     nameIdb = nameValue.id   
-                    app.updateSetting("${name}",[type:"capability",value:[nameId]])
+                    app.updateSetting("${name}",[type:"capability",value:[nameIdb]])
                     if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capabilityb"  
                 } else if(name.contains("deviceAtts_")) {
                     app.updateSetting("${name}",[type:"enum",value:nameValue])
