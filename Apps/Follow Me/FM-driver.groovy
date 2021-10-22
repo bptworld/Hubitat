@@ -33,6 +33,8 @@
  *
  *  Changes:
  *
+ *  2.2.9 - 10/21/21 - Adjusted speak() to reflect the new parameters
+ *  2.2.8 - 07/29/21 - Added code for lastActive Speaker
  *  2.2.7 - 04/28/21 - Added 'Replay'
  *  2.2.6 - 01/12/21 - Adjustments to Priority processing
  *  2.2.5 - 11/27/20 - Adjustments
@@ -89,6 +91,7 @@ metadata {
         attribute "bpt-speakerStatus1", "string"
         attribute "bpt-speakerStatus2", "string"
         attribute "bpt-speakerStatus3", "string"
+        attribute "bpt-lastActiveSpeaker", "string"
 
         attribute "bpt-queue1", "string"
         attribute "bpt-queue2", "string"
@@ -242,8 +245,8 @@ def setVolumeAndSpeak(volume, message) {
     sendEvent(name: "rawMessage", value: message)
 }
 
-def speak(message) {    
-    if(logEnable) log.debug "In speak - message: ${message}"
+def speak(message,option) {
+    if(logEnable) log.debug "In speak - message: ${message} - option: ${option}"
     if(message) {
         priorityHandler(message)
         // returns priority,lastSpoken
@@ -406,7 +409,6 @@ def clearDataOff(){
 def clearSpeechData(){
     if(logEnable) log.debug "Follow Me Driver - clearing the data"
     state.list1 = []
-
     sMap1S = "Waiting for Data"
     sMap2S = "Waiting for Data"
     sMap3S = "Waiting for Data"
@@ -417,16 +419,24 @@ def clearSpeechData(){
     state.speakerMap = null
     sendEvent(name: "whatDidISay", value: speechTop)
     if (clearData) runIn(2,clearDataOff)
-}	
+}
 
 def sendFollowMeSpeaker(status) {
-    def (sName, sStatus) = status.split(':')
-    if(sName == null) sName = "blank"
-    if(sStatus == null) sStatus = "not found"
-    if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
+    if(logEnable) log.info "sendFollowMeSpeaker - status: ${status}"
+    def (sName, sStatus, sID, sLastAct) = status.split(':')
+    if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus} - sID: ${sID} - sLastAct: ${sLastAct}"
     if(state.speakerMap == null) state.speakerMap = [:]
-    state.speakerMap.put(sName, sStatus)
+    ndata = "${sStatus}:${sID}:${sLastAct}"
+    state.speakerMap.put(sName, ndata)
+    if(sLastAct == "true") {
+        log.trace "In sendFollowMeSpeaker - Going to driverToChildApp"
+        parent.driverToChildApp(status)
+        sendEvent(name: "bpt-lastActiveSpeaker", value: sName)
+    }
+    runIn(1, makeListHandler)
+}
 
+def makeListHandler() {
     def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'>"
     def line = "" 
     def tbl = tblhead
@@ -434,14 +444,18 @@ def sendFollowMeSpeaker(status) {
     theDevices = state.speakerMap.sort { a, b -> a.key <=> b.key }
 
     theDevices.each { it ->
-        status = it.value
-
-        if(status == "true") line = "<tr><td>${it.key}<td style='color:green;font-size:${fontSize}px'>Active"
-        if(status == "false") line = "<tr><td>${it.key}<td style='color:red;font-size:${fontSize}px'>Inactive"
-        if(status == "speaking") line = "<tr><td>${it.key}<td style='color:blue;font-size:${fontSize}px'>Speaking"
-
+        deviceName = it.key
+        deviceData = it.value
+        def (theStatus, appID, theLastAct) = deviceData.split(":")
+        if(theLastAct == "true") {
+            line = "<tr><td>${it.key}<td style='color:orange;font-size:${fontSize}px'>lastActive"
+        } else {
+            if(theStatus == "true") line = "<tr><td>${it.key}<td style='color:green;font-size:${fontSize}px'>Active"
+            if(theStatus == "false") line = "<tr><td>${it.key}<td style='color:red;font-size:${fontSize}px'>Inactive"
+            if(theStatus == "speaking") line = "<tr><td>${it.key}<td style='color:blue;font-size:${fontSize}px'>Speaking"
+        }
         totalLength = tbl.length() + line.length()
-        if(logEnable) log.debug "In sendFollowMeSpeaker - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+        if(logEnable) log.debug "In makeListHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
         if (totalLength < 1009) {
             tbl += line
         } else {
