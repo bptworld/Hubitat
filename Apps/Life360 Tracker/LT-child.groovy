@@ -5,18 +5,18 @@
  *  Track your Life360 users. Works with the Life360 with States app.
  *
  *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
- *
+ * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
- *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via:
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
  *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
  *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
  *  the community grow. Have FUN with it!
- *
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -37,9 +37,8 @@
  *
  *  Changes:
  *
- *  2.1.3 - 03/15/21 - Fixed a bug in the departed method. No longer throwing errors.
- *  2.1.2 - 12/03/20 - Fixed aplace --> aPlace in arrivedHandler and now its working :-)
- *  2.1.1 - 10/17/20 - Added 'Who's with me' options
+ *  2.1.2 - 10/21/21 - Adjusted speak() to reflect the new parameters.
+ *  2.1.1 - 10/21/20 - Added 'Who's with me' options
  *  2.1.0 - 09/02/20 - Cosmetic changes
  *  --
  *  1.0.0 - 07/01/19 - Initial release.
@@ -51,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.3"
+	state.version = "2.1.2"
 }
 
 definition(
@@ -75,7 +74,7 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "pageConfig", title: "", nextPage: null, install: true, uninstall: true) {
-		display()
+		display()        
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Track your Life360 users. Works with the user Life360 with States app."
@@ -91,11 +90,11 @@ def pageConfig() {
             savedPlacesTemp = presenceDevice.currentValue("savedPlaces")
             if(savedPlacesTemp) state.lPlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
             buildMyPlacesList()
-
-            state.allPlaces = [state.lPlaces, state.myPlacesList].flatten().findAll{it}
-            state.thePlaces = "${state.allPlaces}".replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
+            
+            state.allPlaces = [state.lPlaces, state.myPlacesList].flatten().findAll{it} 
+            state.thePlaces = "${state.allPlaces}".replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")               
             state.values = "${state.thePlaces}".split(",")
-
+            
             input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple:true, required:true, submitOnChange:true
             input "oG1List", "bool", defaultValue: false, title: "Show a list view of Specific Places?", description: "List View", submitOnChange:true
             if(oG1List) {
@@ -104,12 +103,12 @@ def pageConfig() {
                 valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
                 paragraph "${listMapG1}".replace("[","").replace("]","")
             }
-
+            
             input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes, range 1 to 10)", required:true, submitOnChange:true, defaultValue: 2, range: '1..10'
         }
-
-// *** Home ***
-        section(getFormat("header-green", "${getImage("Blank")}"+" Home")) {
+        
+// *** Home ***            
+        section(getFormat("header-green", "${getImage("Blank")}"+" Home")) {    
             paragraph "'Home' is a unique place in Life360 and with Automation. For most us we want things to happen as soon as possible.  With this app, one needs to be at a Place for at least 1 minute before it will trigger things. This is to stop false alarms and to be sure we are not just passing by.  But with 'Home' sometimes things should work different..."
             input "homeDelayed", "bool", defaultValue:false, title: "Should Tracker announce when you arrive at 'Home', after the 1 minute wait? (off='No', on='Yes')", description: "Home Wait", submitOnChange:true
             paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
@@ -122,7 +121,7 @@ def pageConfig() {
             paragraph "Note: Home options will only work if you have the Speak or Push when 'Has arrived'and/or 'Has departed' switch in Message Options turned on."
         }
 // *** End Home ***
-
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the current place<br>%lastplace% - returns the place departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
@@ -139,7 +138,7 @@ def pageConfig() {
 				paragraph "${listMapAT}"
 			}
             if(speakHasArrived || pushHasArrived || historyHasArrived) paragraph "<hr>"
-
+            
             paragraph "<b>'Has Departed'</b>"
             input "speakHasDeparted", "bool", defaultValue:false, title: "Speak when", description: "Speak Has departed", width: 4, submitOnChange:true
             input "pushHasDeparted", "bool", defaultValue:false, title: "Push when", description: "Push Has departed", width: 4, submitOnChange:true
@@ -153,7 +152,7 @@ def pageConfig() {
                 paragraph "${listMapDEP}"
 			}
             if(speakHasDeparted || pushHasDeparted || historyHasDeparted) paragraph "<hr>"
-
+            
             paragraph "<b>'On the Move'</b>"
             input "speakOnTheMove", "bool", defaultValue:false, title: "Speak when", description: "Speak On the Move", width: 4, submitOnChange:true
             input "pushOnTheMove", "bool", defaultValue:false, title: "Push when", description: "Push On the Move", width: 4, submitOnChange:true
@@ -167,7 +166,7 @@ def pageConfig() {
     			values.each { item -> listMapMove += "${item}<br>"}
 				paragraph "${listMapMove}"
 			}
-
+            
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) {
                 paragraph "If someone stops at a place this app isn't tracking, a message will be spoken."
                 input "messageMOVEStopped", "text", title: "Random Message to be spoken when <b>'on the move' but Stopped</b> - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has stopped near %place%"
@@ -179,15 +178,15 @@ def pageConfig() {
                     paragraph "${listMapMoveS}"
                 }
             }
-
+            
             paragraph "<hr>"
             input "historyMap", "bool", defaultValue:false, title: "Add Map Link to History message?", description: "History Map", submitOnChange:true
             paragraph "<small>This will put a clickable map link on the dashboard history tile for each place.</small>"
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) paragraph "<hr>"
         }
-
+               
         if(pushHasArrived || pushHasDeparted || pushOnTheMove) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) { 
                 input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
                 if(sendPushMessage && (pushHasArrived || pushHasDeparted || pushOnTheMove)) input(name: "linkPush", type: "bool", defaultValue: "false", title: "Send Map Link with Push", description: "Send Google Maps Link")
             }
@@ -198,7 +197,7 @@ def pageConfig() {
                 input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
                 if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
             }
-
+            
             section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
                 paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
                 input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
@@ -206,10 +205,10 @@ def pageConfig() {
                     input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:false, multiple:false
                     input "flashArrivedHomePreset", "number", title: "Select the Preset to use when someone arrives at Home (1..5)", required:false, submitOnChange:true
                     input "flashDepartedHomePreset", "number", title: "Select the Preset to use when someone departs Home (1..5)", required:false, submitOnChange:true
-
+                    
                     input "flashArrivedPlacePreset", "number", title: "Select the Preset to use when someone arrives at a Place (1..5)", required:false, submitOnChange:true
                     input "flashDepartedPlacePreset", "number", title: "Select the Preset to use when someone departs a Place (1..5)", required:false, submitOnChange:true
-
+                    
                     input "flashArrivedNotAllowedPreset", "number", title: "Select the Preset to use when someone arrives at a Place NOT allowed (1..5)", required:false, submitOnChange:true
                 }
             }
@@ -217,23 +216,23 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
             href "alertsConfig", title: "Alerts", description: "Phone Battery - Places Not Allowed"
 		}
-
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Who's With Me")) {
         paragraph "We all know it's annoying to get notifications about someone moving about when you are actually with that person. With this option, those notifications are a thing of the past!"
             input "peopleWithMe", "capability.presenceSensor", title: "Choose other Life360 Device(s)", required:false, multiple:true, submitOnChange:true
             if(peopleWithYou) {
                 input "peopleRadius", "number", title: "Radius to be considered with you", required:false, submitOnChange:true
             } else {
-
+                
             }
             paragraph "<hr>"
     }
-
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
                     if(!app.label.contains(" (Paused)")) {
@@ -248,7 +247,7 @@ def pageConfig() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging"
@@ -260,7 +259,7 @@ def pageConfig() {
 
 def alertsConfig() {
     dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 Tracker - Alerts</h2>", install: false, uninstall:false) {
-		display()
+		display() 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Alerts")) {
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
@@ -277,7 +276,7 @@ def alertsConfig() {
             input "pushHasArrived2", "bool", defaultValue:false, title: "Push when 'Has arrived'", description: "Push Has Arrived", width: 4
             input "historyHasArrived2", "bool", defaultValue:false, title: "Log History when 'Has arrived'", description: "History Has arrived", width: 4
 			input "messageAT2", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has arrived at %place% but should NOT be there"
-
+            
 			input "speakHasDeparted2", "bool", defaultValue:false, title: "Speak when 'Has departed'", description: "Speak Has departed", width: 4
             input "pushHasDeparted2", "bool", defaultValue:false, title: "Push when 'Has departed'", description: "Push Has departed", width: 4
             input "historyHasDeparted2", "bool", defaultValue:false, title: "Log History when 'Has departed'", description: "History Has departed", width: 4
@@ -292,7 +291,7 @@ def installed() {
 	updated()
 }
 
-def updated() {
+def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
@@ -326,9 +325,9 @@ def userHandler(evt) {
         trackSpecific2.each { it ->
             if(it == state.address1Value) {
                 state.match = true
-                placeNotAllowedHandler(it)
+                placeNotAllowedHandler(it) 
             }
-        }
+        } 
 
         trackSpecific.each { it ->
             if(it == state.address1Value) {
@@ -337,7 +336,7 @@ def userHandler(evt) {
                     homeArrivedHandler(it)
                 } else {
                     state.match = true
-                    arrivedHandler(it)
+                    arrivedHandler(it) 
                 }
             } else if(it == state.address1Prev) {
                 if(it.toLowerCase() == "home") {
@@ -345,7 +344,7 @@ def userHandler(evt) {
                     homeDepartedHandler(it)
                 } else {
                     state.match = true
-                    departedHandler(it)
+                    departedHandler(it) 
                 }
             }
         }
@@ -374,18 +373,18 @@ def arrivedHandler(aPlace) {
         int timeHere = timeConsideredHere * 60
         getTimeDiff()
         def theTimeDiff = timeDiff
-        if(logEnable) log.debug "In arrivedHandler - timeDiff: ${theTimeDiff} vs timeHere: ${timeHere}"
+        if(logEnable) log.debug "In arrivedHandler - timeDiff: ${theTimeDiff} vs timeHere: ${timeHere}" 
         if(timeDiff >= timeHere) {
             if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
             msg = "${messageAT}"
             where = "arrived"
-            whosWithMeHandler(where,msg,aPlace)
+            whosWithMeHandler(where,msg,aplace)
             if(isDataDevice) isDataDevice.on()
             state.sMove = null
         } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
             if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
             if(isDataDevice) isDataDevice.off()
-            runIn(30, arrivedHandler, [overwrite: false])
+            runIn(30, arrivedHandler, [overwrite: false]) 
         }
         if(logEnable) log.debug "********* In arrivedHandler - End *********"
     }
@@ -420,8 +419,8 @@ def movingHandler(mPlace) {
         if(mPlace == null) mPlace = state.address1Value
         msg = ""
 
-        getTimeMoving()
-        if(logEnable) log.debug "In arrivedHandler - movingDiff: ${movingDiff} vs timeMoving: ${timeMoving}"
+        getTimeMoving()   
+        if(logEnable) log.debug "In arrivedHandler - movingDiff: ${movingDiff} vs timeMoving: ${timeMoving}" 
         if(movingDiff >= timeMoving) {
             state.sMove = null
             if(state.movePrevPlace == mPlace) {
@@ -430,7 +429,7 @@ def movingHandler(mPlace) {
                 where = "moving"
                 whosWithMeHandler(where,msg,mPlace)
                 state.movePrevPlace = mPlace
-            } else {
+            } else {           
                 msg = "${messageMOVE}"
                 where = "moving"
                 whosWithMeHandler(where,msg,mPlace)
@@ -439,7 +438,7 @@ def movingHandler(mPlace) {
         } else {
             if(logEnable) log.debug "In movingHandler - ${friendlyName} has been here less than ${timeMove} minutes but is near ${mPlace}"
             if(state.movePrevPlace == null) { state.movePrevPlace = mPlace }
-        }
+        }     
         if(isDataDevice) isDataDevice.off()
         if(logEnable) log.debug "********* In movingHandler - End *********"
     }
@@ -451,7 +450,7 @@ def homeArrivedHandler(haPlace) {
     if(logEnable) log.debug "********* In homeArrivedHandler (${state.version}) *********"
     if(haPlace == null) haPlace = "home"
     msg = ""
-
+    
     if(homeNow) {
         if(logEnable) log.debug "In homeArrivedHandler - Home Now - ${friendlyName} has arrived at ${haPlace}"
         msg = "${messageAT}"
@@ -478,14 +477,14 @@ def homeDepartedHandler(daPlace) {
     if(logEnable) log.debug "********* In homeDepartedHandler (${state.version}) *********"
     if(daPlace == null) daPlace = "home"
     msg = ""
-
+    
     if(homeDeparted) {
         if(logEnable) log.debug "In homeDepartedHandler - Home Departed - ${friendlyName} has departed from ${daPlace}"
         msg = "${messageDEP}"
         where = "HomeDeparted"
         whosWithMeHandler(where,msg,daPlace)
     } else if(homeDepartedDelayed) {
-        getTimeMoving()
+        getTimeMoving()      
         if(logEnable) log.debug "In homeDepartedHandler - movingDiff: ${movingDiff}"
         if(movingDiff >= 60) {
             if(logEnable) log.debug "In homeDepartedHandler - ${friendlyName} has departed Home over 1 minute ago and is on the move near ${daPlace}"
@@ -506,8 +505,8 @@ def placeNotAllowedHandler(naPlace) {
     if(logEnable) log.debug "********* In placeNotAllowedHandler (${state.version}) *********"
     if(naPlace == null) naPlace = state.address1Value
     msg = ""
-
-    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has arrived at ${naPlace}"
+    
+    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has arrived at ${naPlace}"    
     int timeHere = timeConsideredHere * 60
     getTimeDiff()
     if(timeDiff >= timeHere) {
@@ -530,7 +529,7 @@ def alertBattHandler() {
     charge = presenceDevice.currentValue("charge")
     battPlace = ""
     if(logEnable) log.debug "In alertBattHandler - battery: ${battery} - prev battery: ${state.prevBatt} - charge: ${charge} - alertBattRepeat: ${state.alertBattRepeat}"
-
+    
     if((battery <= alertBatt) && (charge == "false") && (state.alertBattRepeat != "yes")) {
         if(logEnable) log.debug "In alertBattHandler - battery (${battery}) needs charging! - Step 1 - battery: ${battery} <= Prev: ${state.prevBatt}"
         msg = "${messageAlertBatt}"
@@ -551,17 +550,17 @@ def alertBattHandler() {
         if(logEnable) log.debug "In alertBattHandler - battery (${battery}) is charging. - Step 3"
         state.alertBattRepeat = "no"
         state.prevBatt = 0
-    }
+    }  
     state.alerts = "no"
     if(logEnable) log.debug "In alertBattHandler - End"
 }
 
 def getTimeDiff() {
-	if(logEnable) log.debug "In getTimeDiff (${state.version})"
+	if(logEnable) log.debug "In getTimeDiff (${state.version})"   
 	long since = presenceDevice.currentValue("since")
    	def now = new Date()
     long unxNow = now.getTime()
-    unxNow = unxNow/1000
+    unxNow = unxNow/1000    
     timeDiff = Math.abs(unxNow-since)
     if(logEnable) log.debug "In getTimeDiff - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
     return timeDiff
@@ -574,8 +573,8 @@ def getTimeMoving() {
         long startMove = now.getTime()
         state.sMove = startMove
         if(logEnable) log.debug "In getTimeMoving - NEW sMove: ${state.sMove}"
-    }
-
+    } 
+    
    	def now = new Date()
     long unxNow = now.getTime()
     long unxPrev = state.sMove
@@ -590,49 +589,49 @@ def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(msg)
+        fmSpeaker.speak(msg,null)
     }
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def messageHandler(where,msg,place) {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
-
+    
 	def values = "${msg}".split(";")
 	vSize = values.size()
 	count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
 	state.message = values[randomKey]
-
+    
     if(state.message) {
-        if(logEnable) log.debug "In messageHandler - where: ${where} - place: ${place} - message: ${state.message}"
+        if(logEnable) log.debug "In messageHandler - where: ${where} - place: ${place} - message: ${state.message}" 
         if(state.message.contains("%name%")) {state.message = state.message.replace('%name%', friendlyName )}
 
-        if(where != "HomeArrived" || where != "HomeDeparted") {
-            if(state.message.contains("%place%")) state.message = state.message.replace('%place%', place)
+        if(where != "HomeArrived" || where != "HomeDeparted") { 
+            if(state.message.contains("%place%")) state.message = state.message.replace('%place%', place) 
             if(state.message.contains("%lastplace%")) state.message = state.message.replace('%lastplace%', place)
         }
 
         if(where == "HomeArrived") {
             if( state.message.contains("%lastplace%") || state.message.contains("%place%") ) {
-                state.message = state.message.replace('%lastplace%', 'home')
+                state.message = state.message.replace('%lastplace%', 'home') 
                 state.message = state.message.replace('%place%', 'home')
             }
         }
 
-        if(where == "HomeDeparted") {
+        if(where == "HomeDeparted") { 
             if(state.message.contains("%lastplace%") || state.message.contains("%place%")) {
-                state.message = state.message.replace('%lastplace%', 'home')
+                state.message = state.message.replace('%lastplace%', 'home') 
                 state.message = state.message.replace('%place%', 'home')
             }
         }
-
+            
         if(state.message.contains("%address1%")) {state.message = state.message.replace('%address1%', place) }
         if(state.message.contains("%battery%")) {
             String currBatt = presenceDevice.currentValue("battery")
             state.message = state.message.replace('%battery%', currBatt)
         }
-
+    
         if(state.message.contains("%charge%")) {state.message = state.message.replace('%charge%', presenceDevice.currentValue("charge") )}
         if(state.message.contains("%distanceKm%")) {state.message = state.message.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
         if(state.message.contains("%distanceMetric%")) {state.message = state.message.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
@@ -641,15 +640,15 @@ def messageHandler(where,msg,place) {
         if(state.message.contains("%isDriving%")) {state.message = state.message.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
         if(state.message.contains("%lastCheckin%")) {
             String currLastCheckin = presenceDevice.currentValue("lastCheckin")
-            state.message = state.message.replace('%lastCheckin%', currLastCheckin)
+            state.message = state.message.replace('%lastCheckin%', currLastCheckin)    
         }
         if(state.message.contains("%latitude%")) {
             String currLatitude = presenceDevice.currentValue("latitude")
-            state.message = state.message.replace('%latitude%', currLatitude)
+            state.message = state.message.replace('%latitude%', currLatitude)    
         }
         if(state.message.contains("%longitude%")) {
             String currLongitude = presenceDevice.currentValue("longitude")
-            state.message = state.message.replace('%longitude%', currLongitude)
+            state.message = state.message.replace('%longitude%', currLongitude)    
         }
         if(state.message.contains("%powerSource%")) {state.message = state.message.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
         if(state.message.contains("%presence%")) {state.message = state.message.replace('%presence%', state.presenceDevice.currentValue("presence") )}
@@ -663,10 +662,10 @@ def messageHandler(where,msg,place) {
     }
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
-
+	
     if(state.alerts == "yes") {
         if(state.message) {
-            if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk(state.message)
+            if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk(state.message)       
             if(pushAlertsBatt && sendPushMessage) pushHandler(state.message)
         }
         state.alerts = "no"
@@ -675,7 +674,7 @@ def messageHandler(where,msg,place) {
             if(logEnable) log.debug "In messageHandler - Life360 reported 'No Data' - So doing nothing"
         } else {
             if(state.previousMessage == null) state.previousMessage = "abcdefghijkl"
-            if(state.previousMessage.toLowerCase() != state.message.toLowerCase()) {
+            if(state.previousMessage.toLowerCase() != state.message.toLowerCase()) {       
                 if(where == "arrived" || where == "HomeArrived") {
                     if(speakHasArrived) letsTalk(state.message)
                     if(pushHasArrived) pushHandler(state.message)
@@ -689,7 +688,7 @@ def messageHandler(where,msg,place) {
                     }
                 } else if(where == "departed" || where == "HomeDeparted") {
                     if(speakHasDeparted) letsTalk(state.message)
-                    if(pushHasDeparted) pushHandler(state.message)
+                    if(pushHasDeparted) pushHandlertheMessage(state.message)
                     if(useTheFlasher && flashDepartedHomePreset) {
                         flashData = "Preset::${flashDepartedHomePreset}"
                         theFlasherDevice.sendPreset(flashData)
@@ -699,7 +698,7 @@ def messageHandler(where,msg,place) {
                         theFlasherDevice.sendPreset(flashData)
                     }
                 } else if(where == "moving") {
-                    if(speakOnTheMove) letsTalk(state.message)
+                    if(speakOnTheMove) letsTalk(state.message)             
                     if(pushOnTheMove) pushHandler(state.message)
                     if(useTheFlasher && flashArrivedNotAllowedPreset) {
                         flashData = "Preset::${flashArrivedNotAllowedPreset}"
@@ -731,12 +730,12 @@ def messageHandler(where,msg,place) {
                     state.theHistoryMessage = "${state.message}"
                     presenceDevice.sendHistory(state.theHistoryMessage)
                     if(logEnable) log.info "Life360 Tracker-HISTORY-M: ${state.theHistoryMessage}"
-                }
+                } 
             } else {
                 if(logEnable) log.debug "In messageHandler - Duplicate message, not sending."
             }
         }
-    }
+    }   
     state.previousMessage = state.message
     state.message = ""
     state.theHistoryMessage = ""
@@ -753,11 +752,11 @@ def pushHandler(msg) {
     presenceDevice.sendTheMap(theMap)
 }
 
-def whosWithMeHandler(where,msg,place) {
+def whosWithMeHandler(where,msg,place) { 
     if(logEnable) log.debug "In whosWithMeHandler (${state.version})"
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
-
+    
     if(peopleWithMe) {
         peopleWithMe.each { it ->
             def otherLatitude = new Float (it.currentValue("latitude"))
@@ -778,13 +777,13 @@ def whosWithMeHandler(where,msg,place) {
     }
 }
 
-def whereAmI(evt) {
+def whereAmI(evt) { 
     if(logEnable) log.debug "In whereAmI (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
     state.address1Prev = presenceDevice.currentValue("address1prev")
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
-
+    if(logEnable) log.debug "In whereAmI - Made it to here"
     if(parent.myName01) {
         def placeLatitude01 = new Float (parent.myLatitude01)
         def placeLongitude01 = new Float (parent.myLongitude01)
@@ -885,7 +884,7 @@ def haversine(lat1, lon1, lat2, lon2) {
     def dLon = Math.toRadians(lon2 - lon1)
     lat1 = Math.toRadians(lat1)
     lat2 = Math.toRadians(lat2)
-
+ 
     def a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
     def c = 2 * Math.asin(Math.sqrt(a))
     def d = R * c
@@ -917,7 +916,7 @@ def logsOff() {
 
 def checkEnableHandler() {
     state.eSwitch = false
-    if(disableSwitch) {
+    if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
@@ -944,7 +943,7 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
@@ -966,11 +965,11 @@ def display2() {
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-	}
+	}       
 }
 
 def getHeaderAndFooter() {
-    timeSinceNewHeaders()
+    timeSinceNewHeaders()   
     if(state.totalHours > 4) {
         if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
@@ -993,15 +992,15 @@ def getHeaderAndFooter() {
     if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
 
-def timeSinceNewHeaders() {
-    if(state.previous == null) {
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
         prev = new Date()
     } else {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
         prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
     def now = new Date()
-    use(TimeCategory) {
+    use(TimeCategory) {       
         state.dur = now - prev
         state.days = state.dur.days
         state.hours = state.dur.hours
