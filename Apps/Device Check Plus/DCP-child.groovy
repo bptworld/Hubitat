@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.5 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  1.2.4 - 04/13/21 - Adjustments to thermostat handling
  *  1.2.3 - 12/04/20 - Removed spacing in message
  *  1.2.2 - 12/04/20 - Adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.4"
+	state.version = "1.2.5"
 }
 
 definition(
@@ -828,17 +829,6 @@ def checkTimeInState(evt) {
         }
     }
     if(state.isData == "yes") messageHandler()
-}
-
-def letsTalk(msg) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    dayOfTheWeekHandler()
-    if(state.daysMatch && useSpeech && fmSpeaker) {
-        fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(msg)
-    }
-    msg = ""
-    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def modeHandler(evt) {
