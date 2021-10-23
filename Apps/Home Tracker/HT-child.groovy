@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.3 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  2.4.2 - 09/10/21 - Adjustments to timeDiff
  *  2.4.1 - 01/01/21 - Adjustment to disable switch
  *  2.4.0 - 08/02/20 - Cosmetic changes
@@ -48,7 +49,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.2"
+	state.version = "2.4.3"
 }
 
 definition(
@@ -688,10 +689,13 @@ def getTimeDiff(x) {
     lastActivity = parent.presenceSensors[x].getLastActivity()    
     def now = new Date()
     def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
-    if(logEnable) log.debug "In getTimeDiff - ${x} - now: ${now} - prev: ${prev}"    
+    if(logEnable) log.debug "In getTimeDiff - ${x} - now: ${now} - prev(LA): ${prev}"    
     use(groovy.time.TimeCategory) {
         def theTime = now - prev
-        state.timeDiff = Math.abs(theTime.minutes)
+        tHours = Math.abs(theTime.hours)
+        tMinutes = Math.abs(theTime.minutes)
+        state.timeDiff = (tHours + tMinutes).toInteger()
+        if(logEnable) log.debug "*********** - In getTimeDiff - tHours: ${tHours} - tMinutes: ${tMinutes} - ***********"
         if(logEnable) log.debug "*********** - In getTimeDiff - ${x} - timeDiff: ${state.timeDiff} - ***********"
     }
 }
@@ -771,7 +775,7 @@ def letsTalk(msg) {
     if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(msg)
+        fmSpeaker.speak(msg,null)
     }
     if(logEnable) log.warn "In letsTalk - *** Finished ***"
     clearPresenceMap()
