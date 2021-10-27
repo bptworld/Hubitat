@@ -18,25 +18,11 @@
          "tags": [ "Dashboards", "Monitoring", "Timers" ]
    	},
       {
-   		"name": "At Home Simulator",
-   		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
-   		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.",
-         "tags": [ "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Averaging Plus",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/packageManifest.json",
    		"description": "Average just about anything. Get notifications based on Setpoints.",
          "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "CATT Director",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/packageManifest.json",
-   		"description": "Take control of a Chromecast device using CATT.",
-         "tags": [ "Appliances", "LAN", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Chromecast Helper",
@@ -95,13 +81,6 @@
          "tags": [ "Dashboards", "Monitoring", "Multimedia", "Notifications", "Speakers", "Tools & Utilities" ]
    	},
       {
-   		"name": "Fully Kiosk Director",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/packageManifest.json",
-   		"description": "Take control of a Fully Kiosk device! * Requires additional driver, instructions within app.",
-         "tags": [ "Appliances", "LAN", "Multimedia", "Tools & Utilities" ]
-   	},
-      {
    		"name": "GCalendar Driver",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/packageManifest.json",
@@ -135,34 +114,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
    		"description": "Connect Life360 to Hubitat including ALL states.",
          "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Lighting Effects",
-   		"category": "Control",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/packageManifest.json",
-   		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.",
-         "tags": [ "Lights & Switches", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Magic Cube",
-   		"category": "Control",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/packageManifest.json",
-   		"description": "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
-         "tags": [ "Misc. Devices", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "MLB Game Day Live",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/packageManifest.json",
-   		"description": "Follow your favorite MLB team's Game Day Live, put a Scoreboard right on your Dashboard!",
-         "tags": [ "Dashboards", "Monitoring", "Notifications" ]
-   	},
-      {
-   		"name": "NHL Game Day Live",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/NHL%20Game%20Day%20Live/packageManifest.json",
-   		"description": "Follow your favorite NHL team's Game Day Live, put a Scoreboard right on your Dashboard!",
-         "tags": [ "Dashboards", "Monitoring", "Notifications" ]
    	},
       {
    		"name": "One at a Time",
@@ -268,20 +219,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
    		"description": "Create a tile with multiple devices with control.",
          "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
-   	},
-   	{
-   		"name": "Weather Dot Gov",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/packageManifest.json",
-   		"description": "Making the Weather.gov data usable with Hubitat.",
-         "tags": [ "Cloud", "Dashboards", "Monitoring", "Tools & Utilities", "Weather" ]
-   	},
-      {
-   		"name": "Web Pinger",
-   		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/packageManifest.json",
-   		"description": "Monitor a website and trigger automations if not found or if your internet goes down.",
-         "tags": [ "Cloud", "Monitoring", "Tools & Utilities" ]
    	}
    ]
 }
