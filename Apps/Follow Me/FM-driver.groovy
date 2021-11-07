@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.3.1 - 11/07/21 - Trying again.
  *  2.3.0 - 11/07/21 - Trying to fix something I can't reproduce.
  *  2.2.9 - 10/21/21 - Adjusted speak() to reflect the new parameters
  *  2.2.8 - 07/29/21 - Added code for lastActive Speaker
@@ -431,7 +432,7 @@ def sendFollowMeSpeaker(status) {
         sID = theData[2]
         sLastAct = theData[3]
     } catch(e) {
-        if(logEnable) log.debug "In sendFollowMeSpeaker - Something isn't setup right. Try to see WHAT just sent FM this info..."
+        log.warn "Follow Me Driver - In sendFollowMeSpeaker - Something isn't setup right. Post a screenshot of the DEBUG LOGS (not just the error) of the Device in question AND the Follow Me app."
     }
     if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus} - sID: ${sID} - sLastAct: ${sLastAct}"
     if(state.speakerMap == null) state.speakerMap = [:]
@@ -455,7 +456,14 @@ def makeListHandler() {
     theDevices.each { it ->
         deviceName = it.key
         deviceData = it.value
-        def (theStatus, appID, theLastAct) = deviceData.split(":")
+        def theData = deviceData.split(":")
+        try {
+            theStatus = theData[0]
+            appID = theData[1]
+            theLastAct = theData[2]
+        } catch(e) {
+            log.info "Follow Me Driver - In makeListHandler - If no other errors are shown, this will work itself out."
+        }
         if(theLastAct == "true") {
             line = "<tr><td>${it.key}<td style='color:orange;font-size:${fontSize}px'>lastActive"
         } else {
