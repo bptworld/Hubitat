@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.3.0 - 11/07/21 - Trying to fix something I can't reproduce.
  *  2.2.9 - 10/21/21 - Adjusted speak() to reflect the new parameters
  *  2.2.8 - 07/29/21 - Added code for lastActive Speaker
  *  2.2.7 - 04/28/21 - Added 'Replay'
@@ -423,7 +424,15 @@ def clearSpeechData(){
 
 def sendFollowMeSpeaker(status) {
     if(logEnable) log.info "sendFollowMeSpeaker - status: ${status}"
-    def (sName, sStatus, sID, sLastAct) = status.split(':')
+    def theData = status.split(':')    
+    try {
+        sName = theData[0]
+        sStatus = theData[1]
+        sID = theData[2]
+        sLastAct = theData[3]
+    } catch(e) {
+        if(logEnable) log.debug "In sendFollowMeSpeaker - Something isn't setup right. Try to see WHAT just sent FM this info..."
+    }
     if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus} - sID: ${sID} - sLastAct: ${sLastAct}"
     if(state.speakerMap == null) state.speakerMap = [:]
     ndata = "${sStatus}:${sID}:${sLastAct}"
