@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 01/07/21 - Fix for changes to speak
  *  1.1.6 - 01/13/21 - Fixed typos
  *  1.1.5 - 01/04/21 - Tons of adjustments
  *  1.1.4 - 08/31/20 - Minor updates
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -901,7 +902,7 @@ def letsTalk() {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(state.theMsg)
+        fmSpeaker.speak(state.theMsg,null)
     }
 }
 
