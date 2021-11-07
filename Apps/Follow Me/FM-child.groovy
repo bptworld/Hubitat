@@ -32,6 +32,8 @@
  *
  *  Changes:
  *
+ *  2.3.6 - 11/07/21 - Trying to fix something I can't reproduce.
+ *  2.3.5 - 07/29/21 - Added code for lastActive Speaker
  *  2.3.4 - 04/30/21 - Added replay option
  *  2.3.3 - 01/14/21 - Added 'App Description'
  *  2.3.2 - 01/13/21 - Fixed a typo
@@ -48,7 +50,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.4"
+	state.version = "2.3.6"
 }
 
 definition(
@@ -120,7 +122,6 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message Destination")) {
     		//input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push","Queue"], required: true
             input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push"], required: true
-            state.appD += "<b>Destination</b>: ${messageDest}<br>"
 		}
         
 		// Speakers
@@ -128,12 +129,25 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Activation Type for Room Speakers")) {
     			input "triggerMode", "enum", title: "Select message activation Type", submitOnChange: true, options: ["Always_On","Contact_Sensor","Motion_Sensor","Presence_Sensor","Switch"], required: true, Multiple: false
 				if(triggerMode == "Always_On"){
-					paragraph "Selected speakers will always play messages."	
-				}
+					paragraph "Selected speakers will always play messages."
+                    app.removeSetting("lastActive")
+                } else {
+                    input "lastActive", "bool", title: "Turn Speaker Off After XX Minutes of Inactivity (off) or Keep Speaker Active based on Last Motion (on)", defaultValue:false, submitOnChange:true
+                    if(lastActive) {
+                        paragraph "Speaker will stay active until another sensor is triggered."
+                    } else {
+                        paragraph "Speaker will turn itself off after XX minutes of inactivity."
+                    }
+                }
+                state.appD += "<b>Destination</b>: ${messageDest} - Use lastActive: ${lastActive}<br>"
 				if(triggerMode == "Contact_Sensor"){
 					input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the speaker", required: true, multiple: true
 					input "contactOption", "enum", title: "Select contact option - If (option), Speaker is On", options: ["Open","Closed"], required: true
-					input "sZoneWaiting", "number", title: "After contact changes, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    if(lastActive) {
+                        paragraph "Speaker will stay active until another sensor is triggered."
+                    } else {
+                        input "sZoneWaiting", "number", title: "After contact changes, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    }
                     state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myContacts} - Option: ${contactOption} - Minutes to Off: ${sZoneWaiting}<br>"
                 } else {
                     state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myContacts} - Option: ${contactOption} - Minutes to Off: ${sZoneWaiting}<br>"
@@ -142,15 +156,23 @@ def pageConfig() {
                 }
 				if(triggerMode == "Motion_Sensor"){
 					input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the speaker", required: true, multiple: true
-					input "sZoneWaiting", "number", title: "After motion stops, wait X minutes to turn the speaker off", required: true, defaultValue: 5
-                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - Minutes to Off: ${sZoneWaiting}"
+                    if(lastActive) {
+                        paragraph "Speaker will stay active until another sensor is triggered."
+                    } else {
+                        input "sZoneWaiting", "number", title: "After motion stops, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    }
+                    state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - lastActive: ${lastActive} - Minutes to Off: ${sZoneWaiting}<br>"
 				} else {
-                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - Minutes to Off: ${sZoneWaiting}"
+                    state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myMotion} - Minutes to Off: ${sZoneWaiting}<br>"
                     app.removeSetting("myMotion")
                 }
                 if(triggerMode == "Presence_Sensor"){
 					input "myPresence", "capability.presenceSensor", title: "Select the presence sensor(s) to activate the speaker", required: true, multiple: true
-					input "sZoneWaiting", "number", title: "After becoming not present, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    if(lastActive) {
+                        paragraph "Speaker will stay active until another sensor is triggered."
+                    } else {
+                        input "sZoneWaiting", "number", title: "After becoming not present, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    }
                     state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${myPresence} - Minutes to Off: ${sZoneWaiting}<br>"
 				} else {
                     state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${myPresence} - Minutes to Off: ${sZoneWaiting}<br>"
@@ -158,7 +180,11 @@ def pageConfig() {
                 }
 				if(triggerMode == "Switch"){
 					input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the speaker", required: true, multiple: true
-					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    if(lastActive) {
+                        paragraph "Speaker will stay active until another sensor is triggered."
+                    } else {
+                        input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+                    }
                     state.appD += "<b>Activation Type</b>: ${triggerMode} - Device: ${mySwitches} - Minutes to Off: ${sZoneWaiting}<br>"
 				} else {
                     state.appD -= "<b>Activation Type</b>: ${triggerMode} - Device: ${mySwitches} - Minutes to Off: ${sZoneWaiting}<br>"
@@ -349,6 +375,7 @@ def pageConfig() {
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
             }
+            input "logTrace", "bool", title: "Enable Trace Options", description: "Log Options", defaultValue:false, submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Speech Queue (Experimental)")) {
@@ -619,7 +646,8 @@ def alwaysOnHandler() {
     } else {
         if(logEnable) log.debug "In alwaysOnHandler (${state.version}) - setting sZone to true"
         atomicState.sZone = true
-        speakerStatus = "${app.label}:${atomicState.sZone}"
+        if(lastActive == null) lastActive = false
+        speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
         gvDevice.sendFollowMeSpeaker(speakerStatus)
     }
 }
@@ -635,10 +663,12 @@ def contactSensorHandler(evt) {
             if(state.contactStatus == "closed") {
                 if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
                 atomicState.sZone = true
-                speakerStatus = "${app.label}:${atomicState.sZone}"
+                if(lastActive == null) lastActive = false
+                speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
                 gvDevice.sendFollowMeSpeaker(speakerStatus)
+                if(logTrace) log.trace "In contactSensorHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
             }
-            if(state.contactStatus == "open") {
+            if(state.contactStatus == "open" && !lastActive) {
                 sOff = sZoneWaiting * 60
                 runIn(sOff,zoneOffHandler)
             }
@@ -647,10 +677,12 @@ def contactSensorHandler(evt) {
             if(state.contactStatus == "open") {
                 if(logEnable) log.debug "In contactSensorHandler (${state.version}) - setting sZone to true"
                 atomicState.sZone = true
-                speakerStatus = "${app.label}:${atomicState.sZone}"
+                if(lastActive == null) lastActive = false
+                speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
                 gvDevice.sendFollowMeSpeaker(speakerStatus)
+                if(logTrace) log.trace "In contactSensorHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
             }
-            if(state.contactStatus == "closed") {
+            if(state.contactStatus == "closed" && !lastActive) {
                 sOff = sZoneWaiting * 60
                 runIn(sOff,zoneOffHandler)
             }
@@ -668,12 +700,17 @@ def motionSensorHandler(evt) {
         if(state.motionStatus == "active") {
             if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
             atomicState.sZone = true
-            speakerStatus = "${app.label}:${atomicState.sZone}"
+            if(lastActive == null) lastActive = false
+            speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
+            if(logEnable) log.debug "In motionSensorHandler - ***** speakerStatus: ${speakerStatus} *****"
             gvDevice.sendFollowMeSpeaker(speakerStatus)
+            if(logTrace) log.trace "In motionSensorHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
         }
-        if(state.motionStatus == "inactive") {
+        if(state.motionStatus == "inactive" && !lastActive) {
             sOff = sZoneWaiting * 60
             runIn(sOff,zoneOffHandler)
+        } else {
+            if(logEnable) log.debug "In motionSensorHandler - lastActive is True"
         }
     }
 }
@@ -688,10 +725,12 @@ def presenceSensorHandler(evt) {
         if(state.presenceStatus == "present") {
             if(logEnable) log.debug "In presenceSensorHandler - setting sZone to true"
             atomicState.sZone = true
-            speakerStatus = "${app.label}:${atomicState.sZone}"
+            if(lastActive == null) lastActive = false
+            speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
             gvDevice.sendFollowMeSpeaker(speakerStatus)
+            if(logTrace) log.trace "In presenceSensorHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
         }
-        if(state.presenceStatus == "not present") {
+        if(state.presenceStatus == "not present" && !lastActive) {
             sOff = sZoneWaiting * 60
             runIn(sOff,zoneOffHandler)
         }
@@ -708,10 +747,12 @@ def switchHandler(evt) {
         if(state.switchStatus == "on") {
             if(logEnable) log.debug "In switchHandler - setting sZone to true"
             atomicState.sZone = true
-            speakerStatus = "${app.label}:${atomicState.sZone}"
+            if(lastActive == null) lastActive = false
+            speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
             gvDevice.sendFollowMeSpeaker(speakerStatus)
+            if(logTrace) log.trace "In switchHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
         }
-        if(state.switchStatus == "off") {
+        if(state.switchStatus == "off" && !lastActive) {
             sOff = sZoneWaiting * 60
             runIn(sOff,zoneOffHandler)
         }
@@ -877,15 +918,28 @@ def startHandler(evt) {
 
 def zoneOffHandler() {
     if(logEnable) log.debug "In zoneOffHandler (${state.version}) - Checking for status change"
-	if(state.contactStatus == "open" || state.motionStatus == "active" || state.switchStatus == "on"){
-		atomicState.sZone = true
-		if(logEnable) log.debug "In zoneOffHandler - Zone status changed, staying on - sZone: ${atomicState.sZone}"
-	} else {
-		atomicState.sZone = false
-		speakerStatus = "${app.label}:${atomicState.sZone}"
-		gvDevice.sendFollowMeSpeaker(speakerStatus)
-		if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${atomicState.sZone}"
-	}
+    if(lastActive) {
+        atomicState.sZone = false
+        if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${atomicState.sZone}"
+        if(logTrace) log.debug "In zoneOffHandler - ${app.label} - Zone is now off - sZone: ${atomicState.sZone}"
+    } else {
+        if(state.contactStatus == "open" || state.motionStatus == "active" || state.switchStatus == "on"){
+            atomicState.sZone = true
+            if(logEnable) log.debug "In zoneOffHandler - Zone status changed, staying on - sZone: ${atomicState.sZone}"
+        } else {
+            atomicState.sZone = false
+            lastActive = false
+            speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
+            gvDevice.sendFollowMeSpeaker(speakerStatus)
+            if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${atomicState.sZone}"
+            if(logTrace) log.trace "In zoneOffHandler - ${app.label} - Zone is now off - sZone: ${atomicState.sZone}"
+        }
+    }
+}
+
+def driverToChildApp(theData) {
+    log.trace "In driverToChildApp - ${app.label} - Going to childAppToParent"
+    parent.childAppToParent(theData)
 }
 
 def initializeSpeaker() {
@@ -969,7 +1023,8 @@ def letsTalk(msg) {
 		if(logEnable) log.debug "In letsTalk - continuing"
 		if(state.timeBetween) {
 			state.sStatus = "speaking"
-			speakerStatus = "${app.label}:${state.sStatus}"
+            if(lastActive == null) lastActive = false
+			speakerStatus = "${app.label}:${state.sStatus}:${app.id}:${lastActive}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
             
             try {
@@ -1119,7 +1174,8 @@ def letsTalk(msg) {
                     pauseExecution(theDuration)
                 }
             }
-            speakerStatus = "${app.label}:${atomicState.sZone}"
+            if(lastActive == null) lastActive = false
+            speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
 			if(logEnable) log.info "In letsTalk - Ready for next message"
             
