@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 11/07/21 - Fix for new speak attributes
  *  1.1.3 - 09/04/20 - Minor changes
  *  1.1.2 - 09/03/20 - Seperated all speech elements
  *  1.1.1 - 09/02/20 - Another attempt to stop push when there is no message
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -1043,7 +1044,7 @@ def letsTalk() {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(state.theMsg)
+        fmSpeaker.speak(state.theMsg,null)
     }
 }
 
