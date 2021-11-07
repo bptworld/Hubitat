@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.3.4"
+			"version": "2.3.6"
 		}
 	],
 	"drivers" : [
@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy",
 			"required": true,
-			"version": "2.2.9"
+			"version": "2.3.0"
 		}
 	]
 }
