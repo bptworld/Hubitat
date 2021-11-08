@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.7 - 11/07/21 - I think I got it!
  *  2.3.6 - 11/07/21 - Trying to fix something I can't reproduce.
  *  2.3.5 - 07/29/21 - Added code for lastActive Speaker
  *  2.3.4 - 04/30/21 - Added replay option
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.6"
+	state.version = "2.3.7"
 }
 
 definition(
