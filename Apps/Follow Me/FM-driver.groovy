@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.3.2 - 11/07/21 - I think I got it!
  *  2.3.1 - 11/07/21 - Trying again.
  *  2.3.0 - 11/07/21 - Trying to fix something I can't reproduce.
  *  2.2.9 - 10/21/21 - Adjusted speak() to reflect the new parameters
@@ -175,7 +176,7 @@ def playText(message) {
     sendEvent(name: "rawMessage", value: message)
 }
 
-def playTextAndRestore(message) {
+def playTextAndRestore(message, returnLevel) {
     if(logEnable) log.debug "In playTextAndRestore"
     speechReceivedFULL = message
     theMessage = composeMessageMap('playTextAndRestore', speechReceivedFULL, 'X:X')
@@ -191,7 +192,7 @@ def playTrack(message) {
     sendEvent(name: "rawMessage", value: message)
 }
 
-def playTrackAndRestore(message) {
+def playTrackAndRestore(message, returnLevel) {
     if(logEnable) log.debug "In playTrackAndRestore"
     //NB - Maybe shouldn't strip the URL encoding, as this is supposed to be a URL
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
@@ -247,7 +248,7 @@ def setVolumeAndSpeak(volume, message) {
     sendEvent(name: "rawMessage", value: message)
 }
 
-def speak(message,option) {
+def speak(message, option) {
     if(logEnable) log.debug "In speak - message: ${message} - option: ${option}"
     if(message) {
         priorityHandler(message)
@@ -424,7 +425,7 @@ def clearSpeechData(){
 }
 
 def sendFollowMeSpeaker(status) {
-    if(logEnable) log.info "sendFollowMeSpeaker - status: ${status}"
+    if(logEnable) log.debug "In sendFollowMeSpeaker - status: ${status}"
     def theData = status.split(':')    
     try {
         sName = theData[0]
@@ -432,14 +433,14 @@ def sendFollowMeSpeaker(status) {
         sID = theData[2]
         sLastAct = theData[3]
     } catch(e) {
-        log.warn "Follow Me Driver - In sendFollowMeSpeaker - Something isn't setup right. Post a screenshot of the DEBUG LOGS (not just the error) of the Device in question AND the Follow Me app."
+        log.warn "Follow Me Driver - In sendFollowMeSpeaker - Something isn't setup right. Post a screenshot of the DEBUG LOGS (not just the error) of the Device the created this error AND the Follow Me app."
     }
     if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus} - sID: ${sID} - sLastAct: ${sLastAct}"
     if(state.speakerMap == null) state.speakerMap = [:]
     ndata = "${sStatus}:${sID}:${sLastAct}"
     state.speakerMap.put(sName, ndata)
     if(sLastAct == "true") {
-        log.trace "In sendFollowMeSpeaker - Going to driverToChildApp"
+        if(logEnable) log.debug "In sendFollowMeSpeaker - Using LastActive - Going to driverToChildApp - status: ${status}"
         parent.driverToChildApp(status)
         sendEvent(name: "bpt-lastActiveSpeaker", value: sName)
     }
@@ -472,12 +473,12 @@ def makeListHandler() {
             if(theStatus == "speaking") line = "<tr><td>${it.key}<td style='color:blue;font-size:${fontSize}px'>Speaking"
         }
         totalLength = tbl.length() + line.length()
-        if(logEnable) log.debug "In makeListHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+        //if(logEnable) log.debug "In makeListHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
         if (totalLength < 1009) {
             tbl += line
         } else {
             tbl += "</table></div>"
-            if(logEnable) log.debug "${tbl}"
+            //if(logEnable) log.debug "${tbl}"
             tbl = tblhead + line
             if(tileCount == 1) sendEvent(name: "bpt-speakerStatus1", value: tbl)
             if(tileCount == 2) sendEvent(name: "bpt-speakerStatus2", value: tbl)
@@ -488,7 +489,7 @@ def makeListHandler() {
 
     if (tbl != tblhead) {
         tbl += "</table></div>"
-        if(logEnable) log.debug "${tbl}"
+        //if(logEnable) log.debug "${tbl}"
         if(tileCount == 1) sendEvent(name: "bpt-speakerStatus1", value: tbl)
         if(tileCount == 2) sendEvent(name: "bpt-speakerStatus2", value: tbl)
         if(tileCount == 3) sendEvent(name: "bpt-speakerStatus3", value: tbl)
