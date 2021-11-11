@@ -39,8 +39,8 @@
 *
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
-* * - Working on Keypad - Need HE to fix/update their driver - Don't hold your breath :( 
 *
+*  3.3.5 - 11/11/21 - Added support for the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.
 *  3.3.4 - 10/21/21 - Fixed error with BIControl code - thanks Rabecaps, adjusted speak() to reflect the new parameters.
 *  3.3.3 - 10/02/21 - Fixed issue with Calendarific
 *  3.3.2 - 09/16/21 - Reworked Switches per Mode - you'll need to recreate your switches per mode
@@ -59,7 +59,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.4"
+    state.name = "Event Engine Cog"; state.version = "3.3.5"
 }
 
 definition(
@@ -161,7 +161,7 @@ def pageConfig() {
                 ["xMotion":"Motion Sensors"],
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
-                //["xSecurityKeypad":"Security Keypad"],
+                ["xSecurityKeypad":"Ring Security Keypad G2"],
                 ["xSwitch":"Switches"],
                 ["xSystemStartup":"Sytem Startup"],
                 ["xTemp":"Temperature Setpoint"],
@@ -1399,22 +1399,45 @@ def pageConfig() {
             }
 // -----------
             if(triggerType.contains("xSecurityKeypad")) {
-                paragraph "<b>Security Keypad</b><br>For use with the Ring Alarm Gen 2 Keypad"
-                paragraph "Note: For this to work, do NOT add the keypad to HSM. You can always make Cogs to trigger HSM when certain codes are entered, mode changes or anything else you can think of!"
-                paragraph "<hr><small>Although I figured out a way to have certain codes do different things, PLEASE let Hubitat know that you would like to see more done with this keypad driver! We need to be able to: 1. See all keys pressed in an attribute, and 2. Custom use of the 3 emergency buttons.</small><hr>"
+                paragraph "<b>Security Keypad</b><br>For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.<br><small>This will NOT work with the built in Ring G2 driver.</small>"
                 input "keypadEvent", "capability.securityKeypad", title: "By Security Keypad", required:false, multiple:true, submitOnChange:true
                 paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Keyapd, the codes must not be encrypted.</small>"
-                if(keypadEvent) {                   
-                    theNames = getLockCodeNames(keypadEvent)
-                    input "keypadUser", "enum", title: "By Keypad User <small><abbr title='Only the selected users will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
-                    input "keypadStatus", "enum", title: "By Keypad Status <small><abbr title='Only the selected status will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: ["armed", "disarmed"], required:false, multiple:true, submitOnChange:true
-                    theCogTriggers += "<b>-</b> By Keypad: ${keypadEvent} - keypadUser: ${keypadUser} - keypadStatus: ${keypadStatus}<br>"
+                if(keypadEvent) {
+                    input "keypadEventType", "enum", title: "Type of Keypad Event", options: ["Alarm User/Status", "Panic Buttons", "Alt Codes"], required:true, Multiple:false, submitOnChange:true                
+                    if(keypadEventType == "Alarm User/Status") {
+                        app.removeSetting("keypadPanic")
+                        app.removeSetting("keypadAltCode")
+                        theNames = getLockCodeNames(keypadEvent)
+                        input "keypadUser", "enum", title: "By Keypad User <small><abbr title='Only the selected users will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
+                        input "keypadStatus", "enum", title: "By Keypad Status <small><abbr title='Only the selected status will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: ["armed", "disarmed"], required:true, multiple:true, submitOnChange:true
+                        theCogTriggers += "<b>-</b> By Keypad: ${keypadEvent} - keypadUser: ${keypadUser} - keypadStatus: ${keypadStatus}<br>"
+                    } else if(keypadEventType == "Panic Buttons") {
+                        app.removeSetting("keypadUser")
+                        app.removeSetting("keypadStatus")
+                        app.removeSetting("keypadAltCode")
+                        input "keypadPanic", "enum", title: "By Keypad Panic Button <small><abbr title='Cog will run when this Panic Button has been pressed.'><b>- INFO -</b></abbr></small>", options: ["police", "fire", "medical"], required:true, multiple:true, submitOnChange:true                       
+                    } else if(keypadEventType == "Alt Codes") {
+                        app.removeSetting("keypadUser")
+                        app.removeSetting("keypadStatus")
+                        app.removeSetting("keypadPanic")
+                        paragraph "Enter in any code to trigger the Cog. This code will need to be entered on the keypad and then press the 'check mark' button. IMPORTANT: This code can not match any of the alarm codes."
+                        input "keypadAltCode", "text", title: "Alt Code", required:true, submitOnChange:true, width:6
+                    }
+                    if(keypadEventType == "Alarm User/Status") {
+                        theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - User: ${keypadUser} - Status: ${keypadStatus}<br>"
+                    } else if(keypadEventType == "Panic Buttons") {
+                        theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - Panic Button: ${keypadPanic}<br>"
+                    } else if(keypadEventType == "Alt Codes") {
+                        theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - Alt Code: ${keypadAltCode}<br>"
+                    }
                     paragraph "<hr>"
                 }
             } else {
                 app.removeSetting("keypadEvent")
                 app.removeSetting("keypadUser")
                 app.removeSetting("keypadStatus")
+                app.removeSetting("keypadPanic")
+                app.removeSetting("keypadAltCode")
             }
 // -----------
             if(triggerType.contains("xSwitch")) {
@@ -6710,34 +6733,58 @@ def securityKeypadHandler(evt) {
     whatHappened = evt.value
     theDevice = evt.device
     theStatus = theDevice.currentValue("securityKeypad")
+    theLastCodeName = theDevice.currentValue("lastCodeName")
     state.securityOK = false
     kUser = false
     kStatus = false
-    if(logEnable) log.debug "In securityKeypadHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened} - theStatus: ${theStatus}"
-    if(keypadUser && keypadStatus) {
-        if(logEnable) log.debug "In securityKeypadHandler - keypadUser: ${keypadUser} contains ${whatHappened} - keypadStatus: ${keypadStatus} contains ${theStatus}"
-        keypadUser.each {
-            if(it.toString() == whatHappened.toString()) {
-                kUser = true
+    if(logEnable) log.debug "In securityKeypadHandler - whoHappened: ${whoHappened} - whatHappened: ${whatHappened} - theStatus: ${theStatus} - theLastCodeName: ${theLastCodeName}"
+    if(keypadEventType == "Alarm User/Status") {
+        if(keypadUser && keypadStatus) {
+            if(logEnable) log.debug "In securityKeypadHandler - keypadUser: ${keypadUser} contains ${whatHappened} - keypadStatus: ${keypadStatus} contains ${theStatus}"
+            keypadUser.each {
+                if(it.toString() == whatHappened.toString()) {
+                    kUser = true
+                }
+            }
+            keypadStatus.each {
+                if(it.toString() == theStatus.toString()) {
+                    kStatus = true
+                }
+            }
+            if(kUser && kStatus) state.securityOK = true
+        } else if(keypadUser && !keypadStatus) {
+            keypadUser.each {
+                if(it.toString() == whatHappened.toString()) {
+                    state.securityOK = true
+                }
+            }
+        } else if(!keypadUser && keypadStatus) {
+            keypadStatus.each {
+                if(it.toString() == theStatus.toString()) {
+                    state.securityOK = true
+                }
             }
         }
-        keypadStatus.each {
-            if(it.toString() == theStatus.toString()) {
-                kStatus = true
-            }
-        }
-        if(kUser && kStatus) state.securityOK = true
-    } else if(keypadUser && !keypadStatus) {
-        keypadUser.each {
-            if(it.toString() == whatHappened.toString()) {
+    }    
+    if(keypadEventType == "Panic Buttons") {
+        if(logEnable) log.debug "In securityKeypadHandler - Panic Buttons - keypadPanic: ${keypadPanic} VS ${whatHappened}"
+        theButtons = keypadPanic.toString()
+        eButton = theButtons.split(",")
+        eButton.each { it ->
+            if(it.startsWith(" ") || it.startsWith("[")) theBut = it.substring(1)
+            theBut = theBut.replace("]","")
+            if(logEnable) log.debug "In securityKeypadHandler - Panic Buttons - Checking: ${theBut}"
+            if(whatHappened == theBut) {
+                if(logEnable) log.debug "In securityKeypadHandler - Panic Buttons - MATCH!"
                 state.securityOK = true
             }
         }
-    } else if(!keypadUser && keypadStatus) {
-        keypadStatus.each {
-            if(it.toString() == theStatus.toString()) {
-                state.securityOK = true
-            }
+    }   
+    if(keypadEventType == "Alt Codes") {
+        if(logEnable) log.debug "In securityKeypadHandler - Alt Codes - keypadAltCode: ${keypadAltCode} VS ${whatHappened}"
+        if(whatHappened == keypadAltCode) {
+            if(logEnable) log.debug "In securityKeypadHandler - Alt Codes - MATCH!"
+            state.securityOK = true
         }
     }
     if(logEnable) log.debug "In securityKeypadHandler - securityOK: ${state.securityOK}"
