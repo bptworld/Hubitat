@@ -2,7 +2,7 @@
     Ring Keypad Gen 2 - Community Driver
 
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
-    Special Thanks to Bryan Copeland (@bcopeland) for writting and releasing this code to the community!
+    Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
 
     11/11/21 - Mapped the 3 emergency buttons
