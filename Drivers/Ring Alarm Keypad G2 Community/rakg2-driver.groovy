@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.2 - 11/12/21 - Fixed armAway not respecting the Disarm command
     1.0.1 - 11/11/21 - Added toggle for Disabling Proximity Sensor
     1.0.0 - 11/11/21 - Tracking the 3 emergency buttons
              - Tracking any code entered followed by the 'check mark' button.
@@ -17,7 +18,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.1"
+    return "1.0.2"
 }
 
 metadata {
@@ -167,6 +168,8 @@ void disarmEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     keypadUpdateStatus(0x02, state.type, state.code)
+    unschedule(armHomeEnd)
+    unschedule(armAwayEnd)
 }
 
 void armHome(delay=0) {
