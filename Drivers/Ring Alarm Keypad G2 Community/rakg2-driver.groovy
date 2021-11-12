@@ -4,9 +4,9 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-
-    11/11/21 - Mapped the 3 emergency buttons
-             - Tracks any code entered followed by the 'check mark' button.
+    1.0.1 - 11/11/21 - Added toggle for Disabling Proximity Sensor
+    1.0.0 - 11/11/21 - Tracking the 3 emergency buttons
+             - Tracking any code entered followed by the 'check mark' button.
              - Added option to set home/away with a single button push (No code needed)
              - Fixed error when arming home from keypad
              - Fixed error when clicking Config
@@ -15,6 +15,10 @@
 
 import groovy.transform.Field
 import groovy.json.JsonOutput
+
+def version() {
+    return "1.0.1"
+}
 
 metadata {
     definition (name: "Ring Alarm Keypad G2 Community", namespace: "hubitat", author: "Community") {
@@ -38,8 +42,10 @@ metadata {
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
     }
     preferences {
+        input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}"
         configParams.each { input it.value.input }
         input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: ""    // bptworld
+        input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""    // bptworld
         input name: "optEncrypt", type: "bool", title: "Enable lockCode encryption", defaultValue: false, description: ""
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
         input name: "txtEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: true
@@ -73,6 +79,7 @@ void updated() {
     if (logEnable) runIn(1800,logsOff)
     sendToDevice(runConfigs())
     updateEncryption()
+    proximitySensorHandler()
 }
 
 void installed() {
@@ -144,7 +151,6 @@ void armAwayEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     keypadUpdateStatus(0x0B, state.type, state.code)
-    //sendLocationEvent(name: "hsmSetArm", value: "armAway")
 }
 
 void disarm(delay=0) {
@@ -161,7 +167,6 @@ void disarmEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     keypadUpdateStatus(0x02, state.type, state.code)
-    //sendLocationEvent(name: "hsmSetArm", value: "disarm")
 }
 
 void armHome(delay=0) {
@@ -184,27 +189,6 @@ void exitDelay(delay){
     if (logEnable) log.debug "exitDelay(${delay})"
     if (delay) {
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x12, propertyId:7, value:delay.toInteger()]]).format())
-        //runIn(delay.toInteger(), "checkHsm")
-    }
-}
-
-private void checkHsm() {
-    switch (location.hsmStatus) {
-        case "armedHome":
-            keypadUpdateStatus(0x0A)
-            break
-        case "armedNight":
-            keypadUpdateStatus(0x0A)
-            break
-        case "armedAway":
-            keypadUpdateStatus(0x0B)
-            break
-        case "disarmed":
-            keypadUpdateStatus(0x02)
-            break
-        default:
-            //runIn(5,"checkHsm")
-            break
     }
 }
 
@@ -652,7 +636,6 @@ void zwaveEvent(hubitat.zwave.commands.supervisionv1.SupervisionGet cmd) {
     }
     // device quirk requires this to be unsecure reply
     sendToDevice(zwave.supervisionV1.supervisionReport(sessionID: cmd.sessionID, reserved: 0, moreStatusUpdates: false, status: 0xFF, duration: 0).format())
-    //sendHubCommand(new hubitat.device.HubAction(zwave.supervisionV1.supervisionReport(sessionID: cmd.sessionID, reserved: 0, moreStatusUpdates: false, status: 0xFF, duration: 0).format(), hubitat.device.Protocol.ZWAVE))
 }
 
 void parse(String description) {
@@ -673,4 +656,14 @@ void sendToDevice(String cmd, Long delay=300) {
 
 List<String> commands(List<String> cmds, Long delay=300) {
     return delayBetween(cmds.collect{ zwaveSecureEncap(it) }, delay)
+}
+
+void proximitySensorHandler() {    // bptworld
+    if(proximitySensor) {
+        if (logEnable) log.debug "Turning the Proximity Sensor OFF"
+        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 0).format())
+    } else {
+        if (logEnable) log.debug "Turning the Proximity Sensor ON"
+        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 1).format())
+    }
 }
