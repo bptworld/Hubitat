@@ -34,6 +34,9 @@
  *
  *  Changes:
  *
+ *  2.4.2 - 11/14/21 - Added a data switch to each type of reporting
+ *                   - Added Attribute to store how many devices are reporting in each section
+ *                   - Fixed multiple typos/missing stuff while adding these options.
  *  2.4.1 - 06/23/21 - Added a pause to refresh
  *  2.4.0 - 05/24/21 - Added second switch option to Run Reports on Demand, fixed typo with Activity push
  *  ---
@@ -46,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.1"
+	state.version = "2.4.2"
 }
 
 definition(
@@ -200,6 +203,7 @@ def batteryConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Battery Options")) {
 			input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required:false, submitOnChange:true
 			input "isDataBatteryDevice", "capability.switch", title: "Turn this device on if there is Battery data to report", required:false, submitOnChange:true
+            paragraph "<small>* Switch will automatically shutoff when there is no data.</small>"
 		}
 		section() {
 			input "batteryBadORgood", "bool", title: "Below Threshold (off) or Above Threshold (on)", description: "Threshold", defaultValue:false, submitOnChange:true
@@ -244,6 +248,7 @@ def activityConfig() {
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Activity Options")) {
 			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required:true, submitOnChange:true
 			input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange:true, required:false, multiple:false
+            paragraph "<small>* Switch will automatically shutoff when there is no data.</small>"
 		}
         
 		section() {
@@ -289,7 +294,10 @@ def statusConfig() {
 				paragraph "Color Code Status will not be color coded."
             }
         }
-        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Status Options")) {
+			input "isDataStatusDevice", "capability.switch", title: "Turn this device on if there is Status data to report", submitOnChange:true, required:false, multiple:false
+            paragraph "<small>* Switch will automatically shutoff when there is no data.</small>"
+		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
             paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "sFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
@@ -318,7 +326,10 @@ def activityAttConfig() {
                 input "attOptions", "enum", title: "Attributes to display (up to 4)", options: allAttrsa, required:true, multiple:true, submitOnChange:true
             }
         }
-        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Attribute Options")) {
+			input "isDataActivityAttDevice", "capability.switch", title: "Turn this device on if there is Attribute data to report", submitOnChange:true, required:false, multiple:false
+            paragraph "<small>* Switch will automatically shutoff when there is no data.</small>"
+		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
             paragraph "Last Activity can be displayed in two ways<br> - Time Since Last Activity: 0 D, 6 H, 49 M<br> - Actual Time Stamp of Last Activity: May 18, 2020 - 6:07 am"
             input "laDisplay", "bool", title: "Time Since(OFF) or Time Stamp(ON)", description: "laDisplay", defaultValue:false, submitOnChange:true
@@ -414,7 +425,10 @@ def specialTrackingConfig() {
                 }
             } 
         }
-        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Special Options")) {
+			input "isDataSpecialDevice", "capability.switch", title: "Turn this device on if there is Special data to report", submitOnChange:true, required:false, multiple:false
+            paragraph "<small>* Switch will automatically shutoff when there is no data.</small>"
+		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
             paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "stFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
@@ -470,7 +484,9 @@ def reportHandler() {
                     if(activityCount1) a1 = activityCount1.toInteger()
                     if(activityCount2) a2 = activityCount2.toInteger()
                     if(activityCount3) a3 = activityCount3.toInteger()
-
+                    
+                    activityNumOfDevices = watchdogTileDevice.currentValue("bpt-ActivityNumOfDevices")
+                    
                     if(logEnable) log.debug "In reportHandler - a1: ${a1} - a2: ${a2} - a3: ${a3}"
 
                     if(a1 >= 63) {
@@ -494,6 +510,7 @@ def reportHandler() {
                     if(a1 < 63 && a2 < 63 && a3 < 63) {
                         paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
                     }
+                    paragraph "<small>Total Devices: ${activityNumOfDevices}</small>"
                     paragraph "${state.activityMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
@@ -518,6 +535,8 @@ def reportHandler() {
                     if(batteryCount2) bc2 = batteryCount2.toInteger()
                     if(batteryCount3) bc3 = batteryCount3.toInteger()
 
+                    batteryNumOfDevices = watchdogTileDevice.currentValue("bpt-BatteryNumOfDevices")
+                    
                     if(logEnable) log.debug "In reportHandler - bc1: ${bc1} - bc2: ${bc2} - bc3: ${bc3}"
 
                     if(bc1 >= 59) {
@@ -541,6 +560,7 @@ def reportHandler() {
                     if(bc1 < 59 && bc2 < 59 && bc3 < 59) {
                         paragraph "<div style='font-size:${fontSize}px'>Battery Report<br>Nothing to report</div>"
                     }
+                    paragraph "<small>Total Devices: ${batteryNumOfDevices}</small>"
                     paragraph "${state.batteryMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
@@ -565,6 +585,8 @@ def reportHandler() {
                     if(statusCount2) s2 = statusCount2.toInteger()
                     if(statusCount3) s3 = statusCount3.toInteger()
 
+                    statusNumOfDevices = watchdogTileDevice.currentValue("bpt-StatusNumOfDevices")
+                    
                     if(logEnable) log.debug "In reportHandler - s1: ${s1} - s2: ${s2} - s3: ${s3}"
 
                     if(s1 >= 58) {
@@ -588,6 +610,7 @@ def reportHandler() {
                     if(s1 < 58 && s2 < 58 && s3 < 58) {
                         paragraph "<div style='font-size:${fontSize}px'>Status Report<br>Nothing to report</div>"
                     }
+                    paragraph "<small>Total Devices: ${statusNumOfDevices}</small>"
                     paragraph "${state.statusMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
@@ -612,6 +635,8 @@ def reportHandler() {
                     if(activityAttCount2) aa2 = activityAttCount2.toInteger()
                     if(activityAttCount3) aa3 = activityAttCount3.toInteger()
 
+                    activityAttNumOfDevices = watchdogTileDevice.currentValue("bpt-ActivityAttNumOfDevices")
+                    
                     if(logEnable) log.debug "In reportHandler - aa1: ${aa1} - a2: ${aa2} - a3: ${aa3}"
 
                     if(aa1 >= 67) {
@@ -635,6 +660,7 @@ def reportHandler() {
                     if(aa1 < 67 && aa2 < 67 && aa3 < 67) {
                         paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
                     }
+                    paragraph "<small>Total Devices: ${activityAttNumOfDevices}</small>"
                     paragraph "${state.activityAttMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
@@ -659,6 +685,8 @@ def reportHandler() {
                     if(specialCount2) st2 = specialCount2.toInteger()
                     if(specialCount3) st3 = specialCount3.toInteger()
 
+                    specialNumOfDevices = watchdogTileDevice.currentValue("bpt-SpecialNumOfDevices")
+                    
                     if(logEnable) log.debug "In reportHandler - st1: ${st1} - st2: ${st2} - st3: ${st3}"
 
                     if(st1 >= 71) {
@@ -682,6 +710,7 @@ def reportHandler() {
                     if(st1 < 71 && st2 < 71 && st3 < 71) {
                         paragraph "<div style='font-size:${fontSize}px'>Special Tracking Report<br>Nothing to report</div>"
                     }
+                    paragraph "<small>Total Devices: ${spcialNumOfDevices}</small>"
                     paragraph "${state.specialMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
@@ -796,6 +825,7 @@ def activityHandler(evt) {
         if(isDataActivityDevice) isThereData()
         if(isDataBatteryDevice) isThereData()
         if(isDataStatusDevice) isThereData()
+        if(isDataActivityAttDevice) isThereData()
         if(isDataSpecialDevice) isThereData()
         if(logEnable) log.debug "In activityHandler - whoHappened: ${state.whoHappened} VS runReportSwitchNoPush: ${runReportSwitchNoPush}" 
         if(sendPushMessage && state.whoHappened.toString() != runReportSwitchNoPush.toString()) pushNow()
@@ -911,7 +941,8 @@ def myActivityHandler() {
         dateFormatHandler(rightNow)
         state.activityMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         activityMapPhone += "Report generated: ${newDate} \n"
-        state.activityMapPhoneS = activityMapPhone
+        state.activityMapPhoneS = activityMapPhone       
+        watchdogTileDevice.sendEvent(name: "bpt-ActivityNumOfDevices", value: state.activityCount, isStateChange: true)        
         if(logEnable) log.debug "     - - - - - End (Activity) - - - - -     "
     }
 }
@@ -1023,6 +1054,7 @@ def myBatteryHandler() {
         state.batteryMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         batteryMapPhone += "Report generated: ${newDate} \n"
         state.batteryMapPhoneS = batteryMapPhone
+        watchdogTileDevice.sendEvent(name: "bpt-BatteryNumOfDevices", value: state.batteryCount, isStateChange: true) 
         if(logEnable) log.debug "     - - - - - End (Battery) - - - - -     "
     }
 }
@@ -1294,15 +1326,16 @@ def myStatusHandler() {
         state.statusMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         statusMapPhone += "Report generated: ${newDate} \n"
         state.statusMapPhoneS = statusMapPhone
+        watchdogTileDevice.sendEvent(name: "bpt-StatusNumOfDevices", value: state.statusCount, isStateChange: true) 
         if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
     }
 }
 
 def myActivityAttHandler() {
     if(activityAttDevices && attOptions) {
-        if(useRefresh) refreshDevices(activityDevices)    // Refresh Devices before checking    
+        if(useRefresh) refreshDevices(activityAttDevices)    // Refresh Devices before checking    
         if(logEnable) log.debug "     - - - - - Start (Activity with Attributes) - - - - -     "
-        if(logEnable) log.debug "In myActivityAttributeHandler ${state.version}"
+        if(logEnable) log.debug "In myActivityAttHandler ${state.version}"
 
         String result1 = attOptions.join(",")
         def theOptions = result1.split(",")               
@@ -1333,8 +1366,8 @@ def myActivityAttHandler() {
         def tbl = tblhead
         def tileCount = 1
         state.activityAttCount = 0
-        state.activityMapPhoneS = ""
-        activityMapPhone = "Activity with Attributes Report \n"
+        state.activityAttMapPhoneS = ""
+        activityAttMapPhone = "Activity with Attributes Report \n"
 
         theDevices = activityAttDevices.sort { a, b -> a.displayName <=> b.displayName }    
 
@@ -1371,10 +1404,10 @@ def myActivityAttHandler() {
                     if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${lastAct}"
                     if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${lastAct}"
 
-                    activityMapPhone += "${it.displayName} - ${lastAct} \n"
-
+                    activityAttMapPhone += "${it.displayName} - ${lastAct} \n"
+                    state.activityAttCount = state.activityAttCount + 1
                     totalLength = tbl.length() + line.length()
-                    if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+                    if(logEnable) log.debug "In myActivityAttHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
 
                     if (totalLength < 1007) {
                         tbl += line
@@ -1382,7 +1415,7 @@ def myActivityAttHandler() {
                         tbl += "</table></div>"
                         if(logEnable) log.debug "${tbl}"
                         if(watchdogTileDevice) {
-                            if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
+                            if(logEnable) log.debug "In myActivityAttHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
                             sending = "${tileCount}::${tbl}"
                             watchdogTileDevice.sendWatchdogActivityAttMap(sending)
                             tileCount = tileCount + 1
@@ -1397,7 +1430,7 @@ def myActivityAttHandler() {
             tbl += "</table></div>"
             if(logEnable) log.debug "${tbl}"
             if(watchdogTileDevice) {
-                if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
+                if(logEnable) log.debug "In myActivityAttHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
                 sending = "${tileCount}::${tbl}"
                 watchdogTileDevice.sendWatchdogActivityAttMap(sending)
                 tileCount = tileCount + 1
@@ -1412,8 +1445,9 @@ def myActivityAttHandler() {
         def rightNow = new Date()
         dateFormatHandler(rightNow)
         state.activityAttMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
-        activityMapPhone += "Report generated: ${newDate} \n"
-        state.activityMapPhoneS = activityMapPhone
+        activityAttMapPhone += "Report generated: ${newDate} \n"
+        state.activityAttMapPhoneS = activityAttMapPhone
+        watchdogTileDevice.sendEvent(name: "bpt-ActivityAttNumOfDevices", value: state.activityAttCount, isStateChange: true) 
         if(logEnable) log.debug "     - - - - - End (Activity with Attributes) - - - - -     "
     }
 }
@@ -1565,6 +1599,7 @@ def specialTrackingHandler() {
         state.specialMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         specialMapPhone += "Report generated: ${newDate} \n"
         state.specialMapPhoneS = specialMapPhone
+        watchdogTileDevice.sendEvent(name: "bpt-SpecialNumOfDevices", value: state.specialCount, isStateChange: true) 
         if(logEnable) log.debug "     - - - - - End (Special Tracking) - - - - -     "
     }
 }
@@ -1668,6 +1703,14 @@ def isThereData(){
         }
     }
     
+    if(isDataActivityAttDevice) {
+        if(state.activityAttCount >= 1) {
+            isDataActivityAttDevice.on()
+        } else {
+            isDataActivityAttDevice.off()
+        }
+    }
+    
     if(isDataSpecialDevice) {
         if(logEnable) log.debug "In isThereData - Special Tracking - ${state.specialCount}"
         if(state.specialCount >= 1) {
@@ -1729,6 +1772,23 @@ def pushNow(){
                 sendPushMessage.deviceNotification(emptyStatusPhone)
             }
         }	
+    }
+    
+    if(activityAttPush) {
+        if(state.activityAttCount >= 1) {
+            if(logEnable) log.debug "In pushNow - Status - ${state.activityAttCount}"
+            activityAttPhone = "${state.activityAttMapPhoneS}"
+            if(logEnable) log.debug "In pushNow - Sending message: ${activityAttPhone}"
+            sendPushMessage.deviceNotification(activityAttPhone)
+        } else {
+            if(pushAll) {
+                if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
+            } else {
+                emptyMapPhone = "Nothing to report."
+                if(logEnable) log.debug "In pushNow - Sending message: ${emptyMapPhone}"
+                sendPushMessage.deviceNotification(emptyMapPhone)
+            }
+        }
     }
     
     if(specialTrackingPush) {
