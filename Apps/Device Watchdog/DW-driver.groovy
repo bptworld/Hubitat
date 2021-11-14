@@ -4,11 +4,11 @@
  *  Design Usage:
  *  This driver formats the Device Watchdog data to be used with Hubitat's Dashboards.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 11/14/21 - Added more Attributes
  *  1.1.0 - 05/19/20 - Changes to tile names for better Smartly compatibility
  *  1.0.9 - 05/19/20 - Changes to add Special Tracking
  *  1.0.8 - 05/17/20 - Changes to add Activity with Attributes
@@ -65,25 +66,29 @@ metadata {
     	attribute "bpt-watchdogActivity1", "string"
 		attribute "bpt-watchdogActivity2", "string"
 		attribute "bpt-watchdogActivity3", "string"
+        attribute "bpt-ActivityNumOfDevices", "string"
         
         attribute "bpt-watchdogActivityAtt1", "string"
 		attribute "bpt-watchdogActivityAtt2", "string"
-		attribute "bpt-watchdogActivityAtt3", "string"
+		attribute "bpt-watchdogActivityAtt3", "string"        
+        attribute "bpt-ActivityAttNumOfDevices", "string"
 		
 		attribute "bpt-watchdogBattery1", "string"
 		attribute "bpt-watchdogBattery2", "string"
 		attribute "bpt-watchdogBattery3", "string"
-		
+		attribute "bpt-BatteryNumOfDevices", "string"
+        
 		attribute "bpt-watchdogStatus1", "string"
 		attribute "bpt-watchdogStatus2", "string"
 		attribute "bpt-watchdogStatus3", "string"
+        attribute "bpt-StatusNumOfDevices", "string"
         
         attribute "bpt-watchdogComboActBat", "string"
         
         attribute "bpt-watchdogSpecial1", "string"
 		attribute "bpt-watchdogSpecial2", "string"
 		attribute "bpt-watchdogSpecial3", "string"
-        
+        attribute "bpt-SpecialNumOfDevices", "string"
         
         attribute "watchdogActivityCount1", "string"
 		attribute "watchdogActivityCount2", "string"
