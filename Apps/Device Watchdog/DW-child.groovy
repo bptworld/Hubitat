@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.3 - 11/14/21 - Bumped it up to check updating with HPM
  *  2.4.2 - 11/14/21 - Added a data switch to each type of reporting
  *                   - Added Attribute to store how many devices are reporting in each section
  *                   - Fixed multiple typos/missing stuff while adding these options.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.2"
+	state.version = "2.4.3"
 }
 
 definition(
