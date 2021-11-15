@@ -144,6 +144,13 @@
          "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	},
       {
+   		"name": "Ring Keypad Companion",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Ring%20Keypad%20Companion/packageManifest.json",
+   		"description": "Make the Ring Keypad Gen2 do more! For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.",
+         "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Send IP2IR",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/packageManifest.json",
