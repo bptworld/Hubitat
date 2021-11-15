@@ -76,6 +76,7 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
     		paragraph "Make the Ring Keypad Gen2 do more! For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver."
             paragraph "This is a bare bones companion app to make it easy to use the advanced options available within the Keypad Community Driver. If more features/options are required, Event Engine has support for the community driver built in!"
+		paragraph "Be sure to download the Ring Alarm Keypad G2 Community Driver from my Drivers section on GitHub!"
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Keypad Options")) {
