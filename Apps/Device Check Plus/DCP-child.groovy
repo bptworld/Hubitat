@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.6 - 11/19/21 - Fix for speech
  *  1.2.5 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  1.2.4 - 04/13/21 - Adjustments to thermostat handling
  *  1.2.3 - 12/04/20 - Removed spacing in message
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.5"
+	state.version = "1.2.6"
 }
 
 definition(
@@ -1127,6 +1128,16 @@ def messageHandler() {
         letsTalk(state.theMsg)
         if(sendPushMessage) pushHandler()
     }
+}
+
+def letsTalk(msg) {
+    if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(msg,null)
+    }
+    if(logEnable) log.warn "In letsTalk - *** Finished ***"
+    clearPresenceMap()
 }
 
 def pushHandler() {
