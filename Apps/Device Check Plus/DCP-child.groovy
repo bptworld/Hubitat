@@ -1137,7 +1137,6 @@ def letsTalk(msg) {
         fmSpeaker.speak(msg,null)
     }
     if(logEnable) log.warn "In letsTalk - *** Finished ***"
-    clearPresenceMap()
 }
 
 def pushHandler() {
