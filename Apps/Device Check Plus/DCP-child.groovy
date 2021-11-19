@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.7 - 11/19/21 - Fixed again
  *  1.2.6 - 11/19/21 - Fix for speech
  *  1.2.5 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  1.2.4 - 04/13/21 - Adjustments to thermostat handling
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.6"
+	state.version = "1.2.7"
 }
 
 definition(
