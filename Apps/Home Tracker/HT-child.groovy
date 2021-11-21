@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.4 - 11/20/21 - Change to getTimeDiff
  *  2.4.3 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  2.4.2 - 09/10/21 - Adjustments to timeDiff
  *  2.4.1 - 01/01/21 - Adjustment to disable switch
@@ -49,7 +50,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.3"
+	state.version = "2.4.4"
 }
 
 definition(
@@ -685,19 +686,19 @@ def motionSensorHandler(evt) {
 }
 
 def getTimeDiff(x) {
-    if(logEnable) log.debug "In getTimeDiff (${state.version}) - (${x})"
     lastActivity = parent.presenceSensors[x].getLastActivity()    
     def now = new Date()
-    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
-    if(logEnable) log.debug "In getTimeDiff - ${x} - now: ${now} - prev(LA): ${prev}"    
-    use(groovy.time.TimeCategory) {
-        def theTime = now - prev
-        tHours = Math.abs(theTime.hours)
-        tMinutes = Math.abs(theTime.minutes)
-        state.timeDiff = (tHours + tMinutes).toInteger()
-        if(logEnable) log.debug "*********** - In getTimeDiff - tHours: ${tHours} - tMinutes: ${tMinutes} - ***********"
-        if(logEnable) log.debug "*********** - In getTimeDiff - ${x} - timeDiff: ${state.timeDiff} - ***********"
+    def prev = Date.parse("yyy-MM-dd HH:mm:ssZ","${lastActivity}".replace("+00:00","+0000"))
+    if(logEnable) log.debug "In getTimeDiff - ${parent.presenceSensors[x]} - now: ${now} - prev: ${prev}"
+    use(TimeCategory) {
+        dur = now - prev
+        days = state.dur.days
+        hours = state.dur.hours
+        minutes = dur.minutes
+        totalHours = ((days * 24) + (hours)) * 60
+        state.timeDiff = (totalHours + minutes).toInteger()
     }
+    if(logEnable) log.debug "*********** - In getTimeDiff - ${parent.presenceSensors[x]} - timeDiff: ${state.timeDiff} - ***********"
 }
 
 def messageHomeNow() {
