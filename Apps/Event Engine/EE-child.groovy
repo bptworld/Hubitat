@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.3.6 - 11/21/21 - Fixed issue with sunset/sunrise end times
 *  3.3.5 - 11/11/21 - Added support for the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.
 *  3.3.4 - 10/21/21 - Fixed error with BIControl code - thanks Rabecaps, adjusted speak() to reflect the new parameters.
 *  3.3.3 - 10/02/21 - Fixed issue with Calendarific
@@ -59,7 +60,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.5"
+    state.name = "Event Engine Cog"; state.version = "3.3.6"
 }
 
 definition(
@@ -1403,30 +1404,30 @@ def pageConfig() {
                 input "keypadEvent", "capability.securityKeypad", title: "By Security Keypad", required:false, multiple:true, submitOnChange:true
                 paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Keyapd, the codes must not be encrypted.</small>"
                 if(keypadEvent) {
-                    input "keypadEventType", "enum", title: "Type of Keypad Event", options: ["Alarm User/Status", "Panic Buttons", "Alt Codes"], required:true, Multiple:false, submitOnChange:true                
+                    input "keypadEventType", "enum", title: "Type of Keypad Event", options: ["Alarm User/Status", "Emergency Buttons", "Alt Codes"], required:true, Multiple:false, submitOnChange:true                
                     if(keypadEventType == "Alarm User/Status") {
                         app.removeSetting("keypadPanic")
                         app.removeSetting("keypadAltCode")
                         theNames = getLockCodeNames(keypadEvent)
                         input "keypadUser", "enum", title: "By Keypad User <small><abbr title='Only the selected users will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                         input "keypadStatus", "enum", title: "By Keypad Status <small><abbr title='Only the selected status will trigger the Cog to run.'><b>- INFO -</b></abbr></small>", options: ["armed", "disarmed"], required:true, multiple:true, submitOnChange:true
-                        theCogTriggers += "<b>-</b> By Keypad: ${keypadEvent} - keypadUser: ${keypadUser} - keypadStatus: ${keypadStatus}<br>"
-                    } else if(keypadEventType == "Panic Buttons") {
+                    } else if(keypadEventType == "Emergency Buttons") {
                         app.removeSetting("keypadUser")
                         app.removeSetting("keypadStatus")
                         app.removeSetting("keypadAltCode")
-                        input "keypadPanic", "enum", title: "By Keypad Panic Button <small><abbr title='Cog will run when this Panic Button has been pressed.'><b>- INFO -</b></abbr></small>", options: ["police", "fire", "medical"], required:true, multiple:true, submitOnChange:true                       
+                        input "keypadPanic", "enum", title: "By Keypad Emergency Button <small><abbr title='Cog will run when this Emergency Button has been pressed.'><b>- INFO -</b></abbr></small>", options: ["police", "fire", "medical"], required:true, multiple:true, submitOnChange:true                       
                     } else if(keypadEventType == "Alt Codes") {
                         app.removeSetting("keypadUser")
                         app.removeSetting("keypadStatus")
                         app.removeSetting("keypadPanic")
                         paragraph "Enter in any code to trigger the Cog. This code will need to be entered on the keypad and then press the 'check mark' button. IMPORTANT: This code can not match any of the alarm codes."
+                        paragraph "Again: The codes entered here, CAN NOT be saved in the alarm codes of the keypad driver."
                         input "keypadAltCode", "text", title: "Alt Code", required:true, submitOnChange:true, width:6
                     }
                     if(keypadEventType == "Alarm User/Status") {
                         theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - User: ${keypadUser} - Status: ${keypadStatus}<br>"
-                    } else if(keypadEventType == "Panic Buttons") {
-                        theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - Panic Button: ${keypadPanic}<br>"
+                    } else if(keypadEventType == "Emergency Buttons") {
+                        theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - Emergency Button: ${keypadPanic}<br>"
                     } else if(keypadEventType == "Alt Codes") {
                         theCogTriggers += "<b>-</b> By Security Keypad: ${keypadEvent} - Alt Code: ${keypadAltCode}<br>"
                     }
@@ -5284,13 +5285,13 @@ def checkSunHandler() {
         if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
             if(!sunsetSunriseMatchConditionOnly) {
                 schedule(nextSunriseOffset, runAtTime1)
-                if(sunriseEndTime) schedule(nextSunsetOffset, runAtTime2)
+                if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
                 if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
             }
         } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
             if(!sunsetSunriseMatchConditionOnly) {
                 schedule(nextSunsetOffset, runAtTime1)
-                if(sunsetEndTime) schedule(nextSunriseOffset, runAtTime2)
+                if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
                 if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2) 
             }
         } else {
