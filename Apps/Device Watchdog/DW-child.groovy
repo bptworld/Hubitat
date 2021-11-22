@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  2.4.3 - 11/14/21 - Bumped it up to check updating with HPM
+ *  2.4.4 - 11/22/21 - Added option to remove report titles
+ *  2.4.3 - 11/14/21 - Bumped up version to check an issue with HPM (non found)
  *  2.4.2 - 11/14/21 - Added a data switch to each type of reporting
  *                   - Added Attribute to store how many devices are reporting in each section
  *                   - Fixed multiple typos/missing stuff while adding these options.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.3"
+	state.version = "2.4.4"
 }
 
 definition(
@@ -159,8 +160,8 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Report Options")) {
+            input "includeTitle", "bool", title: "Include Title on Report", description: "title", defaultValue:false, submitOnChange:true
             paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile."
-            
             input "fontSize", "number", title: "Font Size for Reports", required:false, defaultValue:12, submitOnChange:true
             input "timeFormat", "bool", title: "Time Format - 12h=OFF - 24h=ON", description: "Time Format", defaultValue:false, submitOnChange:true
             input "mmddyy", "bool", title: "Time Format - mm dd, yy=OFF - dd mm, yy=ON", description: "Time Format", defaultValue:false, submitOnChange:true
@@ -509,7 +510,11 @@ def reportHandler() {
                     }
 
                     if(a1 < 63 && a2 < 63 && a3 < 63) {
-                        paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     paragraph "<small>Total Devices: ${activityNumOfDevices}</small>"
                     paragraph "${state.activityMapGen}"
@@ -559,7 +564,11 @@ def reportHandler() {
                     }
 
                     if(bc1 < 59 && bc2 < 59 && bc3 < 59) {
-                        paragraph "<div style='font-size:${fontSize}px'>Battery Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Battery Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     paragraph "<small>Total Devices: ${batteryNumOfDevices}</small>"
                     paragraph "${state.batteryMapGen}"
@@ -609,7 +618,11 @@ def reportHandler() {
                     }
 
                     if(s1 < 58 && s2 < 58 && s3 < 58) {
-                        paragraph "<div style='font-size:${fontSize}px'>Status Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Status Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     paragraph "<small>Total Devices: ${statusNumOfDevices}</small>"
                     paragraph "${state.statusMapGen}"
@@ -659,7 +672,11 @@ def reportHandler() {
                     }
 
                     if(aa1 < 67 && aa2 < 67 && aa3 < 67) {
-                        paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     paragraph "<small>Total Devices: ${activityAttNumOfDevices}</small>"
                     paragraph "${state.activityAttMapGen}"
@@ -709,7 +726,11 @@ def reportHandler() {
                     }
 
                     if(st1 < 71 && st2 < 71 && st3 < 71) {
-                        paragraph "<div style='font-size:${fontSize}px'>Special Tracking Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Special Tracking Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     paragraph "<small>Total Devices: ${spcialNumOfDevices}</small>"
                     paragraph "${state.specialMapGen}"
@@ -759,7 +780,11 @@ def reportHandler() {
                     }
                         
                     if(comboCount < 42) {
-                        paragraph "<div style='font-size:${fontSize}px'>Combo-Activity-Battery Report<br>Nothing to report</div>"
+                        if(includeTitle) {
+                            paragraph "<div style='font-size:${fontSize}px'>Combo-Activity-Battery Report<br>Nothing to report</div>"
+                        } else {
+                            paragraph "<div style='font-size:${fontSize}px'>Nothing to report</div>"
+                        }
                     }
                     //paragraph "${state.statusMapGen}"
                 } else {
@@ -934,7 +959,11 @@ def myActivityHandler() {
         }
 
         for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Activity Report - No Data</div>"
+            if(includeTitle) {
+                sending = "${x}::<div style='font-size:${fontSize}px'>Activity Report - No Data</div>"
+            } else {
+                sending = "${x}::<div style='font-size:${fontSize}px'>No Data</div>"
+            }
             watchdogTileDevice.sendWatchdogActivityMap(sending)
         }
 
@@ -1046,7 +1075,11 @@ def myBatteryHandler() {
         }
 
         for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Battery Report - No Data</div>"
+            if(includeTitle) {
+                sending = "${x}::<div style='font-size:${fontSize}px'>Battery Report - No Data</div>"
+            } else {
+                sending = "${x}::<div style='font-size:${fontSize}px'>No Data</div>"
+            }
             watchdogTileDevice.sendWatchdogBatteryMap(sending)
         }
 
@@ -1318,7 +1351,11 @@ def myStatusHandler() {
         }
 
         for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Status Report - No Data</div>"
+            if(includeTitle) {
+                sending = "${x}::<div style='font-size:${fontSize}px'>Status Report - No Data</div>"
+            } else {
+                sending = "${x}::<div style='font-size:${fontSize}px'>No Data</div>"
+            }
             watchdogTileDevice.sendWatchdogStatusMap(sending)
         }
 
@@ -1439,7 +1476,11 @@ def myActivityAttHandler() {
         }
 
         for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Activity Att Report - No Data</div>"
+            if(includeTitle) {
+                sending = "${x}::<div style='font-size:${fontSize}px'>Activity Att Report - No Data</div>"
+            } else {
+                sending = "${x}::<div style='font-size:${fontSize}px'>No Data</div>"
+            }
             watchdogTileDevice.sendWatchdogActivityAttMap(sending)
         }
 
@@ -1589,8 +1630,12 @@ def specialTrackingHandler() {
             }
         } else {
             if(watchdogTileDevice) {
-                if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
-                sending = "${tileCount}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
+                if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"                
+                if(includeTitle) {
+                    sending = "${tileCount}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
+                } else {
+                    sending = "${tileCount}::<div style='font-size:${fontSize}px'>No Data</div>"
+                }
                 watchdogTileDevice.sendWatchdogSpecialMap(sending)
             }
         }
