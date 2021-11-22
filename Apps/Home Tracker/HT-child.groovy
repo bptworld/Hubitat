@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.5 - 11/22/21 - Another change to getTimeDiff
  *  2.4.4 - 11/20/21 - Change to getTimeDiff
  *  2.4.3 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  2.4.2 - 09/10/21 - Adjustments to timeDiff
@@ -50,7 +51,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.4"
+	state.version = "2.4.5"
 }
 
 definition(
@@ -692,8 +693,8 @@ def getTimeDiff(x) {
     if(logEnable) log.debug "In getTimeDiff - ${parent.presenceSensors[x]} - now: ${now} - prev: ${prev}"
     use(TimeCategory) {
         dur = now - prev
-        days = state.dur.days
-        hours = state.dur.hours
+        days = dur.days
+        hours = dur.hours
         minutes = dur.minutes
         totalHours = ((days * 24) + (hours)) * 60
         state.timeDiff = (totalHours + minutes).toInteger()
