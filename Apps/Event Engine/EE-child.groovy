@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.3.7 - 11/21/21 - Mode Events turning switches on/off/dim can now use Reverse options
 *  3.3.6 - 11/21/21 - Fixed issue with sunset/sunrise end times
 *  3.3.5 - 11/11/21 - Added support for the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.
 *  3.3.4 - 10/21/21 - Fixed error with BIControl code - thanks Rabecaps, adjusted speak() to reflect the new parameters.
@@ -60,7 +61,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.6"
+    state.name = "Event Engine Cog"; state.version = "3.3.7"
 }
 
 definition(
@@ -2612,7 +2613,7 @@ def pageConfig() {
                 }
             }
             if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable") {
-                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl) {
+                if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl || modeEvent) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
                     paragraph "<small><b>Please only select ONE Reverse Action option</b></small>"
