@@ -5,18 +5,18 @@
  *  Flash your lights based on several triggers!
  *
  *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
- * 
+ *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
- *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via:
  *
  *  Paypal at: https://paypal.me/bptworld
- * 
+ *
  *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
  *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
  *  the community grow. Have FUN with it!
- * 
+ *
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 12/04/21 - Improved (hopefully) the flashlights loop, bugfix for double on when numFlashes == 0 (@marcopaganini)
  *  1.1.8 - 02/05/21 - Fixed a typo
  *  1.1.7 - 02/04/21 - Separated Level from Color
  *  1.1.6 - 01/13/21 - Minor adjustment
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.8"
+    state.version = "1.1.9"
 }
 
 definition(
@@ -64,11 +65,11 @@ definition(
     author: "Bryan Turcotte",
     description: "Flash your lights based on several triggers!",
     category: "",
-	parent: "BPTWorld:The Flasher",
+    parent: "BPTWorld:The Flasher",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-child.groovy",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-child.groovy",
 )
 
 preferences {
@@ -77,12 +78,12 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
-		display() 
+        display()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             paragraph "Flash your lights based on several triggers!"
             paragraph "<b>Notes:</b><br>Bulb colors are based on Hue bulbs, results may vary with other type of bulbs."
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
             paragraph "This child app can work as a stand alone app with triggers and actions, just like any other app.<br>BUT, it can also be setup to be controlled by other BPTWorld apps!  By creating Presets that can be used in select BPTWorld apps."
             input "presetsORstandalon", "bool", title: "'Stand Alone' or 'Controlled by Other Apps'", defaultValue:false, submitOnChange:true
         }
@@ -103,7 +104,7 @@ def pageConfig() {
                     paragraph "<small>* Device must use the 'The Flasher Driver'.</small>"
                 }
             }
-            
+
             if(dataDevice) {
                 section("${getImage('instructions')} Flashing Preset 1", hideable: true) {
                     input "theSwitch1", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
@@ -136,7 +137,7 @@ def pageConfig() {
                 app.removeSetting("delay1")
                 app.removeSetting("fColor1")
             }
-            
+
             if(setupPreset2) {
                 section("${getImage('instructions')} Flashing Preset 2", hideable: true) {
                     input "theSwitch2", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
@@ -169,7 +170,7 @@ def pageConfig() {
                 app.removeSetting("delay2")
                 app.removeSetting("fColor2")
             }
-            
+
             if(setupPreset3) {
                 section("${getImage('instructions')} Flashing Preset 3", hideable: true) {
                     input "theSwitch3", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
@@ -202,7 +203,7 @@ def pageConfig() {
                 app.removeSetting("delay3")
                 app.removeSetting("fColor3")
             }
-            
+
             if(setupPreset4) {
                 section("${getImage('instructions')} Flashing Preset 4", hideable: true) {
                     input "theSwitch4", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
@@ -235,7 +236,7 @@ def pageConfig() {
                 app.removeSetting("delay4")
                 app.removeSetting("fColor4")
             }
-            
+
             if(setupPreset5) {
                 section("${getImage('instructions')} Flashing Preset 5", hideable: true) {
                     input "theSwitch5", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
@@ -262,7 +263,7 @@ def pageConfig() {
                 app.removeSetting("numFlashes5")
                 app.removeSetting("delay5")
                 app.removeSetting("fColor5")
-            }         
+            }
         } else {
             section(getFormat("header-green", "${getImage("Blank")}"+" The Flasher Trigger Options")) {
                 input "acceleration", "capability.accelerationSensor", title: "Acceleration Sensor(s)", required:false, multiple:true, submitOnChange:true
@@ -314,7 +315,7 @@ def pageConfig() {
                     if(theSwitch.hasCommand('setLevel')) {
                         input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                     }
-                    if(theSwitch.hasCommand('setColor')) {                    
+                    if(theSwitch.hasCommand('setColor')) {
                         input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
                             ["Soft White":"Soft White - Default"],
                             ["White":"White - Concentrate"],
@@ -342,7 +343,7 @@ def pageConfig() {
                 input "days", "enum", title: "Only flash on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             }
         }
-        
+
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
@@ -365,7 +366,7 @@ def pageConfig() {
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            if(pauseApp) { 
+            if(pauseApp) {
                 paragraph app.label
             } else {
                 label title: "Enter a name for this automation", required:false
@@ -375,18 +376,18 @@ def pageConfig() {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
             }
         }
-		display2()
-	}
-}    
+        display2()
+    }
+}
 
 def installed() {
-	if(logEnable) log.debug "Installed with settings: ${settings}"
-	initialize()
+    if(logEnable) log.debug "Installed with settings: ${settings}"
+    initialize()
 }
 
 def updated() {
-	if(logEnable) log.debug "Updated with settings: ${settings}"
-	unsubscribe()
+    if(logEnable) log.debug "Updated with settings: ${settings}"
+    unsubscribe()
     unschedule()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
@@ -394,7 +395,7 @@ def updated() {
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
     if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
-	initialize()
+    initialize()
 }
 
 def initialize() {
@@ -419,11 +420,11 @@ def initialize() {
 }
 
 def uninstalled() {
-	removeChildDevices(getChildDevices())
+    removeChildDevices(getChildDevices())
 }
 
 private removeChildDevices(delete) {
-	delete.each {deleteChildDevice(it.deviceNetworkId)}
+    delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
 def runPresetHandler(evt) {
@@ -555,7 +556,7 @@ def switchHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-	if(logEnable) log.debug "In switchHandler - Switch: $evt.value"
+    if(logEnable) log.debug "In switchHandler - Switch: $evt.value"
         if(evt.value == "on" && switchValue) flashLights()
         if(evt.value == "off" && !switchValue) flashLights()
     }
@@ -583,21 +584,21 @@ def timeHandler(evt) {
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) state.timeBetween = true
-		if(!state.betweenTime) state.timeBetween = false
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+    if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
+    if((fromTime != null) && (toTime != null)) {
+        state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+        if(state.betweenTime) state.timeBetween = true
+        if(!state.betweenTime) state.timeBetween = false
+    } else {
+        state.timeBetween = true
+    }
+    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
 def checkMode() {
     if(logEnable) log.debug "In checkMode (${state.version})"
     state.modeMatch = false
-    
+
     if(myMode) {
         myMode.each { it ->
             if(it.contains(location.mode)) {
@@ -612,6 +613,13 @@ def checkMode() {
 
 def flashLights(data) {
     checkEnableHandler()
+
+    // Sanity Check: If numFlashes == 0 (meaning, flash forever) we MUST have a controlSwitch
+    // defined, or it will be impossible to interrupt the loop.
+    if (numFlashes == 0 && !controlSwitch) {
+        log.debug "ERROR: numFlashes == 0 and no control Switch defined. This should not happen."
+        return
+    }
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
@@ -634,7 +642,7 @@ def flashLights(data) {
 
                     def doFlash = true
                     def delay = delay ?: 1500
-                    def numFlashes = numFlashes ?: 2
+                    def numFlashes = numFlashes ?: 0
 
                     if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
                     if(state.lastActivated) {
@@ -654,12 +662,12 @@ def flashLights(data) {
                         if(logEnable) log.debug "In flashLights - Is switchSave: $state.switchSaved"
                         if(state.switchSaved == false) {
                             if(controlSwitch) {controlSwitch.on()}
-                                
+
                             if(theSwitch.hasCommand('setColor')) {
                                 state.oldValue = null
                                 oldHueColor = theSwitch.currentValue("hue")
                                 oldSaturation = theSwitch.currentValue("saturation")
-                                oldLevel = theSwitch.currentValue("level")                        
+                                oldLevel = theSwitch.currentValue("level")
                                 state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
                                 state.switchSaved = true
                                 if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
@@ -669,7 +677,7 @@ def flashLights(data) {
                                 setLevelandColorHandler(theData)
                             } else if(theSwitch.hasCommand('setLevel')) {
                                 state.oldValue = null
-                                oldLevel = theSwitch.currentValue("level")                        
+                                oldLevel = theSwitch.currentValue("level")
                                 state.oldValue = oldLevel
                                 state.switchSaved = true
                                 if(logEnable) log.debug "In flashLights - setLevel - saving oldValue: $state.oldValue"
@@ -680,37 +688,17 @@ def flashLights(data) {
                             if(logEnable) log.info "OldValue was already TRUE"
                         }
 
-                        def initialActionOn = (state.oldSwitchState != "on")
+                        boolean turnOn = (state.oldSwitchState == "on")
 
-                        numFlashes.times {
-                            if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
+                        // Loop numFlashes times or forever if numflashes == 0.
+                        for (int count = 0; count < numFlashes || numFlashes == 0; count++) {
+                            // Flip to next action and set operation name.
+                            turnOn = !turnOn
+                            def op = (turnOn ? "on" : "off")
+
+                            if(logEnable) log.debug "In flashLights - Switching $op (count=$count)"
                             theSwitch.eachWithIndex {s, i ->
-                                if(initialActionOn) {
-                                    pauseExecution(delay)
-                                    if(s.hasCommand('setColor')) {
-                                        if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
-                                        s.setColor(state.value)
-                                    } else if(s.hasCommand('setLevel')) {
-                                        if(logEnable) log.debug "In flashLights - $s.displayName, setLevel($state.level)"
-                                        s.setLevel(state.value)
-                                    } else {
-                                        if(logEnable) log.debug "In flashLights - $s.displayName, on"
-                                        s.on()
-                                    } 
-                                } else {
-                                    pauseExecution(delay)
-                                    if(logEnable) log.debug "In flashLights - $s.displayName, off"
-                                    s.off()
-                                }
-                            }
-                            if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-                            theSwitch.eachWithIndex {s, i ->
-                                if(initialActionOn) {
-                                    pauseExecution(delay)
-                                    if(logEnable) log.debug "In flashLights - $s.displayName, off"
-                                    s.off()
-                                } else {
-                                    pauseExecution(delay)
+                                if(turnOn) {
                                     if(s.hasCommand('setColor')) {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
                                         s.setColor(state.value)
@@ -721,42 +709,50 @@ def flashLights(data) {
                                         if(logEnable) log.debug "In flashLights - $s.displayName, on"
                                         s.on()
                                     }
+                                } else {
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, off"
+                                    s.off()
+                                }
+                            }
+                            if(logEnhable) log.debug "Pausing execution for $delay ms"
+                            pauseExecution(delay)
+
+                            // If switch control is enabled and the controlling switch
+                            // is off, break out of the loop.
+                            if(controlSwitch) {
+                                cStat = controlSwitch.currentValue('switch', true) // skipCache == true
+                                if(logEnable) log.debug "In flashLights - Checking controlSwitch: $controlSwitch - status: $cStat"
+                                if(cStat == "off") {
+                                    break
                                 }
                             }
                         }
 
-                        if(controlSwitch) {
-                            cStat = controlSwitch.currentValue('switch')
-                            if(logEnable) log.debug "In flashLights - Checking controlSwitch: $controlSwitch - status: $cStat"
+                        // Out of the main flashing loop. Reset everything back to initial state.
+                        if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+                        if(theSwitch.hasCommand('setColor')) {
+                            theSwitch.setColor(state.oldValue)
+                            if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
+                        } else if(theSwitch.hasCommand('setLevel')) {
+                            theSwitch.setLevel(state.oldValue)
+                            if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
                         }
-                        if(controlSwitch && cStat == "on") {
-                            runIn(1,flashLights)
+                        pauseExecution(500)
+                        if(state.oldSwitchState == "on") {
+                            theSwitch.on()
+                            pauseExecution(1000)
+                            theSwitch.on()
                         } else {
-                            if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
-                            if(theSwitch.hasCommand('setColor')) {
-                                theSwitch.setColor(state.oldValue)
-                                if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
-                            } else if(theSwitch.hasCommand('setLevel')) {
-                                theSwitch.setLevel(state.oldValue)
-                                if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
-                            }
-                            pauseExecution(500)
-                            if(state.oldSwitchState == "on") {
-                                theSwitch.on()
-                                pauseExecution(1000)
-                                theSwitch.on()
-                            } else {
-                                theSwitch.off()
-                                pauseExecution(1000)
-                                theSwitch.off()
-                            }
-                            state.switchSaved = false
-                            if(logEnable) log.info "oldValue is now FALSE"
+                            theSwitch.off()
+                            pauseExecution(1000)
+                            theSwitch.off()
                         }
+                        state.switchSaved = false
+                        if(logEnable) log.info "oldValue is now FALSE"
                     }
                 } else {
                     if(logEnable) log.debug "In flashLights - Days does not match, can't flash lights."
-                }    
+                }
             } else {
                 if(logEnable) log.debug "In flashLights - Mode does not match, can't flash lights."
             }
@@ -769,20 +765,20 @@ def flashLights(data) {
 
 def setLevelandColorHandler(data) {
     if(logEnable) log.debug "In setLevelandColorHandler (${state.version})"
-    if(data) { 
+    if(data) {
         if(logEnable) log.debug "In setLevelandColorHandler - Received Data: ${data}"
-        def (theColor, theLevel) = data.split(";") 
+        def (theColor, theLevel) = data.split(";")
         state.theColor = theColor
         state.theLevel = theLevel
         if(logEnable) log.warn "In setLevelandColorHandler - theColor: ${state.theColor} | theLevel: ${state.theLevel}"
     }
-    
+
     if(state.theColor == null) state.theColor = "White"
     if(state.theLevel == null) state.theLevel = 99
-    
+
     def hueColor = 52
     def saturation = 100
-    
+
     switch(state.theColor) {
             case "White":
             hueColor = 52
@@ -827,7 +823,7 @@ def setLevelandColorHandler(data) {
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
@@ -847,7 +843,7 @@ def dayOfTheWeekHandler() {
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
-def createDataChildDevice() {    
+def createDataChildDevice() {
     if(logEnable) log.debug "In createDataChildDevice (${state.version})"
     statusMessageD = ""
     if(!getChildDevice(dataName)) {
@@ -871,7 +867,7 @@ def logsOff() {
 
 def checkEnableHandler() {
     state.eSwitch = false
-    if(disableSwitch) { 
+    if(disableSwitch) {
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
             if(eSwitch == "on") { state.eSwitch = true }
@@ -884,7 +880,7 @@ def setDefaults(){
     state.switchSaved = false
 }
 
-def getImage(type) {					// Modified from @Stephack Code
+def getImage(type) {                    // Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
     if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
@@ -894,8 +890,8 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+def getFormat(type, myText="") {            // Modified from @Stephack Code
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
@@ -920,15 +916,15 @@ def display(data) {
 }
 
 def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+    section() {
+        paragraph getFormat("line")
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-	}       
+    }
 }
 
 def getHeaderAndFooter() {
-    timeSinceNewHeaders()   
+    timeSinceNewHeaders()
     if(state.totalHours > 4) {
         if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
@@ -951,15 +947,15 @@ def getHeaderAndFooter() {
     if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
 
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
+def timeSinceNewHeaders() {
+    if(state.previous == null) {
         prev = new Date()
     } else {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
         prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
     def now = new Date()
-    use(TimeCategory) {       
+    use(TimeCategory) {
         state.dur = now - prev
         state.days = state.dur.days
         state.hours = state.dur.hours
@@ -967,3 +963,4 @@ def timeSinceNewHeaders() {
     }
     state.previous = now
 }
+
