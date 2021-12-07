@@ -4,6 +4,9 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.3 - 12/07/21 - Attempt to stop keypad from saying disarmed when it is already disarmed
+          - TONS of little tweaks and fixes. 
+          - Seperate delays for Home and Away now work.
     1.0.2 - 11/12/21 - Fixed armAway not respecting the Disarm command
     1.0.1 - 11/11/21 - Added toggle for Disabling Proximity Sensor
     1.0.0 - 11/11/21 - Tracking the 3 emergency buttons
@@ -18,7 +21,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.2"
+    return "1.0.3"
 }
 
 metadata {
@@ -34,10 +37,14 @@ metadata {
 
         command "entry"
         command "setArmNightDelay", ["number"]
+        command "setArmAwayDelay", ["number"]
         command "setArmHomeDelay", ["number"]
         command "setPartialFunction"
+        command "resetKeypad"
 
         attribute "armingIn", "NUMBER"
+        attribute "armAwayDelay", "NUMBER"
+        attribute "armHomeDelay", "NUMBER"
         attribute "lastCodeName", "STRING"
 
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
@@ -96,10 +103,18 @@ void initializeVars() {
     sendEvent(name:"codeLength", value: 4)
     sendEvent(name:"maxCodes", value: 100)
     sendEvent(name:"lockCodes", value: "")
+    sendEvent(name:"armHomeDelay", value: 5)
+    sendEvent(name:"armAwayDelay", value: 5)
     sendEvent(name:"securityKeypad", value:"disarmed")
-    state.keypadConfig=[entryDelay:5, exitDelay: 5, armNightDelay:5, armHomeDelay: 5, codeLength: 4, partialFunction: "armHome"]
+    state.keypadConfig=[entryDelay:5, exitDelay: 5, armNightDelay:5, armAwayDelay:5, armHomeDelay: 5, codeLength: 4, partialFunction: "armHome"]
     state.keypadStatus=2
     state.initialized=true
+}
+
+void resetKeypad() {
+    state.initialized=false
+    configure()
+    getCodes()
 }
 
 void configure() {
@@ -167,7 +182,8 @@ void disarm(delay=0) {
 void disarmEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
-    keypadUpdateStatus(0x02, state.type, state.code)
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "disarmed") { keypadUpdateStatus(0x02, state.type, state.code) }
     unschedule(armHomeEnd)
     unschedule(armAwayEnd)
 }
@@ -205,6 +221,7 @@ void setExitDelay(Map delays){
     state.keypadConfig.exitDelay = (delays?.awayDelay ?: 0).toInteger()
     state.keypadConfig.armNightDelay = (delays?.nightDelay ?: 0).toInteger()
     state.keypadConfig.armHomeDelay = (delays?.homeDelay ?: 0).toInteger()
+    state.keypadConfig.armAwayDelay = (delays?.awayDelay ?: 0).toInteger()
 }
 
 void setExitDelay(delay){
@@ -217,8 +234,15 @@ void setArmNightDelay(delay){
     state.keypadConfig.armNightDelay = delay != null ? delay.toInteger() : 0
 }
 
+void setArmAwayDelay(delay){
+    if (logEnable) log.debug "setArmAwayDelay(${delay})"
+    sendEvent(name:"armAwayDelay", value: delay)
+    state.keypadConfig.armAwayDelay = delay != null ? delay.toInteger() : 0
+}
+
 void setArmHomeDelay(delay){
     if (logEnable) log.debug "setArmHomeDelay(${delay})"
+    sendEvent(name:"armHomeDelay", value: delay)
     state.keypadConfig.armHomeDelay = delay != null ? delay.toInteger() : 0
 
 }
@@ -290,43 +314,53 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
         if (logEnable) log.debug "Entry control: ${ecn} keycache: ${code}"
         switch (ecn.eventType) {
             case 5:    // Away Mode Button
+                if (logEnable) log.debug "In case 5 - Away Mode Button"
                 if (validatePin(code) || instantArming) {
+                    if (logEnable) log.debug "In case 5 - Passed"
                     state.type="physical"
-                    if (!state.keypadConfig.exitDelay) { state.keypadConfig.exitDelay = 0 }
-                    sendEvent(name:"armingIn", value: state.keypadConfig.exitDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
-                    //armAway()
+                    if (!state.keypadConfig.armAwayDelay) { state.keypadConfig.armAwayDelay = 0 }
+                    sendEvent(name:"armingIn", value: state.keypadConfig.armAwayDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
+                    armAway(state.keypadConfig.armAwayDelay)
                 } else {
+                    if (logEnable) log.debug "In case 5 - Failed"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
             case 6:    // Home Mode Button
+                if (logEnable) log.debug "In case 6 - Home Mode Button"
                 if (validatePin(code) || instantArming) {
+                    if (logEnable) log.debug "In case 6 - Passed"
                     state.type="physical"
                     if(!state.keypadConfig.partialFunction) state.keypadConfig.partialFunction="armHome"
                     if (state.keypadConfig.partialFunction == "armHome") {
+                        if (logEnable) log.debug "In case 6 - Partial Passed"
                         if (!state.keypadConfig.armHomeDelay) { state.keypadConfig.armHomeDelay = 0 }
                         sendEvent(name:"armingIn", value: state.keypadConfig.armHomeDelay, data:[armMode: armingStates[0x0A].securityKeypadState, armCmd: armingStates[0x0A].hsmCmd], isStateChange:true)
+                        armHome(state.keypadConfig.armHomeDelay)
                     } else {
-                        if (!state.keypadConfig.armNightDelay) { state.keypadConfig.armNightDelay = 0 }
-                        sendEvent(name:"armingIn", value: state.keypadConfig.armNightDelay, data:[armMode: armingStates[0x00].securityKeypadState, armCmd: armingStates[0x00].hsmCmd], isStateChange:true)
+                        if (logEnable) log.debug "In case 6 - Partial Failed"
                     }
-                    //armHome()
                 } else {
+                    if (logEnable) log.debug "In case 6 - Failed"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
             case 3:    // Disarm Mode Button
+                if (logEnable) log.debug "In case 3 - Disarm Mode Button"
                 if (validatePin(code)) {
+                    if (logEnable) log.debug "In case 3 - Code Passed"
                     state.type="physical"
                     sendEvent(name:"armingIn", value: 0, data:[armMode: armingStates[0x02].securityKeypadState, armCmd: armingStates[0x02].hsmCmd], isStateChange:true)
-                    //disarm()
+                    disarm()
                 } else {
+                    if (logEnable) log.debug "In case 3 - Code Failed"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
             // Added all buttons - bptworld
             case 2:    // Code sent after hitting the Check Mark
                 state.type="physical"
+                if(!code) code = "check mark"
                 sendEvent(name:"lastCodeName", value: "${code}", isStateChange:true)
                 break
             case 17:    // Police Button
