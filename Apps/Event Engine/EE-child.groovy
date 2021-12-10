@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.3.8 - 12/10/21 - Cosmetic fix for slow dimming down devices. Added Ring Keypad G2 to Actions (play tones!)
 *  3.3.7 - 11/21/21 - Mode Events turning switches on/off/dim can now use Reverse options
 *  3.3.6 - 11/21/21 - Fixed issue with sunset/sunrise end times
 *  3.3.5 - 11/11/21 - Added support for the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.
@@ -61,7 +62,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.7"
+    state.name = "Event Engine Cog"; state.version = "3.3.8"
 }
 
 definition(
@@ -164,6 +165,8 @@ def pageConfig() {
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSecurityKeypad":"Ring Security Keypad G2"],
+                ["xSNAlert":"Safety Net Alerts"],
+                ["xSNStatus":"Safety Net Status"],
                 ["xSwitch":"Switches"],
                 ["xSystemStartup":"Sytem Startup"],
                 ["xTemp":"Temperature Setpoint"],
@@ -298,7 +301,7 @@ def pageConfig() {
                         dayIS = "odd"
                     }
                     paragraph "<b>The current day number is ${numberDay}, which is an ${dayIS} number.</b>"
-                    theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${numberDay} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
+                    theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${useDayMonthYear} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 }
                 paragraph "<hr>"
                 input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
@@ -1442,6 +1445,37 @@ def pageConfig() {
                 app.removeSetting("keypadAltCode")
             }
 // -----------
+            if(triggerType.contains("xSNAlert")) {
+                paragraph "<b>Safety Net Alert</b>"
+                paragraph "<b>Safety Net is not available... yet.</b>"
+                input "snAlertEvent", "enum", title: "By SN Alert", options: ["arming", "armingHome", "armingNight", "intrusion-home", "intrusion-away", "intrusion-night", "smoke", "water", "police", "fire", "medical"], multiple:true, submitOnChange:true
+                if(snAlertEvent) paragraph "Cog will trigger when <b>any</b> of the SN Alerts are active."
+                paragraph "<hr>"
+                theCogTriggers += "<b>-</b> By SN Alert: ${snAlertEvent}<br>"
+            } else {
+                app.removeSetting("snAlertEvent")
+            }
+// -----------
+            if(triggerType.contains("xSNStatus")) {
+                paragraph "<b>Safety Net Status</b>"
+                paragraph "<b>Safety Net is not available... yet.</b>"
+                input "snStatusEvent", "enum", title: "By SN Status", options: [
+                    ["allDisarmed":"All Disarmed"],
+                    ["armedAway":"Armed Away"],
+                    ["armedHome":"Armed Home"],
+                    ["armedNight":"Armed Night"],
+                    ["delayedArmed":"Delayed Armed Away"],
+                    ["delayedArmedHome":"Delayed Armed Home"],
+                    ["delayedArmedNight":"Delayed Armed Night"],
+                    ["disarmed":"Disarmed"]
+                ], multiple:true, submitOnChange:true, width:6
+                if(snStatusEvent) paragraph "Cog will trigger when <b>any</b> of the SN Status are active."
+                paragraph "<hr>"
+                theCogTriggers += "<b>-</b> By SN Status: ${snStatusEvent}<br>"
+            } else {
+                app.removeSetting("snStatusEvent")
+            }
+// -----------
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
@@ -1937,6 +1971,7 @@ def pageConfig() {
                 ["aMode":"Modes"],
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
+                ["aSecurityKeypad":"Ring Security Keypad G2"],
                 ["aRule":"Rule Machine"],
                 ["aSendHTTP":"Send Hub Command"],
                 ["aGVar":"Set Global Variable"],
@@ -2177,6 +2212,26 @@ def pageConfig() {
                 app.removeSetting("devicesToRefresh")
             }
 
+            if(actionType.contains("aSecurityKeypad")) {
+                paragraph "<b>Security Keypad</b><br>For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.<br><small>This will NOT work with the built in Ring G2 driver.</small>"
+                input "keypadAction", "capability.securityKeypad", title: "By Security Keypad", required:false, multiple:true, submitOnChange:true
+                if(keypadAction) {
+                    input "keypadTone", "enum", title: "Send Tone to selected Keypads", options: [
+                        ["Tone_1":"Siren (default)"],
+                        ["Tone_2":"Fast 3 Beeps"],
+                        ["Tone_3":"Fast 4 Beeps"],
+                        ["Tone_4":"Navi"],
+                        ["Tone_5":"Guitar"],
+                        ["Tone_6":"Windchimes"],
+                        ["Tone_7":"DoorBell 1"],
+                        ["Tone_8":"DoorBell 2"]
+                    ], required:true, Multiple:false, submitOnChange:true
+                    theCogActions += "<b>-</b> Security Keypad: Keypads: ${keypadAction} - Tone: ${keypadTone}<br>"
+                } else {
+                    app.removeSetting("keypadTone")
+                }              
+            }
+            
             if(actionType.contains("aRule")) {
                 paragraph "<b>Rule Machine</b>"
                 input "rmRuleType", "bool", title: "Rule Type: Legacy Rules (off) or Rule 5.x and Over (on)", defaultValue:false, submitOnChange:true
@@ -2356,6 +2411,7 @@ def pageConfig() {
                     app.removeSetting("colorLC")
                     app.removeSetting("lcColorTemp")
                 }
+                paragraph "<hr>"
                 input "switchedDimUpAction", "bool", defaultValue:false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
                 input "switchedDimDnAction", "bool", defaultValue:false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
 
@@ -2364,7 +2420,7 @@ def pageConfig() {
                     paragraph "<b>Slowly Dim Lighting UP</b>"
                     input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer devices to slowly rise", required:true, multiple:true
                     input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required:true, multiple:false, defaultValue:15, range: '1..60'
-                    input "startLevelHigh", "number", title: "Starting Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
+                    input "startLevelUp", "number", title: "Starting Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
                     input "targetLevelHigh", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 99, range: '5..99'
                     input "colorUp", "enum", title: "Color", required:true, multiple:false, options: [
                         ["Soft White":"Soft White - Default"],
@@ -2374,11 +2430,11 @@ def pageConfig() {
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                     paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
                     input "targetDelay", "bool", defaultValue:false, title: "<b>Delay Until Finished</b>", description: "Target Delay", submitOnChange:true
-                    theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelHigh} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
+                    theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelUp} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
                 } else {
                     app.removeSetting("slowDimmerUp")
                     app.removeSetting("minutesUp")
-                    app.removeSetting("startLevelHigh")
+                    app.removeSetting("startLevelUp")
                     app.removeSetting("targetLevelHigh")
                     app.removeSetting("colorUp")
                     app.updateSetting("targetDelay",[value:"false",type:"bool"])
@@ -2405,7 +2461,7 @@ def pageConfig() {
                         ["Daylight":"Daylight - Energize"],
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
-                    theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerUp} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Color: ${colorDn}<br>"
+                    theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerDn} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Color: ${colorDn}<br>"
                 } else {
                     app.removeSetting("slowDimmerDn")
                     app.removeSetting("minutesDn")
@@ -3079,6 +3135,9 @@ def initialize() {
         
         if(keypadEvent) subscribe(keypadEvent, "lastCodeName", startTheProcess)
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
+        if(snAlertEvent) subscribe(location, "snAlert", startTheProcess)
+        if(snStatusEvent) subscribe(location, "snStatus", startTheProcess)
+        //if(snAlertEvent) subscribe(location, "alarmDescription", startTheProcess)
         
         if(switchesToSync) {
             subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
@@ -3440,6 +3499,7 @@ def startTheProcess(evt) {
                                         }
                                         if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                                     }
+                                    if(keypadAction) securityKeypadActionHandler()
                                     if(setHSM) hsmChangeActionHandler()
                                     if(modeAction) modeChangeActionHandler()
                                     if(devicesToRefresh) devicesToRefreshActionHandler()
@@ -4653,6 +4713,17 @@ def hsmChangeActionHandler() {
     sendLocationEvent (name: "hsmSetArm", value: "${setHSM}")
 }
 
+def securityKeypadActionHandler() {
+    if(logEnable) log.debug "In securityKeypadActionHandler (${state.version})"
+    if(keypadTone) {
+        keypadAction.each { it ->
+            if(logEnable) log.debug "In securityKeypadActionHandler - Sending ${keypadTone} to ${it}"
+            pauseExecution(actionDelay)
+            it.playTone(keypadTone)
+        }
+    }
+}
+
 def lockActionHandler() {
     if(logEnable) log.debug "In lockActionHandler (${state.version})"
     if(lockAction) {
@@ -4930,7 +5001,7 @@ def slowOnHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In slowOnHandler (${state.version})"
-        state.fromWhere = "slowOn"; state.currentLevel = startLevelHigh ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
+        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
         setLevelandColorHandler()
         if(minutesUp == 0) return
         seconds = (minutesUp * 60) - 10
@@ -5613,7 +5684,7 @@ def setLevelandColorHandler() {
                 if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $onLevel"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
                 if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
@@ -5628,7 +5699,7 @@ def setLevelandColorHandler() {
                 if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $level"
                 it.setLevel(level as Integer ?: 99)
             } else {
                 if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
