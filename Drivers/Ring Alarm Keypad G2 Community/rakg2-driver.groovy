@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.4 - 12/10/21 - Added Keypad Tones! Thanks to @arlogilbert for help with the value:hexcode
     1.0.3 - 12/07/21 - Attempt to stop keypad from saying disarmed when it is already disarmed
           - TONS of little tweaks and fixes. 
           - Seperate delays for Home and Away now work.
@@ -21,7 +22,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.3"
+    return "1.0.4"
 }
 
 metadata {
@@ -41,6 +42,7 @@ metadata {
         command "setArmHomeDelay", ["number"]
         command "setPartialFunction"
         command "resetKeypad"
+        command "playTone", ["string"]
 
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
@@ -52,6 +54,16 @@ metadata {
     preferences {
         input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}"
         configParams.each { input it.value.input }
+        input name: "theTone", type: "enum", title: "Chime tone", options: [
+            ["Tone_1":"Siren (default)"],
+            ["Tone_2":"3 Beeps"],
+            ["Tone_3":"4 Beeps"],
+            ["Tone_4":"Navi"],
+            ["Tone_5":"Guitar"],
+            ["Tone_6":"Windchimes"],
+            ["Tone_7":"DoorBell 1"],
+            ["Tone_8":"DoorBell 2"]
+        ], defaultValue: "Tone_1", description: ""    // bptworld
         input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: ""    // bptworld
         input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""    // bptworld
         input name: "optEncrypt", type: "bool", title: "Enable lockCode encryption", defaultValue: false, description: ""
@@ -75,7 +87,7 @@ metadata {
 
 void logsOff(){
     log.warn "debug logging disabled..."
-    device.updateSetting("logEnable", [value:"false", type:"bool"])
+    //device.updateSetting("logEnable", [value:"false", type:"bool"])
 }
 
 void updated() {
@@ -278,8 +290,8 @@ void both() {
 }
 
 void siren() {
-    if (logEnable) log.debug "siren()"
-    eventProcess(name:"alarm", value:"siren")
+    if (logEnable) log.debug "In Siren"
+    eventProcess(name:"alarm", value:"siren")    
     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
 }
 
@@ -702,5 +714,38 @@ void proximitySensorHandler() {    // bptworld
     } else {
         if (logEnable) log.debug "Turning the Proximity Sensor ON"
         sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 1).format())
+    }
+}
+
+def playTone(tone=null) {
+    if (logEnable) log.debug "In playTone - tone: ${tone}"
+    if(!tone) { 
+        tone = theTone
+        if (logEnable) log.debug "In playTone - Tone is NULL, so setting tone to theTone: ${tone}"
+    }
+    if(tone == "Tone_1") {
+        if (logEnable) log.debug "In playTone - Tone 1"    // Siren
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
+    } else if(tone == "Tone_2") {
+        if (logEnable) log.debug "In playTone - Tone 2"    // 3 chirps
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0E, propertyId:2, value:0xFF]]).format())
+    } else if(tone == "Tone_3") {
+        if (logEnable) log.debug "In playTone - Tone 3"    // 4 chirps
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0F, propertyId:2, value:0xFF]]).format())
+    } else if(tone == "Tone_4") {
+        if (logEnable) log.debug "In playTone - Tone 4"    // Navi
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x60, propertyId:0x09, value:0x63]]).format())
+    } else if(tone == "Tone_5") {
+        if (logEnable) log.debug "In playTone - Tone 5"    // Guitar
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:0x63]]).format())
+    } else if(tone == "Tone_6") {
+        if (logEnable) log.debug "In playTone - Tone 6"    // Windchimes
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x62, propertyId:0x09, value:0x63]]).format())
+    } else if(tone == "Tone_7") {
+        if (logEnable) log.debug "In playTone - Tone 7"    // Doorbell 1
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x63, propertyId:0x09, value:0x63]]).format())
+    } else if(tone == "Tone_8") {
+        if (logEnable) log.debug "In playTone - Tone 8"    // Doorbell 2
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x64, propertyId:0x09, value:0x63]]).format())
     }
 }
