@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.5 - 12/11/21 - Invalid Code Sound now available as a playTone option
     1.0.4 - 12/10/21 - Added Keypad Tones! Thanks to @arlogilbert for help with the value:hexcode
     1.0.3 - 12/07/21 - Attempt to stop keypad from saying disarmed when it is already disarmed
           - TONS of little tweaks and fixes. 
@@ -22,7 +23,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.4"
+    return "1.0.5"
 }
 
 metadata {
@@ -42,7 +43,7 @@ metadata {
         command "setArmHomeDelay", ["number"]
         command "setPartialFunction"
         command "resetKeypad"
-        command "playTone", ["string"]
+        command "playTone", [[name: "Play Tone", type: "STRING", description: "Tone_1, Tone_2, etc."]]
 
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
@@ -55,14 +56,15 @@ metadata {
         input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}"
         configParams.each { input it.value.input }
         input name: "theTone", type: "enum", title: "Chime tone", options: [
-            ["Tone_1":"Siren (default)"],
-            ["Tone_2":"3 Beeps"],
-            ["Tone_3":"4 Beeps"],
-            ["Tone_4":"Navi"],
-            ["Tone_5":"Guitar"],
-            ["Tone_6":"Windchimes"],
-            ["Tone_7":"DoorBell 1"],
-            ["Tone_8":"DoorBell 2"]
+            ["Tone_1":"(Tone_1) Siren (default)"],
+            ["Tone_2":"(Tone_2) 3 Beeps"],
+            ["Tone_3":"(Tone_3) 4 Beeps"],
+            ["Tone_4":"(Tone_4) Navi"],
+            ["Tone_5":"(Tone_5) Guitar"],
+            ["Tone_6":"(Tone_6) Windchimes"],
+            ["Tone_7":"(Tone_7) DoorBell 1"],
+            ["Tone_8":"(Tone_8) DoorBell 2"],
+            ["Tone_9":"(Tone_9) Invalid Code Sound"],
         ], defaultValue: "Tone_1", description: ""    // bptworld
         input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: ""    // bptworld
         input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""    // bptworld
@@ -747,5 +749,11 @@ def playTone(tone=null) {
     } else if(tone == "Tone_8") {
         if (logEnable) log.debug "In playTone - Tone 8"    // Doorbell 2
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x64, propertyId:0x09, value:0x63]]).format())
+    } else if(tone == "Tone_9") {
+        if (logEnable) log.debug "In playTone - Tone 9"    // Invalid Code Sound
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:0x10]]).format())
+    } else if(tone == "test") {
+        if (logEnable) log.debug "In playTone - test"    // test
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:0x10]]).format())
     }
 }
