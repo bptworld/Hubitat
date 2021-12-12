@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.0 - 12/12/21 - Fixed Slow Dimming actions
 *  3.3.9 - 12/11/21 - Update to Ring G2 Tone Options, Added Color Changing Actions
 *  3.3.8 - 12/10/21 - Cosmetic fix for slow dimming down devices. Added Ring Keypad G2 to Actions (play tones!)
 *  3.3.7 - 11/21/21 - Mode Events turning switches on/off/dim can now use Reverse options
@@ -63,7 +64,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.9"
+    state.name = "Event Engine Cog"; state.version = "3.4.0"
 }
 
 definition(
@@ -5025,24 +5026,6 @@ def switchesToggleActionHandler() {
     }
 }
 
-def slowOnHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In slowOnHandler (${state.version})"
-        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
-        setLevelandColorHandler()
-        if(minutesUp == 0) return
-        seconds = (minutesUp * 60) - 10
-        difference = targetLevelHigh - state.currentLevel
-        state.dimStep = (difference / seconds) * 10
-        if(logEnable) log.debug "In slowOnHandler - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.onColor}"
-        atLeastOneUpOn = false
-        runIn(5,dimStepUp)
-    }
-}
-
 def slowOffHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
@@ -5061,7 +5044,7 @@ def slowOffHandler() {
         seconds = (minutesDn * 60) - 10
         difference = state.highestLevel - targetLevelLow
         state.dimStep1 = (difference / seconds) * 10
-        if(logEnable) log.debug "slowOffHandler - highestLevel: ${state.highestLevel} - targetLevel: ${targetLevelLow} - dimStep1: ${state.dimStep1} - color: ${state.onColor}"
+        if(logEnable) log.debug "In slowOffHandler - highestLevel: ${state.highestLevel} - targetLevel: ${targetLevelLow} - dimStep1: ${state.dimStep1} - color: ${state.onColor}"
         atLeastOneDnOn = false
         runIn(5,dimStepDown)
     }
@@ -5077,6 +5060,24 @@ def findHighestCurrentValue() {
     if(logEnable) log.debug "In findHighestCurrentValue - highestLevel: ${state.highestLevel})"
 }
 
+def slowOnHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowOnHandler (${state.version})"
+        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
+        setLevelandColorHandler()
+        if(minutesUp == 0) return
+        seconds = (minutesUp * 60) - 10
+        difference = targetLevelHigh - state.currentLevel
+        state.dimStep = (difference / seconds) * 10
+        if(logEnable) log.debug "In slowOnHandler - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.onColor}"
+        atLeastOneUpOn = false
+        runIn(5,dimStepUp)
+    }
+}
+
 def dimStepUp() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
@@ -5087,7 +5088,7 @@ def dimStepUp() {
         if(state.currentLevel < targetLevelHigh) {
             state.currentLevel = state.currentLevel + state.dimStep
             if(state.currentLevel > targetLevelHigh) { state.currentLevel = targetLevelHigh }
-            if(logEnable && extraLogs) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+            if(logEnable) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
             slowDimmerUp.each { it->
                 deviceOn = it.currentValue("switch")
                 if(logEnable && extraLogs) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
@@ -5102,8 +5103,8 @@ def dimStepUp() {
                 log.info "${app.label} - All devices are turned off"
             }
         } else {
-            if(logEnable && extraLogs) log.debug "-------------------- End dimStepUp --------------------"
-            if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelHigh}"
+            if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel.toInteger()} has reached targetLevel: ${targetLevelHigh}"
+            if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
         }
     }
 }
@@ -5123,7 +5124,7 @@ def dimStepDown() {
                 deviceOn = it.currentValue("switch")
                 int cLevel = it.currentValue("level")
                 int wLevel = state.highestLevel
-                if(logEnable && extraLogs) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
+                if(logEnable) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
                 if(deviceOn == "on") {
                     atLeastOneDnOn = true
                     if(wLevel <= cLevel) { it.setLevel(wLevel) }
@@ -5136,8 +5137,8 @@ def dimStepDown() {
             }
         } else {
             if(dimDnOff) slowDimmerDn.off()
-            if(logEnable && extraLogs) log.debug "-------------------- End dimStepDown --------------------"
-            if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
+            if(logEnable) log.info "In dimStepDown - Current Level: ${state.highestLevel.toInteger()} has reached targetLevel: ${targetLevelLow}"
+            if(logEnable) log.debug "-------------------- End dimStepDown --------------------"
         } 
     }
 }
