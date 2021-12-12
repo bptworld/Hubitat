@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.3.9 - 12/11/21 - Update to Ring G2 Tone Options, Added Color Changing Actions
 *  3.3.8 - 12/10/21 - Cosmetic fix for slow dimming down devices. Added Ring Keypad G2 to Actions (play tones!)
 *  3.3.7 - 11/21/21 - Mode Events turning switches on/off/dim can now use Reverse options
 *  3.3.6 - 11/21/21 - Fixed issue with sunset/sunrise end times
@@ -62,7 +63,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.3.8"
+    state.name = "Event Engine Cog"; state.version = "3.3.9"
 }
 
 definition(
@@ -1978,6 +1979,7 @@ def pageConfig() {
                 ["aSwitch":"Switches"],
                 ["aSwitchSequence":"Switches In Sequence"],
                 ["aSwitchesPerMode":"Switches Per Mode"],
+                ["aSwitchesColorChange":"Switches To Color Change"],
                 ["aSwitchesToSync":"Switches To Sync"],
                 ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"],
@@ -2215,16 +2217,17 @@ def pageConfig() {
             if(actionType.contains("aSecurityKeypad")) {
                 paragraph "<b>Security Keypad</b><br>For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.<br><small>This will NOT work with the built in Ring G2 driver.</small>"
                 input "keypadAction", "capability.securityKeypad", title: "By Security Keypad", required:false, multiple:true, submitOnChange:true
-                if(keypadAction) {
+                if(keypadAction) {   
                     input "keypadTone", "enum", title: "Send Tone to selected Keypads", options: [
-                        ["Tone_1":"Siren (default)"],
-                        ["Tone_2":"Fast 3 Beeps"],
-                        ["Tone_3":"Fast 4 Beeps"],
-                        ["Tone_4":"Navi"],
-                        ["Tone_5":"Guitar"],
-                        ["Tone_6":"Windchimes"],
-                        ["Tone_7":"DoorBell 1"],
-                        ["Tone_8":"DoorBell 2"]
+                        ["Tone_1":"(Tone_1) Siren (default)"],
+                        ["Tone_2":"(Tone_2) Fast 3 Beeps"],
+                        ["Tone_3":"(Tone_3) Fast 4 Beeps"],
+                        ["Tone_4":"(Tone_4) Navi"],
+                        ["Tone_5":"(Tone_5) Guitar"],
+                        ["Tone_6":"(Tone_6) Windchimes"],
+                        ["Tone_7":"(Tone_7) DoorBell 1"],
+                        ["Tone_8":"(Tone_8) DoorBell 2"],
+                        ["Tone_9":"(Tone_9) Invalid Code Sound"]
                     ], required:true, Multiple:false, submitOnChange:true
                     theCogActions += "<b>-</b> Security Keypad: Keypads: ${keypadAction} - Tone: ${keypadTone}<br>"
                 } else {
@@ -2332,7 +2335,34 @@ def pageConfig() {
                 app.removeSetting("setGVname")
                 app.removeSetting("setGVvalue")
             }
-
+          
+            if(actionType.contains("aSwitchesColorChange")){
+                paragraph "<b>Switches to Color Change</b>"
+                paragraph "Used to change colors between 1 minute and 3 hours"
+                input "switchesToChange", "capability.colorControl", title: "Select Color Changing Switches", required:false, multiple:true
+                input "changeTime", "number", title: "Enter the delay between change in minutes (range 1 to 180)", required:true, defaultValue:60, range:'1..180'
+                input "cycleHow", "enum", title: "Cycle each light individually or all together", defaultValue:"individual", options: ["individual","combined"], required:true, multiple:false
+                input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required:true, multiple:false
+                input "colorSelection", "enum", title: "Choose your colors", options: [
+                    ["Soft White":"Soft White - Default"],
+                    ["White":"White - Concentrate"],
+                    ["Daylight":"Daylight - Energize"],
+                    ["Warm White":"Warm White - Relax"],
+                    "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                ], required:true, multiple:true
+                input "lightLevel", "number", title: "Lighting Level (1 to 99)", required:true, multiple:false, defaultValue: 99, range: '1..99'
+                paragraph "<hr>"
+                theCogActions +=  "<b>-</b> Switches To Color Change: ${switchesToChange}: changeTime: ${changeTime} - cycleHow: ${cycleHow} - pattern: ${pattern} - colorSelection: ${colorSelection} - lightLevel: ${lightLevel}<br>"
+                
+            } else {
+                app.removeSetting("switchesToChange")
+                app.removeSetting("changeTime")
+                app.removeSetting("cycleHow")
+                app.removeSetting("pattern")
+                app.removeSetting("colorSelection")
+                app.removeSetting("lightLevel")
+            }
+                        
             if(actionType.contains("aSwitchesToSync")) {
                 paragraph "<b>Switches to Sync</b>"
                 paragraph " - Works with on/off, level, hue, saturation and colorTemperature Attributes.<br> - Each attribute can only change once every 3 seconds<br> - ie. If one switch turns on, all switches will turn on"
@@ -3137,7 +3167,6 @@ def initialize() {
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
         if(snAlertEvent) subscribe(location, "snAlert", startTheProcess)
         if(snStatusEvent) subscribe(location, "snStatus", startTheProcess)
-        //if(snAlertEvent) subscribe(location, "alarmDescription", startTheProcess)
         
         if(switchesToSync) {
             subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
@@ -3321,7 +3350,7 @@ def startTheProcess(evt) {
                     }
                     if(logEnable || shortLog) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                 } else {
-                    if(logEnable || shortLog) log.debug "In startTheProcess - No EVT (evt: ${evt}"
+                    if(logEnable || shortLog) log.debug "In startTheProcess - No EVT (evt: ${evt})"
                     state.whatToDo = "run"
                 }
                 if(accelerationRestrictionEvent) { accelerationHandler("restriction") }
@@ -3475,6 +3504,7 @@ def startTheProcess(evt) {
                                         if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
                                         if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
                                         if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                        if(actionType.contains("aSwitchesColorChange")) { colorChangeHandler() }
                                         if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
                                         if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
                                         if(actionType.contains("aThermostat")) { thermostatActionHandler() }
@@ -5498,7 +5528,7 @@ def modeHandler() {
 }
 // *****  End Time Handlers *****
 
-def setLevelandColorHandler() {
+def setLevelandColorHandler(newData) {
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
     } else {
@@ -5563,6 +5593,11 @@ def setLevelandColorHandler() {
     theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
     theMap = theSetOldMap.split(",")
     if(logEnable) log.debug "In setLevelandColorHandler - theMap: ${theMap}"
+    
+    if(state.fromWhere == "colorChangeHandler") {		
+        if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - Setting lights: ${newData} - value: ${value}"        
+        newData.setColor(value)
+    }
     
     if(state.fromWhere == "switchesPerMode") {
         if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - Working on: ${state.sPDM}"
@@ -6902,6 +6937,66 @@ def pingHandler() {
         } else {
             state.ipStatusOK = true
         }
+    }
+}
+
+def colorChangeHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In colorChangeHandler (${state.version}) - Color Selection: ${colorSelection}"		
+        for (numberoflights in switchesToChange) {
+            slpTime = (changeTime*60)
+            def colors = []
+            colors = colorSelection
+            def numLights = switchesToChange.size()
+            def numColors = colors.size()
+
+            if(logEnable) log.debug "In colorChangeHandler - pattern: ${pattern}"
+            if (pattern == 'randomize') {
+                randOffset = Math.abs(new Random().nextInt()%numColors)
+                if(logEnable) log.debug "In colorChangeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
+                if (cycleHow == 'combined') {
+                    state.fromWhere = "colorChangeHandler"
+                    state.onLevel = lightLevel
+                    state.onColor = colors[randOffset]
+                    setLevelandColorHandler(switchesToChange)
+                } else {
+                    for(def i=0;i<numLights;i++) {
+                        state.fromWhere = "colorChangeHandler"
+                        state.onLevel = lightLevel
+                        state.onColor = colors[(randOffset + i) % numColors]
+                        setLevelandColorHandler(switchesToChange[i])
+                    }
+                }
+            } else if (pattern == 'cycle') {
+                if(!state.colorOffset) { state.colorOffset = 0 }
+                if (switchesToChange.size() > 0) {
+                    if (state.colorOffset >= numColors ) {
+                        state.colorOffset = 0
+                    }
+                    if (cycleHow == 'combined') {
+                        state.fromWhere = "colorChangeHandler"
+                        state.onLevel = lightLevel
+                        state.onColor = colors[state.colorOffset]
+                        setLevelandColorHandler(switchesToChange)
+                        if(logEnable) log.debug "In colorChangeHandler - cycle-combined - switchesToChange: ${switchesToChange}, Colors: ${colors[state.colorOffset]}"
+                    } else {
+                        for(def i=0;i<numLights;i++) {
+                            state.fromWhere = "colorChangeHandler"
+                            state.onLevel = lightLevel
+                            state.onColor = colors[(state.colorOffset + i) % numColors]
+                            setLevelandColorHandler(switchesToChange[i])
+                            if(logEnable) log.debug "In colorChangeHandler - cycle-randomize - onLighgts: ${switchesToChange[i]}, Colors: ${colors[(state.colorOffset + i) % numColors]}"
+                        }
+                    }
+                    state.colorOffset = state.colorOffset + 1
+                }
+            }
+        }
+        if(logEnable) log.debug "In colorChangeHandler - slpTime: ${slpTime}"
+        runIn(slpTime, startTheProcess)
     }
 }
 
