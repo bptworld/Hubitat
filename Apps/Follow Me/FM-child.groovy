@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.8 - 12/14/21 - Added a work around for the Fuschia OS issue
  *  2.3.7 - 11/07/21 - I think I got it!
  *  2.3.6 - 11/07/21 - Trying to fix something I can't reproduce.
  *  2.3.5 - 07/29/21 - Added code for lastActive Speaker
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.7"
+	state.version = "2.3.8"
 }
 
 definition(
@@ -225,6 +226,7 @@ def pageConfig() {
                     paragraph "<b>Speaker type is an Other Device.</b>"
                 }
                 paragraph "<b>Note:</b> Some speakers just don't play nicely with Follow Me. If your speaker is having an issue, please try turning this switch on."
+                paragraph "<b><small>This can also be used to stop the message being chopped when using Fuschia OS devices. ie. Nest Hubs</small></b>"
                 input "defaultSpeak", "bool", title: "Use default 'speak'", defaultValue:false, submitOnChange:true
                 if(speakerType == "googleSpeaker") {
                     state.appD += "<b>Speaker Option</b>: MediaPlayer: ${speakerMP} - SpeechSynthesis: ${speakerSS} - ${speakerType} - Initialize: ${gInitRepeat} - Use Default: ${defaultSpeak}<br>"
@@ -1038,6 +1040,9 @@ def letsTalk(msg) {
             if(logEnable) log.debug "In letsTalk - **** Last check **** - speakers: ${state.speakers}"
             state.speakers.each { it ->
                 if(logEnable) log.debug "In letsTalk - Sending to priorityVoicesHandler - speaker: ${it} - priorityVoice: ${priorityVoice} - newMessage: ${newMessage}" 
+                if(it.getDataValue("model") == "Fuschia" && !defaultSpeak) {
+                    log.info "Follow Me - Fuschia Found on ${it} - If experiencing messages being chopped, please choose 'use default speak' within the app."
+                }
                 priorityVoicesHandler(it,priorityVoice,newMessage)
                 
                 if(!defaultSpeak) {    
@@ -1136,7 +1141,7 @@ def letsTalk(msg) {
                                 if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${newMessage}"
                                 beforeVolume(it)
                                 if(state.sound) {
-                                    try {
+                                    try {                    
                                         it.playTrack(state.sound)
                                         soundDur = state.sLength * 1000
                                         pauseExecution(soundDur)
@@ -1168,6 +1173,10 @@ def letsTalk(msg) {
                 } else {
                     if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${newMessage}"
                     try {
+                        if(it.getDataValue("model") == "Fuschia") {
+                            log.trace "Follow Me - Fuschia Found on ${it} - Added a pause before 'speak' until Hubitat fixes the issues."
+                            newMessage = "! ${newMessage}"
+                        }
                         it.speak(newMessage)
                     } catch(e) {
                         // do nothing 
