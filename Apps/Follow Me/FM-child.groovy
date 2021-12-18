@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.3.9 - 12/17/21 - Re-adjusting for HE changes
  *  2.3.8 - 12/14/21 - Added a work around for the Fuschia OS issue
  *  2.3.7 - 11/07/21 - I think I got it!
  *  2.3.6 - 11/07/21 - Trying to fix something I can't reproduce.
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.8"
+	state.version = "2.3.9"
 }
 
 definition(
@@ -1175,7 +1176,7 @@ def letsTalk(msg) {
                     try {
                         if(it.getDataValue("model") == "Fuschia") {
                             log.trace "Follow Me - Fuschia Found on ${it} - Added a pause before 'speak' until Hubitat fixes the issues."
-                            newMessage = "! ${newMessage}"
+                            newMessage = "${newMessage}"
                         }
                         it.speak(newMessage)
                     } catch(e) {
