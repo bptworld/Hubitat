@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.1 - 12/20/21 - Changes to Random Lights (reverse)
 *  3.4.0 - 12/12/21 - Fixed Slow Dimming actions
 *  3.3.9 - 12/11/21 - Update to Ring G2 Tone Options, Added Color Changing Actions
 *  3.3.8 - 12/10/21 - Cosmetic fix for slow dimming down devices. Added Ring Keypad G2 to Actions (play tones!)
@@ -64,7 +65,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.0"
+    state.name = "Event Engine Cog"; state.version = "3.4.1"
 }
 
 definition(
@@ -167,7 +168,6 @@ def pageConfig() {
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSecurityKeypad":"Ring Security Keypad G2"],
-                ["xSNAlert":"Safety Net Alerts"],
                 ["xSNStatus":"Safety Net Status"],
                 ["xSwitch":"Switches"],
                 ["xSystemStartup":"Sytem Startup"],
@@ -1151,11 +1151,10 @@ def pageConfig() {
                         if(setIEPointLow) paragraph "Cog will trigger when Illuminance reading is below ${ieSetPointLow}"
                         if(setIEPointBetween) paragraph "Cog will trigger when Illuminance reading is between ${ieSetPointLow} and ${ieSetPointHigh}"
                     }
-                }
-                input "illuminanceConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                }              
                 theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - trigger/condition: ${illumConditionOnly} - setpoint Low: ${ieSetPointLow}, setpoint High: ${ieSetPointHigh}, inBetween: ${setIEPointBetween}<br>"
-                if(illuminanceConditionOnly) {
-                    theCogTriggers += " - Condition Only: ${illuminanceConditionOnly}<br>"
+                if(illumConditionOnly) {
+                    theCogTriggers += " - Condition Only: ${illumConditionOnly}<br>"
                 }
                 paragraph "<hr>"
             } else {
@@ -1447,35 +1446,28 @@ def pageConfig() {
                 app.removeSetting("keypadAltCode")
             }
 // -----------
-            if(triggerType.contains("xSNAlert")) {
-                paragraph "<b>Safety Net Alert</b>"
-                paragraph "<b>Safety Net is not available... yet.</b>"
-                input "snAlertEvent", "enum", title: "By SN Alert", options: ["arming", "armingHome", "armingNight", "intrusion-home", "intrusion-away", "intrusion-night", "smoke", "water", "police", "fire", "medical"], multiple:true, submitOnChange:true
-                if(snAlertEvent) paragraph "Cog will trigger when <b>any</b> of the SN Alerts are active."
-                paragraph "<hr>"
-                theCogTriggers += "<b>-</b> By SN Alert: ${snAlertEvent}<br>"
-            } else {
-                app.removeSetting("snAlertEvent")
-            }
-// -----------
             if(triggerType.contains("xSNStatus")) {
                 paragraph "<b>Safety Net Status</b>"
                 paragraph "<b>Safety Net is not available... yet.</b>"
-                input "snStatusEvent", "enum", title: "By SN Status", options: [
-                    ["allDisarmed":"All Disarmed"],
-                    ["armedAway":"Armed Away"],
-                    ["armedHome":"Armed Home"],
-                    ["armedNight":"Armed Night"],
-                    ["delayedArmed":"Delayed Armed Away"],
-                    ["delayedArmedHome":"Delayed Armed Home"],
-                    ["delayedArmedNight":"Delayed Armed Night"],
-                    ["disarmed":"Disarmed"]
+                input "snDeviceEvent", "capability.actuator", title: "Safety Net Device", required:false, submitOnChange:true
+                input "snStatus", "enum", title: "By SN Status", options: [
+                    ["disarmed":"Disarmed"],
+                    ["armed away":"Armed Away"],
+                    ["armed home":"Armed Home"],
+                    ["armed night":"Armed Night"],
+                    ["police alert":"Police Alert"],
+                    ["fire alert":"Fire Alert"],
+                    ["medical alert":"Medical Alert"],
+                    ["alarm alert":"Alarm Alert"]
                 ], multiple:true, submitOnChange:true, width:6
-                if(snStatusEvent) paragraph "Cog will trigger when <b>any</b> of the SN Status are active."
+                paragraph "Cog will trigger when <b>any</b> of the selected status match the actual Safety Net status."
+                input "snRestriction", "bool", defaultValue:true, title: "By Safety Net as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Safety Net Restriction", submitOnChange:true
                 paragraph "<hr>"
-                theCogTriggers += "<b>-</b> By SN Status: ${snStatusEvent}<br>"
+                theCogTriggers += "<b>-</b> By Safety Net: ${snDeviceEvent} - Status: ${snStatus} - restriction: ${snRestriction}<br>"
             } else {
-                app.removeSetting("snStatusEvent")
+                app.removeSetting("snDeviceEvent")
+                app.removeSetting("snStatus")
+                app.removeSetting("snRestriction")
             }
 // -----------
             if(triggerType.contains("xSwitch")) {
@@ -2692,14 +2684,14 @@ def pageConfig() {
                 app.removeSetting("contactOpenAction")
             }      
         
-            // Start Reverse Options
+// Start Reverse Options
             tdType = false
             if(timeDaysType) {
                 if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tBetween")) {
                     tdType = true
                 }
             }
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable") {
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable" || switchesToChange) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl || modeEvent) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
@@ -3166,8 +3158,7 @@ def initialize() {
         
         if(keypadEvent) subscribe(keypadEvent, "lastCodeName", startTheProcess)
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
-        if(snAlertEvent) subscribe(location, "snAlert", startTheProcess)
-        if(snStatusEvent) subscribe(location, "snStatus", startTheProcess)
+        if(snDeviceEvent) subscribe(snDeviceEvent, "alarmStatus", startTheProcess)
         
         if(switchesToSync) {
             subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
@@ -3375,14 +3366,15 @@ def startTheProcess(evt) {
                         modeHandler()
                         hsmAlertHandler(state.whatHappened)
                         hsmStatusHandler(state.whatHappened)
-                        if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                        safetyNetHandler()
+                        if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - snMatch: ${state.snMatch}"
                         if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
                         if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
                         if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
                         if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                        if(snRestriction && !state.snMatch) { state.whatToDo = "stop" }
                     }           
-                    if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
-                    if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                    if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction} - snRestric: ${snRestriction}"          
 
                     if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
                         if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
@@ -3458,7 +3450,7 @@ def startTheProcess(evt) {
                     if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
                 } else {
                     if(state.whatToDo == "run") {
-                        if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
+                        if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch && state.snMatch) {
                             if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                             if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                             if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
@@ -3641,6 +3633,8 @@ def startTheProcess(evt) {
                                 if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
                                 if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
                                 if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
+                                if(actionType.contains("aSwitchesColorChange") && permanentDim) { permanentDimHandler() }
+                                if(actionType.contains("aSwitchesColorChange") && !permanentDim) { colorChangeReverseHandler() }
                                 if(additionalSwitches) { additionalSwitchesHandler() }
                                 if(state.betweenTime) {
                                     if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
@@ -4101,6 +4095,25 @@ def ruleMachineHandler() {
         RMUtils.sendAction(rmRule, rmAction, app.label, '5.0')
     } else {
         RMUtils.sendAction(rmRule, rmAction, app.label)
+    }
+}
+
+def safetyNetHandler() {
+    if(snDeviceEvent) {
+        state.snMatch = false
+        if(logEnable) log.debug "In safetyNetHandler (${state.version})"
+        alarmStatus = snDeviceEvent.currentValue("alarmStatus")
+        snStatus.each { it ->
+            if(logEnable) log.debug "In safetyNetHandler - Checking: ${snDeviceEvent} for: ${it} - VS - ${alarmStatus}"
+            if(it.toString() == alarmStatus.toString()){
+                if(logEnable) log.debug "In safetyNetHandler - MATCH!"
+                state.snMatch = true
+            }
+        }
+        if(logEnable) log.debug "In safetyNetHandler - snMatch: ${state.snMatch}"
+    } else {
+        state.snMatch = true
+        if(logEnable) log.debug "In safetyNetHandler - Safety Net NOT being used - snMatch: ${state.snMatch}"
     }
 }
 
@@ -5596,7 +5609,35 @@ def setLevelandColorHandler(newData) {
     if(logEnable) log.debug "In setLevelandColorHandler - theMap: ${theMap}"
     
     if(state.fromWhere == "colorChangeHandler") {		
-        if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - Setting lights: ${newData} - value: ${value}"        
+        if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - newData: ${newData} - value: ${value}"
+        alreadyThere = false
+        try {
+            if(state.oldMap == [:]) {
+                // nothing
+            } else {
+                sData = newData.toString().replace(" ","")
+                data = state.oldMap.get(sData)
+                if(data) {
+                    if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - Data Found!"
+                    alreadyThere = true
+                }
+            }
+        } catch(e) {
+            state.oldMap = [:]
+        }
+        if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - alreadyThere: ${alreadyThere}"
+        if(alreadyThere == false) {
+            oldHueColor = newData.currentValue("hue")
+            oldSaturation = newData.currentValue("saturation")
+            oldLevel = newData.currentValue("level")
+            oldColorTemp = newData.currentValue("colorTemperature")
+            oldColorMode = newData.currentValue("colorMode")
+            name = (newData.displayName).replace(" ","")
+            status = newData.currentValue("switch")
+            oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
+            state.oldMap.put(name,oldStatus) 
+            if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+        }
         newData.setColor(value)
     }
     
@@ -7001,6 +7042,91 @@ def colorChangeHandler() {
     }
 }
 
+def colorChangeReverseHandler() {
+    if(logEnable) log.debug "In colorChangeReverseHandler (${state.version})"
+    if(switchesToChange) {
+        switchesToChange.each { it ->
+            currentONOFF = it.currentValue("switch")
+            if(logEnable) log.debug "In colorChangeReverseHandler - ${it.displayName} - ${currentONOFF}"
+            if(logEnable) log.debug "In colorChangeReverseHandler - oldMap: ${state.oldMap}"
+            if(currentONOFF == "on") {
+                name = (it.displayName).replace(" ","")
+                try {
+                    if(logEnable) log.debug "In colorChangeReverseHandler - Getting data for ${name}"
+                    data = state.oldMap.get(name)
+                    if(data) {                
+                        def theData = data.split("::")
+                        oldStatus = theData[0]
+                        hueColor = theData[1]
+                        saturation = theData[2]
+                        level = theData[3]
+                        cTemp = theData[4]
+                        cMode = theData[5]
+                    } else {
+                        if(logEnable) log.debug "In colorChangeReverseHandler - Found NO data"
+                    }
+                } catch(e) {
+                    log.error(getExceptionMessageWithLine(e))
+                    if(logEnable) log.debug "In colorChangeReverseHandler - Oops, no DATA - Turning Off (${it})"
+                    pauseExecution(actionDelay)
+                    it.off()
+                }
+                if(it.hasCommand("setColor") && state.onColor != "No Change") {
+                    if(cMode == "CT") {
+                        if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-setColorTemp) - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
+                        pauseExecution(actionDelay)
+                        it.setColorTemperature(cTemp.toInteger())
+                        pauseExecution(actionDelay)
+                        it.setLevel(level.toInteger())                          
+                        if(oldStatus == "off" || trueReverse) {                            
+                            if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-off) - Turning light off (${it})"
+                            pauseExecution(actionDelay)
+                            it.off()
+                        }
+                    } else {
+                        try {
+                            def theValue = [hue: hueColor.toInteger(), saturation: saturation.toInteger(), level: level.toInteger()]
+                            if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-setColor)- Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
+                            pauseExecution(actionDelay)
+                            it.setColor(theValue)
+                            if(oldStatus == "off" || trueReverse) {
+                                if(logEnable) log.debug "In colorChangeReverseHandler - setColor - Turning light off (${it})"
+                                pauseExecution(actionDelay)
+                                it.off()
+                            }
+                        } catch(e) {
+                            // moving on
+                        }
+                    }
+                } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
+                    if(logEnable) log.debug "In colorChangeReverseHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
+                    pauseExecution(actionDelay)
+                    it.setLevel(level.toInteger())
+                    pauseExecution(actionDelay)
+                    it.setColorTemperature(cTemp.toInteger())
+                    if(oldStatus == "off" || trueReverse) {
+                        if(logEnable) log.debug "In colorChangeReverseHandler - setColorTemp - Turning light off (${it})"
+                        pauseExecution(actionDelay)
+                        it.off()
+                    }     
+                } else if(it.hasCommand("setLevel")) {
+                    if(logEnable) log.debug "In colorChangeReverseHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
+                    pauseExecution(actionDelay)
+                    it.setLevel(level.toInteger())
+                    if(oldStatus == "off" || trueReverse) {
+                        if(logEnable) log.debug "In colorChangeReverseHandler - setLevel - Turning light off (${it})"
+                        pauseExecution(actionDelay)
+                        it.off()
+                    }
+                }
+                if(name && state.oldMap) state.oldMap.remove(name)
+            } else {
+                if(logEnable) log.debug "In colorChangeReverseHandler - ${it} was already off - Nothing to do"
+            }
+        }
+    }
+}
+
 // ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
 library ( // library marker BPTWorld.bpt-normalStuff, line 1
         base: "app", // library marker BPTWorld.bpt-normalStuff, line 2
@@ -7021,7 +7147,7 @@ def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 13
 } // library marker BPTWorld.bpt-normalStuff, line 17
 
 def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 19
-    paragraph "This child app needs a virtual device to store values." // library marker BPTWorld.bpt-normalStuff, line 20
+    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 20
     input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 21
     if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 22
         input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 23
