@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Create a simple kitchen timer with controls for use with Dashboards
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,18 +37,12 @@
  *
  *  Changes:
  *
- * v1.0.2 - 04/04/20 - Added currentTimer attribute
- * v1.0.1 - 03/29/20 - Added code for naming timers
- * v1.0.0 - 03/29/20 - Initial release
+ * 1.0.3 - 12/21/21 - Added cloud option
+ * 1.0.2 - 04/04/20 - Added currentTimer attribute
+ * 1.0.1 - 03/29/20 - Added code for naming timers
+ * 1.0.0 - 03/29/20 - Initial release
  *
  */
-
-def setVersion(){
-    appName = "SimpleKitchenTimerDriver"
-	version = "v1.0.2" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
 
 metadata {
     definition(name: "Simple Kitchen Timer Driver", namespace: "BPTWorld", author: "Bryan Turcotte", component: true, importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-driver.groovy") {
@@ -72,8 +66,6 @@ metadata {
         attribute "setTimer2", "number"
         attribute "setTimer3", "number"
         attribute "isFinished", "string"
-        
-        attribute "dwDriverInfo", "string"
     }
     preferences {
         input name: "about", type: "paragraph", element: "paragraph", title: "Simple Timer Driver", description: "Create a simple kitchen timer with controls for use with Dashboards"
@@ -83,14 +75,12 @@ metadata {
 
 def updated() {
     if(logEnable) log.info "In Updated"
-    setVersion()
     if(logEnable) runIn(1800,logsOff)
     setTimer1()
 }
 
 def installed() {
     if(logEnable) log.info "In installed"
-    setVersion()
     setTimer1()
 }
 
@@ -219,13 +209,23 @@ def makeTile01(timeLeft) {
     if(logEnable) log.debug "In makeTile01"
 
     if(timeLeft == null) timeLeft = device.currentValue('setTimer1')
-    controlOn = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a1?access_token=${state.accessToken}"
-    controlOff = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a2?access_token=${state.accessToken}"
-    reset = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a3?access_token=${state.accessToken}"
-    
-    setTimer1 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a4?access_token=${state.accessToken}"
-    setTimer2 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a5?access_token=${state.accessToken}"
-    setTimer3 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a6?access_token=${state.accessToken}"
+    if(!ipORcloud) {
+        controlOn = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a1?access_token=${state.accessToken}"
+        controlOff = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a2?access_token=${state.accessToken}"
+        reset = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a3?access_token=${state.accessToken}"
+
+        setTimer1 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a4?access_token=${state.accessToken}"
+        setTimer2 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a5?access_token=${state.accessToken}"
+        setTimer3 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a6?access_token=${state.accessToken}"
+    } else {
+        controlOn = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a1?access_token=${state.accessToken}"
+        controlOff = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a2?access_token=${state.accessToken}"
+        reset = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a3?access_token=${state.accessToken}"
+        
+        setTimer1 = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a4?access_token=${state.accessToken}"
+        setTimer2 = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a5?access_token=${state.accessToken}"
+        setTimer3 = "https://cloud.hubitat.com/api/${state.cloudToken}/apps/${state.makerID}/devices/${state.cDevID}/push/a6?access_token=${state.accessToken}"
+    }
     
     if(state.timer1n != "null") {
         theTimer1 = state.timer1n
@@ -279,9 +279,10 @@ def makeTile01(timeLeft) {
 
 def sendDataToDriver(theData) {
     if(logEnable) log.debug "In sendDataToDriver - Received: ${theData}"
-    def (hubIP,makerID,accessToken,cDevID,timer1,timer2,timer3,timer1n,timer2n,timer3n,iFrameOff,countFontSize,countColor1,countColor2,countColor3,countColor4) = theData.split(":")
+    def (hubIP,cloudToken,makerID,accessToken,cDevID,timer1,timer2,timer3,timer1n,timer2n,timer3n,iFrameOff,countFontSize,countColor1,countColor2,countColor3,countColor4,ipORcloud) = theData.split(":")
 
     state.hubIP = hubIP
+    state.cloudToken = cloudToken
     state.makerID = makerID
     state.accessToken = accessToken
     state.cDevID = cDevID
@@ -295,6 +296,7 @@ def sendDataToDriver(theData) {
     state.countColor2 = countColor2
     state.countColor3 = countColor3
     state.countColor4 = countColor4
+    state.ipORcloud = ipORcloud
     
     sendEvent(name: "setTimer1", value: timer1, displayed: true)
     sendEvent(name: "setTimer2", value: timer2, displayed: true)
@@ -302,4 +304,3 @@ def sendDataToDriver(theData) {
     
     reset()
 }
-
