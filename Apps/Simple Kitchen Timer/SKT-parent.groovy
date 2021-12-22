@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Create a simple kitchen timer with controls for use with Dashboards
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums! Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 12/21/21 - Added cloudToken
  *  1.0.1 - 04/27/20 - Cosmetic changes
  *  1.0.0 - 03/29/20 - Initial release
  *
@@ -40,7 +41,7 @@
 
 def setVersion(){
     state.name = "Simple Kitchen Timer"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -97,8 +98,7 @@ def mainPage() {
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Maker API Config")) {
                 input "hubIP", "text", title: "Hub IP Address<br><small>(ie. 192.168.86.81)</small>", submitOnChange:true
-                //input "cloudToken", "password", title: "Hub Cloud Token (optional)<br><small>(ie. found after the /api/ kdj3-dj3-dkfjj3-kdjfak4-akdjdke55)</small>", submitOnChange:true
-
+                input "cloudToken", "password", title: "Hub Cloud Token (needed if you want to access SKT outside of your home)<br><small>(ie. found after the /api/ kiw3-3ji-abcded-kdkf77-kaljd7fklfjdsi8)</small>", submitOnChange:true
                 input "makerID", "text", title: "Maker API App Number<br><small>(ie. 104)</small>", width:6, submitOnChange:true
                 input "accessToken", "password", title: "Maker API Access Token<br><small>(ie. kajdkfj-3kd8-dkjf-akdjkdf)</small>", width:6, submitOnChange:true
             }
