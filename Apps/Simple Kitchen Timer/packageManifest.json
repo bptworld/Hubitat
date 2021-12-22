@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1",
+			"version": "1.0.2",
 			"primary": true
 		},
 		{
@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.6"
+			"version": "1.0.7"
 		}
 	],
 	"drivers" : [
@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-driver.groovy",
 			"required": true,
-			"version": "1.0.2"
+			"version": "1.0.3"
 		}
 	]
 }
