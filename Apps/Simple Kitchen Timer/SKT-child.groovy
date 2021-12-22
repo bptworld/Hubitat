@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Create a simple kitchen timer with controls for use with Dashboards
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 12/21/21 - Added Cloud option
  *  1.0.6 - 06/22/20 - Changes to letsTalk
  *  1.0.5 - 06/19/20 - Added The Flasher, all speech now goes through 'Follow Me'
  *  1.0.4 - 04/27/20 - Cosmetic changes
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Kitchen Timer"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -107,6 +108,15 @@ def pageConfig() {
             paragraph "${statusMessage}"
             input "tileDevice", "capability.switch", title: "Vitual Device created to send the data to:", required:true, multiple:false
         } 
+        
+        section() {
+            input "ipORcloud", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+            if(ipORcloud) {
+                if(!parent.cloudToken) {
+                    paragraph "<b>Be sure to fill out the Maker API section in the parent app</b>"
+                }
+            }
+        }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Timers")) {
             paragraph "Each Timer Device can have up to 3 different timers built in. Each timer can display the length or a short name. Remember to watch your character count!"
@@ -359,8 +369,8 @@ def deviceOffHandler() {
 def sendDataToDriver() {
     if(logEnable) log.debug "In sendDataToDriver (${state.version})"
     cDevID = tileDevice.id
-    theData = "${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
-    if(logEnable) log.debug "In sendDataToDriver - Sending: ${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
+    theData = "${parent.hubIP}:${parent.cloudToken}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}:${ipORcloud}"
+    //if(logEnable) log.debug "In sendDataToDriver - Sending: ${parent.hubIP}:${parent.cloudToken}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}:${ipORcloud}"
     tileDevice.sendDataToDriver(theData)
 }
 
@@ -473,4 +483,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
