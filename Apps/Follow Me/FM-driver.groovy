@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.3.4 - 12/24/21 - Small change to latestMessageFrom() - testing something
  *  2.3.3 - 11/09/21 - Small change to Speak()
  *  2.3.2 - 11/07/21 - I think I got it!
  *  2.3.1 - 11/07/21 - Trying again.
@@ -52,7 +53,7 @@
 
 def setVersion(){
     state.name = "Follow Me Driver"
-	state.version = "2.3.3"
+	state.version = "2.3.4"
 }
 
 import groovy.json.*
@@ -269,7 +270,7 @@ def setVolumeAndSpeak(volume, message) {
 }
 
 def speak(message, volume=null, voice=null) {
-    setVersion()
+    if(logEnable) setVersion()
     if(logEnable) log.debug "In speak (${state.version})- message: ${message} - volume: ${volume} - voice: ${voice}"
     if(message) {
         priorityHandler(message)
@@ -301,8 +302,14 @@ def priorityHandler(message) {
 		priority = prior.drop(1)
 		lastSpoken = msgA
     } else {
-        priority = "X:X:X"
-        lastSpoken = message
+        useCommonSound = false
+        if(useCommonSound) {
+            priority = "N:6:0"
+            lastSpoken = message
+        } else {
+            priority = "X:X:X"
+            lastSpoken = message
+        }
     }
 
     if(logEnable) log.debug "In priorityHandler - priority: ${priority} - lastSpoken: ${lastSpoken}"
@@ -421,7 +428,7 @@ def latestMessageDate() {
     sendEvent(name: "latestMessageDateTime", value: date)
 }
 
-def latestMessageFrom(data) {
+def latestMessageFrom(data=null) {
     sendEvent(name: "latestMessageFrom", value: data)
 }
 
