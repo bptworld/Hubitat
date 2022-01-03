@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
     1.0.5 - 12/11/21 - Invalid Code Sound now available as a playTone option
     1.0.4 - 12/10/21 - Added Keypad Tones! Thanks to @arlogilbert for help with the value:hexcode
     1.0.3 - 12/07/21 - Attempt to stop keypad from saying disarmed when it is already disarmed
@@ -23,7 +24,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.5"
+    return "1.0.6"
 }
 
 metadata {
@@ -53,7 +54,7 @@ metadata {
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
     }
     preferences {
-        input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}"
+        input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}<br>Note:<br>The first 3 Tones are alarm sounds that also flash the Red Indicator Bar on the keypads. The rest are more pleasant sounds that could be used for a variety of things."
         configParams.each { input it.value.input }
         input name: "theTone", type: "enum", title: "Chime tone", options: [
             ["Tone_1":"(Tone_1) Siren (default)"],
