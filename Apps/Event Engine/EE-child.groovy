@@ -4,7 +4,7 @@
 *  Design Usage:
 *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
 *
-*  Copyright 2020-2021 Bryan Turcotte (@bptworld)
+*  Copyright 2020-2022 Bryan Turcotte (@bptworld)
 * 
 *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums! Thanks.
 *
@@ -40,18 +40,9 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.2 - 01/08/22 - Minor changes, Adjustment to slowDim
 *  3.4.1 - 12/20/21 - Changes to Random Lights (reverse)
 *  3.4.0 - 12/12/21 - Fixed Slow Dimming actions
-*  3.3.9 - 12/11/21 - Update to Ring G2 Tone Options, Added Color Changing Actions
-*  3.3.8 - 12/10/21 - Cosmetic fix for slow dimming down devices. Added Ring Keypad G2 to Actions (play tones!)
-*  3.3.7 - 11/21/21 - Mode Events turning switches on/off/dim can now use Reverse options
-*  3.3.6 - 11/21/21 - Fixed issue with sunset/sunrise end times
-*  3.3.5 - 11/11/21 - Added support for the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.
-*  3.3.4 - 10/21/21 - Fixed error with BIControl code - thanks Rabecaps, adjusted speak() to reflect the new parameters.
-*  3.3.3 - 10/02/21 - Fixed issue with Calendarific
-*  3.3.2 - 09/16/21 - Reworked Switches per Mode - you'll need to recreate your switches per mode
-*  3.3.1 - 09/14/21 - Adjustment to BI Camera_Trigger
-*  3.3.0 - 09/02/21 - Added IP Ping condition, Changes to switchesOnReverseActionHandler / switchesOffReverseActionHandler
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -65,7 +56,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.1"
+    state.name = "Event Engine Cog"; state.version = "3.4.2"
 }
 
 definition(
@@ -83,8 +74,8 @@ definition(
 )
 
 preferences {
-    page(name: "pageConfig")
-    page name: "notificationOptions", title: "", install:false, uninstall:true, nextPage: "pageConfig"
+    page name: "pageConfig"
+    page name: "notificationOptions", title: "", install:false, uninstall:false, nextPage: "pageConfig"
 }
 
 @Field static String theCogTriggers = ""
@@ -230,7 +221,7 @@ def pageConfig() {
             paragraph "<hr>"
             theData = "${triggerAndOr}"
             state.conditionsMap.put("triggerAndOr",theData)
-// -----------
+            // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
                 input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression to 'Run the Cog' <small><abbr title='Use a Periodic Cron Expression Generator to create powerful schedules.'><b>- INFO -</b></abbr></small>", required:false, submitOnChange:true
@@ -829,6 +820,7 @@ def pageConfig() {
             }
 // -----------
             if(triggerType.contains("xDirectional")) {
+
                 paragraph "<b>Directional Condition</b> <small><abbr title='Get notified on the direction something is moving in. Great for a Driveway Alert with direction.'><b>- INFO -</b></abbr></small>"
                 paragraph "If device 1 triggers before device 2 - Direction is considered <b>Right</b><br>If device 2 triggers before device 1 - Direction is considered <b>Left</b><br><small>Note: If the wrong direction is reported, simply reverse the two inputs.</small>"
                 input "theType1", "bool", title: "Device 1: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
@@ -1980,8 +1972,9 @@ def pageConfig() {
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
             if(actionType == null) actionType = " "
-// BI Control            
+// -----------
             if(actionType.contains("aBlueIris")) {
+                
                 paragraph "<b>Blue Iris Control</b>"
                 if(parent.biServer && parent.biUser && parent.biPass) {
                     input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot", "Camera_Enable", "Camera_Disable"], required:true, Multiple:false
@@ -2075,7 +2068,7 @@ def pageConfig() {
                 app.removeSetting("useMethod")
                 app.removeSetting("biCameraPTZ")
             }
-// End BI Control
+// -----------
             if(actionType.contains("aEventEngine")) {
                 paragraph "<b>Event Engine Control</b>"
                 data = app.id
@@ -2208,6 +2201,7 @@ def pageConfig() {
             }
 
             if(actionType.contains("aSecurityKeypad")) {
+
                 paragraph "<b>Security Keypad</b><br>For use with the Ring Alarm Gen 2 Keypad using the Ring Alarm Keypad G2 Community Driver.<br><small>This will NOT work with the built in Ring G2 driver.</small>"
                 input "keypadAction", "capability.securityKeypad", title: "By Security Keypad", required:false, multiple:true, submitOnChange:true
                 if(keypadAction) {   
@@ -4579,7 +4573,7 @@ def dimmerOnReverseActionHandler() {
                         pauseExecution(actionDelay)
                         it.setColorTemperature(cTemp.toInteger())
                         pauseExecution(actionDelay)
-                        it.setLevel(level.toInteger())                          
+                        if(level) it.setLevel(level.toInteger())                          
                         if(oldStatus == "off" || trueReverse) {                            
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
@@ -4599,7 +4593,7 @@ def dimmerOnReverseActionHandler() {
                 } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
                     if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
                     pauseExecution(actionDelay)
-                    it.setLevel(level.toInteger())
+                    if(level) it.setLevel(level.toInteger())
                     pauseExecution(actionDelay)
                     it.setColorTemperature(cTemp.toInteger())
                     if(oldStatus == "off" || trueReverse) {
@@ -4609,8 +4603,8 @@ def dimmerOnReverseActionHandler() {
                     }     
                 } else if(it.hasCommand("setLevel")) {
                     if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level.toInteger())
+                    pauseExecution(actionDelay)                   
+                    if(level) it.setLevel(level.toInteger())
                     if(oldStatus == "off" || trueReverse) {
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                         pauseExecution(actionDelay)
@@ -4755,69 +4749,6 @@ def hsmChangeActionHandler() {
     if(logEnable) log.debug "In hsmChangeActionHandler (${state.version}) - Setting to ${setHSM}"
     pauseExecution(actionDelay)
     sendLocationEvent (name: "hsmSetArm", value: "${setHSM}")
-}
-
-def securityKeypadActionHandler() {
-    if(logEnable) log.debug "In securityKeypadActionHandler (${state.version})"
-    if(keypadTone) {
-        keypadAction.each { it ->
-            if(logEnable) log.debug "In securityKeypadActionHandler - Sending ${keypadTone} to ${it}"
-            pauseExecution(actionDelay)
-            it.playTone(keypadTone)
-        }
-    }
-}
-
-def lockActionHandler() {
-    if(logEnable) log.debug "In lockActionHandler (${state.version})"
-    if(lockAction) {
-        lockAction.each { it ->
-            if(logEnable) log.debug "In lockActionHandler - Locking ${it}"
-            pauseExecution(actionDelay)
-            it.lock()
-        }
-    }
-    if(unlockAction) {
-        unlockAction.each { it ->
-            if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}"
-            pauseExecution(actionDelay)
-            it.unlock()
-        }
-    }
-}
-
-def lockUserActionHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.warn "In lockUserActionHandler (${state.version})"
-        if(evt) {
-            lockdata = evt.data
-            lockStatus = evt.value
-            lockName = evt.displayName
-            if(logEnable) log.debug "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
-            if(lockStatus == "unlocked") {
-                if(logEnable) log.debug "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
-                if(theLocks) {
-                    if (lockdata && !lockdata[0].startsWith("{")) {
-                        lockdata = decrypt(lockdata)
-                        if (lockdata == null) {
-                            log.debug "Unable to decrypt lock code from device: ${lockName}"
-                            return
-                        }
-                    }
-                    def codeMap = parseJson(lockdata ?: "{}").find{ it }
-                    if (!codeMap) {
-                        if(logEnable) log.debug "In lockUserActionHandler - Lock Code not available."
-                        return
-                    }
-                    codeName = "${codeMap?.value?.name}"
-                    if(logEnable) log.debug "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	
-                }
-            }
-        }
-    }
 }
 
 def lzw45ActionHandler() {
@@ -5052,6 +4983,7 @@ def slowOffHandler() {
             state.highestLevel = startLevelLow ?: 99
         }
         state.onColor = "${colorDn}"
+        state.onLevel = state.highestLevel
         setLevelandColorHandler()
         if(minutesDn == 0) return
         seconds = (minutesDn * 60) - 10
@@ -5079,7 +5011,7 @@ def slowOnHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In slowOnHandler (${state.version})"
-        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = state.currentLevel; state.onColor = "${colorUp}"
+        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = startLevelUp ?: 1; state.onColor = "${colorUp}"
         setLevelandColorHandler()
         if(minutesUp == 0) return
         seconds = (minutesUp * 60) - 10
@@ -5091,7 +5023,7 @@ def slowOnHandler() {
     }
 }
 
-def dimStepUp() {
+def dimStepUp(theValue) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
@@ -5107,7 +5039,8 @@ def dimStepUp() {
                 if(logEnable && extraLogs) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
                 if(deviceOn == "on") {
                     atLeastOneUpOn = true
-                    it.setLevel(state.currentLevel)
+                    state.onLevel = state.currentLevel
+                    setLevelandColorHandler()
                 }
             }
             if(atLeastOneUpOn) {
@@ -5140,7 +5073,10 @@ def dimStepDown() {
                 if(logEnable) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
                 if(deviceOn == "on") {
                     atLeastOneDnOn = true
-                    if(wLevel <= cLevel) { it.setLevel(wLevel) }
+                    if(wLevel <= cLevel) { 
+                        state.onLevel = wLevel
+                        setLevelandColorHandler()
+                    }
                 }
             }
             if(atLeastOneDnOn) {
@@ -5542,12 +5478,7 @@ def modeHandler() {
 }
 // *****  End Time Handlers *****
 
-def setLevelandColorHandler(newData) {
-    if(state.fromWhere == "slowOff") {
-        state.onLevel = state.highestLevel
-    } else {
-        state.onLevel = state.onLevel ?: 99
-    }   
+def setLevelandColorHandler(newData) {  
     if(state.onColor == null || state.onColor == "null" || state.onColor == "") state.onColor = "No Change"
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.onColor} - onLevel: ${state.onLevel}"
     switch(state.onColor) {
@@ -5758,13 +5689,13 @@ def setLevelandColorHandler(newData) {
     if(state.fromWhere == "slowOn") {
         slowDimmerUp.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
+                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $onLevel"
-                it.setLevel(onLevel as Integer ?: 99)
+                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, setLevel: $onLevel"
+                it.setLevel(onLevel as Integer ?: 10)
             } else {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, on()"
                 it.on()
             }
         }
@@ -5773,13 +5704,13 @@ def setLevelandColorHandler(newData) {
     if(state.fromWhere == "slowOff") {
         slowDimmerDn.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $level"
-                it.setLevel(level as Integer ?: 99)
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, setLevel: $level"
+                it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, on()"
                 it.on()
             }
         }
@@ -5996,80 +5927,6 @@ def sdPerModeHandler(data) {
     app.updateSetting("sdReverseTimeType",[value:"false",type:"bool"])
 }
 
-// ********** Start Directional Condition **********
-def activeOneHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In Directional Condition - activeOneHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
-        if(evt.value == "open" || evt.value == "active") {
-            if(atomicState.first != "two") { atomicState.first = "one" } 
-            atomicState.motionOneActive = true
-            if(logEnable) log.debug "In Directional Condition - activeOneHandler - first: ${atomicState.first}"
-            if(atomicState.first == "two") activeHandler()
-        } else {
-            inactiveOneHandler()
-        }
-    }
-}
-
-def activeTwoHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In Directional Condition - activeTwoHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
-        if(evt.value == "open" || evt.value == "active") {
-            if(atomicState.first != "one") { atomicState.first = "two" }
-            atomicState.motionTwoActive = true
-            if(logEnable) log.debug "In Directional Condition - activeTwoHandler - first: ${atomicState.first}"
-            if(atomicState.first == "one") activeHandler()
-        } else {
-            inactiveTwoHandler()
-        }
-    }
-}
-
-def activeHandler() {
-    if(logEnable) log.debug "In Directional Condition - activeHandler (${state.version})"
-    if(atomicState.motionOneActive && atomicState.motionTwoActive) {
-        if(atomicState.first == "one") { state.direction = "right" }
-        if(atomicState.first == "two") { state.direction = "left" }
-        state.lastDirection = state.direction
-        if(logEnable) log.debug "In Directional Condition - activeHandler - first: ${atomicState.first} - direction: ${state.direction}"
-        if(theDirection == "Right" && state.direction == "right") { 
-            state.totalMatch = 1
-            state.totalConditions = 1
-            startTheProcess("direction") 
-        }
-        if(theDirection == "Left" && state.direction == "left") {
-            state.totalMatch = 1
-            state.totalConditions = 1
-            startTheProcess("direction") 
-        }
-    }
-}
-
-def inactiveOneHandler(evt) {
-    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler (${state.version})"
-    if(atomicState.first == "one") atomicState.first = ""
-    atomicState.motionOneActive = false
-    state.direction = ""
-    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler - first: ${atomicState.first} - (should be blank)"
-    startTheProcess("reverse")
-}
-
-def inactiveTwoHandler(evt) {
-    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler (${state.version})"
-    if(atomicState.first == "two") atomicState.first = ""
-    atomicState.motionTwoActive = false
-    state.direction = ""
-    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler - first: ${atomicState.first} - (should be blank)"
-    startTheProcess("reverse")
-}
-// ********** End Directional Conditional **********
-
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
@@ -6106,179 +5963,6 @@ def appButtonHandler(buttonPressed) {
         state.checkNow = true
         autoUpdateHandler()
     }
-}
-
-// ********** BI Control **********
-def profileSwitchHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In switchChangeHandler (${state.version})"
-        if(logEnable) log.debug "In switchChangeHandler - switchProfileOn: ${switchProfileOn}"
-        if(switchProfileOn == "Pon0") {
-            biChangeHandler("0")
-        } else if(switchProfileOn == "Pon1") {
-            biChangeHandler("1")
-        } else if(switchProfileOn == "Pon2") {
-            biChangeHandler("2")
-        } else if(switchProfileOn == "Pon3") {
-            biChangeHandler("3")
-        } else if(switchProfileOn == "Pon4") {
-            biChangeHandler("4")
-        } else if(switchProfileOn == "Pon5") {
-            biChangeHandler("5")
-        } else if(switchProfileOn == "Pon6") {
-            biChangeHandler("6")
-        } else if(switchProfileOn == "Pon7") {
-            biChangeHandler("7")
-        }
-    }
-}
-
-def scheduleSwitchHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In switchChangeHandler (${state.version})"
-        if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn: ${biScheduleName}"
-        biChangeHandler(biScheduleName)
-    }
-}
-
-def cameraPresetHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In cameraPresetHandler (${state.version}) - biCameraPreset: ${biCameraPreset}"
-        if(biCameraPreset == "PS1") {
-            biChangeHandler("1")
-        } else if(biCameraPreset == "PS2") {
-            biChangeHandler("2")
-        } else if(biCameraPreset == "PS3") {
-            biChangeHandler("3")
-        } else if(biCameraPreset == "PS4") {
-            biChangeHandler("4")
-        } else if(biCameraPreset == "PS5") {
-            biChangeHandler("5")
-        }
-    }
-}
-
-def cameraSnapshotHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In cameraSnapshotHandler (${state.version})"
-        if(logEnable) log.debug "In cameraSnapshotHandler - Switch on"
-        biChangeHandler("0")
-    }
-}
-
-def cameraTriggerHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In cameraTriggerHandler (${state.version})"
-        if(logEnable) log.debug "cameraTriggerHandler - On"
-        biChangeHandler("1")
-    }
-}
-
-def cameraPTZHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In cameraPTZHandler (${state.version})"
-        if(logEnable) log.debug "In cameraPTZHandler - biCameraPTZ: ${biCameraPTZ}"
-        if(biCameraPTZ == "PTZ0") {
-            biChangeHandler("0")
-        } else if(biCameraPTZ == "PTZ1") {
-            biChangeHandler("1")
-        } else if(biCameraPTZ == "PTZ2") {
-            biChangeHandler("2")
-        } else if(biCameraPTZ == "PTZ3") {
-            biChangeHandler("3")
-        } else if(biCameraPTZ == "PTZ4") {
-            biChangeHandler("4")
-        } else if(biCameraPTZ == "PTZ5") {
-            biChangeHandler("5")
-        } else if(biCameraPTZ == "PTZ6") {
-            biChangeHandler("6")
-        }
-    }
-}
-
-def cameraRebootHandler() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In cameraRebootHandler (${state.version})"
-        if(logEnable) log.debug "In cameraRebootHandler - Switch on"
-        biChangeHandler("0")
-    }
-}
-
-def biChangeHandler(num) {
-    if(logEnable) log.debug "In biChangeHandler (${state.version}) - biControl: ${biControl}"
-	biHost = "${parent.biServer}:${parent.biPort}"
-	if(biControl == "Switch_Profile") {
-		if(logEnable) log.debug "I'm in Switch_Profile"
-		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
-    } else if(biControl == "Switch_Contact_Motion") {
-        if(logEnable) log.debug "I'm in Switch, Contact or Motion"
-        biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"       
-    } else if(biControl == "Camera_Preset") {
-        if(logEnable) log.debug "I'm in Camera_Preset"
-        biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
-        // /admin?camera=x&preset=x
-    } else if(biControl == "Camera_Snapshot") {
-        if(logEnable) log.debug "I'm in Camera_Snapshot"
-        biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"        
-        // /admin?camera=x&snapshot
-    } else if(biControl == "Camera_Trigger") {
-        if(logEnable) log.debug "I'm in Camera_Trigger"
-        if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-        if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"        
-        // NOTE: if this Command doesn't work for you, try the second one instead
-        // /admin?camera=x&manrec=1
-    } else if(biControl == "Camera_PTZ") {
-        if(logEnable) log.debug "I'm in Camera_PTZ"
-        biRawCommand = "/cam/${biCamera}/pos=${num}"        
-        // /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
-    } else if(biControl == "Camera_Reboot") {
-        if(logEnable) log.debug "I'm in Camera_Reboot"
-        biRawCommand = "/admin?camera=${biCamera}&reboot&user=${parent.biUser}&pw=${parent.biPass}"
-        // /admin?camera=x&reboot
-    } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") {
-        if(logEnable) log.debug "I'm in Camera_Enable/Disable"
-        biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"           
-        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name)
-    } else if(biControl == "Switch_Schedule") {    
-        if(logEnable) log.debug "I'm in Switch_Schedule"
-        biRawCommand = "/admin?schedule=${num}&user=${parent.biUser}&pw=${parent.biPass}"        
-    } else {
-        biRawCommand = "*** Something went wrong! ***"
-    }
-    if(logEnable) log.debug "In biChangeHandler - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
-	if(logEnable) log.debug "In biChangeHandler - sending GET to URL: ${biHost}${biRawCommand}"
-	def httpMethod = "GET"
-	def httpRequest = [
-		method:		httpMethod,
-		path: 		biRawCommand,
-		headers:	[
-			HOST:		biHost,
-			Accept: 	"*/*",
-		]
-	]
-	def hubAction = new hubitat.device.HubAction(httpRequest)
-	sendHubCommand(hubAction)
 }
 
 // ***** Calendarific *****
@@ -7140,166 +6824,535 @@ library ( // library marker BPTWorld.bpt-normalStuff, line 1
         disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-normalStuff, line 10
 ) // library marker BPTWorld.bpt-normalStuff, line 11
 
-def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 13
-    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 14
-    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 15
-    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 16
-} // library marker BPTWorld.bpt-normalStuff, line 17
+import groovy.time.TimeCategory // library marker BPTWorld.bpt-normalStuff, line 13
+import java.text.SimpleDateFormat // library marker BPTWorld.bpt-normalStuff, line 14
 
-def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 19
-    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 20
-    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 21
-    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 22
-        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 23
-        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 24
-        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 25
-        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 26
-        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 27
-    } // library marker BPTWorld.bpt-normalStuff, line 28
-    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 29
-    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 30
-        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 31
-        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 32
-    } // library marker BPTWorld.bpt-normalStuff, line 33
-} // library marker BPTWorld.bpt-normalStuff, line 34
+def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 16
+    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 17
+    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 18
+    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 19
+} // library marker BPTWorld.bpt-normalStuff, line 20
 
-def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 36
-    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 37
-    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 38
-    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 39
-        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 40
-        try { // library marker BPTWorld.bpt-normalStuff, line 41
-            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 42
-            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 43
-            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 44
-        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 45
-    } else { // library marker BPTWorld.bpt-normalStuff, line 46
-        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 47
-    } // library marker BPTWorld.bpt-normalStuff, line 48
-    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 49
-} // library marker BPTWorld.bpt-normalStuff, line 50
+def parentCheck(){   // library marker BPTWorld.bpt-normalStuff, line 22
+	state.appInstalled = app.getInstallationState()  // library marker BPTWorld.bpt-normalStuff, line 23
+	if(state.appInstalled != 'COMPLETE'){ // library marker BPTWorld.bpt-normalStuff, line 24
+		parentChild = true // library marker BPTWorld.bpt-normalStuff, line 25
+  	} else { // library marker BPTWorld.bpt-normalStuff, line 26
+    	parentChild = false // library marker BPTWorld.bpt-normalStuff, line 27
+  	} // library marker BPTWorld.bpt-normalStuff, line 28
+} // library marker BPTWorld.bpt-normalStuff, line 29
 
-def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 52
-	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 53
-} // library marker BPTWorld.bpt-normalStuff, line 54
+def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 31
+    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 32
+    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 33
+    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 34
+        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 35
+        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 36
+        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 37
+        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 38
+        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 39
+    } // library marker BPTWorld.bpt-normalStuff, line 40
+    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 41
+    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 42
+        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 43
+        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 44
+    } // library marker BPTWorld.bpt-normalStuff, line 45
+} // library marker BPTWorld.bpt-normalStuff, line 46
 
-private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 56
-	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 57
-} // library marker BPTWorld.bpt-normalStuff, line 58
+def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 48
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 49
+    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 50
+    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 51
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 52
+        try { // library marker BPTWorld.bpt-normalStuff, line 53
+            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 54
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 55
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 56
+        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 57
+    } else { // library marker BPTWorld.bpt-normalStuff, line 58
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 59
+    } // library marker BPTWorld.bpt-normalStuff, line 60
+    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 61
+} // library marker BPTWorld.bpt-normalStuff, line 62
 
-def letsTalk(msg) { // library marker BPTWorld.bpt-normalStuff, line 60
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 61
-    if(useSpeech && fmSpeaker) { // library marker BPTWorld.bpt-normalStuff, line 62
-        fmSpeaker.latestMessageFrom(state.name) // library marker BPTWorld.bpt-normalStuff, line 63
-        fmSpeaker.speak(msg,null) // library marker BPTWorld.bpt-normalStuff, line 64
-    } // library marker BPTWorld.bpt-normalStuff, line 65
+def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 64
+	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 65
 } // library marker BPTWorld.bpt-normalStuff, line 66
 
-def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 68
-    if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 69
-    theMessage = "${app.label} - ${msg}" // library marker BPTWorld.bpt-normalStuff, line 70
-    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 71
-    sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 72
-} // library marker BPTWorld.bpt-normalStuff, line 73
+private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 68
+	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 69
+} // library marker BPTWorld.bpt-normalStuff, line 70
 
-// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 75
-def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 76
-    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 77
-    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 78
-} // library marker BPTWorld.bpt-normalStuff, line 79
+def letsTalk(msg) { // library marker BPTWorld.bpt-normalStuff, line 72
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 73
+    if(useSpeech && fmSpeaker) { // library marker BPTWorld.bpt-normalStuff, line 74
+        fmSpeaker.latestMessageFrom(state.name) // library marker BPTWorld.bpt-normalStuff, line 75
+        fmSpeaker.speak(msg,null) // library marker BPTWorld.bpt-normalStuff, line 76
+    } // library marker BPTWorld.bpt-normalStuff, line 77
+} // library marker BPTWorld.bpt-normalStuff, line 78
 
-def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 81
-    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 82
-    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 83
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 84
-        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 85
-            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 86
-            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 87
-        } // library marker BPTWorld.bpt-normalStuff, line 88
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 89
-    } // library marker BPTWorld.bpt-normalStuff, line 90
+def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 80
+    if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 81
+    theMessage = "${app.label} - ${msg}" // library marker BPTWorld.bpt-normalStuff, line 82
+    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 83
+    sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 84
+} // library marker BPTWorld.bpt-normalStuff, line 85
+
+// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 87
+def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 88
+    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 89
+    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 90
 } // library marker BPTWorld.bpt-normalStuff, line 91
 
-def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 93
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 94
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 95
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 96
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 97
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 98
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 99
-    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 100
-} // library marker BPTWorld.bpt-normalStuff, line 101
+def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 93
+    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 94
+    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 95
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 96
+        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 97
+            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 98
+            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 99
+        } // library marker BPTWorld.bpt-normalStuff, line 100
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 101
+    } // library marker BPTWorld.bpt-normalStuff, line 102
+} // library marker BPTWorld.bpt-normalStuff, line 103
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 103
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 104
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 105
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 106
-} // library marker BPTWorld.bpt-normalStuff, line 107
+def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 105
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 106
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 107
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 108
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 109
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 110
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 111
+    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 112
+} // library marker BPTWorld.bpt-normalStuff, line 113
 
-def display(data) { // library marker BPTWorld.bpt-normalStuff, line 109
-    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 110
-    setVersion() // library marker BPTWorld.bpt-normalStuff, line 111
-    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 112
-    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 113
-        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 114
-            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 115
-        } else { // library marker BPTWorld.bpt-normalStuff, line 116
-            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 117
-        } // library marker BPTWorld.bpt-normalStuff, line 118
-    } // library marker BPTWorld.bpt-normalStuff, line 119
-    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 120
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 121
-        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 122
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 123
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 124
-    } // library marker BPTWorld.bpt-normalStuff, line 125
-} // library marker BPTWorld.bpt-normalStuff, line 126
+def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 115
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 116
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 117
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 118
+} // library marker BPTWorld.bpt-normalStuff, line 119
 
-def display2() { // library marker BPTWorld.bpt-normalStuff, line 128
-    section() { // library marker BPTWorld.bpt-normalStuff, line 129
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 130
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 131
-        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 132
-    } // library marker BPTWorld.bpt-normalStuff, line 133
-} // library marker BPTWorld.bpt-normalStuff, line 134
+def display(data) { // library marker BPTWorld.bpt-normalStuff, line 121
+    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 122
+    setVersion() // library marker BPTWorld.bpt-normalStuff, line 123
+    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 124
+    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 125
+        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 126
+            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 127
+        } else { // library marker BPTWorld.bpt-normalStuff, line 128
+            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 129
+        } // library marker BPTWorld.bpt-normalStuff, line 130
+    } // library marker BPTWorld.bpt-normalStuff, line 131
+    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 132
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 133
+        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 134
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 135
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 136
+    } // library marker BPTWorld.bpt-normalStuff, line 137
+} // library marker BPTWorld.bpt-normalStuff, line 138
 
-def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 136
-    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 137
-    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 138
-    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 139
-        def params = [ // library marker BPTWorld.bpt-normalStuff, line 140
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 141
-            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 142
-            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 143
-            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 144
-        ] // library marker BPTWorld.bpt-normalStuff, line 145
-        try { // library marker BPTWorld.bpt-normalStuff, line 146
-            def result = null // library marker BPTWorld.bpt-normalStuff, line 147
-            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 148
-                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 149
-                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 150
-            } // library marker BPTWorld.bpt-normalStuff, line 151
-        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 152
-    } // library marker BPTWorld.bpt-normalStuff, line 153
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 154
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 155
-} // library marker BPTWorld.bpt-normalStuff, line 156
+def display2() { // library marker BPTWorld.bpt-normalStuff, line 140
+    section() { // library marker BPTWorld.bpt-normalStuff, line 141
+        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 142
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 143
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 144
+        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 145
+    } // library marker BPTWorld.bpt-normalStuff, line 146
+} // library marker BPTWorld.bpt-normalStuff, line 147
 
-def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 158
-    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 159
-        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 160
-    } else { // library marker BPTWorld.bpt-normalStuff, line 161
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 162
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 163
-    } // library marker BPTWorld.bpt-normalStuff, line 164
-    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 165
-    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 166
-        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 167
-        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 168
-        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 169
-        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 170
-    } // library marker BPTWorld.bpt-normalStuff, line 171
-    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 172
-} // library marker BPTWorld.bpt-normalStuff, line 173
+def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 149
+    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 150
+    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 151
+    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 152
+        def params = [ // library marker BPTWorld.bpt-normalStuff, line 153
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 154
+            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 155
+            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 156
+            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 157
+        ] // library marker BPTWorld.bpt-normalStuff, line 158
+        try { // library marker BPTWorld.bpt-normalStuff, line 159
+            def result = null // library marker BPTWorld.bpt-normalStuff, line 160
+            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 161
+                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 162
+                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 163
+            } // library marker BPTWorld.bpt-normalStuff, line 164
+        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 165
+    } // library marker BPTWorld.bpt-normalStuff, line 166
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 167
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 168
+} // library marker BPTWorld.bpt-normalStuff, line 169
+
+def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 171
+    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 172
+        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 173
+    } else { // library marker BPTWorld.bpt-normalStuff, line 174
+        try { // library marker BPTWorld.bpt-normalStuff, line 175
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 176
+            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 177
+        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 178
+            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 179
+        } // library marker BPTWorld.bpt-normalStuff, line 180
+    } // library marker BPTWorld.bpt-normalStuff, line 181
+    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 182
+    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 183
+        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 184
+        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 185
+        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 186
+        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 187
+    } // library marker BPTWorld.bpt-normalStuff, line 188
+    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 189
+} // library marker BPTWorld.bpt-normalStuff, line 190
 
 // ~~~~~ end include (2) BPTWorld.bpt-normalStuff ~~~~~
+
+// ~~~~~ start include (39) BPTWorld.bpt-directionalCondition ~~~~~
+library ( // library marker BPTWorld.bpt-directionalCondition, line 1
+        base: "app", // library marker BPTWorld.bpt-directionalCondition, line 2
+        author: "Bryan Turcotte", // library marker BPTWorld.bpt-directionalCondition, line 3
+        category: "Apps", // library marker BPTWorld.bpt-directionalCondition, line 4
+        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-directionalCondition, line 5
+        name: "bpt-directionalCondition", // library marker BPTWorld.bpt-directionalCondition, line 6
+        namespace: "BPTWorld", // library marker BPTWorld.bpt-directionalCondition, line 7
+        documentationLink: "", // library marker BPTWorld.bpt-directionalCondition, line 8
+        version: "1.0.0", // library marker BPTWorld.bpt-directionalCondition, line 9
+        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-directionalCondition, line 10
+) // library marker BPTWorld.bpt-directionalCondition, line 11
+
+def activeOneHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 13
+    checkEnableHandler() // library marker BPTWorld.bpt-directionalCondition, line 14
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-directionalCondition, line 15
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-directionalCondition, line 16
+    } else { // library marker BPTWorld.bpt-directionalCondition, line 17
+        if(logEnable) log.debug "In Directional Condition - activeOneHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}" // library marker BPTWorld.bpt-directionalCondition, line 18
+        if(evt.value == "open" || evt.value == "active") { // library marker BPTWorld.bpt-directionalCondition, line 19
+            if(atomicState.first != "two") { atomicState.first = "one" }  // library marker BPTWorld.bpt-directionalCondition, line 20
+            atomicState.motionOneActive = true // library marker BPTWorld.bpt-directionalCondition, line 21
+            if(logEnable) log.debug "In Directional Condition - activeOneHandler - first: ${atomicState.first}" // library marker BPTWorld.bpt-directionalCondition, line 22
+            if(atomicState.first == "two") activeHandler() // library marker BPTWorld.bpt-directionalCondition, line 23
+        } else { // library marker BPTWorld.bpt-directionalCondition, line 24
+            inactiveOneHandler() // library marker BPTWorld.bpt-directionalCondition, line 25
+        } // library marker BPTWorld.bpt-directionalCondition, line 26
+    } // library marker BPTWorld.bpt-directionalCondition, line 27
+} // library marker BPTWorld.bpt-directionalCondition, line 28
+
+def activeTwoHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 30
+    checkEnableHandler() // library marker BPTWorld.bpt-directionalCondition, line 31
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-directionalCondition, line 32
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-directionalCondition, line 33
+    } else { // library marker BPTWorld.bpt-directionalCondition, line 34
+        if(logEnable) log.debug "In Directional Condition - activeTwoHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}" // library marker BPTWorld.bpt-directionalCondition, line 35
+        if(evt.value == "open" || evt.value == "active") { // library marker BPTWorld.bpt-directionalCondition, line 36
+            if(atomicState.first != "one") { atomicState.first = "two" } // library marker BPTWorld.bpt-directionalCondition, line 37
+            atomicState.motionTwoActive = true // library marker BPTWorld.bpt-directionalCondition, line 38
+            if(logEnable) log.debug "In Directional Condition - activeTwoHandler - first: ${atomicState.first}" // library marker BPTWorld.bpt-directionalCondition, line 39
+            if(atomicState.first == "one") activeHandler() // library marker BPTWorld.bpt-directionalCondition, line 40
+        } else { // library marker BPTWorld.bpt-directionalCondition, line 41
+            inactiveTwoHandler() // library marker BPTWorld.bpt-directionalCondition, line 42
+        } // library marker BPTWorld.bpt-directionalCondition, line 43
+    } // library marker BPTWorld.bpt-directionalCondition, line 44
+} // library marker BPTWorld.bpt-directionalCondition, line 45
+
+def activeHandler() { // library marker BPTWorld.bpt-directionalCondition, line 47
+    if(logEnable) log.debug "In Directional Condition - activeHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 48
+    if(atomicState.motionOneActive && atomicState.motionTwoActive) { // library marker BPTWorld.bpt-directionalCondition, line 49
+        if(atomicState.first == "one") { state.direction = "right" } // library marker BPTWorld.bpt-directionalCondition, line 50
+        if(atomicState.first == "two") { state.direction = "left" } // library marker BPTWorld.bpt-directionalCondition, line 51
+        state.lastDirection = state.direction // library marker BPTWorld.bpt-directionalCondition, line 52
+        if(logEnable) log.debug "In Directional Condition - activeHandler - first: ${atomicState.first} - direction: ${state.direction}" // library marker BPTWorld.bpt-directionalCondition, line 53
+        if(theDirection == "Right" && state.direction == "right") {  // library marker BPTWorld.bpt-directionalCondition, line 54
+            state.totalMatch = 1 // library marker BPTWorld.bpt-directionalCondition, line 55
+            state.totalConditions = 1 // library marker BPTWorld.bpt-directionalCondition, line 56
+            startTheProcess("direction")  // library marker BPTWorld.bpt-directionalCondition, line 57
+        } // library marker BPTWorld.bpt-directionalCondition, line 58
+        if(theDirection == "Left" && state.direction == "left") { // library marker BPTWorld.bpt-directionalCondition, line 59
+            state.totalMatch = 1 // library marker BPTWorld.bpt-directionalCondition, line 60
+            state.totalConditions = 1 // library marker BPTWorld.bpt-directionalCondition, line 61
+            startTheProcess("direction")  // library marker BPTWorld.bpt-directionalCondition, line 62
+        } // library marker BPTWorld.bpt-directionalCondition, line 63
+    } // library marker BPTWorld.bpt-directionalCondition, line 64
+} // library marker BPTWorld.bpt-directionalCondition, line 65
+
+def inactiveOneHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 67
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 68
+    if(atomicState.first == "one") atomicState.first = "" // library marker BPTWorld.bpt-directionalCondition, line 69
+    atomicState.motionOneActive = false // library marker BPTWorld.bpt-directionalCondition, line 70
+    state.direction = "" // library marker BPTWorld.bpt-directionalCondition, line 71
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler - first: ${atomicState.first} - (should be blank)" // library marker BPTWorld.bpt-directionalCondition, line 72
+    startTheProcess("reverse") // library marker BPTWorld.bpt-directionalCondition, line 73
+} // library marker BPTWorld.bpt-directionalCondition, line 74
+
+def inactiveTwoHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 76
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 77
+    if(atomicState.first == "two") atomicState.first = "" // library marker BPTWorld.bpt-directionalCondition, line 78
+    atomicState.motionTwoActive = false // library marker BPTWorld.bpt-directionalCondition, line 79
+    state.direction = "" // library marker BPTWorld.bpt-directionalCondition, line 80
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler - first: ${atomicState.first} - (should be blank)" // library marker BPTWorld.bpt-directionalCondition, line 81
+    startTheProcess("reverse") // library marker BPTWorld.bpt-directionalCondition, line 82
+} // library marker BPTWorld.bpt-directionalCondition, line 83
+
+// ~~~~~ end include (39) BPTWorld.bpt-directionalCondition ~~~~~
+
+// ~~~~~ start include (7) BPTWorld.bpt-blueIrisActions ~~~~~
+library ( // library marker BPTWorld.bpt-blueIrisActions, line 1
+        base: "app", // library marker BPTWorld.bpt-blueIrisActions, line 2
+        author: "Bryan Turcotte", // library marker BPTWorld.bpt-blueIrisActions, line 3
+        category: "Apps", // library marker BPTWorld.bpt-blueIrisActions, line 4
+        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-blueIrisActions, line 5
+        name: "bpt-blueIrisActions", // library marker BPTWorld.bpt-blueIrisActions, line 6
+        namespace: "BPTWorld", // library marker BPTWorld.bpt-blueIrisActions, line 7
+        documentationLink: "", // library marker BPTWorld.bpt-blueIrisActions, line 8
+        version: "1.0.0", // library marker BPTWorld.bpt-blueIrisActions, line 9
+        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-blueIrisActions, line 10
+) // library marker BPTWorld.bpt-blueIrisActions, line 11
+
+def profileSwitchHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 13
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 14
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 15
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 16
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 17
+        if(logEnable) log.debug "In switchChangeHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 18
+        if(logEnable) log.debug "In switchChangeHandler - switchProfileOn: ${switchProfileOn}" // library marker BPTWorld.bpt-blueIrisActions, line 19
+        if(switchProfileOn == "Pon0") { // library marker BPTWorld.bpt-blueIrisActions, line 20
+            biChangeHandler("0") // library marker BPTWorld.bpt-blueIrisActions, line 21
+        } else if(switchProfileOn == "Pon1") { // library marker BPTWorld.bpt-blueIrisActions, line 22
+            biChangeHandler("1") // library marker BPTWorld.bpt-blueIrisActions, line 23
+        } else if(switchProfileOn == "Pon2") { // library marker BPTWorld.bpt-blueIrisActions, line 24
+            biChangeHandler("2") // library marker BPTWorld.bpt-blueIrisActions, line 25
+        } else if(switchProfileOn == "Pon3") { // library marker BPTWorld.bpt-blueIrisActions, line 26
+            biChangeHandler("3") // library marker BPTWorld.bpt-blueIrisActions, line 27
+        } else if(switchProfileOn == "Pon4") { // library marker BPTWorld.bpt-blueIrisActions, line 28
+            biChangeHandler("4") // library marker BPTWorld.bpt-blueIrisActions, line 29
+        } else if(switchProfileOn == "Pon5") { // library marker BPTWorld.bpt-blueIrisActions, line 30
+            biChangeHandler("5") // library marker BPTWorld.bpt-blueIrisActions, line 31
+        } else if(switchProfileOn == "Pon6") { // library marker BPTWorld.bpt-blueIrisActions, line 32
+            biChangeHandler("6") // library marker BPTWorld.bpt-blueIrisActions, line 33
+        } else if(switchProfileOn == "Pon7") { // library marker BPTWorld.bpt-blueIrisActions, line 34
+            biChangeHandler("7") // library marker BPTWorld.bpt-blueIrisActions, line 35
+        } // library marker BPTWorld.bpt-blueIrisActions, line 36
+    } // library marker BPTWorld.bpt-blueIrisActions, line 37
+} // library marker BPTWorld.bpt-blueIrisActions, line 38
+
+def scheduleSwitchHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 40
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 41
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 42
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 43
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 44
+        if(logEnable) log.debug "In switchChangeHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 45
+        if(logEnable) log.debug "In scheduleSwitchHandler - switchScheduleOn: ${biScheduleName}" // library marker BPTWorld.bpt-blueIrisActions, line 46
+        biChangeHandler(biScheduleName) // library marker BPTWorld.bpt-blueIrisActions, line 47
+    } // library marker BPTWorld.bpt-blueIrisActions, line 48
+} // library marker BPTWorld.bpt-blueIrisActions, line 49
+
+def cameraPresetHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 51
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 52
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 53
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 54
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 55
+        if(logEnable) log.debug "In cameraPresetHandler (${state.version}) - biCameraPreset: ${biCameraPreset}" // library marker BPTWorld.bpt-blueIrisActions, line 56
+        if(biCameraPreset == "PS1") { // library marker BPTWorld.bpt-blueIrisActions, line 57
+            biChangeHandler("1") // library marker BPTWorld.bpt-blueIrisActions, line 58
+        } else if(biCameraPreset == "PS2") { // library marker BPTWorld.bpt-blueIrisActions, line 59
+            biChangeHandler("2") // library marker BPTWorld.bpt-blueIrisActions, line 60
+        } else if(biCameraPreset == "PS3") { // library marker BPTWorld.bpt-blueIrisActions, line 61
+            biChangeHandler("3") // library marker BPTWorld.bpt-blueIrisActions, line 62
+        } else if(biCameraPreset == "PS4") { // library marker BPTWorld.bpt-blueIrisActions, line 63
+            biChangeHandler("4") // library marker BPTWorld.bpt-blueIrisActions, line 64
+        } else if(biCameraPreset == "PS5") { // library marker BPTWorld.bpt-blueIrisActions, line 65
+            biChangeHandler("5") // library marker BPTWorld.bpt-blueIrisActions, line 66
+        } // library marker BPTWorld.bpt-blueIrisActions, line 67
+    } // library marker BPTWorld.bpt-blueIrisActions, line 68
+} // library marker BPTWorld.bpt-blueIrisActions, line 69
+
+def cameraSnapshotHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 71
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 72
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 73
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 74
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 75
+        if(logEnable) log.debug "In cameraSnapshotHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 76
+        if(logEnable) log.debug "In cameraSnapshotHandler - Switch on" // library marker BPTWorld.bpt-blueIrisActions, line 77
+        biChangeHandler("0") // library marker BPTWorld.bpt-blueIrisActions, line 78
+    } // library marker BPTWorld.bpt-blueIrisActions, line 79
+} // library marker BPTWorld.bpt-blueIrisActions, line 80
+
+def cameraTriggerHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 82
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 83
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 84
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 85
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 86
+        if(logEnable) log.debug "In cameraTriggerHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 87
+        if(logEnable) log.debug "cameraTriggerHandler - On" // library marker BPTWorld.bpt-blueIrisActions, line 88
+        biChangeHandler("1") // library marker BPTWorld.bpt-blueIrisActions, line 89
+    } // library marker BPTWorld.bpt-blueIrisActions, line 90
+} // library marker BPTWorld.bpt-blueIrisActions, line 91
+
+def cameraPTZHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 93
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 94
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 95
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 96
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 97
+        if(logEnable) log.debug "In cameraPTZHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 98
+        if(logEnable) log.debug "In cameraPTZHandler - biCameraPTZ: ${biCameraPTZ}" // library marker BPTWorld.bpt-blueIrisActions, line 99
+        if(biCameraPTZ == "PTZ0") { // library marker BPTWorld.bpt-blueIrisActions, line 100
+            biChangeHandler("0") // library marker BPTWorld.bpt-blueIrisActions, line 101
+        } else if(biCameraPTZ == "PTZ1") { // library marker BPTWorld.bpt-blueIrisActions, line 102
+            biChangeHandler("1") // library marker BPTWorld.bpt-blueIrisActions, line 103
+        } else if(biCameraPTZ == "PTZ2") { // library marker BPTWorld.bpt-blueIrisActions, line 104
+            biChangeHandler("2") // library marker BPTWorld.bpt-blueIrisActions, line 105
+        } else if(biCameraPTZ == "PTZ3") { // library marker BPTWorld.bpt-blueIrisActions, line 106
+            biChangeHandler("3") // library marker BPTWorld.bpt-blueIrisActions, line 107
+        } else if(biCameraPTZ == "PTZ4") { // library marker BPTWorld.bpt-blueIrisActions, line 108
+            biChangeHandler("4") // library marker BPTWorld.bpt-blueIrisActions, line 109
+        } else if(biCameraPTZ == "PTZ5") { // library marker BPTWorld.bpt-blueIrisActions, line 110
+            biChangeHandler("5") // library marker BPTWorld.bpt-blueIrisActions, line 111
+        } else if(biCameraPTZ == "PTZ6") { // library marker BPTWorld.bpt-blueIrisActions, line 112
+            biChangeHandler("6") // library marker BPTWorld.bpt-blueIrisActions, line 113
+        } // library marker BPTWorld.bpt-blueIrisActions, line 114
+    } // library marker BPTWorld.bpt-blueIrisActions, line 115
+} // library marker BPTWorld.bpt-blueIrisActions, line 116
+
+def cameraRebootHandler() { // library marker BPTWorld.bpt-blueIrisActions, line 118
+    checkEnableHandler() // library marker BPTWorld.bpt-blueIrisActions, line 119
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-blueIrisActions, line 120
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-blueIrisActions, line 121
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 122
+        if(logEnable) log.debug "In cameraRebootHandler (${state.version})" // library marker BPTWorld.bpt-blueIrisActions, line 123
+        if(logEnable) log.debug "In cameraRebootHandler - Switch on" // library marker BPTWorld.bpt-blueIrisActions, line 124
+        biChangeHandler("0") // library marker BPTWorld.bpt-blueIrisActions, line 125
+    } // library marker BPTWorld.bpt-blueIrisActions, line 126
+} // library marker BPTWorld.bpt-blueIrisActions, line 127
+
+def biChangeHandler(num) { // library marker BPTWorld.bpt-blueIrisActions, line 129
+    if(logEnable) log.debug "In biChangeHandler (${state.version}) - biControl: ${biControl}" // library marker BPTWorld.bpt-blueIrisActions, line 130
+	biHost = "${parent.biServer}:${parent.biPort}" // library marker BPTWorld.bpt-blueIrisActions, line 131
+	if(biControl == "Switch_Profile") { // library marker BPTWorld.bpt-blueIrisActions, line 132
+		if(logEnable) log.debug "I'm in Switch_Profile" // library marker BPTWorld.bpt-blueIrisActions, line 133
+		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 134
+    } else if(biControl == "Switch_Contact_Motion") { // library marker BPTWorld.bpt-blueIrisActions, line 135
+        if(logEnable) log.debug "I'm in Switch, Contact or Motion" // library marker BPTWorld.bpt-blueIrisActions, line 136
+        biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"        // library marker BPTWorld.bpt-blueIrisActions, line 137
+    } else if(biControl == "Camera_Preset") { // library marker BPTWorld.bpt-blueIrisActions, line 138
+        if(logEnable) log.debug "I'm in Camera_Preset" // library marker BPTWorld.bpt-blueIrisActions, line 139
+        biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 140
+        // /admin?camera=x&preset=x // library marker BPTWorld.bpt-blueIrisActions, line 141
+    } else if(biControl == "Camera_Snapshot") { // library marker BPTWorld.bpt-blueIrisActions, line 142
+        if(logEnable) log.debug "I'm in Camera_Snapshot" // library marker BPTWorld.bpt-blueIrisActions, line 143
+        biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 144
+        // /admin?camera=x&snapshot // library marker BPTWorld.bpt-blueIrisActions, line 145
+    } else if(biControl == "Camera_Trigger") { // library marker BPTWorld.bpt-blueIrisActions, line 146
+        if(logEnable) log.debug "I'm in Camera_Trigger" // library marker BPTWorld.bpt-blueIrisActions, line 147
+        if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}" // library marker BPTWorld.bpt-blueIrisActions, line 148
+        if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 149
+        // NOTE: if this Command doesn't work for you, try the second one instead // library marker BPTWorld.bpt-blueIrisActions, line 150
+        // /admin?camera=x&manrec=1 // library marker BPTWorld.bpt-blueIrisActions, line 151
+    } else if(biControl == "Camera_PTZ") { // library marker BPTWorld.bpt-blueIrisActions, line 152
+        if(logEnable) log.debug "I'm in Camera_PTZ" // library marker BPTWorld.bpt-blueIrisActions, line 153
+        biRawCommand = "/cam/${biCamera}/pos=${num}"         // library marker BPTWorld.bpt-blueIrisActions, line 154
+        // /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out // library marker BPTWorld.bpt-blueIrisActions, line 155
+    } else if(biControl == "Camera_Reboot") { // library marker BPTWorld.bpt-blueIrisActions, line 156
+        if(logEnable) log.debug "I'm in Camera_Reboot" // library marker BPTWorld.bpt-blueIrisActions, line 157
+        biRawCommand = "/admin?camera=${biCamera}&reboot&user=${parent.biUser}&pw=${parent.biPass}" // library marker BPTWorld.bpt-blueIrisActions, line 158
+        // /admin?camera=x&reboot // library marker BPTWorld.bpt-blueIrisActions, line 159
+    } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") { // library marker BPTWorld.bpt-blueIrisActions, line 160
+        if(logEnable) log.debug "I'm in Camera_Enable/Disable" // library marker BPTWorld.bpt-blueIrisActions, line 161
+        biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"            // library marker BPTWorld.bpt-blueIrisActions, line 162
+        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name) // library marker BPTWorld.bpt-blueIrisActions, line 163
+    } else if(biControl == "Switch_Schedule") {     // library marker BPTWorld.bpt-blueIrisActions, line 164
+        if(logEnable) log.debug "I'm in Switch_Schedule" // library marker BPTWorld.bpt-blueIrisActions, line 165
+        biRawCommand = "/admin?schedule=${num}&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 166
+    } else { // library marker BPTWorld.bpt-blueIrisActions, line 167
+        biRawCommand = "*** Something went wrong! ***" // library marker BPTWorld.bpt-blueIrisActions, line 168
+    } // library marker BPTWorld.bpt-blueIrisActions, line 169
+    if(logEnable) log.debug "In biChangeHandler - biHost: ${biHost} - biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}" // library marker BPTWorld.bpt-blueIrisActions, line 170
+	if(logEnable) log.debug "In biChangeHandler - sending GET to URL: ${biHost}${biRawCommand}" // library marker BPTWorld.bpt-blueIrisActions, line 171
+	def httpMethod = "GET" // library marker BPTWorld.bpt-blueIrisActions, line 172
+	def httpRequest = [ // library marker BPTWorld.bpt-blueIrisActions, line 173
+		method:		httpMethod, // library marker BPTWorld.bpt-blueIrisActions, line 174
+		path: 		biRawCommand, // library marker BPTWorld.bpt-blueIrisActions, line 175
+		headers:	[ // library marker BPTWorld.bpt-blueIrisActions, line 176
+			HOST:		biHost, // library marker BPTWorld.bpt-blueIrisActions, line 177
+			Accept: 	"*/*", // library marker BPTWorld.bpt-blueIrisActions, line 178
+		] // library marker BPTWorld.bpt-blueIrisActions, line 179
+	] // library marker BPTWorld.bpt-blueIrisActions, line 180
+	def hubAction = new hubitat.device.HubAction(httpRequest) // library marker BPTWorld.bpt-blueIrisActions, line 181
+	sendHubCommand(hubAction) // library marker BPTWorld.bpt-blueIrisActions, line 182
+} // library marker BPTWorld.bpt-blueIrisActions, line 183
+
+// ~~~~~ end include (7) BPTWorld.bpt-blueIrisActions ~~~~~
+
+// ~~~~~ start include (40) BPTWorld.bpt-lockKeypadActions ~~~~~
+library ( // library marker BPTWorld.bpt-lockKeypadActions, line 1
+        base: "app", // library marker BPTWorld.bpt-lockKeypadActions, line 2
+        author: "Bryan Turcotte", // library marker BPTWorld.bpt-lockKeypadActions, line 3
+        category: "Apps", // library marker BPTWorld.bpt-lockKeypadActions, line 4
+        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-lockKeypadActions, line 5
+        name: "bpt-lockKeypadActions", // library marker BPTWorld.bpt-lockKeypadActions, line 6
+        namespace: "BPTWorld", // library marker BPTWorld.bpt-lockKeypadActions, line 7
+        documentationLink: "", // library marker BPTWorld.bpt-lockKeypadActions, line 8
+        version: "1.0.0", // library marker BPTWorld.bpt-lockKeypadActions, line 9
+        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-lockKeypadActions, line 10
+) // library marker BPTWorld.bpt-lockKeypadActions, line 11
+
+def securityKeypadActionHandler() { // library marker BPTWorld.bpt-lockKeypadActions, line 13
+    if(logEnable) log.debug "In securityKeypadActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 14
+    if(keypadTone) { // library marker BPTWorld.bpt-lockKeypadActions, line 15
+        keypadAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 16
+            if(logEnable) log.debug "In securityKeypadActionHandler - Sending ${keypadTone} to ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 17
+            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 18
+            it.playTone(keypadTone) // library marker BPTWorld.bpt-lockKeypadActions, line 19
+        } // library marker BPTWorld.bpt-lockKeypadActions, line 20
+    } // library marker BPTWorld.bpt-lockKeypadActions, line 21
+} // library marker BPTWorld.bpt-lockKeypadActions, line 22
+
+def lockActionHandler() { // library marker BPTWorld.bpt-lockKeypadActions, line 24
+    if(logEnable) log.debug "In lockActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 25
+    if(lockAction) { // library marker BPTWorld.bpt-lockKeypadActions, line 26
+        lockAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 27
+            if(logEnable) log.debug "In lockActionHandler - Locking ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 28
+            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 29
+            it.lock() // library marker BPTWorld.bpt-lockKeypadActions, line 30
+        } // library marker BPTWorld.bpt-lockKeypadActions, line 31
+    } // library marker BPTWorld.bpt-lockKeypadActions, line 32
+    if(unlockAction) { // library marker BPTWorld.bpt-lockKeypadActions, line 33
+        unlockAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 34
+            if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 35
+            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 36
+            it.unlock() // library marker BPTWorld.bpt-lockKeypadActions, line 37
+        } // library marker BPTWorld.bpt-lockKeypadActions, line 38
+    } // library marker BPTWorld.bpt-lockKeypadActions, line 39
+} // library marker BPTWorld.bpt-lockKeypadActions, line 40
+
+def lockUserActionHandler(evt) { // library marker BPTWorld.bpt-lockKeypadActions, line 42
+    checkEnableHandler() // library marker BPTWorld.bpt-lockKeypadActions, line 43
+    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-lockKeypadActions, line 44
+        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-lockKeypadActions, line 45
+    } else { // library marker BPTWorld.bpt-lockKeypadActions, line 46
+        if(logEnable) log.warn "In lockUserActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 47
+        if(evt) { // library marker BPTWorld.bpt-lockKeypadActions, line 48
+            lockdata = evt.data // library marker BPTWorld.bpt-lockKeypadActions, line 49
+            lockStatus = evt.value // library marker BPTWorld.bpt-lockKeypadActions, line 50
+            lockName = evt.displayName // library marker BPTWorld.bpt-lockKeypadActions, line 51
+            if(logEnable) log.debug "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}" // library marker BPTWorld.bpt-lockKeypadActions, line 52
+            if(lockStatus == "unlocked") { // library marker BPTWorld.bpt-lockKeypadActions, line 53
+                if(logEnable) log.debug "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!" // library marker BPTWorld.bpt-lockKeypadActions, line 54
+                if(theLocks) { // library marker BPTWorld.bpt-lockKeypadActions, line 55
+                    if (lockdata && !lockdata[0].startsWith("{")) { // library marker BPTWorld.bpt-lockKeypadActions, line 56
+                        lockdata = decrypt(lockdata) // library marker BPTWorld.bpt-lockKeypadActions, line 57
+                        if (lockdata == null) { // library marker BPTWorld.bpt-lockKeypadActions, line 58
+                            log.debug "Unable to decrypt lock code from device: ${lockName}" // library marker BPTWorld.bpt-lockKeypadActions, line 59
+                            return // library marker BPTWorld.bpt-lockKeypadActions, line 60
+                        } // library marker BPTWorld.bpt-lockKeypadActions, line 61
+                    } // library marker BPTWorld.bpt-lockKeypadActions, line 62
+                    def codeMap = parseJson(lockdata ?: "{}").find{ it } // library marker BPTWorld.bpt-lockKeypadActions, line 63
+                    if (!codeMap) { // library marker BPTWorld.bpt-lockKeypadActions, line 64
+                        if(logEnable) log.debug "In lockUserActionHandler - Lock Code not available." // library marker BPTWorld.bpt-lockKeypadActions, line 65
+                        return // library marker BPTWorld.bpt-lockKeypadActions, line 66
+                    } // library marker BPTWorld.bpt-lockKeypadActions, line 67
+                    codeName = "${codeMap?.value?.name}" // library marker BPTWorld.bpt-lockKeypadActions, line 68
+                    if(logEnable) log.debug "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	 // library marker BPTWorld.bpt-lockKeypadActions, line 69
+                } // library marker BPTWorld.bpt-lockKeypadActions, line 70
+            } // library marker BPTWorld.bpt-lockKeypadActions, line 71
+        } // library marker BPTWorld.bpt-lockKeypadActions, line 72
+    } // library marker BPTWorld.bpt-lockKeypadActions, line 73
+} // library marker BPTWorld.bpt-lockKeypadActions, line 74
+
+// ~~~~~ end include (40) BPTWorld.bpt-lockKeypadActions ~~~~~
