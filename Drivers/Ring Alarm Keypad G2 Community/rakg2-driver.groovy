@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.7 - 01/09/22 - Fixed Chime Tone Volume
     1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
     1.0.5 - 12/11/21 - Invalid Code Sound now available as a playTone option
     1.0.4 - 12/10/21 - Added Keypad Tones! Thanks to @arlogilbert for help with the value:hexcode
@@ -17,14 +18,13 @@
              - Added option to set home/away with a single button push (No code needed)
              - Fixed error when arming home from keypad
              - Fixed error when clicking Config
-
 */
 
 import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.6"
+    return "1.0.7"
 }
 
 metadata {
@@ -56,6 +56,18 @@ metadata {
     preferences {
         input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}<br>Note:<br>The first 3 Tones are alarm sounds that also flash the Red Indicator Bar on the keypads. The rest are more pleasant sounds that could be used for a variety of things."
         configParams.each { input it.value.input }
+        input name: "sirenVolume", type: "enum", title: "Chime Tone Volume", options: [
+            ["10":"1"],
+            ["20":"2"],
+            ["30":"3"],
+            ["40":"4"],
+            ["50":"5"],
+            ["60":"6"],
+            ["70":"7"],
+            ["80":"8"],
+            ["90":"9"],
+            ["100":"10"],
+        ], defaultValue: "10", description: ""    // bptworld        
         input name: "theTone", type: "enum", title: "Chime tone", options: [
             ["Tone_1":"(Tone_1) Siren (default)"],
             ["Tone_2":"(Tone_2) 3 Beeps"],
@@ -78,7 +90,7 @@ metadata {
 @Field static Map configParams = [
         4: [input: [name: "configParam4", type: "enum", title: "Announcement Volume", description:"", defaultValue:7, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         5: [input: [name: "configParam5", type: "enum", title: "Keytone Volume", description:"", defaultValue:6, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
-        6: [input: [name: "configParam6", type: "enum", title: "Siren Volume", description:"", defaultValue:10, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
+        //6: [input: [name: "configParam6", type: "enum", title: "Siren Volume", description:"", defaultValue:10, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         12: [input: [name: "configParam12", type: "number", title: "Security Mode Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
         13: [input: [name: "configParam13", type: "number", title: "Key Backlight Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
 ]
@@ -92,7 +104,7 @@ metadata {
 
 void logsOff(){
     log.warn "debug logging disabled..."
-    //device.updateSetting("logEnable", [value:"false", type:"bool"])
+    device.updateSetting("logEnable", [value:"false", type:"bool"])
 }
 
 void updated() {
@@ -105,6 +117,7 @@ void updated() {
     sendToDevice(runConfigs())
     updateEncryption()
     proximitySensorHandler()
+    sirenVolumeHandler()
 }
 
 void installed() {
@@ -726,41 +739,58 @@ void proximitySensorHandler() {    // bptworld
     }
 }
 
+def sirenVolumeHandler() {    // bptworld
+    if(sirenVolume) {
+        if (logEnable) log.debug "Setting the Siren Volume to $sirenVolume"
+        sVol = sirenVolume.toInteger()
+        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
+        String hex = Integer.toHexString(sVol)
+        int parsedResult = (int) Long.parseLong(hex, 16)
+        def sVol = "0x${parsedResult}"
+    } else {
+        def sVol = "0x90"
+    }
+    return sVol
+}
+
 def playTone(tone=null) {
-    if (logEnable) log.debug "In playTone - tone: ${tone}"
+    sirenVolumeHandler()
+    if (logEnable) log.debug "In playTone - tone: ${tone} at Volume: ${sirenVolume} (${sVol})"
     if(!tone) { 
         tone = theTone
         if (logEnable) log.debug "In playTone - Tone is NULL, so setting tone to theTone: ${tone}"
     }
     if(tone == "Tone_1") {
         if (logEnable) log.debug "In playTone - Tone 1"    // Siren
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_2") {
         if (logEnable) log.debug "In playTone - Tone 2"    // 3 chirps
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0E, propertyId:2, value:0xFF]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0E, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_3") {
         if (logEnable) log.debug "In playTone - Tone 3"    // 4 chirps
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0F, propertyId:2, value:0xFF]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0F, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_4") {
         if (logEnable) log.debug "In playTone - Tone 4"    // Navi
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x60, propertyId:0x09, value:0x63]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x60, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_5") {
         if (logEnable) log.debug "In playTone - Tone 5"    // Guitar
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:0x63]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_6") {
         if (logEnable) log.debug "In playTone - Tone 6"    // Windchimes
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x62, propertyId:0x09, value:0x63]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x62, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_7") {
         if (logEnable) log.debug "In playTone - Tone 7"    // Doorbell 1
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x63, propertyId:0x09, value:0x63]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x63, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_8") {
         if (logEnable) log.debug "In playTone - Tone 8"    // Doorbell 2
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x64, propertyId:0x09, value:0x63]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x64, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_9") {
         if (logEnable) log.debug "In playTone - Tone 9"    // Invalid Code Sound
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:0x10]]).format())
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:sVol]]).format())
     } else if(tone == "test") {
         if (logEnable) log.debug "In playTone - test"    // test
-        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:0x10]]).format())
+        //sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:0xFF]]).format())
+        //pauseExecution(5000)
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:sVol]]).format())
     }
 }
