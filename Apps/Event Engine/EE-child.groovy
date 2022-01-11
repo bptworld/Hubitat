@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.3 - 01/10/22 - More adjustments to slowDim
 *  3.4.2 - 01/08/22 - Minor changes, Adjustment to slowDim
 *  3.4.1 - 12/20/21 - Changes to Random Lights (reverse)
 *  3.4.0 - 12/12/21 - Fixed Slow Dimming actions
@@ -56,7 +57,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.2"
+    state.name = "Event Engine Cog"; state.version = "3.4.3"
 }
 
 definition(
@@ -2446,7 +2447,7 @@ def pageConfig() {
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                     paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
-                    input "targetDelay", "bool", defaultValue:false, title: "<b>Delay Until Finished</b>", description: "Target Delay", submitOnChange:true
+                    input "targetDelay", "bool", defaultValue:false, title: "Delay Until Finished", description: "Target Delay", submitOnChange:true
                     theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelUp} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
                 } else {
                     app.removeSetting("slowDimmerUp")
@@ -2469,16 +2470,16 @@ def pageConfig() {
                     } else {
                         input "startLevelLow", "number", title: "Starting Level (5 to 99)", required:true, multiple:false, defaultValue: 99, range: '5..99'
                     }
-
                     input "targetLevelLow", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
-                    input "dimDnOff", "bool", defaultValue:false, title: "<b>Turn dimmer off after target is reached</b>", description: "Dim Off Options", submitOnChange:true
+                    input "dimDnOff", "bool", defaultValue:false, title: "Turn dimmer off after target is reached", description: "Dim Off Options", submitOnChange:true
+                    input "turnOnBeforeDim", "bool", defaultVAlue:false, title: "Turn dimmer On (if it's off) before dimming", submitOnChange:true
                     input "colorDn", "enum", title: "Color", required:true, multiple:false, options: [
                         ["Soft White":"Soft White - Default"],
                         ["White":"White - Concentrate"],
                         ["Daylight":"Daylight - Energize"],
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
-                    theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerDn} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Color: ${colorDn}<br>"
+                    theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerDn} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Turn On: ${turnOnBeforeDim} - Color: ${colorDn}<br>"
                 } else {
                     app.removeSetting("slowDimmerDn")
                     app.removeSetting("minutesDn")
@@ -4984,7 +4985,7 @@ def slowOffHandler() {
         }
         state.onColor = "${colorDn}"
         state.onLevel = state.highestLevel
-        setLevelandColorHandler()
+        if(turnOnBeforeDim) { setLevelandColorHandler() }
         if(minutesDn == 0) return
         seconds = (minutesDn * 60) - 10
         difference = state.highestLevel - targetLevelLow
@@ -5062,6 +5063,7 @@ def dimStepDown() {
     } else {
         if(logEnable && extraLogs) log.debug "-------------------- dimStepDown --------------------"
         if(logEnable && extraLogs) log.debug "In dimStepDown (${state.version})"
+        atLeastOneDnOn = false
         if(state.highestLevel > targetLevelLow) {
             state.highestLevel = state.highestLevel - state.dimStep1
             if(state.highestLevel < targetLevelLow) { state.highestLevel = targetLevelLow }
@@ -5483,53 +5485,53 @@ def setLevelandColorHandler(newData) {
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.onColor} - onLevel: ${state.onLevel}"
     switch(state.onColor) {
         case "No Change":
-        hueColor = null
-        saturation = null
-        break;
+            hueColor = null
+            saturation = null
+            break;
         case "White":
-        hueColor = 52
-        saturation = 19
-        break;
+            hueColor = 52
+            saturation = 19
+            break;
         case "Daylight":
-        hueColor = 53
-        saturation = 91
-        break;
+            hueColor = 53
+            saturation = 91
+            break;
         case "Soft White":
-        hueColor = 23
-        saturation = 56
-        break;
+            hueColor = 23
+            saturation = 56
+            break;
         case "Warm White":
-        hueColor = 20
-        saturation = 80
-        break;
+            hueColor = 20
+            saturation = 80
+            break;
         case "Blue":
-        hueColor = 70
-        saturation = 100
-        break;
+            hueColor = 70
+            saturation = 100
+            break;
         case "Green":
-        hueColor = 39
-        saturation = 100
-        break;
+            hueColor = 39
+            saturation = 100
+            break;
         case "Yellow":
-        hueColor = 25
-        saturation = 100
-        break;
+            hueColor = 25
+            saturation = 100
+            break;
         case "Orange":
-        hueColor = 10
-        saturation = 100
-        break;
+            hueColor = 10
+            saturation = 100
+            break;
         case "Purple":
-        hueColor = 75
-        saturation = 100
-        break;
+            hueColor = 75
+            saturation = 100
+            break;
         case "Pink":
-        hueColor = 83
-        saturation = 100
-        break;
+            hueColor = 83
+            saturation = 100
+            break;
         case "Red":
-        hueColor = 100
-        saturation = 100
-        break;
+            hueColor = 100
+            saturation = 100
+            break;
     }
     onLevel = state.onLevel.toInteger()
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
