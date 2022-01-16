@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Track your Life360 users. Works with the Life360 with States app.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
+ *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.3 - 01/15/22 - Fixed a type with aPlace - Nice catch @es_ferret
  *  2.1.2 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  2.1.1 - 10/21/20 - Added 'Who's with me' options
  *  2.1.0 - 09/02/20 - Cosmetic changes
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.2"
+	state.version = "2.1.3"
 }
 
 definition(
@@ -378,7 +379,7 @@ def arrivedHandler(aPlace) {
             if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
             msg = "${messageAT}"
             where = "arrived"
-            whosWithMeHandler(where,msg,aplace)
+            whosWithMeHandler(where,msg,aPlace)
             if(isDataDevice) isDataDevice.on()
             state.sMove = null
         } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
