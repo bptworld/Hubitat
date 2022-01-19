@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
     1.0.7 - 01/09/22 - Fixed Chime Tone Volume
     1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
     1.0.5 - 12/11/21 - Invalid Code Sound now available as a playTone option
@@ -24,7 +25,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.7"
+    return "1.0.8"
 }
 
 metadata {
@@ -37,6 +38,7 @@ metadata {
         capability "Alarm"
         capability "PowerSource"
         capability "LockCodes"
+        capability "Motion Sensor"
 
         command "entry"
         command "setArmNightDelay", ["number"]
@@ -50,6 +52,7 @@ metadata {
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
         attribute "lastCodeName", "STRING"
+        attribute "motion", "STRING"
 
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
     }
@@ -710,7 +713,15 @@ void zwaveEvent(hubitat.zwave.commands.supervisionv1.SupervisionGet cmd) {
 }
 
 void parse(String description) {
-    if (logEnable) log.debug "parse:${description}"
+    if (logEnable) log.debug "parse - ${description}"
+    ver = getDataValue("firmwareVersion")
+    if(ver >= "1.18") {
+        if(description.contains("6C01") && description.contains("FF 07 08 00")) {
+            sendEvent(name:"motion", value: "active", isStateChange:true)
+        } else if(description.contains("6C01") && description.contains("FF 07 00 01 08")) {
+            sendEvent(name:"motion", value: "inactive", isStateChange:true)
+        }
+    }
     hubitat.zwave.Command cmd = zwave.parse(description, CMD_CLASS_VERS)
     if (cmd) {
         zwaveEvent(cmd)
