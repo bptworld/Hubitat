@@ -32,16 +32,7 @@
  *
  *  Changes:
  *
- *  2.3.9 - 12/17/21 - Re-adjusting for HE changes
- *  2.3.8 - 12/14/21 - Added a work around for the Fuschia OS issue
- *  2.3.7 - 11/07/21 - I think I got it!
- *  2.3.6 - 11/07/21 - Trying to fix something I can't reproduce.
- *  2.3.5 - 07/29/21 - Added code for lastActive Speaker
- *  2.3.4 - 04/30/21 - Added replay option
- *  2.3.3 - 01/14/21 - Added 'App Description'
- *  2.3.2 - 01/13/21 - Fixed a typo
- *  2.3.1 - 01/12/21 - Adjustments to Priority processing
- *  2.3.0 - 01/05/21 - Adjustments to Speech Queue, more logging options, cosmetic changes
+ *  2.4.0 - 01/10/22 - Replaced timeBetween and quietTime code with Event Engine code. CHECK your child apps.
  *  ---
  *  1.0.0 - 03/17/19 - Initial release.
  *
@@ -53,7 +44,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.3.9"
+	state.version = "2.4.0"
 }
 
 definition(
@@ -82,7 +73,7 @@ def pageConfig() {
 		display()
 		getVoices()
         state.appD = ""
-        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>App Information:</b>", hideable: true, hidden: true) {
             speakerNotes =  "<b>Speakers:</b><br>"
             speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
             
@@ -246,12 +237,10 @@ def pageConfig() {
                     input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required:false, submitOnChange:true
                     input "QfromTime", "time", title: "Quiet Time Start", required: false, width: 6
                     input "QtoTime", "time", title: "Quiet Time End", required: false, width: 6
-                    input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
                 } else {
                     app.removeSetting("volQuiet")
                     app.removeSetting("QfromTime")
                     app.removeSetting("QtoTime")
-                    app.removeSetting("midnightCheckQ")
                 }
                 paragraph "<hr>"
 		        paragraph "<b>Speech Restriction Options</b><br>Speech can also be restricted to within a certain time frame."
@@ -259,14 +248,12 @@ def pageConfig() {
                 if(useSpeechRestriction) {
                     input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
                     input "toTime", "time", title: "To", required: false, width: 6
-                    input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
                 } else {
                     app.removeSetting("fromTime")
                     app.removeSetting("toTime")
-                    app.removeSetting("midnightCheckR")
                 }
-                state.appD += "<b>Volume Options</b>:<br> - Speaker Volume: ${volSpeech} - Quiet Time: ${useQuietTime} - Q Volume: ${volQuiet} - Q From: ${QfromTime} - Q To: ${QtoTime} - Q Midnight: ${midnightCheckQ}<br>"
-                state.appD += " - Speech Restriction: ${useSpeechRestriction} - R From: ${fromTime} - R To: ${toTime} - R Midnight: ${midnightCheckR}<br>"
+                state.appD += "<b>Volume Options</b>:<br> - Speaker Volume: ${volSpeech} - Quiet Time: ${useQuietTime} - Q Volume: ${volQuiet} - Q From: ${QfromTime} - Q To: ${QtoTime}<br>"
+                state.appD += " - Speech Restriction: ${useSpeechRestriction} - R From: ${fromTime} - R To: ${toTime}<br>"
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Priority (Advanced Options)")) {
@@ -1226,30 +1213,26 @@ def afterVolume(it) {
         }
     } catch(e) {
         // do nothing
-    }
-        
+    }      
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if(fromTime) {
-        if(midnightCheckR) {
-            state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
+    if(logEnable) log.debug "In checkTime (${state.version})"
+    if(fromTime && toTime) {
+        theDate1 = toDateTime(fromTime)
+        theDate2 = toDateTime(toTime)          
+        toValue = theDate2.compareTo(theDate1)
+        if(toValue > 0) {
+            nextToDate = theDate2
         } else {
-		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+            nextToDate = theDate2.next()
         }
-		if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range - Don't Speak"
-			state.timeBetween = true
-		} else {
-            if(logEnable) log.debug "In checkTime - Time outside of range - Can Speak"
-			state.timeBetween = false
-		}
-  	} else {  
+        state.timeBetween = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+    } else {  
         if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
 def dayOfTheWeekHandler() {
@@ -1274,22 +1257,26 @@ def dayOfTheWeekHandler() {
 }
 
 def checkVol() {
-	if(logEnable) log.debug "In checkVol (${state.version})"
-	if(QfromTime) {
-        if(midnightCheckQ) {
-            state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime)+1, new Date(), location.timeZone)
+    if(logEnable) log.debug "In checkVol (${state.version})"
+    if(QfromTime && QtoTime) {
+        theDate1 = toDateTime(QfromTime)
+        theDate2 = toDateTime(QtoTime)          
+        toValue = theDate2.compareTo(theDate1)
+        if(toValue > 0) {
+            nextToDate = theDate2
         } else {
-		    state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+            nextToDate = theDate2.next()
         }
-    	if(state.quietTime) {
+        state.quietTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+        if(state.quietTime) {
             if(logEnable) log.debug "In checkVol - Time within range - Using Quiet Time - setting volume to ${volQuiet}"
     		state.volume = volQuiet
 		} else {
             if(logEnable) log.debug "In checkVol - Time outside of range - Not using Quiet Time - setting volume to ${volSpeech}"
 			state.volume = volSpeech
 		}
-	} else {
-        if(logEnable) log.debug "In checkVol - NO Quite Time Specified - setting volume to ${volSpeech}"
+    } else {
+        if(logEnable) log.debug "In checkVol - NO Quiet Time Specified - setting volume to ${volSpeech}"
 		state.volume = volSpeech
 	}
 }
