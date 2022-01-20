@@ -32,7 +32,8 @@
  *
  *  Changes:
  *
- *  2.4.0 - 01/10/22 - Replaced timeBetween and quietTime code with Event Engine code. CHECK your child apps.
+ *  2.4.1 - 01/20/22 - Adjustments to timeBetween and quietTime
+ *  2.4.0 - 01/19/22 - Replaced timeBetween and quietTime code with Event Engine code. CHECK your child apps.
  *  ---
  *  1.0.0 - 03/17/19 - Initial release.
  *
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.4.0"
+	state.version = "2.4.1"
 }
 
 definition(
@@ -235,8 +236,20 @@ def pageConfig() {
                 input "useQuietTime", "bool", title: "Use Quiet Time", defaultValue:false, submitOnChange:true
                 if(useQuietTime) {
                     input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required:false, submitOnChange:true
-                    input "QfromTime", "time", title: "Quiet Time Start", required: false, width: 6
-                    input "QtoTime", "time", title: "Quiet Time End", required: false, width: 6
+                    input "QfromTime", "time", title: "Quiet Time Start", required: false, width: 6, submitOnChange:true
+                    input "QtoTime", "time", title: "Quiet Time End", required: false, width: 6, submitOnChange:true
+                    if(QfromTime && QtoTime) {
+                        qtheDate1 = toDateTime(QfromTime)
+                        qtheDate2 = toDateTime(QtoTime)            
+                        qtoValue = qtheDate2.compareTo(qtheDate1)
+                        if(qtoValue > 0) {
+                            qnextToDate = qtheDate2
+                        } else {
+                            qnextToDate = qtheDate2.next()
+                        }
+                        qbetweenTime = timeOfDayIsBetween(qtheDate1, qnextToDate, new Date(), location.timeZone)
+                        paragraph "From: ${qtheDate1} - To: ${qnextToDate}<br>Currently, Between equals ${qbetweenTime}"
+                    }
                 } else {
                     app.removeSetting("volQuiet")
                     app.removeSetting("QfromTime")
@@ -247,13 +260,26 @@ def pageConfig() {
                 input "useSpeechRestriction", "bool", title: "Use Speech Restriction", defaultValue:false, submitOnChange:true
                 if(useSpeechRestriction) {
                     input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
-                    input "toTime", "time", title: "To", required: false, width: 6
+                    input "toTime", "time", title: "To", required: false, width: 6, submitOnChange:true
+                    if(fromTime && toTime) {
+                        theDate1 = toDateTime(fromTime)
+                        theDate2 = toDateTime(toTime)            
+                        toValue = theDate2.compareTo(theDate1)
+                        if(toValue > 0) {
+                            nextToDate = theDate2
+                        } else {
+                            nextToDate = theDate2.next()
+                        }
+                        betweenTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+                        if(logEnable) paragraph "toValue: ${toValue}"
+                        paragraph "From: ${theDate1} - To: ${nextToDate}<br>Currently, Between equals ${betweenTime}"
+                    }
                 } else {
                     app.removeSetting("fromTime")
                     app.removeSetting("toTime")
-                }
-                state.appD += "<b>Volume Options</b>:<br> - Speaker Volume: ${volSpeech} - Quiet Time: ${useQuietTime} - Q Volume: ${volQuiet} - Q From: ${QfromTime} - Q To: ${QtoTime}<br>"
-                state.appD += " - Speech Restriction: ${useSpeechRestriction} - R From: ${fromTime} - R To: ${toTime}<br>"
+                }               
+                state.appD += "<b>Volume Options</b>:<br> - Speaker Volume: ${volSpeech} - Quiet Time: ${useQuietTime} - Q Volume: ${volQuiet} - Q From: ${qtheDate1} - Q To: ${qnextToDate}<br>"
+                state.appD += " - Speech Restriction: ${useSpeechRestriction} - R From: ${theDate1} - R To: ${nextToDate}<br>"
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Priority (Advanced Options)")) {
@@ -534,6 +560,37 @@ def initialize() {
         if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
         if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
         if(replaySwitch) subscribe(replaySwitch, "switch.on", replayHandler)
+        
+        if(fromTime && toTime) {
+            schedule(fromTime, startTimeBetween)
+            schedule(toTime, endTimeBetween)
+            theDate1 = toDateTime(fromTime)
+            theDate2 = toDateTime(toTime)          
+            toValue = theDate2.compareTo(theDate1)
+            if(toValue > 0) {
+                nextToDate = theDate2
+            } else {
+                nextToDate = theDate2.next()
+            }
+            state.timeBetween = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+        } else {
+            state.timeBetween = true
+        }
+        if(QfromTime && QtoTime) {
+            schedule(QfromTime, startQTimeBetween)
+            schedule(QtoTime, endQTimeBetween)
+            qtheDate1 = toDateTime(QfromTime)
+            qtheDate2 = toDateTime(QtoTime)          
+            qtoValue = qtheDate2.compareTo(qtheDate1)
+            if(qtoValue > 0) {
+                qnextToDate = qtheDate2
+            } else {
+                qnextToDate = qtheDate2.next()
+            }
+            state.qtimeBetween = timeOfDayIsBetween(qtheDate1, qnextToDate, new Date(), location.timeZone)
+        } else {
+            state.qtimeBetween = true
+        }
     }
 }
 
@@ -1007,8 +1064,7 @@ def letsTalk(msg) {
     }
                    
 	if(triggerMode == "Always_On") alwaysOnHandler()
-	if(atomicState.sZone && state.priMatch){
-		checkTime()            
+	if(atomicState.sZone && state.priMatch){          
         checkPriority(priorityValue)
         checkVol()
 		if(logEnable) log.debug "In letsTalk - continuing"
@@ -1216,23 +1272,28 @@ def afterVolume(it) {
     }      
 }
 
-def checkTime() {
-    if(logEnable) log.debug "In checkTime (${state.version})"
-    if(fromTime && toTime) {
-        theDate1 = toDateTime(fromTime)
-        theDate2 = toDateTime(toTime)          
-        toValue = theDate2.compareTo(theDate1)
-        if(toValue > 0) {
-            nextToDate = theDate2
-        } else {
-            nextToDate = theDate2.next()
-        }
-        state.timeBetween = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
-    } else {  
-        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
-		state.timeBetween = true
-  	}
-    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+def startTimeBetween() {
+    if(logEnable) log.debug "In startTimeBetween (${state.version}) - Start"
+    state.timeBetween = true
+    if(logEnable) log.debug "In startTimeBetween - ${state.timeBetween}"
+}
+
+def endTimeBetween() {
+    if(logEnable) log.debug "In endTimeBetween (${state.version}) - End"
+    state.timeBetween = false
+    if(logEnable) log.debug "In endTimeBetween - ${state.timeBetween}"
+}
+
+def startQTimeBetween() {
+    if(logEnable) log.debug "In startQTimeBetween (${state.version}) - Start"
+    state.qtimeBetween = true
+    if(logEnable) log.debug "In startQTimeBetween - ${state.qtimeBetween}"
+}
+
+def endQTimeBetween() {
+    if(logEnable) log.debug "In endQTimeBetween (${state.version}) - End"
+    state.qtimeBetween = false
+    if(logEnable) log.debug "In endQTimeBetween - ${state.qtimeBetween}"
 }
 
 def dayOfTheWeekHandler() {
@@ -1259,15 +1320,15 @@ def dayOfTheWeekHandler() {
 def checkVol() {
     if(logEnable) log.debug "In checkVol (${state.version})"
     if(QfromTime && QtoTime) {
-        theDate1 = toDateTime(QfromTime)
-        theDate2 = toDateTime(QtoTime)          
-        toValue = theDate2.compareTo(theDate1)
-        if(toValue > 0) {
-            nextToDate = theDate2
+        qtheDate1 = toDateTime(QfromTime)
+        qtheDate2 = toDateTime(QtoTime)          
+        qtoValue = qtheDate2.compareTo(qtheDate1)
+        if(qtoValue > 0) {
+            qnextToDate = qtheDate2
         } else {
-            nextToDate = theDate2.next()
+            qnextToDate = qtheDate2.next()
         }
-        state.quietTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+        state.quietTime = timeOfDayIsBetween(qtheDate1, qnextToDate, new Date(), location.timeZone)
         if(state.quietTime) {
             if(logEnable) log.debug "In checkVol - Time within range - Using Quiet Time - setting volume to ${volQuiet}"
     		state.volume = volQuiet
