@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.4 - 01/22/22 - Added App Debounce Option, Added Custom Colors Option, Fixed typo in Switches In Sequence
 *  3.4.3 - 01/10/22 - More adjustments to slowDim
 *  3.4.2 - 01/08/22 - Minor changes, Adjustment to slowDim
 *  3.4.1 - 12/20/21 - Changes to Random Lights (reverse)
@@ -57,7 +58,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.3"
+    state.name = "Event Engine Cog"; state.version = "3.4.4"
 }
 
 definition(
@@ -1104,7 +1105,7 @@ def pageConfig() {
                 }
                 paragraph "<hr>"
                 input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
-                theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${heSetPointBetween}<br>"
+                theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${setHEPointBetween}<br>"
                 if(humidityConditionOnly) {
                     theCogTriggers += " - Condition Only: ${humidityConditionOnly}<br>"
                 }
@@ -1114,6 +1115,7 @@ def pageConfig() {
                 app.removeSetting("heSetPointLow")
                 app.removeSetting("setHEPointHigh")
                 app.removeSetting("setHEPointLow")
+                app.removeSetting("setHEPointBetween")
                 app.removeSetting("humidityConditionOnly")
             }
 // -----------
@@ -1890,6 +1892,11 @@ def pageConfig() {
                 app.removeSetting("randomDelay")
             }
         }
+// ***** Debounce Option Start *****
+        section(getFormat("header-green", "${getImage("Blank")}"+" Debounce Option")) {
+            paragraph "With this option enabled:<br> - Conditions become True, runs the Actions<br> - It won't run the Actions again until the Conditions become False"
+            input "useAppStatus", "bool", title: "Use App Debounce", submitOnChange:true     
+        }  
 // ***** Condition Helper Start *****
         section(getFormat("header-green", "${getImage("Blank")}"+" Condition Helper (optional)")) {}
         section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
@@ -1956,7 +1963,7 @@ def pageConfig() {
                 ["aLZW45":"Inovelli Light Strip (LZW45)"],
                 ["aLock":"Locks"],
                 ["aMode":"Modes"],
-                ["aNotification":"Notifications (speech/push/flash)"], 
+                ["aNotification":"Notifications (speech/push/flash)"],
                 ["aRefresh":"Refresh"],
                 ["aSecurityKeypad":"Ring Security Keypad G2"],
                 ["aRule":"Rule Machine"],
@@ -2331,13 +2338,8 @@ def pageConfig() {
                 input "changeTime", "number", title: "Enter the delay between change in minutes (range 1 to 180)", required:true, defaultValue:60, range:'1..180'
                 input "cycleHow", "enum", title: "Cycle each light individually or all together", defaultValue:"individual", options: ["individual","combined"], required:true, multiple:false
                 input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required:true, multiple:false
-                input "colorSelection", "enum", title: "Choose your colors", options: [
-                    ["Soft White":"Soft White - Default"],
-                    ["White":"White - Concentrate"],
-                    ["Daylight":"Daylight - Energize"],
-                    ["Warm White":"Warm White - Relax"],
-                    "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                ], required:true, multiple:true
+                useCustomColorsHandler()
+                input "colorSelection", "enum", title: "Choose your colors", options: theColors, required:true, multiple:true
                 input "lightLevel", "number", title: "Lighting Level (1 to 99)", required:true, multiple:false, defaultValue: 99, range: '1..99'
                 paragraph "<hr>"
                 theCogActions +=  "<b>-</b> Switches To Color Change: ${switchesToChange}: changeTime: ${changeTime} - cycleHow: ${cycleHow} - pattern: ${pattern} - colorSelection: ${colorSelection} - lightLevel: ${lightLevel}<br>"
@@ -2378,13 +2380,10 @@ def pageConfig() {
                         if(pdColorTemp2) {
                             input "pdTemp2", "number", title: "Color Temperature", submitOnChange:true
                             app.removeSetting("pdColor2")
+                            app.removeSetting("useCustomColors")
                         } else {
-                            input "pdColor2", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                            useCustomColorsHandler()
+                            input "pdColor2", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: theColors, submitOnChange:true
                             app.removeSetting("pdTemp2")
                         }
                     } else {
@@ -2413,13 +2412,10 @@ def pageConfig() {
                     if(lcColorTemp) {
                         input "tempLC", "number", title: "Color Temperature", submitOnChange:true
                         app.removeSetting("colorLC")
+                        app.removeSetting("useCustomColors")
                     } else {
-                        input "colorLC", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                            ["Soft White":"Soft White - Default"],
-                            ["White":"White - Concentrate"],
-                            ["Daylight":"Daylight - Energize"],
-                            ["Warm White":"Warm White - Relax"],
-                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                        useCustomColorsHandler()
+                        input "colorLC", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: theColors, submitOnChange:true
                         app.removeSetting("tempLC")
                     }
                     theCogActions += "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"   
@@ -2440,12 +2436,8 @@ def pageConfig() {
                     input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required:true, multiple:false, defaultValue:15, range: '1..60'
                     input "startLevelUp", "number", title: "Starting Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
                     input "targetLevelHigh", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 99, range: '5..99'
-                    input "colorUp", "enum", title: "Color", required:true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    useCustomColorsHandler()
+                    input "colorUp", "enum", title: "Color", required:true, multiple:false, options: theColors
                     paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
                     input "targetDelay", "bool", defaultValue:false, title: "Delay Until Finished", description: "Target Delay", submitOnChange:true
                     theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelUp} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
@@ -2473,12 +2465,8 @@ def pageConfig() {
                     input "targetLevelLow", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
                     input "dimDnOff", "bool", defaultValue:false, title: "Turn dimmer off after target is reached", description: "Dim Off Options", submitOnChange:true
                     input "turnOnBeforeDim", "bool", defaultVAlue:false, title: "Turn dimmer On (if it's off) before dimming", submitOnChange:true
-                    input "colorDn", "enum", title: "Color", required:true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    useCustomColorsHandler()
+                    input "colorDn", "enum", title: "Color", required:true, multiple:false, options: theColors
                     theCogActions += "<b>-</b> Select dimmer devices to slowly dim: ${slowDimmerDn} - Minutes: ${minutesDn} - useMaxLevel: ${useMaxLevel} - Starting Level: ${startLevelLow} - Target Level: ${targetLevelLow} - Dim to Off: ${dimDnOff} - Turn On: ${turnOnBeforeDim} - Color: ${colorDn}<br>"
                 } else {
                     app.removeSetting("slowDimmerDn")
@@ -2566,13 +2554,10 @@ def pageConfig() {
                 if(sdPerModeColorTemp) {
                     input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
                     app.removeSetting("sdPerModeColor")
+                    app.removeSetting("useCustomColors")
                 } else {
-                    input "sdPerModeColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                    useCustomColorsHandler()
+                    input "sdPerModeColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: theColors, submitOnChange:true
                     app.removeSetting("sdPerModeTemp")
                 }
                 input "sdTimePerMode", "bool", title: "Use Time to Reverse Per Mode <small><abbr title='Switches and Virtual Contact Sensor can also be Reversed! More info below in the Reverse Feature section.'><b>- INFO -</b></abbr></small>", submitOnChange:true
@@ -2686,7 +2671,7 @@ def pageConfig() {
                     tdType = true
                 }
             }
-            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable" || switchesToChange) {
+            if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction1 || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable" || switchesToChange) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl || modeEvent) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
@@ -2788,13 +2773,10 @@ def pageConfig() {
                         if(pdColorTemp) {
                             input "pdTemp", "number", title: "Color Temperature", submitOnChange:true
                             app.removeSetting("pdColor")
+                            app.removeSetting("useCustomColors")
                         } else {
-                            input "pdColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                            useCustomColorsHandler()
+                            input "pdColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: theColors, submitOnChange:true
                             app.removeSetting("pdTemp")
                         }
                     } else {
@@ -2886,21 +2868,11 @@ def pageConfig() {
             if(testEnable) {
                 paragraph "Note: All of the debug options below are made just for me to test things. But, you may find some of them useful too. Just remember to not complain/post/ask questions about them. They are for testing only and may or may not work at any given time."
                 input "clearMaps", "bool", title: "Clear state.oldMaps and atomicStates", description: "clear", defaultValue:false, submitOnChange:true
-                //  testing Calendarific               
-                input "checkHoliday", "bool", title: "Check for Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                input "addTodayAsHoliday", "bool", title: "Add Today As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                input "addTomorrowAsHoliday", "bool", title: "Add Tomorrow As Holiday", description: "clear", defaultValue:false, submitOnChange:true, width:4
-                // Testing iCal
-                input "checkForIcal", "bool", title: "Check for iCal", description: "clear", defaultValue:false, submitOnChange:true
-                if(checkHoliday) { checkForHoliday() }
                 if(clearMaps) {
                     state.oldMap = [:]
                     atomicState.running = "Stopped"
                     atomicState.tryRunning = 0
                     app.updateSetting("clearMaps",[value:"false",type:"bool"])
-                }
-                if(checkForIcal) {
-                    // iCalHandler()
                 }
             }
         }        
@@ -3280,10 +3252,10 @@ def initialize() {
 def startTheProcess(evt) {
     if(switchesToSync) {
         if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
-            if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running"
+            if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus}"
         }
     } else {
-        if(logEnable || shortLog) log.debug "Starting..."
+        if(logEnable || shortLog) log.debug "In startTheProcess - Starting - appStatus: ${state.appStatus}"
         if(atomicState.running == null) atomicState.running = "Stopped"
         if(atomicState.tryRunning == null) atomicState.tryRunning = 0
         checkEnableHandler()
@@ -3308,7 +3280,7 @@ def startTheProcess(evt) {
                 atomicState.running = "Running"
                 atomicState.tryRunning = 0
                 if(logEnable || shortLog) log.trace "*"
-                if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+                if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} ********************"
                 if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
                 state.isThereDevices = false;    state.isThereSPDevices = false;    state.areRestrictions = false;    state.setpointLow = null;    state.setpointHigh = null;    state.whoText = ""
                 if(startTime || preMadePeriodic) {
@@ -3443,102 +3415,112 @@ def startTheProcess(evt) {
 
                 if(state.whatToDo == "stop") {
                     if(logEnable || shortLog) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
-                } else {
+                    state.appStatus = "inactive"
+                } else {                   
                     if(state.whatToDo == "run") {
                         if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch && state.snMatch) {
-                            if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
-                            if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                            if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
-                                if(notifyDelay && minSec) {
-                                    theDelay = notifyDelay
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
-                                } else if(notifyDelay && !minSec) {
-                                    theDelay = notifyDelay * 60
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
-                                } else if(randomDelay) {
-                                    newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                                    theDelay = newDelay * 60
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
-                                } else if(targetDelay) {
-                                    theDelay = minutesUp * 60
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
-                                } else {
-                                    if(logEnable) log.warn "In startTheProcess - Something went wrong"
-                                }
-                                if(actionType) {
-                                    if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                                }                              
-                                state.hasntDelayedYet = false
-                                state.setpointHighOK = "yes"
-                                state.setpointLowOK = "yes"
-                                state.setpointBetweenOK = "yes"
-                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                            if(useAppStatus) {
+                                if(state.appStatus == null) state.appStatus = "inactive"
                             } else {
-                                certainTimeHasPassedHandler()
-                                if(state.certainTimeHasPassed) {
-                                    state.lastRunTime = new Date()
+                                state.appStatus = "inactive"
+                            }
+                            if(logEnable || shortLog) log.debug "In startTheProcess - appStatus: ${state.appStatus}"
+                            if(state.appStatus == "inactive") {
+                                if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
+                                if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+                                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                                    if(notifyDelay && minSec) {
+                                        theDelay = notifyDelay
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                                    } else if(notifyDelay && !minSec) {
+                                        theDelay = notifyDelay * 60
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                                    } else if(randomDelay) {
+                                        newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                                        theDelay = newDelay * 60
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                                    } else if(targetDelay) {
+                                        theDelay = minutesUp * 60
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                                    } else {
+                                        if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                                    }
                                     if(actionType) {
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
-                                        unschedule(permanentDimHandler)
-                                        if(actionType.contains("aFan")) { fanActionHandler() }
-                                        if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                                        if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
-                                        if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                                        if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
-                                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                                        if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
-                                        if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
                                         if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                                        if(actionType.contains("aSwitchesColorChange")) { colorChangeHandler() }
-                                        if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
-                                        if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
-                                        if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                                        if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
-                                        if(state.betweenTime) {
-                                            if(actionType.contains("aNotification")) { 
-                                                state.doMessage = true
-                                                messageHandler() 
-                                                if(useTheFlasher) theFlasherHandler()
-                                            }
-                                        }
-                                        if(actionType.contains("aBlueIris")) {
-                                            if(biControl == "Switch_Profile") { profileSwitchHandler() }
-                                            if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
-                                            if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
-                                            if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
-                                            if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
-                                            if(biControl == "Camera_PTZ") { cameraPTZHandler() }
-                                            if(biControl == "Camera_Reboot") { cameraRebootHandler() }
-                                            if(biControl == "Camera_Enable") { biChangeHandler("1") }
-                                            if(biControl == "Camera_Disable") { biChangeHandler("0") }
-                                        }
-                                        if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
-                                    }
-                                    if(keypadAction) securityKeypadActionHandler()
-                                    if(setHSM) hsmChangeActionHandler()
-                                    if(modeAction) modeChangeActionHandler()
-                                    if(devicesToRefresh) devicesToRefreshActionHandler()
-                                    if(rmRule) ruleMachineHandler()
-                                    if(setGVname && setGVvalue) setGlobalVariableHandler()
-                                    if(eeAction) eventEngineHandler()
-                                    state.hasntDelayedYet = true
-                                    if(timeReverse) {
-                                        theDelay = timeReverseMinutes * 60
-                                        if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
-                                        runIn(theDelay, startTheProcess, [data: "timeReverse"])
-                                    }
+                                    }                              
+                                    state.hasntDelayedYet = false
+                                    state.setpointHighOK = "yes"
+                                    state.setpointLowOK = "yes"
+                                    state.setpointBetweenOK = "yes"
+                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                                 } else {
-                                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                                    lastRan = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
+                                    certainTimeHasPassedHandler()
+                                    if(state.certainTimeHasPassed) {
+                                        state.lastRunTime = new Date()
+                                        if(actionType) {
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
+                                            unschedule(permanentDimHandler)
+                                            if(actionType.contains("aFan")) { fanActionHandler() }
+                                            if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                            if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
+                                            if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                                            if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
+                                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                            if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
+                                            if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                                            if(actionType.contains("aSwitchesColorChange")) { colorChangeHandler() }
+                                            if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
+                                            if(actionType.contains("aSwitchesPerMode")) { switchesPerModeActionHandler() }
+                                            if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                                            if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
+                                            if(state.betweenTime) {
+                                                if(actionType.contains("aNotification")) { 
+                                                    state.doMessage = true
+                                                    messageHandler() 
+                                                    if(useTheFlasher) theFlasherHandler()
+                                                }
+                                            }
+                                            if(actionType.contains("aBlueIris")) {
+                                                if(biControl == "Switch_Profile") { profileSwitchHandler() }
+                                                if(biControl == "Switch_Schedule") { scheduleSwitchHandler() }
+                                                if(biControl == "Camera_Preset") { cameraPresetHandler() }                                   
+                                                if(biControl == "Camera_Snapshot") { cameraSnapshotHandler() }
+                                                if(biControl == "Camera_Trigger") { cameraTriggerHandler() }
+                                                if(biControl == "Camera_PTZ") { cameraPTZHandler() }
+                                                if(biControl == "Camera_Reboot") { cameraRebootHandler() }
+                                                if(biControl == "Camera_Enable") { biChangeHandler("1") }
+                                                if(biControl == "Camera_Disable") { biChangeHandler("0") }
+                                            }
+                                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
+                                            state.appStatus = "active"
+                                        }
+                                        if(keypadAction) securityKeypadActionHandler()
+                                        if(setHSM) hsmChangeActionHandler()
+                                        if(modeAction) modeChangeActionHandler()
+                                        if(devicesToRefresh) devicesToRefreshActionHandler()
+                                        if(rmRule) ruleMachineHandler()
+                                        if(setGVname && setGVvalue) setGlobalVariableHandler()
+                                        if(eeAction) eventEngineHandler()
+                                        state.hasntDelayedYet = true
+                                        if(timeReverse) {
+                                            theDelay = timeReverseMinutes * 60
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
+                                            runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                                        }
+                                    } else {
+                                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+                                        lastRan = dateFormat.parse("${state.lastRunTime}".replace("+00:00","+0000"))
+                                        if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
+                                    }
                                 }
                             }
-                            state.appStatus = "active"
                         } else {
                             if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
+                            state.appStatus = "inactive"
                         }
                     } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                         if(reverseWithDelay && state.hasntDelayedReverseYet) {
@@ -3616,7 +3598,8 @@ def startTheProcess(evt) {
                             }
                         } else {             
                             if(actionType) {
-                                if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE"
+                                state.appStatus = "inactive"
+                                if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus}"
                                 if(actionType.contains("aFan")) { fanReverseActionHandler() }
                                 if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                                 if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
@@ -3647,14 +3630,14 @@ def startTheProcess(evt) {
                                 if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                             }
                             state.hasntDelayedReverseYet = true
-                            state.appStatus = "inactive"
                         }
                     } else {
                         if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
+                        state.appStatus = "inactive"
                     }
                 }
                 resetStatesHandler()
-                if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+                if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} *********************"
                 if(logEnable || shortLog) log.trace "*"
                 atomicState.running = "Stopped"
             } catch(e) {
@@ -3664,6 +3647,7 @@ def startTheProcess(evt) {
         } else {
             resetStatesHandler()
             if(logEnable || shortLog) log.trace "No Actions selected. Ending"
+            state.appStatus = "inactive"
         }
         if(timeDaysType) {
             if(timeDaysType.contains("tHoliday")) { unschedule(startTheProcess) }
@@ -4621,6 +4605,8 @@ def dimmerOnReverseActionHandler() {
 }
 
 def permanentDimHandler() {
+    state.appStatus = "inactive"
+    if(logEnable) log.debug "In permanentDimHandler - appStatus: ${state.appStatus}"
     if(setDimmersPerMode) {
         currentMode = location.mode
         setDimmersPerMode.each { it ->
@@ -5012,7 +4998,7 @@ def slowOnHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In slowOnHandler (${state.version})"
-        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 1; state.onLevel = startLevelUp ?: 1; state.onColor = "${colorUp}"
+        state.fromWhere = "slowOn"; state.currentLevel = startLevelUp ?: 5; state.onLevel = startLevelUp ?: 5; state.onColor = "${colorUp}"
         setLevelandColorHandler()
         if(minutesUp == 0) return
         seconds = (minutesUp * 60) - 10
@@ -5532,6 +5518,30 @@ def setLevelandColorHandler(newData) {
             hueColor = 100
             saturation = 100
             break;
+        case "Custom Color 1":
+            hueColor = cc1hue.toInteger()
+            saturation = cc1sat.toInteger()
+            break;
+        case "Custom Color 2":
+            hueColor = cc2hue.toInteger()
+            saturation = cc2sat.toInteger()
+            break;
+        case "Custom Color 3":
+            hueColor = cc3hue.toInteger()
+            saturation = cc3sat.toInteger()
+            break;
+        case "Custom Color 4":
+            hueColor = cc4hue.toInteger()
+            saturation = cc4sat.toInteger()
+            break;
+        case "Custom Color 5":
+            hueColor = cc5hue.toInteger()
+            saturation = cc5sat.toInteger()
+            break;
+        case "Custom Color 6":
+            hueColor = cc6hue.toInteger()
+            saturation = cc6sat.toInteger()
+            break;
     }
     onLevel = state.onLevel.toInteger()
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
@@ -5691,13 +5701,13 @@ def setLevelandColorHandler(newData) {
     if(state.fromWhere == "slowOn") {
         slowDimmerUp.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, setColor: $value"
+                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn (setColor) - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, setLevel: $onLevel"
+                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn (setLevel) - $it.displayName, setLevel: $onLevel"
                 it.setLevel(onLevel as Integer ?: 10)
             } else {
-                if(logEnable) log.debug "In setLevelandColorHandler - SlowOn - $it.displayName, on()"
+                log.info "In setLevelandColorHandler - $it.displayName, is not dimmable."
                 it.on()
             }
         }
@@ -5706,13 +5716,13 @@ def setLevelandColorHandler(newData) {
     if(state.fromWhere == "slowOff") {
         slowDimmerDn.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, setColor: $value"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff (setColor) - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, setLevel: $level"
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff (setLevel) - $it.displayName, setLevel: $level"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - SlowOff - $it.displayName, on()"
+                log.info "In setLevelandColorHandler - $it.displayName, is not dimmable."
                 it.on()
             }
         }
@@ -6811,6 +6821,50 @@ def colorChangeReverseHandler() {
             }
         }
     }
+}
+
+def useCustomColorsHandler() {
+    input "useCustomColors", "bool", title: "Use Custom Colors", defaultValue:false, submitOnChange:true
+    if(useCustomColors) {
+        paragraph "<hr>"
+        paragraph "<table width=100%><tr><td width=50%><b>Custom Color 1</b><td width=50%><b>Custom Color 2</b></table>"
+        input "cc1hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc1sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        input "cc2hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc2sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        paragraph "<table width=100%><tr><td width=50%><b>Custom Color 3</b><td width=50%><b>Custom Color 4</b></table>"
+        input "cc3hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc3sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        input "cc4hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc4sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        paragraph "<table width=100%><tr><td width=50%><b>Custom Color 5</b><td width=50%><b>Custom Color 6</b></table>"
+        input "cc5hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc5sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        input "cc6hue", "text", title: "Hue", width: 3, submitOnChange:true
+        input "cc6sat", "text", title: "Saturation", width: 3, submitOnChange:true
+        paragraph "<hr>"
+    } else {
+        app.removeSetting("cc1hue")
+        app.removeSetting("cc1sat")
+        app.removeSetting("cc2hue")
+        app.removeSetting("cc2sat")
+        app.removeSetting("cc3hue")
+        app.removeSetting("cc3sat")
+        app.removeSetting("cc4hue")
+        app.removeSetting("cc4sat")
+        app.removeSetting("cc5hue")
+        app.removeSetting("cc5sat")
+        app.removeSetting("cc6hue")
+        app.removeSetting("cc6sat")
+    }
+    theColors = ['Soft White','White','Daylight','Warm White','Red','Green','Blue','Yellow','Orange','Purple','Pink']
+    if(cc1hue && cc1sat) theColors.add("Custom Color 1")
+    if(cc2hue && cc2sat) theColors.add("Custom Color 2")
+    if(cc3hue && cc3sat) theColors.add("Custom Color 3")
+    if(cc4hue && cc4sat) theColors.add("Custom Color 4")
+    if(cc5hue && cc5sat) theColors.add("Custom Color 5")
+    if(cc6hue && cc6sat) theColors.add("Custom Color 6")
+    return theColors
 }
 
 // ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
