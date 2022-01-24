@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 07/29/21 - Added code for lastActive Speaker
  *  2.0.4 - 07/07/20 - Sounds Setup now in Parent App
  *  2.0.3 - 07/06/20 - Added Priority Speaker Setup
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -45,7 +46,7 @@
 
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -78,12 +79,8 @@ def updated() {
 }
 
 def initialize() {
-    log.info "There are ${childApps.size()} child apps"
-    childApps.each {child ->
-        log.info "Child app: ${child.label}"
-    }
+    //
 }
-
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
@@ -113,6 +110,7 @@ def mainPage() {
             }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+                paragraph "<b>Be sure to complete the 'Priority Options' section below, before setting up any child apps.</b>"
                 app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
             }
             
@@ -123,6 +121,7 @@ def mainPage() {
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
+                input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
  			}
 			display2()
 		}
@@ -243,62 +242,94 @@ def appButtonHandler(buttonPressed) {
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 1 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound1)
+            runIn(s1Length, cutOffSpeaker)
         } catch(e1) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn2"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 2 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound2)
+            runIn(s2Length, cutOffSpeaker)
         } catch(e2) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn3"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 3 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound3)
+            runIn(s3Length, cutOffSpeaker)
         } catch(e3) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn4"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 4 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound4)
+            runIn(s4Length, cutOffSpeaker)
         } catch(e4) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn5"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 5 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound5)
+            runIn(s5Length, cutOffSpeaker)
         } catch(e5) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn6"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 6 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound6)
+            runIn(s6Length, cutOffSpeaker)
         } catch(e6) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn7"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 7 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound7)
+            runIn(s7Length, cutOffSpeaker)
         } catch(e7) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn8"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 8 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound8)
+            runIn(s8Length, cutOffSpeaker)
         } catch(e8) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn9"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 9 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound9)
+            runIn(s9Length, cutOffSpeaker)
         } catch(e9) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testBtn0"){
         if(logEnable) log.debug "In appButtonHandler - Testing Sound 0 on Speaker: ${testTheSpeakers}"
         try {
             testTheSpeakers.playTrack(sound0)
+            runIn(s0Length, cutOffSpeaker)
         } catch(e0) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
+}
+
+def childAppToParent(theData) {
+    log.trace "In childAppToParent"
+    if(logEnable) log.debug "In childAppToParent (${state.version}) - theData: ${theData}"
+    def (sName, sStatus, sID, tLastAct) = theData.split(':')
+    if(logTrace) log.debug "In childAppToParent - sName: ${sName} - sStatus: ${sStatus} - sID: ${sID} - tLastAct: ${tLastAct}"
+    
+    if(tLastAct == "true") {
+        childApps.each { it ->
+            if(logEnable) log.debug "In childAppToParent - Checking Each Child: ${it.label} - vs - child Name: ${sName}"
+            if(it.label != sName.toString()) {
+                if(logEnable) log.debug "childAppToParent - Sending Data to ${it.label}"
+                it.zoneOffHandler("lastActive")
+            }
+        } 
+    }
+}
+
+def cutOffSpeaker() {
+    log.debug "Cutting off the sound"
+    testTheSpeakers.speak(" ")
 }
 
 def installCheck(){  
@@ -348,7 +379,6 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -362,8 +392,6 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
