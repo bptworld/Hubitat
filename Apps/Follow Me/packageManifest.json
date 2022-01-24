@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.4",
+			"version": "2.0.5",
 			"primary": true
 		},
 		{
