@@ -3,7 +3,7 @@
  *  Design Usage:
  *  Never miss a message again. Send messages to your occupied room speakers when home or by push when away. Automatically!
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.4.2 - 01/25/22 - Working on lastActive, added option for Fuschia OS devices (stop the message chopping)
  *  2.4.1 - 01/20/22 - Adjustments to timeBetween and quietTime
  *  2.4.0 - 01/19/22 - Replaced timeBetween and quietTime code with Event Engine code. CHECK your child apps.
  *  ---
@@ -42,10 +43,11 @@
 import groovy.json.*
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
+#include BPTWorld.bpt-normalStuff
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.4.1"
+	state.version = "2.4.2"
 }
 
 definition(
@@ -211,15 +213,17 @@ def pageConfig() {
                     } else {
                         app.updateSetting("gInitRepeat",[value:"false",type:"bool"])
                     }
+                    paragraph "<b><small>To stop the message from being chopped when using Fuschia OS devices, turn this switch ON. ie. Nest Hubs</small></b>"
+                    input "fixChop", "bool", title: "Try to fix chopped messages on Fuschia devices", defaultValue:false, submitOnChange:true
                 }
                 if(speakerType == "sonosSpeaker") {
                     paragraph "<b>Speaker type is a Sonos Device. Sonos devices can play custom sounds and change voices.</b>"
                 }
                 if(speakerType == "otherSpeaker") {
                     paragraph "<b>Speaker type is an Other Device.</b>"
-                }
+                }              
+                paragraph "<hr>"
                 paragraph "<b>Note:</b> Some speakers just don't play nicely with Follow Me. If your speaker is having an issue, please try turning this switch on."
-                paragraph "<b><small>This can also be used to stop the message being chopped when using Fuschia OS devices. ie. Nest Hubs</small></b>"
                 input "defaultSpeak", "bool", title: "Use default 'speak'", defaultValue:false, submitOnChange:true
                 if(speakerType == "googleSpeaker") {
                     state.appD += "<b>Speaker Option</b>: MediaPlayer: ${speakerMP} - SpeechSynthesis: ${speakerSS} - ${speakerType} - Initialize: ${gInitRepeat} - Use Default: ${defaultSpeak}<br>"
@@ -547,7 +551,6 @@ def initialize() {
     if(pauseApp) {
         log.info "${app.label} is Paused"
     } else {
-        setDefaults()
         subscribe(gvDevice, "latestMessage", startHandler)
         if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", contactSensorHandler)
         if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", motionSensorHandler)
@@ -592,14 +595,6 @@ def initialize() {
             state.qtimeBetween = true
         }
     }
-}
-
-def uninstalled() {
-	removeChildDevices(getChildDevices())
-}
-
-private removeChildDevices(delete) {
-	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
 def presenceSensorHandler1(evt){
@@ -957,16 +952,21 @@ def startHandler(evt) {
         if(logEnable) log.debug "**********  Follow Me (${state.version}) - Start Talking  **********"
 
         if(logEnable) log.debug "In startHandler (${state.version})"
-        if(messageDest == "Speakers") letsTalkQueue(evt)
+        if(messageDest == "Speakers") theTalkQueue(evt)
         if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
         
         if(logEnable) log.debug "**********  Follow Me (${state.version}) - End Talking  **********"
     }
 }
 
-def zoneOffHandler() {
+def zoneOffHandler(data = null) {
     if(logEnable) log.debug "In zoneOffHandler (${state.version}) - Checking for status change"
-    if(lastActive) {
+    if(data == "notActive") { 
+        notActive = true
+    } else {
+        notActive = false
+    }
+    if(notActive) {
         atomicState.sZone = false
         if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${atomicState.sZone}"
         if(logTrace) log.debug "In zoneOffHandler - ${app.label} - Zone is now off - sZone: ${atomicState.sZone}"
@@ -1003,15 +1003,15 @@ def initializeSpeaker() {
 }
 
 // **********  Start code modified from @djgutheinz  **********
-def letsTalkQueue(evt) {
+def theTalkQueue(evt) {
     theText = evt.value
     if(useQueue) {
-        if(logQueue) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
+        if(logQueue) log.debug "In theTalkQueue (${state.version}) - theText: ${theText}"
 	    state.TTSQueue << [theText]
 	    if(!atomicState.playingTTS) { runInMillis(500, processQueue) }
     } else {
-        if(logEnable) log.debug "In letsTalkQueue (${state.version}) - Queue not activated, going to letsTalk"
-        letsTalk(theText)
+        if(logEnable) log.debug "In theTalkQueue (${state.version}) - Queue not activated, going to theTalk"
+        theTalk(theText)
     }
 }
 
@@ -1035,13 +1035,13 @@ def processQueue() {
 	def nextTTS = state.TTSQueue[0]
     if(logQueue) log.info "In processQueue - size: ${queueSize} - playingTTS: ${atomicState.playingTTS} - Playing Next: ${nextTTS}"
     state.TTSQueue.remove(0)
-	letsTalk(nextTTS)
+	theTalk(nextTTS)
     runIn(1,processQueue)
 }
 // **********  End code modified from @djgutheinz  **********
 
-def letsTalk(msg) {
-    if(logEnable) log.debug "In letsTalk - msg: ${msg}"
+def theTalk(msg) {
+    if(logEnable) log.debug "In theTalk - msg: ${msg}"
     def message =  new JsonSlurper().parseText(msg)
     if(message.message.contains("]")) {
         oldMes = message.message
@@ -1057,17 +1057,17 @@ def letsTalk(msg) {
     
     if(priSpeaker) {
         state.speakers = priSpeaker
-        if(logEnable) log.debug "In letsTalk - priSpeaker - speakers: ${state.speakers}"
+        if(logEnable) log.debug "In theTalk - priSpeaker - speakers: ${state.speakers}"
     } else {
         state.speakers = state.speakers
-        if(logEnable) log.debug "In letsTalk - state.speakers - speakers: ${state.speakers}"
+        if(logEnable) log.debug "In theTalk - state.speakers - speakers: ${state.speakers}"
     }
                    
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	if(atomicState.sZone && state.priMatch){          
         checkPriority(priorityValue)
         checkVol()
-		if(logEnable) log.debug "In letsTalk - continuing"
+		if(logEnable) log.debug "In theTalk - continuing"
 		if(state.timeBetween) {
 			state.sStatus = "speaking"
             if(lastActive == null) lastActive = false
@@ -1081,51 +1081,47 @@ def letsTalk(msg) {
 			}
             theDuration = duration * 1000
             
-            if(logEnable) log.debug "In letsTalk - **** Last check **** - speakers: ${state.speakers}"
+            if(logEnable) log.debug "In theTalk - **** Last check **** - speakers: ${state.speakers}"
             state.speakers.each { it ->
-                if(logEnable) log.debug "In letsTalk - Sending to priorityVoicesHandler - speaker: ${it} - priorityVoice: ${priorityVoice} - newMessage: ${newMessage}" 
-                if(it.getDataValue("model") == "Fuschia" && !defaultSpeak) {
-                    log.info "Follow Me - Fuschia Found on ${it} - If experiencing messages being chopped, please choose 'use default speak' within the app."
-                }
-                priorityVoicesHandler(it,priorityVoice,newMessage)
-                
+                if(logEnable) log.debug "In theTalk - Sending to priorityVoicesHandler - speaker: ${it} - priorityVoice: ${priorityVoice} - newMessage: ${newMessage}" 
+                priorityVoicesHandler(it,priorityVoice,newMessage)               
                 if(!defaultSpeak) {    
-                    switch(message.method) {        // Code modified from @storageanarchy
+                    switch(message.method) {
                         case 'deviceNotification':
                             beforeVolume(it)
                             it.speak(newMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - deviceNotification Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playAnnouncement':
                             it.playAnnouncement(newMessage, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${newMessagee}"
+                            if(logEnable) log.debug "In theTalk - playAnnouncement Received - speaker: ${it} - ${newMessagee}"
                             break;
                         case 'playAnnouncementAll':
                             it.playAnnouncementAll(newMessagee, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - playAnnouncementAll Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playText':
                             beforeVolume(it)
                             it.playText(newMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - $newMessage}"
+                            if(logEnable) log.debug "In theTalk - playText Received - speaker: ${it} - $newMessage}"
                             break;
                         case 'playTextAndRestore':
                             beforeVolume(it)
                             it.playTextAndRestore(newMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - playTextAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTextAndResume':
                             beforeVolume(it)
                             it.playTextAndResume(newMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - playTextAndResume Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTrack':
                             beforeVolume(it)
@@ -1138,7 +1134,7 @@ def letsTalk(msg) {
                             it.playTrack(state.uriMessage)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - playTrack Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'playTrackAndRestore':
                             beforeVolume(it)
@@ -1150,39 +1146,39 @@ def letsTalk(msg) {
                             pauseExecution(500)
                             it.playTrackAndRestore(state.uriMessage, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - playTrackAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'setVolume':
                             it.setVolume(message.speakLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
+                            if(logEnable) log.debug "In theTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
                             break;
                         case 'setVolumeSpeakAndRestore':
                             it.setVolumeSpeakAndRestore(newMessage, message.priority, message.speakLevel, message.returnLevel)
                             pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'setVolumeAndSpeak':
                             it.setVolumeAndSpeak(newMessage, message.priority, message.speakLevel)
                             pauseExecution(theDuration)
                                 afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${newMessage}"
+                            if(logEnable) log.debug "In theTalk - setVolumeAndSpeak Received - speaker: ${it} - ${newMessage}"
                             break;
                         case 'speak':
-                            if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
+                            if(logEnable) log.debug "In theTalk - speak - speaker: ${it} - Using best case handler"
                             if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${newMessage}"
+                                if(logEnable) log.debug "In theTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${newMessage}"
                                 def prevVolume = it.currentValue("volume")
                                 it.setVolumeSpeakAndRestore(state.volume, newMessage, prevVolume)
                                 pauseExecution(theDuration)
                             } else if(it.hasCommand('playTextAndRestore')) {   
-                                if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${newMessage}"
+                                if(logEnable) log.debug "In theTalk - (speak) playTextAndRestore - ${it} - message: ${newMessage}"
                                 def prevVolume = it.currentValue("volume")
                                 beforeVolume(it)
                                 it.playTextAndRestore(newMessage, prevVolume)
                                 pauseExecution(theDuration)
                             } else if(it.hasCommand('playTrack')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${newMessage}"
+                                if(logEnable) log.debug "In theTalk - (speak) playTrack Received - speaker: ${it} - ${newMessage}"
                                 beforeVolume(it)
                                 if(state.sound) {
                                     try {                    
@@ -1195,14 +1191,20 @@ def letsTalk(msg) {
                                 }
                                 pauseExecution(500)
                                 try {
-                                    it.playTrack(state.uriMessage)
+                                    if(it.getDataValue("model") == "Fuschia" && fixChop) {
+                                        if(logEnable) log.info "Follow Me - Fuschia Found on ${it} - Added a pause before 'speak' until Hubitat fixes the issues."
+                                        newMessage = " ${newMessage}"
+                                        it.speak(newMessage)
+                                    } else {
+                                        it.playTrack(state.uriMessage)
+                                    }
                                     pauseExecution(theDuration)
                                     afterVolume(it) 
                                 } catch(e) {
                                     // do nothing 
                                 }                              
                             } else {		        
-                                if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${newMessage}"
+                                if(logEnable) log.debug "In theTalk - (speak) - ${it} - message: ${newMessage}"
                                 beforeVolume(it)
                                 try {
                                     it.speak(newMessage)
@@ -1215,12 +1217,8 @@ def letsTalk(msg) {
                         break; 
                     }
                 } else {
-                    if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${newMessage}"
+                    if(logEnable) log.debug "In theTalk - (Default speak) - ${it} - message: ${newMessage}"
                     try {
-                        if(it.getDataValue("model") == "Fuschia") {
-                            log.trace "Follow Me - Fuschia Found on ${it} - Added a pause before 'speak' until Hubitat fixes the issues."
-                            newMessage = "${newMessage}"
-                        }
                         it.speak(newMessage)
                     } catch(e) {
                         // do nothing 
@@ -1231,13 +1229,13 @@ def letsTalk(msg) {
             if(lastActive == null) lastActive = false
             speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
-			if(logEnable) log.info "In letsTalk - Ready for next message"
+			if(logEnable) log.info "In theTalk - Ready for next message"
             
         } else {
-		    if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
+		    if(logEnable) log.debug "In theTalk (${state.version}) - Messages not allowed at this time"
 	    }
 	} else {
-		if(logEnable) log.debug "In letsTalk (${state.version}) - Zone is off"
+		if(logEnable) log.debug "In theTalk (${state.version}) - Zone is off"
 	}
     if(logEnable) log.info "--------------------------------------------------------------------------------------"
 }
@@ -1496,7 +1494,7 @@ def pushOrQueue(evt) {
         priorityVoice = thePriority[1]
     } catch (e) {
         log.warn "Follow Me - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
-        if(logEnable) log.error "In letsTalk - ${e}"
+        if(logEnable) log.error "In theTalk - ${e}"
         priorityValue = "X"
         priorityVoice = "X"
     }
@@ -1668,119 +1666,4 @@ def createDataChildDevice() {
         statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
     }
     return statusMessageD
-}
-
-// ********** Normal Stuff **********
-
-def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
-    app?.updateSetting("logEnable",[value:"false",type:"bool"])
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { state.eSwitch = true }
-        }
-    }
-}
-
-def setDefaults(){
-	if(logEnable) log.debug "In setDefaults..."
-	if(messagePriority == null) {messagePriority = false}
-    atomicState.playingTTS = false
-	state.TTSQueue = []
-	if(atomicState.sZone == null) {atomicState.sZone = false}
-	if(state.IH1 == null) {state.IH1 = "blank"}
-	if(state.IH2 == null) {state.IH2 = "blank"}
-	if(state.IH3 == null) {state.IH3 = "blank"}
-	if(state.IH4 == null) {state.IH4 = "blank"}
-	if(state.IH5 == null) {state.IH5 = "blank"}
-}
-
-def getImage(type) {					// Modified from @Stephack Code
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
-}
-
-def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
-}
-
-def display(data) {
-    if(data == null) data = ""
-    setVersion()
-    getHeaderAndFooter()
-    if(app.label) {
-        if(app.label.contains("(Paused)")) {
-            theName = app.label - " <span style='color:red'>(Paused)</span>"
-        } else {
-            theName = app.label
-        }
-    }
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
-        paragraph "${state.headerMessage}"
-        paragraph getFormat("line")
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-    }
-}
-
-def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
-        paragraph "${state.footerMessage}"
-	}       
-}
-
-def getHeaderAndFooter() {
-    timeSinceNewHeaders()   
-    if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-        def params = [
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-            requestContentType: "application/json",
-            contentType: "application/json",
-            timeout: 30
-        ]
-
-        try {
-            def result = null
-            httpGet(params) { resp ->
-                state.headerMessage = resp.data.headerMessage
-                state.footerMessage = resp.data.footerMessage
-            }
-        }
-        catch (e) { }
-    }
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
-}
-
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
-        prev = new Date()
-    } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
-    }
-    def now = new Date()
-    use(TimeCategory) {       
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.totalHours = (state.days * 24) + state.hours
-    }
-    state.previous = now
 }
