@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,20 +33,21 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 01/25/22 - Changes to lastActive Speaker
  *  2.0.5 - 07/29/21 - Added code for lastActive Speaker
  *  2.0.4 - 07/07/20 - Sounds Setup now in Parent App
  *  2.0.3 - 07/06/20 - Added Priority Speaker Setup
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 11/23/19 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  1.0.1 - 04/03/19 - Added importURL
+ *  ---
  *  1.0.0 - 03/17/19 - Initial release.
  *
  */
 
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -320,8 +321,8 @@ def childAppToParent(theData) {
         childApps.each { it ->
             if(logEnable) log.debug "In childAppToParent - Checking Each Child: ${it.label} - vs - child Name: ${sName}"
             if(it.label != sName.toString()) {
-                if(logEnable) log.debug "childAppToParent - Sending Data to ${it.label}"
-                it.zoneOffHandler("lastActive")
+                if(logEnable) log.debug "childAppToParent - Sending 'notActive' to ${it.label}"
+                it.zoneOffHandler("notActive")
             }
         } 
     }
