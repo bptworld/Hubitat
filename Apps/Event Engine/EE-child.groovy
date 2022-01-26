@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.5 - 01/25/22 - Minor Changes
 *  3.4.4 - 01/22/22 - Added App Debounce Option, Added Custom Colors Option, Fixed typo in Switches In Sequence
 *  3.4.3 - 01/10/22 - More adjustments to slowDim
 *  3.4.2 - 01/08/22 - Minor changes, Adjustment to slowDim
@@ -58,7 +59,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.4"
+    state.name = "Event Engine Cog"; state.version = "3.4.5"
 }
 
 definition(
@@ -5628,7 +5629,8 @@ def setLevelandColorHandler(newData) {
             pauseExecution(actionDelay)
             theDevice.setLevel(onLevel as Integer ?: 99)
             pauseExecution(actionDelay)
-            theDevice.setColorTemperature(state.onTemp)
+            onTemp = state.onTemp.toInteger()
+            theDevice.setColorTemperature(onTemp)
         } else if(theDevice.hasCommand('setLevel')) {
             if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
             pauseExecution(actionDelay)
@@ -5684,7 +5686,8 @@ def setLevelandColorHandler(newData) {
                 pauseExecution(actionDelay)
                 it.setLevel(onLevel as Integer ?: 99)
                 pauseExecution(actionDelay)
-                it.setColorTemperature(state.onTemp)
+                onTemp = state.onTemp.toInteger()
+                it.setColorTemperature(onTemp)
             } else if (it.hasCommand('setLevel')) {
                 if(logEnable) log.debug "In setLevelandColorHandler - setLevel - NEW VALUE - ${it.displayName} - setLevel: ${value}"
                 pauseExecution(actionDelay)
