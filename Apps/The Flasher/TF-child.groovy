@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Flash your lights based on several triggers!
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  1.2.2 - 01/28/22 - Some much needed adjustments
+ *  1.2.1 - 12/21/21 - Fix this...Fix that
  *  1.2.0 - 12/20/21 - Major overhaul, check your child apps!
  *  ---
  *  1.0.0 - 01/01/20 - Initial release
@@ -45,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.0"
+    state.version = "1.2.2"
 }
 
 definition(
@@ -394,6 +396,8 @@ def updated() {
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
     if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
+    state.oldValue = null
+    state.switchSaved = false
     initialize()
 }
 
@@ -685,7 +689,7 @@ def checkMode() {
     if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
 }
 
-def flashLights(data) {
+def flashLights(data=null) {
     checkEnableHandler()
     if (numFlashes == 0 && triggerORswitch) {
         if(!controlSwitch) {
@@ -712,17 +716,14 @@ def flashLights(data) {
                     if(fColor == null) fColor = app.fColor
                     if(level == null) level = app.level
                     if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level}"
-
                     def delay = delay ?: 1
                     def numFlashes = numFlashes ?: 0
-
-                    if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
                     state.oldSwitchState = theSwitch.currentValue("switch")
 
-                    if(logEnable) log.debug "In flashLights - Is switchSave: $state.switchSaved"
+                    if(logEnable) log.debug "In flashLights - switchSaved: $state.switchSaved"
+                    if(state.switchSaved == null) state.switchSaved = false
                     if(state.switchSaved == false) {
-                        if(controlSwitch) {controlSwitch.on()}
-
+                        if(controlSwitch) { controlSwitch.on() }
                         if(theSwitch.hasCommand('setColor')) {
                             state.oldValue = null
                             oldHueColor = theSwitch.currentValue("hue")
@@ -741,16 +742,12 @@ def flashLights(data) {
                             state.oldValue = oldLevel
                             state.switchSaved = true
                             if(logEnable) log.debug "In flashLights - setLevel - saving oldValue: $state.oldValue"
-
                             state.value = oldLevel
                         }
                     } else {
-                        if(logEnable) log.info "OldValue was already TRUE"
+                        if(logEnable) log.info "In flashLights - switchSaved was already $state.switchSaved"
                     }
-
-                    boolean turnOn = (state.oldSwitchState == "on")
-
-                    runIn(1, doLoopHandler)
+                    runIn(1, doLoopHandler, [data:[delay,numFlashes]])
                 } else {
                     if(logEnable) log.debug "In flashLights - Days does not match, can't flash lights."
                 }
@@ -761,78 +758,81 @@ def flashLights(data) {
             if(logEnable) log.debug "In flashLights - Outside of allowed time to flash lights."
         }
     }
-    if(logEnable) log.debug "******************* Finished - The Flasher *******************"
 }
 
-def doLoopHandler() {
-    if(logEnable) log.debug "In flashLights - runLoop: ${atomicState.runLoop}"
+def doLoopHandler(delay, numFlashes) {
+    if(logEnable) log.debug "In doLoopHandler - runLoop: ${atomicState.runLoop}"
     if(atomicState.runLoop) {
         if(atomicState.onOff == null) atomicState.onOff = true
         if(state.count == null) state.count = 0
         theSwitch.eachWithIndex {s, i ->
             if(atomicState.onOff) {
-                if(logEnable) log.debug "In flashLights - Switching $s.displayName, on (count: $state.count)"
+                if(logEnable) log.debug "In doLoopHandler - Switching $s.displayName, on (count: $state.count)"
                 if(s.hasCommand('setColor')) {
-                    if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+                    if(logEnable) log.debug "In doLoopHandler - $s.displayName, setColor($state.value)"
                     s.setColor(state.value)
                 } else if(s.hasCommand('setLevel')) {
-                    if(logEnable) log.debug "In flashLights - $s.displayName, setLevel($state.level)"
+                    if(logEnable) log.debug "In doLoopHandler - $s.displayName, setLevel($state.level)"
                     s.setLevel(state.value)
                 } else {
-                    if(logEnable) log.debug "In flashLights - $s.displayName, on"
+                    if(logEnable) log.debug "In doLoopHandler - $s.displayName, on"
                     s.on()
                 }
                 atomicState.onOff = false
                 state.count = state.count + 1
             } else {
-                if(logEnable) log.debug "In flashLights - $s.displayName, off"
+                if(logEnable) log.debug "In doLoopHandler - $s.displayName, off"
                 s.off()
                 atomicState.onOff = true
             }
         }
 
-        if(controlSwitch) {
-            cStat = controlSwitch.currentValue('switch', true) // skipCache == true
-            if(logEnable) log.debug "In flashLights - Checking controlSwitch: $controlSwitch - status: $cStat"
+        if(triggerORswitch) {
+            cStat = controlSwitch.currentValue('switch', true)
+            if(logEnable) log.debug "In doLoopHandler - Checking controlSwitch: $controlSwitch - status: $cStat"
             if(cStat == "off") {
                 atomicState.runLoop = false
-            }
+            }          
         }
+        if(logEnable) log.debug "In doLoopHandler - count: ${state.count} - VS - numFlashes: ${numFlashes} (maxFlashes: ${maxFlashes})"
+        if(numFlashes >= 1) {
+            if(state.count >= numFlashes) { atomicState.runLoop = false }
+        }
+        if(state.count >= maxFlashes) { atomicState.runLoop = false }
 
-        if(state.count >= maxFlashes) { atomicState.runLoop = false }        
         if(atomicState.runLoop) { 
             if(delay > 10 || delay == null) delay = 1
-            runIn(delay, doLoopHandler) 
+            runIn(delay, doLoopHandler, [data:[delay,numFlashes]]) 
         } else {
             unschedule(doLoopHandler)
             atomicState.onOff = false
             state.count = null
-            setInitialState()
+            runIn(delay, setInitialState)
         }
-    }
+    } else {
+        unschedule(doLoopHandler)
+        atomicState.onOff = false
+        state.count = null
+        runIn(delay, setInitialState)
+    }   
 }
 
 def setInitialState() {
-    if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+    if(logEnable) log.debug "In setInitialState - Resetting switch - Working on: $theSwitch - oldSwitchState: ${state.oldSwitchState} - oldValue: ${state.oldValue}"
     if(theSwitch.hasCommand('setColor')) {
         theSwitch.setColor(state.oldValue)
-        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
     } else if(theSwitch.hasCommand('setLevel')) {
         theSwitch.setLevel(state.oldValue)
-        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
     }
     pauseExecution(500)
     if(state.oldSwitchState == "on") {
         theSwitch.on()
-        pauseExecution(1000)
-        theSwitch.on()
     } else {
-        theSwitch.off()
-        pauseExecution(1000)
         theSwitch.off()
     }
     state.switchSaved = false
-    if(logEnable) log.info "oldValue is now FALSE"
+    if(logEnable) log.debug "In setInitialState - switchSaved is now $state.switchSaved"
+    if(logEnable) log.debug "******************* Finished - The Flasher *******************"
 }
 
 def setLevelandColorHandler(data) {
@@ -842,7 +842,7 @@ def setLevelandColorHandler(data) {
         def (theColor, theLevel) = data.split(";")
         state.theColor = theColor
         state.theLevel = theLevel
-        if(logEnable) log.warn "In setLevelandColorHandler - theColor: ${state.theColor} | theLevel: ${state.theLevel}"
+        if(logEnable) log.trace "In setLevelandColorHandler - theColor: ${state.theColor} - theLevel: ${state.theLevel}"
     }
 
     if(state.theColor == null) state.theColor = "White"
@@ -948,10 +948,6 @@ def checkEnableHandler() {
     }
 }
 
-def setDefaults(){
-    state.switchSaved = false
-}
-
 def getImage(type) {                    // Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
@@ -1035,4 +1031,3 @@ def timeSinceNewHeaders() {
     }
     state.previous = now
 }
-
