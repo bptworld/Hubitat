@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- * * 2.4.3 - 01/25/22 - More work to lastActive
+ *  2.4.3 - 01/25/22 - More work to lastActive
  *  2.4.2 - 01/25/22 - Working on lastActive, added option for Fuschia OS devices (stop the message chopping)
  *  2.4.1 - 01/20/22 - Adjustments to timeBetween and quietTime
  *  2.4.0 - 01/19/22 - Replaced timeBetween and quietTime code with Event Engine code. CHECK your child apps.
