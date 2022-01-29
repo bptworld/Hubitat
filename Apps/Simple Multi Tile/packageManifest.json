@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Multi%20Tile/SMT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.3"
+			"version": "1.0.4"
 		}
 	],
 	"drivers" : [
