@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.4.3
+			"version": "2.4.3"
 	],
 	"drivers" : [
 		{
