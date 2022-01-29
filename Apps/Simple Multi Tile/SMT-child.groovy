@@ -157,8 +157,8 @@ def pageConfig() {
             if(device6) {
                 allAttrs6 = []
                 allAttrs6 = device6.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                allAttrs6a = allAttrs5.sort { a, b -> a.value <=> b.value }
-                input "deviceAtt56", "enum", title: "Attribute to track", options: allAttrs6a, required:true, multiple:false, submitOnChange:true, width:4
+                allAttrs6a = allAttrs6.sort { a, b -> a.value <=> b.value }
+                input "deviceAtt6a", "enum", title: "Attribute to track", options: allAttrs6a, required:true, multiple:false, submitOnChange:true, width:4
                 if(hMA > 1) input "deviceAtt6b", "enum", title: "Attribute to track", options: allAttrs6a, required:false, multiple:false, submitOnChange:true, width:4
                 if(hMA > 2) input "deviceAtt6c", "enum", title: "Attribute to track", options: allAttrs6a, required:false, multiple:false, submitOnChange:true, width:4
             }
