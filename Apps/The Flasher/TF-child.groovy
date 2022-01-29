@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.2.3 - 01/29/22 - Adjustments to Presets
  *  1.2.2 - 01/28/22 - Some much needed adjustments
  *  1.2.1 - 12/21/21 - Fix this...Fix that
  *  1.2.0 - 12/20/21 - Major overhaul, check your child apps!
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.2"
+    state.version = "1.2.3"
 }
 
 definition(
@@ -448,6 +449,7 @@ def runPresetHandler(evt) {
             fColor = fColor1
             level = level1
             state.presetMatch = true
+            atomicState.runLoop = true
         } else if(thePreset == "2" && theSwitch2) {
             theSwitch = theSwitch2
             numFlashes = numFlashes2
@@ -455,6 +457,7 @@ def runPresetHandler(evt) {
             fColor = fColor2
             level = level2
             state.presetMatch = true
+            atomicState.runLoop = true
         } else if(thePreset == "3" && theSwitch3) {
             theSwitch = theSwitch3
             numFlashes = numFlashes3
@@ -462,6 +465,7 @@ def runPresetHandler(evt) {
             fColor = fColor3
             level = level3
             state.presetMatch = true
+            atomicState.runLoop = true
         } else if(thePreset == "4" && theSwitch4) {
             theSwitch = theSwitch4
             numFlashes = numFlashes4
@@ -469,6 +473,7 @@ def runPresetHandler(evt) {
             fColor = fColor4
             level = level4
             state.presetMatch = true
+            atomicState.runLoop = true
         } else if(thePreset == "5" && theSwitch5) {
             theSwitch = theSwitch5
             numFlashes = numFlashes5
@@ -476,9 +481,11 @@ def runPresetHandler(evt) {
             fColor = fColor5
             level = level5
             state.presetMatch = true
+            atomicState.runLoop = true
         } else {
             if(logEnable) log.debug "In runPresetHandler - Preset NOT found (${thePreset})"
             state.presetMatch = false
+            atomicState.runLoop = false
         }
 
         data = "${theSwitch};${numFlashes};${delay};${fColor};${level}"
@@ -517,6 +524,7 @@ def buttonHandler(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In buttonHandler - Button: $evt.value"
+        atomicState.runLoop = true
         flashLights()
     }
 }
@@ -658,6 +666,7 @@ def timeHandler(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In timeHandler - Time: $timeToRun"
+        atomicState.runLoop = true
         flashLights()
     }
 }
