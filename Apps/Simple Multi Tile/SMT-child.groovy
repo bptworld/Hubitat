@@ -4,11 +4,11 @@
  *  Design Usage:
  *  Create a simple multi device tile with just a few clicks
  *
- *  Copyright 2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2021-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 01/28/22 - Fixed typos, thanks to @boris.juraga. Nice catch!
  *  1.0.3 - 06/05/21 - Added a 6th line
  *  1.0.2 - 06/05/21 - Added a few functions
  *  1.0.1 - 06/05/21 - Fixed an error
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Multi Tile Child"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
