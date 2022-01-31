@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Follow your favorite NHL teams Game Day Live, put a Scoreboard right on your Dashboard!
  *
- *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2022 Bryan Turcotte (@bptworld)
  *
  *  Modified from code by Eric Luttmann. Thank you.
  * 
@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 01/31/22 - Changes to the Flasher
  *  1.1.7 - 01/07/21 - Fix for changes to speak
  *  1.1.6 - 01/13/21 - Fixed typos
  *  1.1.5 - 01/04/21 - Tons of adjustments
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -288,11 +289,10 @@ def notificationOptions(){
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
-                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
-                input "flashMyTeamScorePreset", "number", title: "Select the Preset to use when My Team scores (1..5)", required:true, submitOnChange:true
-                input "flashOtherTeamScorePreset", "number", title: "Select the Preset to use when the Other Team scores (1..5)", required:true, submitOnChange:true
-                input "flashMyTeamWinsPreset", "number", title: "Select the Preset to use when the My Team wins (1..5)", required:true, submitOnChange:true
-                input "flashOtherTeamWinsPreset", "number", title: "Select the Preset to use when the Other Team wins (1..5)", required:true, submitOnChange:true
+                input "flashMyTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when My Team scores (1..5)", required:true, submitOnChange:true
+                input "flashOtherTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team scores (1..5)", required:true, submitOnChange:true
+                input "flashMyTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the My Team wins (1..5)", required:true, submitOnChange:true
+                input "flashOtherTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team wins (1..5)", required:true, submitOnChange:true
             }
         }
     }
@@ -736,11 +736,11 @@ def checkLiveGameStatsHandler(resp, data) {
                     notificationHandler(data)
                     
                     if(useTheFlasher && state.myTeamIs == "away") {
-                        flashData = "Preset::${flashMyTeamScorePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashMyTeamScorePreset.sendPreset(flashData)
                     } else if(useTheFlasher && state.myTeamIs == "away") {
-                        flashData = "Preset::${flashOtherTeamScorePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashOtherTeamScorePreset.sendPreset(flashData)
                     }
                 }
 
@@ -758,11 +758,11 @@ def checkLiveGameStatsHandler(resp, data) {
                     notificationHandler(data)
                     
                     if(useTheFlasher && state.myTeamIs == "home") {
-                        flashData = "Preset::${flashMyTeamScorePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashMyTeamScorePreset.sendPreset(flashData)
                     } else if(useTheFlasher && state.myTeamIs == "away") {
-                        flashData = "Preset::${flashOtherTeamScorePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashOtherTeamScorePreset.sendPreset(flashData)
                     }
                 }
             }
@@ -837,31 +837,34 @@ def notificationHandler(data) {
     
     if(useTheFlasher && state.gameStatus != "Final") {
         if(theTeam == "myTeam") {
-            flashData = "Preset::${flashMyTeamScorePreset}"
+            flashData = "flash"
+            flashMyTeamScorePreset.sendPreset(flashData)
         } else if(useTheFlasher && theTeam == "otherTeam") {
-            flashData = "Preset::${flashOtherTeamScorePreset}"
+            flashData = "flash"
+            flashOtherTeamScorePreset.sendPreset(flashData)
         }
-    
-        theFlasherDevice.sendPreset(flashData)
     }
     
     if(useTheFlasher && state.gameStatus == "Final") {
         if(state.myTeamIs == "away") {
             if(state.awayScore > state.homeScore) {
-                flashData = "Preset::${flashMyTeamWinsPreset}"
+                flashData = "flash"
+                flashMyTeamWinsPreset.sendPreset(flashData)
             } else {
-                flashData = "Preset::${flashOtherTeamWinsPreset}"
+                flashData = "flash"
+                flashOtherTeamWinsPreset.sendPreset(flashData)
             }
         }
         
         if(state.myTeamIs == "home") {
             if(state.homeScore > state.awayScore) {
-                flashData = "Preset::${flashMyTeamWinsPreset}"
+                flashData = "flash"
+                flashMyTeamWinsPreset.sendPreset(flashData)
             } else {
-                flashData = "Preset::${flashOtherTeamWinsPreset}"
+                flashData = "flash"
+                flashOtherTeamWinsPreset.sendPreset(flashData)
             }
         }   
-        theFlasherDevice.sendPreset(flashData)
     }
 }
 
