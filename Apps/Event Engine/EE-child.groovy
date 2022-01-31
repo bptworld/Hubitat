@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.6 - 01/29/22 - Added Window Shades and Window Blinds to Actions
 *  3.4.5 - 01/25/22 - Minor Changes
 *  3.4.4 - 01/22/22 - Added App Debounce Option, Added Custom Colors Option, Fixed typo in Switches In Sequence
 *  3.4.3 - 01/10/22 - More adjustments to slowDim
@@ -59,7 +60,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.5"
+    state.name = "Event Engine Cog"; state.version = "3.4.6"
 }
 
 definition(
@@ -1977,6 +1978,8 @@ def pageConfig() {
                 ["aSwitchesToSync":"Switches To Sync"],
                 ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"],
+                ["aWindowBlind":"Window Blind"],
+                ["aWindowShade":"Window Shade"],
                 ["aVirtualContact":"* Virtual Contact Sensor"]
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
@@ -2654,6 +2657,40 @@ def pageConfig() {
                 app.removeSetting("valveOpenAction")
             }
             
+            if(actionType.contains("aWindowBlind")) {
+                paragraph "<b>Window Blinds</b>"
+                input "blindAction", "capability.windowBlind", title: "Window Blinds to Adjust", multiple:true, submitOnChange:true
+                input "blindCommand", "enum", title: "Window Blinds Action", options: ["open","close","set position","tilt"], submitOnChange:true
+                if(blindCommand == "set position") {
+                    input "blindPos", "number", title: "Window Blinds Position (0..100)", range: '0..100', submitOnChange:true
+                }
+                if(blindCommand == "tilt") {
+                    input "blindTilt", "number", title: "Window Blinds Tilt Level (0..100)", range: '0..100', submitOnChange:true
+                }
+                paragraph "<hr>"
+                theCogActions += "<b>-</b> Window Blinds - ${blindAction} - Command: ${blindCommand} - Position: ${blindPos} - Tilt: ${blindTilt}<br>"
+            } else {
+                app.removeSetting("blindAction")
+                app.removeSetting("blindCommand")
+                app.removeSetting("blindPos")
+                app.removeSetting("blindTilt")
+            }
+            
+            if(actionType.contains("aWindowShade")) {
+                paragraph "<b>Window Shades</b>"
+                input "shadeAction", "capability.windowShade", title: "Window Shades to Adjust", multiple:true, submitOnChange:true
+                input "shadeCommand", "enum", title: "Window Shade Action", options: ["open","close","set position"], submitOnChange:true
+                if(shadeCommand == "set position") {
+                    input "shadePos", "number", title: "Window Shade Position (0..100)", range: '0..100', submitOnChange:true
+                }
+                paragraph "<hr>"
+                theCogActions += "<b>-</b> Window Shades - ${shadeAction} - Command: ${shadeCommand} - Position: ${shadePos}<br>"
+            } else {
+                app.removeSetting("shadeAction")
+                app.removeSetting("shadeCommand")
+                app.removeSetting("shadePos")
+            }
+            
             if(actionType.contains("aVirtualContact")) {
                 paragraph "<b>Virtual Contact Sensor</b><br><small>* Can be used with Alexa Routines!</small>"
                 input "contactCloseAction", "capability.contactSensor", title: "Close Sensors", multiple:true, submitOnChange:true
@@ -3032,12 +3069,10 @@ def notificationOptions(){
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights. Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
-                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
-                input "flashOnTriggerPreset", "number", title: "Select the Preset to use when Notifications are triggered (1..5)", required:true, submitOnChange:true
-                if(useTheFlasher) theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset When Triggered: ${flashOnTriggerPreset}<br>"
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Preset you wish to use", required:true, multiple:false
+                if(useTheFlasher) theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice}<br>"
             } else {
                 app.removeSetting("theFlasherDevice")
-                app.removeSetting("flashOnTriggerPreset")
             }
         }
     }
@@ -3466,6 +3501,8 @@ def startTheProcess(evt) {
                                             if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
                                             if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
                                             if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                                            if(actionType.contains("aWindowShade") && shadeAction) { windowShadeActionHandler() }
+                                            if(actionType.contains("aWindowBlind") && blindAction) { windowBlindActionHandler() }
                                             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
                                             if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
                                             if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
@@ -3592,9 +3629,11 @@ def startTheProcess(evt) {
                                 wds = warningDimSec ?: 30
                                 firstDelay = theDelay - wds
                                 if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
+                                state.appStatus = "inactive"
                                 runIn(firstDelay, permanentDimHandler)
                                 runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                             } else {
+                                state.appStatus = "inactive"
                                 runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                             }
                         } else {             
@@ -5124,6 +5163,63 @@ def valveActionHandler() {
     }
 }
 
+def windowBlindActionHandler() {
+    if(logEnable) log.debug "In windowBlindActionHandler (${state.version})"
+    if(blindCommand == "open") {
+        blindAction.each { it ->
+            if(logEnable) log.debug "In windowBlindActionHandler - Opening ${it}"
+            pauseExecution(actionDelay)
+            it.open()
+        }
+    }
+    if(blindCommand == "close") {
+        blindAction.each { it ->
+            if(logEnable) log.debug "In windowBlindActionHandler - Closing ${it}"
+            pauseExecution(actionDelay)
+            it.close()
+        }
+    }
+    if(blindCommand == "set position") {
+        blindAction.each { it ->
+            if(logEnable) log.debug "In windowBlindActionHandler - Setting Position to ${it}"
+            pauseExecution(actionDelay)
+            it.setPosition(blindPos)
+        }
+    }
+    if(blindCommand == "tilt") {
+        blindAction.each { it ->
+            if(logEnable) log.debug "In windowBlindActionHandler - Setting Tilt Level to ${it}"
+            pauseExecution(actionDelay)
+            it.setTiltLevel(blindTilt)
+        }
+    }
+}
+
+def windowShadeActionHandler() {
+    if(logEnable) log.debug "In windowShadeActionHandler (${state.version})"
+    if(shadeCommand == "open") {
+        shadeAction.each { it ->
+            if(logEnable) log.debug "In windowShadeActionHandler - Opening ${it}"
+            pauseExecution(actionDelay)
+            it.open()
+        }
+    }
+    if(shadeCommand == "close") {
+        shadeAction.each { it ->
+            if(logEnable) log.debug "In windowShadeActionHandler - Closing ${it}"
+            pauseExecution(actionDelay)
+            it.close()
+        }
+    }
+    if(shadeCommand == "set position") {
+        shadeAction.each { it ->
+            if(logEnable) log.debug "In windowShadeActionHandler - Setting Position to ${it}"
+            pauseExecution(actionDelay)
+            it.setPosition(shadePos)
+        }
+    }
+}
+
 def contactActionHandler() {
     if(logEnable) log.debug "In contactActionHandler (${state.version})"
     if(contactClosedAction) {
@@ -5245,7 +5341,7 @@ def repeatCheck(evt) {
 
 def theFlasherHandler() {
     if(logEnable) log.debug "In theFlasherHandler (${state.version})"
-    flashData = "Preset::${flashOnTriggerPreset}"
+    flashData = "flash"
     if(logEnable) log.debug "In theFlasherHandler - Sending: ${flashData}"
     theFlasherDevice.sendPreset(flashData)    
 }
