@@ -455,12 +455,12 @@ def presenceSensorHandler(evt){
                         if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHomePreset) {
                             flashData = "flash"
-                            theFlasherDevice.sendPreset(flashData)
+                            flashOnHomePreset.sendPreset(flashData)
                         }
                         if(homeNow) {
                             if(useTheFlasher && flashOnHomePreset) {
                                 flashData = "flash"
-                                theFlasherDevice.sendPreset(flashData)
+                                flashOnHomePreset.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
                             messageHomeNow()
@@ -487,12 +487,12 @@ def presenceSensorHandler(evt){
                         if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${state.timeDiff}"   
                         if(useTheFlasher && flashOnDepPreset) {
                             flashData = "flash"
-                            theFlasherDevice.sendPreset(flashData)
+                            flashOnDepPreset.sendPreset(flashData)
                         }
                         if(departedNow) {
                             if(useTheFlasher && flashOnDepPreset) {
                                 flashData = "flash"
-                                theFlasherDevice.sendPreset(flashData)
+                                flashOnDepPreset.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
                             messageDeparted()
@@ -585,12 +585,12 @@ def lockPresenceHandler(evt){
                         if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHomePreset) {
                             flashData = "flash"
-                            theFlasherDevice.sendPreset(flashData)
+                            flashOnHomePreset.sendPreset(flashData)
                         }
                         if(homeNow) {
                             if(useTheFlasher && flashOnHomePreset) {
                                 flashData = "flash"
-                                theFlasherDevice.sendPreset(flashData)
+                                flashOnHomePreset.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
                             messageHomeNow()
