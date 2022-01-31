@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.6 - 01/31/21 - Changes to reflect The Flasher
  *  2.4.5 - 11/22/21 - Another change to getTimeDiff
  *  2.4.4 - 11/20/21 - Change to getTimeDiff
  *  2.4.3 - 10/21/21 - Adjusted speak() to reflect the new parameters.
@@ -51,7 +52,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.5"
+	state.version = "2.4.6"
 }
 
 definition(
@@ -167,9 +168,7 @@ def speechOptions(){
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
-                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
-                input "flashOnHomePreset", "number", title: "Select the Preset to use when someone comes home (1..5)", required:true, submitOnChange:true
-                input "flashOnDepPreset", "number", title: "Select the Preset to use when someone leaves (1..5)", required:true, submitOnChange:true
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Preset you wish to use", required:true, multiple:false
             }
         }
     }
@@ -454,12 +453,12 @@ def presenceSensorHandler(evt){
                     if(state.timeDiff < 20) {
                         if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHome) {
-                            flashData = "Preset::${flashOnHomePreset}"
+                            flashData = "flash"
                             theFlasherDevice.sendPreset(flashData)
                         }
                         if(homeNow) {
                             if(useTheFlasher) {
-                                flashData = "Preset::${flashOnHomePreset}"
+                                flashData = "flash"
                                 theFlasherDevice.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
@@ -486,12 +485,12 @@ def presenceSensorHandler(evt){
                     if(state.timeDiff < 20) {
                         if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${state.timeDiff}"   
                         if(useTheFlasher && flashOnDep) {
-                            flashData = "Preset::${flashOnDepPreset}"
+                            flashData = "flash"
                             theFlasherDevice.sendPreset(flashData)
                         }
                         if(departedNow) {
                             if(useTheFlasher) {
-                                flashData = "Preset::${flashOnHomePreset}"
+                                flashData = "flash"
                                 theFlasherDevice.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
@@ -584,12 +583,12 @@ def lockPresenceHandler(evt){
                     if(state.timeDiff < 20) {
                         if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${state.timeDiff}"
                         if(useTheFlasher && flashOnHome) {
-                            flashData = "Preset::${flashOnHomePreset}"
+                            flashData = "flash"
                             theFlasherDevice.sendPreset(flashData)
                         }
                         if(homeNow) {
                             if(useTheFlasher) {
-                                flashData = "Preset::${flashOnHomePreset}"
+                                flashData = "flash"
                                 theFlasherDevice.sendPreset(flashData)
                             }
                             addNameToPresenceMap(fName)
