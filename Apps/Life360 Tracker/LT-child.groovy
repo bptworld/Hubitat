@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.4 - 01/31/22 - Changes to reflec the flasher
  *  2.1.3 - 01/15/22 - Fixed a type with aPlace - Nice catch @es_ferret
  *  2.1.2 - 10/21/21 - Adjusted speak() to reflect the new parameters.
  *  2.1.1 - 10/21/20 - Added 'Who's with me' options
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.3"
+	state.version = "2.1.4"
 }
 
 definition(
@@ -203,14 +204,13 @@ def pageConfig() {
                 paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
                 input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
                 if(useTheFlasher) {
-                    input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:false, multiple:false
-                    input "flashArrivedHomePreset", "number", title: "Select the Preset to use when someone arrives at Home (1..5)", required:false, submitOnChange:true
-                    input "flashDepartedHomePreset", "number", title: "Select the Preset to use when someone departs Home (1..5)", required:false, submitOnChange:true
+                    input "flashArrivedHomePreset", "capability.actuator", title: "Select the Flasher Device to use when someone arrives at Home (1..5)", required:false, submitOnChange:true
+                    input "flashDepartedHomePreset", "capability.actuator", title: "Select the Flasher Device to use when someone departs Home (1..5)", required:false, submitOnChange:true
                     
-                    input "flashArrivedPlacePreset", "number", title: "Select the Preset to use when someone arrives at a Place (1..5)", required:false, submitOnChange:true
-                    input "flashDepartedPlacePreset", "number", title: "Select the Preset to use when someone departs a Place (1..5)", required:false, submitOnChange:true
+                    input "flashArrivedPlacePreset", "capability.actuator", title: "Select the Flasher Device to use when someone arrives at a Place (1..5)", required:false, submitOnChange:true
+                    input "flashDepartedPlacePreset", "capability.actuator", title: "Select the Flasher Device to use when someone departs a Place (1..5)", required:false, submitOnChange:true
                     
-                    input "flashArrivedNotAllowedPreset", "number", title: "Select the Preset to use when someone arrives at a Place NOT allowed (1..5)", required:false, submitOnChange:true
+                    input "flashArrivedNotAllowedPreset", "capability.actuator", title: "Select the Flasher Device to use when someone arrives at a Place NOT allowed (1..5)", required:false, submitOnChange:true
                 }
             }
         }
@@ -467,7 +467,7 @@ def homeArrivedHandler(haPlace) {
             whosWithMeHandler(where,msg,haPlace)
             if(isDataDevice) isDataDevice.on()
         } else {
-            if(logEnable) log.debug "In homeArrivedHandler - ${friendlyName} arrived Home less than ${timeHere} minute(s) ago"
+            if(logEnable) log.debug "In homeArrivedHandler - Home Delay - ${friendlyName} arrived Home less than 60 seconds ago"
             runIn(30, homeArrivedHandler, [overwrite: false])
         }
     }
@@ -680,30 +680,30 @@ def messageHandler(where,msg,place) {
                     if(speakHasArrived) letsTalk(state.message)
                     if(pushHasArrived) pushHandler(state.message)
                     if(useTheFlasher && flashArrivedHomePreset) {
-                        flashData = "Preset::${flashArrivedHomePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashArrivedHomePreset.sendPreset(flashData)
                     }
                     if(useTheFlasher && flashArrivedPlacePreset) {
-                        flashData = "Preset::${flashArrivedPlacePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashArrivedPlacePreset.sendPreset(flashData)
                     }
                 } else if(where == "departed" || where == "HomeDeparted") {
                     if(speakHasDeparted) letsTalk(state.message)
                     if(pushHasDeparted) pushHandlertheMessage(state.message)
                     if(useTheFlasher && flashDepartedHomePreset) {
-                        flashData = "Preset::${flashDepartedHomePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashDepartedHomePreset.sendPreset(flashData)
                     }
                     if(useTheFlasher && flashDepartedPlacePreset) {
-                        flashData = "Preset::${flashDepartedPlacePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashDepartedPlacePreset.sendPreset(flashData)
                     }
                 } else if(where == "moving") {
                     if(speakOnTheMove) letsTalk(state.message)             
                     if(pushOnTheMove) pushHandler(state.message)
                     if(useTheFlasher && flashArrivedNotAllowedPreset) {
-                        flashData = "Preset::${flashArrivedNotAllowedPreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                        flashData = "flash"
+                        flashArrivedNotAllowedPreset.sendPreset(flashData)
                     }
                 }
 
