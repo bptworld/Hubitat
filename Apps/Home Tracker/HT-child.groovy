@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.6 - 01/31/22 - Changes to The Flasher
  *  2.4.5 - 11/22/21 - Another change to getTimeDiff
  *  2.4.4 - 11/20/21 - Change to getTimeDiff
  *  2.4.3 - 10/21/21 - Adjusted speak() to reflect the new parameters.
@@ -51,7 +52,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.5"
+	state.version = "2.4.6"
 }
 
 definition(
