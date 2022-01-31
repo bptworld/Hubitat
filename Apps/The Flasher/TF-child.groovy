@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.2.4 - 01/30/22 - Big change to presets, now only allows one preset per child app.
  *  1.2.3 - 01/29/22 - Adjustments to Presets
  *  1.2.2 - 01/28/22 - Some much needed adjustments
  *  1.2.1 - 12/21/21 - Fix this...Fix that
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.3"
+    state.version = "1.2.4"
 }
 
 definition(
@@ -79,12 +80,12 @@ def pageConfig() {
             paragraph "This child app can work as a stand alone app with triggers and actions, just like any other app.<br>BUT, it can also be setup to be controlled by other BPTWorld apps!  By creating Presets that can be used in select BPTWorld apps."
             input "presetsORstandalon", "bool", title: "'Stand Alone' or 'Controlled by Other Apps'", defaultValue:false, submitOnChange:true
         }
-        if(presetsORstandalon) {
+        if(presetsORstandalon) { // controlled by other apps
             section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {
                 paragraph "Each child app needs a virtual device to store the Presets and to control the app."
                 input "useExistingDevice", "bool", title: "Use existing device (off) or have TF create a new one for you (on)", defaultValue:false, submitOnChange:true
                 if(useExistingDevice) {
-                    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'TF - Presets')", required:true, submitOnChange:true
+                    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'TF - Preset 1')", required:true, submitOnChange:true
                     paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
                     if(dataName) createDataChildDevice()
                     if(statusMessageD == null) statusMessageD = "Waiting on status message..."
@@ -98,149 +99,17 @@ def pageConfig() {
             }
 
             if(dataDevice) {
-                section("${getImage('instructions')} Flashing Preset 1", hideable: true) {
-                    input "theSwitch1", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
+                    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
                     paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-                    input "numFlashes1", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
-                    input "delay1", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, submitOnChange:true, width: 6
-                    if(theSwitch1) {
-                        if(theSwitch1.hasCommand('setLevel')) {
-                            input "level1", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
+                    input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
+                    input "delay", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, width: 6
+                    if(theSwitch) {
+                        if(theSwitch.hasCommand('setLevel')) {
+                            input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         }
-                        if(theSwitch1.hasCommand('setColor')) {
-                            input "fColor1", "enum", title: "Color", required: false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                            ]
-                        }
-                    }
-
-                    if(theSwitch1 || numFlashes1 || delay1) {
-                        paragraph "<hr>"
-                        input "setupPreset2", "bool", title: "Setup Preset 2?", description: "p2", defaultValue:false, submitOnChange:true
-                    }
-                }
-            } else {
-                app.removeSetting("theSwitch1")
-                app.removeSetting("numFlashes1")
-                app.removeSetting("delay1")
-                app.removeSetting("fColor1")
-            }
-
-            if(setupPreset2) {
-                section("${getImage('instructions')} Flashing Preset 2", hideable: true) {
-                    input "theSwitch2", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-                    paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-                    input "numFlashes2", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
-                    input "delay2", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, submitOnChange:true, width: 6
-                    if(theSwitch2) {
-                        if(theSwitch2.hasCommand('setLevel')) {
-                            input "level2", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
-                        }
-                        if(theSwitch2.hasCommand('setColor')) {
-                            input "fColor2", "enum", title: "Color", required: false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                            ]
-                        }
-                    }
-
-                    if(theSwitch2 || numFlashes2 || delay2) {
-                        paragraph "<hr>"
-                       input "setupPreset3", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
-                    }
-                }
-            } else {
-                app.removeSetting("theSwitch2")
-                app.removeSetting("numFlashes2")
-                app.removeSetting("delay2")
-                app.removeSetting("fColor2")
-            }
-
-            if(setupPreset3) {
-                section("${getImage('instructions')} Flashing Preset 3", hideable: true) {
-                    input "theSwitch3", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-                    paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-                    input "numFlashes3", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
-                    input "delay3", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, submitOnChange:true, width: 6
-                    if(theSwitch3) {
-                        if(theSwitch3.hasCommand('setLevel')) {
-                            input "level3", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
-                        }
-                        if(theSwitch3.hasCommand('setColor')) {
-                            input "fColor3", "enum", title: "Color", required: false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                            ]
-                        }
-                    }
-
-                    if(theSwitch3 || numFlashes3 || delay3) {
-                        paragraph "<hr>"
-                       input "setupPreset4", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
-                    }
-                }
-            } else {
-                app.removeSetting("theSwitch3")
-                app.removeSetting("numFlashes3")
-                app.removeSetting("delay3")
-                app.removeSetting("fColor3")
-            }
-
-            if(setupPreset4) {
-                section("${getImage('instructions')} Flashing Preset 4", hideable: true) {
-                    input "theSwitch4", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-                    paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-                    input "numFlashes4", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
-                    input "delay4", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, submitOnChange:true, width: 6
-                    if(theSwitch4) {
-                        if(theSwitch4.hasCommand('setLevel')) {
-                            input "level4", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
-                        }
-                        if(theSwitch4.hasCommand('setColor')) {
-                            input "fColor4", "enum", title: "Color", required: false, multiple:false, options: [
-                                ["Soft White":"Soft White - Default"],
-                                ["White":"White - Concentrate"],
-                                ["Daylight":"Daylight - Energize"],
-                                ["Warm White":"Warm White - Relax"],
-                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                            ]
-                        }
-                    }
-
-                    if(theSwitch4 || numFlashes4 || delay4) {
-                        paragraph "<hr>"
-                       input "setupPreset5", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
-                    }
-                }
-            } else {
-                app.removeSetting("theSwitch4")
-                app.removeSetting("numFlashes4")
-                app.removeSetting("delay4")
-                app.removeSetting("fColor4")
-            }
-
-            if(setupPreset5) {
-                section("${getImage('instructions')} Flashing Preset 5", hideable: true) {
-                    input "theSwitch5", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-                    paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-                    input "numFlashes5", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
-                    input "delay5", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', required: false, submitOnChange:true, width: 6
-                    if(theSwitch5) {
-                        if(theSwitch5.hasCommand('setLevel')) {
-                            input "level5", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
-                        }
-                        if(theSwitch5.hasCommand('setColor')) {
-                            input "fColor5", "enum", title: "Color", required: false, multiple:false, options: [
+                        if(theSwitch.hasCommand('setColor')) {
+                            input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
                                 ["Daylight":"Daylight - Energize"],
@@ -251,10 +120,10 @@ def pageConfig() {
                     }
                 }
             } else {
-                app.removeSetting("theSwitch5")
-                app.removeSetting("numFlashes5")
-                app.removeSetting("delay5")
-                app.removeSetting("fColor5")
+                app.removeSetting("theSwitch")
+                app.removeSetting("numFlashes")
+                app.removeSetting("delay")
+                app.removeSetting("fColor")
             }
         } else {
             section(getFormat("header-green", "${getImage("Blank")}"+" The Flasher Trigger Options")) {
@@ -436,63 +305,8 @@ def runPresetHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In runPresetHandler (${state.version})"
-        values = evt.value
-        def (theName,thePreset) = values.split("::")
-        if(logEnable) log.debug "In runPresetHandler - theName: ${theName} - thePreset: ${thePreset}"
-        state.presetMatch = false
-
-        if(thePreset == "1" && theSwitch1) {
-            theSwitch = theSwitch1
-            numFlashes = numFlashes1
-            delay = delay1
-            fColor = fColor1
-            level = level1
-            state.presetMatch = true
-            atomicState.runLoop = true
-        } else if(thePreset == "2" && theSwitch2) {
-            theSwitch = theSwitch2
-            numFlashes = numFlashes2
-            delay = delay2
-            fColor = fColor2
-            level = level2
-            state.presetMatch = true
-            atomicState.runLoop = true
-        } else if(thePreset == "3" && theSwitch3) {
-            theSwitch = theSwitch3
-            numFlashes = numFlashes3
-            delay = delay3
-            fColor = fColor3
-            level = level3
-            state.presetMatch = true
-            atomicState.runLoop = true
-        } else if(thePreset == "4" && theSwitch4) {
-            theSwitch = theSwitch4
-            numFlashes = numFlashes4
-            delay = delay4
-            fColor = fColor4
-            level = level4
-            state.presetMatch = true
-            atomicState.runLoop = true
-        } else if(thePreset == "5" && theSwitch5) {
-            theSwitch = theSwitch5
-            numFlashes = numFlashes5
-            delay = delay5
-            fColor = fColor5
-            level = level5
-            state.presetMatch = true
-            atomicState.runLoop = true
-        } else {
-            if(logEnable) log.debug "In runPresetHandler - Preset NOT found (${thePreset})"
-            state.presetMatch = false
-            atomicState.runLoop = false
-        }
-
-        data = "${theSwitch};${numFlashes};${delay};${fColor};${level}"
-        if(state.presetMatch) {
-            if(logEnable) log.debug "In runPresetHandler - Preset found (${thePreset}) - ${data}"
-            flashLights(data)
-        }
+        atomicState.runLoop = true
+        flashLights()
     }
 }
 
@@ -698,7 +512,7 @@ def checkMode() {
     if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
 }
 
-def flashLights(data=null) {
+def flashLights() {
     checkEnableHandler()
     if (numFlashes == 0 && triggerORswitch) {
         if(!controlSwitch) {
@@ -718,12 +532,6 @@ def flashLights(data=null) {
         if(state.timeBetween) {
             if(state.modeMatch) {
                 if(state.daysMatch) {
-                    if(data) { def (theSwitch,numFlashes,delay,fColor,level) = data.split(";") }
-                    if(theSwitch == null) theSwitch = app.theSwitch
-                    if(numFlashes == null) numFlashes = app.numFlashes
-                    if(delay == null) delay = app.delay
-                    if(fColor == null) fColor = app.fColor
-                    if(level == null) level = app.level
                     if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level}"
                     def delay = delay ?: 1
                     def numFlashes = numFlashes ?: 0
@@ -774,7 +582,7 @@ def doLoopHandler(delay, numFlashes) {
     if(atomicState.runLoop) {
         if(atomicState.onOff == null) atomicState.onOff = true
         if(state.count == null) state.count = 0
-        theSwitch.eachWithIndex {s, i ->
+        theSwitch.each { s ->
             if(atomicState.onOff) {
                 if(logEnable) log.debug "In doLoopHandler - Switching $s.displayName, on (count: $state.count)"
                 if(s.hasCommand('setColor')) {
