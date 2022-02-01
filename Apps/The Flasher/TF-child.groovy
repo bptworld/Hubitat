@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.2.5 - 02/01/22 - More changes
  *  1.2.4 - 01/30/22 - Big change to presets, now only allows one preset per child app.
  *  1.2.3 - 01/29/22 - Adjustments to Presets
  *  1.2.2 - 01/28/22 - Some much needed adjustments
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.4"
+    state.version = "1.2.5"
 }
 
 definition(
@@ -534,7 +535,7 @@ def flashLights() {
                 if(state.daysMatch) {
                     if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level}"
                     def delay = delay ?: 1
-                    def numFlashes = numFlashes ?: 0
+                    def numFlashes = numFlashes ?: 2
                     state.oldSwitchState = theSwitch.currentValue("switch")
 
                     if(logEnable) log.debug "In flashLights - switchSaved: $state.switchSaved"
@@ -546,6 +547,7 @@ def flashLights() {
                             oldHueColor = theSwitch.currentValue("hue")
                             oldSaturation = theSwitch.currentValue("saturation")
                             oldLevel = theSwitch.currentValue("level")
+                            oldStatus = theSwitch.currentValue("switch")
                             state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
                             state.switchSaved = true
                             if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
@@ -559,7 +561,7 @@ def flashLights() {
                             state.oldValue = oldLevel
                             state.switchSaved = true
                             if(logEnable) log.debug "In flashLights - setLevel - saving oldValue: $state.oldValue"
-                            state.value = oldLevel
+                            state.value = level
                         }
                     } else {
                         if(logEnable) log.info "In flashLights - switchSaved was already $state.switchSaved"
@@ -615,6 +617,7 @@ def doLoopHandler(delay, numFlashes) {
         if(numFlashes >= 1) {
             if(state.count >= numFlashes) { atomicState.runLoop = false }
         }
+        if(maxFlashes == null) maxFlashes = 99
         if(state.count >= maxFlashes) { atomicState.runLoop = false }
 
         if(atomicState.runLoop) { 
