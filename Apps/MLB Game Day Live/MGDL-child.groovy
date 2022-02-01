@@ -331,10 +331,10 @@ def notificationOptions(){
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
-                input "flashMyTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when My Team scores (1..5)", required:false, submitOnChange:true
-                input "flashOtherTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team scores (1..5)", required:false, submitOnChange:true
-                input "flashMyTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the My Team wins (1..5)", required:false, submitOnChange:true
-                input "flashOtherTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team wins (1..5)", required:false, submitOnChange:true
+                input "flashMyTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when My Team scores", required:false, submitOnChange:true
+                input "flashOtherTeamScorePreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team scores", required:false, submitOnChange:true
+                input "flashMyTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the My Team wins", required:false, submitOnChange:true
+                input "flashOtherTeamWinsPreset", "capability.actuator", title: "Select the Flasher Device to use when the Other Team wins", required:false, submitOnChange:true
             }
         }
     }
