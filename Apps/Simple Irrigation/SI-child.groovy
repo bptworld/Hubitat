@@ -5,7 +5,7 @@
  *  For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and
  *  restrictions.
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -38,16 +38,7 @@
  *
  *  Changes:
  *
- *  2.0.9 - 06/23/21 - Minor changes
- *  2.0.8 - 06/23/21 - Fixed a typo
- *  2.0.7 - 05/26/21 - Added switch option
- *  2.0.6 - 06/16/20 - Added more push options
- *  2.0.5 - 06/02/20 - Fixed issues with scheduling
- *  2.0.4 - 06/02/20 - Lots of little adjustments
- *  2.0.3 - 05/31/20 - Some great changes/additions by @bdwilson. Thanks!
- *  2.0.2 - 04/29/20 - Check for days match before turning valve off
- *  2.0.1 - 04/27/20 - Cosmetic changes
- *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  2.1.0 - 02/03/22 - Cosmetic changes
  *  ---
  *  1.0.0 - 04/22/19 - Initial release.
  *
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.9"
+	state.version = "2.1.0"
 }
 
 definition(
@@ -81,7 +72,7 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {
 		display() 
-        section("Instructions:", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>Information:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions."
 		}
@@ -125,10 +116,38 @@ def pageConfig() {
                 input "sendSafetyPushMessage", "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue:false, required:true
             }
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for this automation", required: false
-            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
-		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
+                }
+            }
+        }
+        section() {
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
+        }
 		display2()
 	}
 }
@@ -141,14 +160,26 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
+    unsubscribe()
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-	if(startTime1) schedule(startTime1, settingUpHandler, [overwrite: false])
-	if(startTime2) schedule(startTime2, settingUpHandler, [overwrite: false])
-	if(startTime3) schedule(startTime3, settingUpHandler, [overwrite: false])
+    checkEnableHandler()
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
+    } else {
+        setDefaults()
+        if(startTime1) schedule(startTime1, settingUpHandler, [overwrite: false])
+        if(startTime2) schedule(startTime2, settingUpHandler, [overwrite: false])
+        if(startTime3) schedule(startTime3, settingUpHandler, [overwrite: false])
+    }
 }
 	
 def settingUpHandler() {
@@ -158,142 +189,152 @@ def settingUpHandler() {
 }
 
 def turnValveOn() {
-    if(state.valveTry == null) state.valveTry = 0
-    if(state.valveTry == 0) { if(logEnable) log.warn "*************** Start Valve On - Simple Irrigation Child - (${state.version}) ***************" }	
-    if(valveORswitch) {
-        if(switchDevice) state.switchStatus = switchDevice.currentValue("switch")
+    checkEnableHandler()
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
     } else {
-        if(valveDevice) state.valveStatus = valveDevice.currentValue("valve")
-    }
-    dayOfTheWeekHandler()
-    checkForWeather()
-    if(state.daysMatch) {
-        if(state.canWater) {
-            if(logEnable) log.debug "In turnValveOn (${state.version})"
-            if(state.valveStatus == "closed" || state.switchStatus == "off") {
-                state.valveTry = state.valveTry + 1
-                if(valveORswitch) {
-                    if(logEnable) log.debug "In turnValveOn - trying to turn on - Attempt ${state.valveTry} - will check again in 20 seconds"
-                    switchDevice.on()
-                } else {
-                    if(logEnable) log.debug "In turnValveOn - trying to open - Attempt ${state.valveTry} - will check again in 20 seconds"
-                    valveDevice.open()
-                }
-                if(state.valveTry <= maxTriesOn) runIn(20, turnValveOn)		// Repeat for safety
-                if(state.valveTry > maxTriesOn) {
-                    if(valveORswitch) {
-                        log.warn "${switchDevice} didn't turn on after ${maxTriesOn} tries."
-                        state.msg = "${switchDevice} didn't turn on after ${maxTriesOn} tries. Please CHECK device."
-                    } else {
-                        log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
-                        state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
-                    }
-                    if(sendTroublePushMessage) pushHandler()
-                    resetTrys()
-                }
-            } else {
-                if(logEnable) log.debug "In turnValveOn - theSchedule: ${state.theSchedule}"
-                if(state.theSchedule == "1") { 
-                    if(onLength1 == null) onLength1 = 10
-                    onLength = onLength1
-                } else if(state.theSchedule == "2") {
-                    if(onLength2 == null) onLength2 = 10
-                    onLength = onLength2
-                } else if(state.theSchedule == "3") {
-                    if(onLength3 == null) onLength3 = 10
-                    onLength = onLength3
-                } else {
-                    onLength = 10
-                }
-                //log.warn "onLength: ${onLength}"
-                def delay = onLength * 60
-                if(valveORswitch) {
-                    if(logEnable) log.debug "In turnValveOn - Switch is now ${state.switchStatus}, Setting switch timer to off in ${onLength} minutes"
-                    log.warn "In turnValveOff - ${switchDevice} is now ${state.switchStatus}"
-                    state.msg = "${switchDevice} is now ${state.switchStatus}"
-                } else {
-                    if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength} minutes"
-                    log.warn "In turnValveOff - ${valveDevice} is now ${state.valveStatus}"
-                    state.msg = "${valveDevice} is now ${state.valveStatus}"
-                }
-                if(sendInfoPushMessage) pushHandler()
-                resetTrys()
-                runIn(delay, turnValveOff)
-            }
-        } else {
-            if(valveORswitch) {
-                log.info "${app.label} didn't pass weather check. ${swtichDevice} not turned on."
-            } else {
-                log.info "${app.label} didn't pass weather check. ${valveDevice} not turned on."
-            }
-            resetTrys()
-            turnValveOff()
-        }
-    } else {
-        if(valveORswitch) {
-            log.info "${app.label} didn't pass day check. Water not turned on."
-            state.msg = "${app.label} didn't pass day check. ${switchDevice} will not turn on."
-        } else {
-            log.info "${app.label} didn't pass day check. Water not turned on."
-            state.msg = "${app.label} didn't pass day check. ${valveDevice} will not turn on."
-        }
-        resetTrys()
-        turnValveOff()
-    }
-    if(state.valveTry == 0) { if(logEnable) log.warn "*************** End Valve On - Simple Irrigation Child - (${state.version}) ***************" }
-}
-
-def turnValveOff() {
-    if(state.valveTryOff == null) state.valveTryOff = 0
-    if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** Start Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
-    dayOfTheWeekHandler()
-    if(state.daysMatch) {
-        if(logEnable) log.debug "In turnValveOff (${state.version})"
+        if(state.valveTry == null) state.valveTry = 0
+        if(state.valveTry == 0) { if(logEnable) log.warn "*************** Start Valve On - Simple Irrigation Child - (${state.version}) ***************" }	
         if(valveORswitch) {
             if(switchDevice) state.switchStatus = switchDevice.currentValue("switch")
         } else {
             if(valveDevice) state.valveStatus = valveDevice.currentValue("valve")
         }
-        if(state.valveStatus == "open" || state.switchStatus == "on") {
-            state.valveTryOff = state.valveTryOff + 1
-            if(valveORswitch) {
-                if(logEnable) log.debug "In turnValveOff - trying to turn off - Attempt ${state.valveTryOff} - will check again in 20 seconds"
-                switchDevice.off()
-            } else {
-                if(logEnable) log.debug "In turnValveOff - trying to close - Attempt ${state.valveTryOff} - will check again in 20 seconds"
-                valveDevice.close()
-            }
-            if(state.valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
-            if(state.valveTryOff > maxTriesOff) {
-                if(valveORswitch) {
-                    log.warn "${switchDevice} didn't turn off after ${maxTriesOff} tries."
-                    state.msg = "${switchDevice} didn't turn off after ${maxTriesOff} tries. Please CHECK device."
+        dayOfTheWeekHandler()
+        checkForWeather()
+        if(state.daysMatch) {
+            if(state.canWater) {
+                if(logEnable) log.debug "In turnValveOn (${state.version})"
+                if(state.valveStatus == "closed" || state.switchStatus == "off") {
+                    state.valveTry = state.valveTry + 1
+                    if(valveORswitch) {
+                        if(logEnable) log.debug "In turnValveOn - trying to turn on - Attempt ${state.valveTry} - will check again in 20 seconds"
+                        switchDevice.on()
+                    } else {
+                        if(logEnable) log.debug "In turnValveOn - trying to open - Attempt ${state.valveTry} - will check again in 20 seconds"
+                        valveDevice.open()
+                    }
+                    if(state.valveTry <= maxTriesOn) runIn(20, turnValveOn)		// Repeat for safety
+                    if(state.valveTry > maxTriesOn) {
+                        if(valveORswitch) {
+                            log.warn "${switchDevice} didn't turn on after ${maxTriesOn} tries."
+                            state.msg = "${switchDevice} didn't turn on after ${maxTriesOn} tries. Please CHECK device."
+                        } else {
+                            log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
+                            state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
+                        }
+                        if(sendTroublePushMessage) pushHandler()
+                        resetTrys()
+                    }
                 } else {
-                    log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
-                    state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
+                    if(logEnable) log.debug "In turnValveOn - theSchedule: ${state.theSchedule}"
+                    if(state.theSchedule == "1") { 
+                        if(onLength1 == null) onLength1 = 10
+                        onLength = onLength1
+                    } else if(state.theSchedule == "2") {
+                        if(onLength2 == null) onLength2 = 10
+                        onLength = onLength2
+                    } else if(state.theSchedule == "3") {
+                        if(onLength3 == null) onLength3 = 10
+                        onLength = onLength3
+                    } else {
+                        onLength = 10
+                    }
+                    //log.warn "onLength: ${onLength}"
+                    def delay = onLength * 60
+                    if(valveORswitch) {
+                        if(logEnable) log.debug "In turnValveOn - Switch is now ${state.switchStatus}, Setting switch timer to off in ${onLength} minutes"
+                        log.warn "In turnValveOff - ${switchDevice} is now ${state.switchStatus}"
+                        state.msg = "${switchDevice} is now ${state.switchStatus}"
+                    } else {
+                        if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength} minutes"
+                        log.warn "In turnValveOff - ${valveDevice} is now ${state.valveStatus}"
+                        state.msg = "${valveDevice} is now ${state.valveStatus}"
+                    }
+                    if(sendInfoPushMessage) pushHandler()
+                    resetTrys()
+                    runIn(delay, turnValveOff)
                 }
-                if(sendTroublePushMessage) pushHandler()
+            } else {
+                if(valveORswitch) {
+                    log.info "${app.label} didn't pass weather check. ${swtichDevice} not turned on."
+                } else {
+                    log.info "${app.label} didn't pass weather check. ${valveDevice} not turned on."
+                }
                 resetTrys()
+                turnValveOff()
             }
         } else {
             if(valveORswitch) {
-                log.warn "In turnValveOff - ${switchDevice} is now ${state.switchStatus}"
-                state.msg = "${switchDevice} is now ${state.switchStatus}"
+                log.info "${app.label} didn't pass day check. Water not turned on."
+                state.msg = "${app.label} didn't pass day check. ${switchDevice} will not turn on."
             } else {
-                log.warn "In turnValveOff - ${valveDevice} is now ${state.valveStatus}"
-                state.msg = "${valveDevice} is now ${state.valveStatus}"
+                log.info "${app.label} didn't pass day check. Water not turned on."
+                state.msg = "${app.label} didn't pass day check. ${valveDevice} will not turn on."
             }
-            if (!state.canWater) {
-                state.msg = "${valveDevice} is now ${state.valveStatus}. Watering session skipped due to weather switch."
-                resetTrys()
+            resetTrys()
+            turnValveOff()
+        }
+        if(state.valveTry == 0) { if(logEnable) log.warn "*************** End Valve On - Simple Irrigation Child - (${state.version}) ***************" }
+    }
+}
+
+def turnValveOff() {
+    checkEnableHandler()
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
+    } else {
+        if(state.valveTryOff == null) state.valveTryOff = 0
+        if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** Start Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
+        dayOfTheWeekHandler()
+        if(state.daysMatch) {
+            if(logEnable) log.debug "In turnValveOff (${state.version})"
+            if(valveORswitch) {
+                if(switchDevice) state.switchStatus = switchDevice.currentValue("switch")
+            } else {
+                if(valveDevice) state.valveStatus = valveDevice.currentValue("valve")
             }
-            if ((!state.canWater && sendSafetyPushMessage == true) || (state.canWater)) {
-                if(sendInfoPushMessage) pushHandler()
-                resetTrys()
+            if(state.valveStatus == "open" || state.switchStatus == "on") {
+                state.valveTryOff = state.valveTryOff + 1
+                if(valveORswitch) {
+                    if(logEnable) log.debug "In turnValveOff - trying to turn off - Attempt ${state.valveTryOff} - will check again in 20 seconds"
+                    switchDevice.off()
+                } else {
+                    if(logEnable) log.debug "In turnValveOff - trying to close - Attempt ${state.valveTryOff} - will check again in 20 seconds"
+                    valveDevice.close()
+                }
+                if(state.valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
+                if(state.valveTryOff > maxTriesOff) {
+                    if(valveORswitch) {
+                        log.warn "${switchDevice} didn't turn off after ${maxTriesOff} tries."
+                        state.msg = "${switchDevice} didn't turn off after ${maxTriesOff} tries. Please CHECK device."
+                    } else {
+                        log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
+                        state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
+                    }
+                    if(sendTroublePushMessage) pushHandler()
+                    resetTrys()
+                }
+            } else {
+                if(valveORswitch) {
+                    log.warn "In turnValveOff - ${switchDevice} is now ${state.switchStatus}"
+                    state.msg = "${switchDevice} is now ${state.switchStatus}"
+                } else {
+                    log.warn "In turnValveOff - ${valveDevice} is now ${state.valveStatus}"
+                    state.msg = "${valveDevice} is now ${state.valveStatus}"
+                }
+                if (!state.canWater) {
+                    state.msg = "${valveDevice} is now ${state.valveStatus}. Watering session skipped due to weather switch."
+                    resetTrys()
+                }
+                if ((!state.canWater && sendSafetyPushMessage == true) || (state.canWater)) {
+                    if(sendInfoPushMessage) pushHandler()
+                    resetTrys()
+                }
             }
         }
+        if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** End Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
     }
-    if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** End Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
 }
 
 def resetTrys() {
@@ -366,8 +407,6 @@ def pushHandler(){
     state.msg = ""
 }
 
-// ********** Normal Stuff **********
-
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.rainDevice == null){state.rainDevice = "off"}
@@ -377,6 +416,28 @@ def setDefaults(){
 	if(state.msg == null){state.msg = ""}
     state.valveTry = 0
     state.valveTryOff = 0
+}
+
+// ********** Normal Stuff **********
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
+        }
+    }
+}
+
+def showHideNextButton(show) {
+	if(show) paragraph "<script>\$('button[name=\"_action_next\"]').show()</script>"  
+	else paragraph "<script>\$('button[name=\"_action_next\"]').hide()</script>"
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -395,15 +456,23 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
