@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.7 - 01/31/22 - Adjustment to The Flasher, Upgrade to Switches In Sequence, App Debounce now works with reverse
 *  3.4.6 - 01/29/22 - Added Window Shades and Window Blinds to Actions
 *  3.4.5 - 01/25/22 - Minor Changes
 *  3.4.4 - 01/22/22 - Added App Debounce Option, Added Custom Colors Option, Fixed typo in Switches In Sequence
@@ -60,7 +61,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.6"
+    state.name = "Event Engine Cog"; state.version = "3.4.7"
 }
 
 definition(
@@ -2491,17 +2492,32 @@ def pageConfig() {
                 app.removeSetting("switchedDimDnAction")
                 app.removeSetting("lcColorTemp")
             }
-                         
+          
             if(actionType.contains("aSwitchSequence")) {
                 paragraph "<b>Switches In Sequence</b>"
-                paragraph "Sometimes you need things to turn on in a specific order. This section will do just that. Great for entertainment systems!"
-                input "deviceSeqAction1", "capability.switch", title: "Switches to turn On - 1", multiple:true, submitOnChange:true
-                input "deviceSeqAction2", "capability.switch", title: "Switches to turn On - 2", multiple:true, submitOnChange:true
-                input "deviceSeqAction3", "capability.switch", title: "Switches to turn On - 3", multiple:true, submitOnChange:true
-                input "deviceSeqAction4", "capability.switch", title: "Switches to turn On - 4", multiple:true, submitOnChange:true
-                input "deviceSeqAction5", "capability.switch", title: "Switches to turn On - 5", multiple:true, submitOnChange:true             
-                theCogActions += "<b>-</b> Switches to turn On in order: ${deviceSeqAction1} - ${deviceSeqAction2} - ${deviceSeqAction3} - ${deviceSeqAction4} - ${deviceSeqAction5}<br>"
-                paragraph "<small>* Note: If Reverse Action is selected below, the switches selected here will turn off in reverse order. ie. 5,4,3,2,1</small>"
+                paragraph "Sometimes you need things to turn on/off in a specific order. This section will do just that. Great for entertainment systems!"
+                input "deviceSeqAction1", "capability.switch", title: "Switches to Command - 1", multiple:true, submitOnChange:true
+                if(deviceSeqAction1) {
+                    input "dsaCommand1", "enum", title: "Command to Send to all Switches - 1", options: ["on","off"], defaultValue: "on", submitOnChange:true
+                }
+                input "deviceSeqAction2", "capability.switch", title: "Switches to Command - 2", multiple:true, submitOnChange:true
+                if(deviceSeqAction2) {
+                    input "dsaCommand2", "enum", title: "Command to Send to all Switches - 2", options: ["on","off"], defaultValue: "on", submitOnChange:true
+                }
+                input "deviceSeqAction3", "capability.switch", title: "Switches to Command - 3", multiple:true, submitOnChange:true
+                if(deviceSeqAction3) {
+                    input "dsaCommand3", "enum", title: "Command to Send to all Switches - 3", options: ["on","off"], defaultValue: "on", submitOnChange:true
+                }
+                input "deviceSeqAction4", "capability.switch", title: "Switches to Command - 4", multiple:true, submitOnChange:true
+                if(deviceSeqAction4) {
+                    input "dsaCommand4", "enum", title: "Command to Send to all Switches - 4", options: ["on","off"], defaultValue: "on", submitOnChange:true
+                }
+                input "deviceSeqAction5", "capability.switch", title: "Switches to Command - 5", multiple:true, submitOnChange:true
+                if(deviceSeqAction5) {
+                    input "dsaCommand5", "enum", title: "Command to Send to all Switches - 5", options: ["on","off"], defaultValue: "on", submitOnChange:true
+                }
+                theCogActions += "<b>-</b> Switches to turn On in order: ${deviceSeqAction1} (${dsaCommand1}) - ${deviceSeqAction2} (${dsaCommand2}) - ${deviceSeqAction3} (${dsaCommand3}) - ${deviceSeqAction4} (${dsaCommand4}) - ${deviceSeqAction5} (${dsaCommand5})<br>"
+                paragraph "<small>* Note: If Reverse Action is selected below, the switches selected here will turn on/off in reverse order. ie. 5,4,3,2,1</small>"
                 paragraph "<hr>"
             } else {
                 app.removeSetting("deviceSeqAction1")
@@ -2509,9 +2525,14 @@ def pageConfig() {
                 app.removeSetting("deviceSeqAction3")
                 app.removeSetting("deviceSeqAction4")
                 app.removeSetting("deviceSeqAction5")
-            }                
+                app.removeSetting("dsaCommand1")
+                app.removeSetting("dsaCommand2")
+                app.removeSetting("dsaCommand3")
+                app.removeSetting("dsaCommand4")
+                app.removeSetting("dsaCommand5")
+            }
                 
-// ***** Start Switches per Mode - NEW *****   
+// ***** Start Switches per Mode *****   
             if(actionType.contains("aSwitchesPerMode")) {
                 paragraph "<b>Switches Per Mode - NEW</b>"
                 input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
@@ -3288,10 +3309,10 @@ def initialize() {
 def startTheProcess(evt) {
     if(switchesToSync) {
         if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
-            if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus}"
+            if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
         }
     } else {
-        if(logEnable || shortLog) log.debug "In startTheProcess - Starting - appStatus: ${state.appStatus}"
+        if(logEnable || shortLog) log.debug "In startTheProcess - Starting - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
         if(atomicState.running == null) atomicState.running = "Stopped"
         if(atomicState.tryRunning == null) atomicState.tryRunning = 0
         checkEnableHandler()
@@ -3316,7 +3337,7 @@ def startTheProcess(evt) {
                 atomicState.running = "Running"
                 atomicState.tryRunning = 0
                 if(logEnable || shortLog) log.trace "*"
-                if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} ********************"
+                if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus} ********************"
                 if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
                 state.isThereDevices = false;    state.isThereSPDevices = false;    state.areRestrictions = false;    state.setpointLow = null;    state.setpointHigh = null;    state.whoText = ""
                 if(startTime || preMadePeriodic) {
@@ -3460,7 +3481,7 @@ def startTheProcess(evt) {
                             } else {
                                 state.appStatus = "inactive"
                             }
-                            if(logEnable || shortLog) log.debug "In startTheProcess - appStatus: ${state.appStatus}"
+                            if(logEnable || shortLog) log.debug "In startTheProcess - RUN - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
                             if(state.appStatus == "inactive") {
                                 if(logEnable || shortLog) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -3535,6 +3556,7 @@ def startTheProcess(evt) {
                                             }
                                             if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                                             state.appStatus = "active"
+                                            state.appRevStatus = "round1"
                                         }
                                         if(keypadAction) securityKeypadActionHandler()
                                         if(setHSM) hsmChangeActionHandler()
@@ -3555,129 +3577,150 @@ def startTheProcess(evt) {
                                         if(logEnable || shortLog) log.debug "In startTheProcess - Can't run again until ${certainTimeHasPassedEvent} minutes have passed since the last time it ran. (last ran: $lastRan)"
                                     }
                                 }
+                            } else {
+                                if(logEnable || shortLog) log.debug "In startTheProcess - RUN - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}, so skipping"
                             }
                         } else {
                             if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
                             state.appStatus = "inactive"
+                            state.appRevStatus = "round1"
                         }
                     } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
-                        if(reverseWithDelay && state.hasntDelayedReverseYet) {
-                            if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
-                            if(reverseWithDelay) {
-                                if(sdTimePerMode) {
-                                    if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode"
-                                    masterDimmersPerMode.each { itOne ->
-                                        def theData = "${state.sdPerModeMap}".split(",")        
-                                        theData.each { itTwo -> 
-                                            def pieces = itTwo.split(":")
-                                            try {
-                                                theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
-                                            } catch(e) {
-                                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
-                                                log.error(getExceptionMessageWithLine(e))
+                        if(useAppStatus) {
+                            if(state.appStatus == null) state.appStatus = "active"
+                            if(state.appRevStatus == null) state.appRevStatus = "round1"
+                        } else {
+                            state.appStatus = "active"
+                            if(state.appRevStatus == null) state.appRevStatus = "round1"
+                        }
+                        if(logEnable || shortLog) log.debug "In startTheProcess - REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
+                        if(state.appStatus == "active" || state.appRevStatus == "round2") {
+                            if(reverseWithDelay && state.hasntDelayedReverseYet) {
+                                if(logEnable || shortLog) log.debug "In startTheProcess - SETTING UP DELAY REVERSE"
+                                if(reverseWithDelay) {
+                                    if(sdTimePerMode) {
+                                        if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode"
+                                        masterDimmersPerMode.each { itOne ->
+                                            def theData = "${state.sdPerModeMap}".split(",")        
+                                            theData.each { itTwo -> 
+                                                def pieces = itTwo.split(":")
+                                                try {
+                                                    theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
+                                                } catch(e) {
+                                                    if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - Something Went Wrong"
+                                                    log.error(getExceptionMessageWithLine(e))
+                                                }
+                                                if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
+                                                theTimeType = theTimeType.replace("]","")
+                                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
+                                                currentMode = location.mode
+                                                def modeCheck = currentMode.contains(theMode)
+                                                if(modeCheck) {
+                                                    if(theTimeType == "false") {    // Minutes
+                                                        timeTo = theTime ?: 2
+                                                        theDelay = timeTo.toInteger() * 60
+                                                    } else {
+                                                        timeTo = theTime ?: 120
+                                                        theDelay = timeTo.toInteger()
+                                                    }
+                                                    if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-sdTimePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
+                                                    if(theTimeType) {
+                                                        if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                                    } else {
+                                                        if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
+                                                    }
+                                                } else {
+                                                    if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode - No Match"
+                                                }
                                             }
-                                            if(theMode.startsWith(" ") || theMode.startsWith("[")) theMode = theMode.substring(1)
-                                            theTimeType = theTimeType.replace("]","")
-                                            if(logEnable || shortLog) log.debug "In startTheProcess - Reverse-sdTimePerMode - theMode: ${theMode} - theTime: ${theTime} - theTimeType: ${theTimeType}"
-                                            currentMode = location.mode
-                                            def modeCheck = currentMode.contains(theMode)
-                                            if(modeCheck) {
-                                                if(theTimeType == "false") {    // Minutes
-                                                    timeTo = theTime ?: 2
-                                                    theDelay = timeTo.toInteger() * 60
-                                                } else {
-                                                    timeTo = theTime ?: 120
-                                                    theDelay = timeTo.toInteger()
-                                                }
-                                                if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse-sdTimePerMode - currentMode: ${currentMode} - modeCheck: ${modeCheck} - timeTo: ${timeTo} - theTimeType: ${theTimeType}"
-                                                if(theTimeType) {
-                                                    if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
-                                                } else {
-                                                    if((logEnable || shortLog)) log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                                                }
+                                        }
+                                    } else {
+                                        if(reverseTimeType) {
+                                            timeTo = timeToReverse ?: 60
+                                            theDelay = timeTo.toInteger()
+                                        } else {
+                                            timeTo = timeToReverse ?: 2
+                                            theDelay = timeTo.toInteger() * 60
+                                        }                   
+                                        if(logEnable || shortLog) {
+                                            log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
+                                            if(reverseTimeType) {
+                                                log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
                                             } else {
-                                                if(logEnable) log.debug "In startTheProcess - Reverse-sdTimePerMode - No Match"
+                                                log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
                                             }
                                         }
                                     }
                                 } else {
-                                    if(reverseTimeType) {
-                                        timeTo = timeToReverse ?: 60
-                                        theDelay = timeTo.toInteger()
-                                    } else {
-                                        timeTo = timeToReverse ?: 2
-                                        theDelay = timeTo.toInteger() * 60
-                                    }                   
-                                    if(logEnable || shortLog) {
-                                        log.debug "In startTheProcess - Reverse - reverseTimeType: ${reverseTimeType}"
-                                        if(reverseTimeType) {
-                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} second(s) (theDelay: ${theDelay})"
-                                        } else {
-                                            log.debug "In startTheProcess - Reverse - Delay is set for ${timeTo} minute(s) (theDelay: ${theDelay})"
+                                    if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
+                                }
+                                state.hasntDelayedReverseYet = false
+                                if(dimWhileDelayed && (state.appStatus == "active")) {
+                                    state.appStatus = "inactive"
+                                    state.appRevStatus = "round2"
+                                    permanentDimHandler()
+                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                } else if(dimAfterDelayed && (state.appStatus == "active")) { 
+                                    theDelay = theDelay ?: 60
+                                    wds = warningDimSec ?: 30
+                                    firstDelay = theDelay - wds
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
+                                    state.appStatus = "inactive"
+                                    state.appRevStatus = "round2"
+                                    runIn(firstDelay, permanentDimHandler)
+                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                } else {
+                                    state.appStatus = "inactive"
+                                    state.appRevStatus = "round2"
+                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                }
+                            } else {             
+                                if(actionType) {
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
+                                    state.appStatus = "inactive"
+                                    state.appRevStatus = "round1"
+                                    if(actionType.contains("aFan")) { fanReverseActionHandler() }
+                                    if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                                    if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
+                                    if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
+                                    if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
+                                    if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
+                                    if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
+                                    if(actionType.contains("aSwitchesColorChange") && permanentDim) { permanentDimHandler() }
+                                    if(actionType.contains("aSwitchesColorChange") && !permanentDim) { colorChangeReverseHandler() }
+                                    if(additionalSwitches) { additionalSwitchesHandler() }
+                                    if(state.betweenTime) {
+                                        if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                                            if(actionType.contains("aNotification")) { 
+                                                state.doMessage = true
+                                                messageHandler() 
+                                                if(useTheFlasher) theFlasherHandler()
+                                            }
                                         }
                                     }
-                                }
-                            } else {
-                                if(logEnable || shortLog) log.warn "In startTheProcess - Reverse - Something went wrong"
-                            }
-                            state.hasntDelayedReverseYet = false
-                            if(dimWhileDelayed && (state.appStatus == "active")) { 
-                                permanentDimHandler() 
-                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                            } else if(dimAfterDelayed && (state.appStatus == "active")) { 
-                                theDelay = theDelay ?: 60
-                                wds = warningDimSec ?: 30
-                                firstDelay = theDelay - wds
-                                if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
-                                state.appStatus = "inactive"
-                                runIn(firstDelay, permanentDimHandler)
-                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                            } else {
-                                state.appStatus = "inactive"
-                                runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
-                            }
-                        } else {             
-                            if(actionType) {
-                                state.appStatus = "inactive"
-                                if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus}"
-                                if(actionType.contains("aFan")) { fanReverseActionHandler() }
-                                if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
-                                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
-                                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                                if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
-                                if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
-                                if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
-                                if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
-                                if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
-                                if(actionType.contains("aSwitchesColorChange") && permanentDim) { permanentDimHandler() }
-                                if(actionType.contains("aSwitchesColorChange") && !permanentDim) { colorChangeReverseHandler() }
-                                if(additionalSwitches) { additionalSwitchesHandler() }
-                                if(state.betweenTime) {
-                                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                                        if(actionType.contains("aNotification")) { 
-                                            state.doMessage = true
-                                            messageHandler() 
-                                            if(useTheFlasher) theFlasherHandler()
-                                        }
+                                    if(actionType.contains("aBlueIris")) {
+                                        if(biControl == "Camera_Enable") { biChangeHandler("0") }
+                                        if(biControl == "Camera_Disable") { biChangeHandler("1") }
                                     }
+                                    if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                                 }
-                                if(actionType.contains("aBlueIris")) {
-                                    if(biControl == "Camera_Enable") { biChangeHandler("0") }
-                                    if(biControl == "Camera_Disable") { biChangeHandler("1") }
-                                }
-                                if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
+                                state.hasntDelayedReverseYet = true
                             }
-                            state.hasntDelayedReverseYet = true
+                        } else {
+                            if(logEnable || shortLog) log.debug "In startTheProcess - REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}, so skipping"
                         }
                     } else {
                         if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
                         state.appStatus = "inactive"
+                        state.appRevStatus = "round1"
                     }
                 }
                 resetStatesHandler()
-                if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} *********************"
+                if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus} *********************"
                 if(logEnable || shortLog) log.trace "*"
                 atomicState.running = "Stopped"
             } catch(e) {
@@ -3688,6 +3731,7 @@ def startTheProcess(evt) {
             resetStatesHandler()
             if(logEnable || shortLog) log.trace "No Actions selected. Ending"
             state.appStatus = "inactive"
+            state.appRevStatus = "round1"
         }
         if(timeDaysType) {
             if(timeDaysType.contains("tHoliday")) { unschedule(startTheProcess) }
@@ -4495,31 +4539,51 @@ def switchesInSequenceHandler() {
     if(deviceSeqAction1) {
         deviceSeqAction1.each { it ->
             pauseExecution(actionDelay)
-            it.on()
+            if(dsaCommand1 == "on") {
+                it.on()
+            } else if(dsaCommand1 == "off") {
+                it.off()
+            }
         }
     }
     if(deviceSeqAction2) {
         deviceSeqAction2.each { it ->
             pauseExecution(actionDelay)
-            it.on()
+            if(dsaCommand2 == "on") {
+                it.on()
+            } else if(dsaCommand2 == "off") {
+                it.off()
+            }
         }
     }
     if(deviceSeqAction3) {
         deviceSeqAction3.each { it ->
             pauseExecution(actionDelay)
-            it.on()
+            if(dsaCommand3 == "on") {
+                it.on()
+            } else if(dsaCommand3 == "off") {
+                it.off()
+            }
         }
     }
     if(deviceSeqAction4) {
         deviceSeqAction4.each { it ->
             pauseExecution(actionDelay)
-            it.on()
+            if(dsaCommand4 == "on") {
+                it.on()
+            } else if(dsaCommand4 == "off") {
+                it.off()
+            }
         }
     }
     if(deviceSeqAction5) {
         deviceSeqAction5.each { it ->
             pauseExecution(actionDelay)
-            it.on()
+            if(dsaCommand5 == "on") {
+                it.on()
+            } else if(dsaCommand5 == "off") {
+                it.off()
+            }
         }
     }
 }
@@ -4529,31 +4593,51 @@ def switchesInSequenceReverseHandler() {
     if(deviceSeqAction5) {
         deviceSeqAction5.each { it ->
             pauseExecution(actionDelay)
-            it.off()
+            if(dsaCommand5 == "on") {
+                it.off()
+            } else if(dsaCommand5 == "off") {
+                it.on()
+            }
         }
     }
     if(deviceSeqAction4) {
         deviceSeqAction4.each { it ->
             pauseExecution(actionDelay)
-            it.off()
+            if(dsaCommand4 == "on") {
+                it.off()
+            } else if(dsaCommand4 == "off") {
+                it.on()
+            }
         }
     }
     if(deviceSeqAction3) {
         deviceSeqAction3.each { it ->
             pauseExecution(actionDelay)
-            it.off()
+            if(dsaCommand3 == "on") {
+                it.off()
+            } else if(dsaCommand3 == "off") {
+                it.on()
+            }
         }
     }
     if(deviceSeqAction2) {
         deviceSeqAction2.each { it ->
             pauseExecution(actionDelay)
-            it.off()
+            if(dsaCommand2 == "on") {
+                it.off()
+            } else if(dsaCommand2 == "off") {
+                it.on()
+            }
         }
     }
     if(deviceSeqAction1) {
         deviceSeqAction1.each { it ->
             pauseExecution(actionDelay)
-            it.off()
+            if(dsaCommand1 == "on") {
+                it.off()
+            } else if(dsaCommand1 == "off") {
+                it.on()
+            }
         }
     }
 }
@@ -4645,8 +4729,7 @@ def dimmerOnReverseActionHandler() {
 }
 
 def permanentDimHandler() {
-    state.appStatus = "inactive"
-    if(logEnable) log.debug "In permanentDimHandler - appStatus: ${state.appStatus}"
+    if(logEnable) log.debug "In permanentDimHandler (${state.version})"
     if(setDimmersPerMode) {
         currentMode = location.mode
         setDimmersPerMode.each { it ->
