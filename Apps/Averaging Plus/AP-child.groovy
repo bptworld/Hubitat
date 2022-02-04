@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Average just about anything. Get notifications based on Setpoints.
  *
- *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 01/12/22 - Minor change
  *  1.1.5 - 08/20/21 - Added decimal option
  *  1.1.4 - 08/03/21 - Fixed averaging issue
  *  1.1.3 - 07/21/21 - No longer rounding the original number
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -294,7 +295,6 @@ def initialize() {
             if(triggerMode == "30_Min") runEvery30Minutes(averageHandler)
             if(triggerMode == "1_Hour") runEvery1Hour(averageHandler)
             if(triggerMode == "3_Hour") runEvery3Hours(averageHandler)
-
             schedule(timeToReset, resetHandler)        
             averageHandler()
         }
@@ -360,12 +360,10 @@ def averageHandler(evt) {
             if(totalNum == 0 || totalNum == null) {
                 state.theAverage = 0
             } else {
-                state.theAverage = floatingPoint
-                ? (totalNum / numOfDev).toDouble().round(1)
-                : (totalNum / numOfDev).toDouble().round(1)
+                state.theAverage = (totalNum / numOfDev).toDouble().round(1)
             }
             if(decimals) state.theAverage = state.theAverage.toInteger()
-            if(logEnable) log.debug "In averageHandler - theAverage: ${state.theAverage}"
+            if(logEnable) log.debug "In averageHandler - totalNum: ${totalNum} - numOfDev: ${numOfDev} - theAverage: ${state.theAverage}"
 
             todaysHigh = dataDevice.currentValue("todaysHigh")
             todaysLow = dataDevice.currentValue("todaysLow")
