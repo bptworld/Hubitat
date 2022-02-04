@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
     1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
     1.0.7 - 01/09/22 - Fixed Chime Tone Volume
     1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
@@ -25,7 +26,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.8.dk"
+    return "1.0.9"
 }
 
 metadata {
