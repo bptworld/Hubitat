@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.6 - 01/12/22 - Minor change
+ *  1.1.6 - 02/03/22 - Minor change
  *  1.1.5 - 08/20/21 - Added decimal option
  *  1.1.4 - 08/03/21 - Fixed averaging issue
  *  1.1.3 - 07/21/21 - No longer rounding the original number
