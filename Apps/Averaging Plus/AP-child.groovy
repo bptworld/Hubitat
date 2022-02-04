@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.6 - 02/03/22 - Minor change
+ *  1.1.6 - 02/03/22 - Minor changes, new option - Max hours since device has reported
  *  1.1.5 - 08/20/21 - Added decimal option
  *  1.1.4 - 08/03/21 - Fixed averaging issue
  *  1.1.3 - 07/21/21 - No longer rounding the original number
@@ -171,6 +171,11 @@ def pageConfig() {
             }
         }
 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+            paragraph "Sometimes a device can stop sending values (ie. run out of battery). With this option, if the device hasn't reported in - in X hours - do not include the value in the average."
+            input "maxHours", "number", title: "Max Hours Since Reporting (1 to 24)", range: '1..24', submitOnChange:true
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
@@ -342,18 +347,21 @@ def averageHandler(evt) {
             floatingPoint = false
             if(logEnable) log.debug "In averageHandler - Attribute: ${attrib}"
             theDevices.each { it ->
-                num1 = it.currentValue("${attrib}")
-                if(num1) {
-                    num = num1.toDouble()
-                    if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
-                    if(num) {
+                getTimeDiff(it)
+                if(state.active) {
+                    num1 = it.currentValue("${attrib}")
+                    if(num1) {
+                        num = num1.toDouble()
+                        if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
+                        if(num) {
+                            numOfDev += 1
+                            totalNum += num
+                        }
+                    } else {
+                        if(num == null) num = "0"
+                        if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
                         numOfDev += 1
-                        totalNum += num
                     }
-                } else {
-                    if(num == null) num = "0"
-                    if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
-                    numOfDev += 1
                 }
             }
             
@@ -530,6 +538,38 @@ def dayOfTheWeekHandler() {
         state.daysMatch = true
     }
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+}
+
+def getTimeDiff(aDevice) { 
+    if(logEnable) log.debug "In getTimeDiff (${state.version}) - working on ${aDevice}"
+    try {
+	    since = aDevice.getLastActivity()
+        def prev = Date.parse("yyy-MM-dd HH:mm:ssZ","${since}".replace("+00:00","+0000"))
+        def now = new Date()
+        use(TimeCategory) {       
+            theDur = now - prev
+            theDays = theDur.days
+            theHours = theDur.hours
+        }
+    } catch (e) {
+        log.warn "Device Watchdog - ${aDevice} does not have a Last Activity value, This device will not work with Device Watchdog"
+    }
+    
+    if(!theDays) theDays = 0
+    if(!theHours) theHours = 0
+        
+    theDays = theDays.toInteger()
+    theHours = theHours.toInteger()
+    totalHours = ((theDays * 24) + theHours)
+        
+    if(logEnable) log.info "In getTimeDiff - ${aDevice} - dur: ${theDur} - days: ${theDays} - hours: ${theHours} - totalHours: ${totalHours}"
+    maxHours = maxHours ?: 12
+    if(totalHours >= maxHours) {
+        if(logEnable) log.info "In getTimeDiff - ${aDevice} - Hasn't reported in ${totalHours}. Tossing value."
+        state.active = false
+    } else {
+        state.active = true
+    }
 }
 
 // ********** Normal Stuff **********
