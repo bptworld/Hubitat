@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
     1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
     1.0.7 - 01/09/22 - Fixed Chime Tone Volume
     1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
@@ -25,7 +26,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.8"
+    return "1.0.9"
 }
 
 metadata {
@@ -39,6 +40,8 @@ metadata {
         capability "PowerSource"
         capability "LockCodes"
         capability "Motion Sensor"
+        capability "PushableButton"
+        capability "HoldableButton"
 
         command "entry"
         command "setArmNightDelay", ["number"]
@@ -60,6 +63,7 @@ metadata {
         input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}<br>Note:<br>The first 3 Tones are alarm sounds that also flash the Red Indicator Bar on the keypads. The rest are more pleasant sounds that could be used for a variety of things."
         configParams.each { input it.value.input }
         input name: "sirenVolume", type: "enum", title: "Chime Tone Volume", options: [
+            ["0":"0"],
             ["10":"1"],
             ["20":"2"],
             ["30":"3"],
@@ -94,6 +98,8 @@ metadata {
         4: [input: [name: "configParam4", type: "enum", title: "Announcement Volume", description:"", defaultValue:7, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         5: [input: [name: "configParam5", type: "enum", title: "Keytone Volume", description:"", defaultValue:6, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         //6: [input: [name: "configParam6", type: "enum", title: "Siren Volume", description:"", defaultValue:10, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
+        7: [input: [name: "configParam7", type: "number", title: "Long press Emergency Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
+        8: [input: [name: "configParam8", type: "number", title: "Long press Number pad Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
         12: [input: [name: "configParam12", type: "number", title: "Security Mode Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
         13: [input: [name: "configParam13", type: "number", title: "Key Backlight Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
 ]
@@ -403,16 +409,60 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
             case 17:    // Police Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
+                sendEvent(name: "held", value: 11, isStateChange: true)
                 break
             case 16:    // Fire Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
+                sendEvent(name: "held", value: 12, isStateChange: true)
                 break
             case 19:    // Medical Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
+                sendEvent(name: "held", value: 13, isStateChange: true)
+                break
+            case 1:     // Button pressed or held, idle timeout reached without explicit submission
+                state.type="physical"
+                handleButtons(code)
                 break
         }
+    }
+}
+
+void handleButtons(String code) {
+    List<String> buttons = code.split('')
+    for (String btn : buttons) {
+        try {
+            int val = Integer.parseInt(btn)
+            sendEvent(name: "pushed", value: val, isStateChange: true)
+        } catch (NumberFormatException e) {
+            // Handle button holds here
+            char ch = btn
+            char a = 'A'
+            int pos = ch - a + 1
+            sendEvent(name: "held", value: pos, isStateChange: true)
+        }
+    }
+}
+
+void push(btn) {
+    state.type = "digital"
+    sendEvent(name: "pushed", value: btn, isStateChange: true)
+}
+
+void hold(btn) {
+    state.type = "digital"
+    sendEvent(name: "held", value: btn, isStateChange:true)
+    switch (btn) {
+        case 11:
+            sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
+            break
+        case 12:
+            sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
+            break
+        case 13:
+            sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
+            break
     }
 }
 
