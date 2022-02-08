@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.8 - 02/08/22 - Added option to include/exclude No Code Unlocks
 *  3.4.7 - 01/31/22 - Adjustment to The Flasher, Upgrade to Switches In Sequence, App Debounce now works with reverse
 *  3.4.6 - 01/29/22 - Added Window Shades and Window Blinds to Actions
 *  3.4.5 - 01/25/22 - Minor Changes
@@ -61,7 +62,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.7"
+    state.name = "Event Engine Cog"; state.version = "3.4.8"
 }
 
 definition(
@@ -1200,12 +1201,14 @@ def pageConfig() {
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
-                    theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
+                    input "noCodeUnlocks", "bool", title: "Include Manual Unlocks (hand turn, key and/or digital without code)", defaultValue:false, submitOnChange:true
+                    theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeUnlocks: ${noCodeUnlocks}<br>"
                 } else {
                     app.removeSetting("lockUser")
                     app.removeSetting("lockEvent")
                     app.removeSetting("lUnlockedLocked")
                     app.removeSetting("lockANDOR")
+                    app.removeSetting("noCodeUnlocks")
                 }
 
                 input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required:false, multiple:false, submitOnChange:true
@@ -4031,7 +4034,14 @@ def deviceHandler(data) {
                 if(logEnable) log.debug "In deviceHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
                     if(state.whoText.contains("unlocked by")) {
-                        if(lockUser) {
+                        if(state.whoText.contains("digital command")) {
+                            if(noCodeUnlocks) {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, Including"
+                                deviceTrue2 = deviceTrue2 + 1
+                            } else {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, NOT Including"
+                            }
+                        } else if(lockUser) {
                             state.whoUnlocked = it.currentValue("lastCodeName")
                             lockUser.each { us ->
                                 if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
@@ -4041,12 +4051,16 @@ def deviceHandler(data) {
                                 }
                             }
                         } else {
-                            if(logEnable) log.debug "In deviceHandler - No user selected, no notifications necessary"
+                            if(logEnable) log.debug "In deviceHandler - No user selected, moving on"
                             deviceTrue2 = deviceTrue2 + 1
                         }
                     } else {
-                        if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, no notifications necessary"
-                        deviceTrue2 = deviceTrue2 + 1
+                        if(noCodeUnlocks) {
+                            if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, Including"
+                            deviceTrue2 = deviceTrue2 + 1
+                        } else {
+                            if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, NOT Including"
+                        }
                     }
                 } else if(state.eventType == "switch") {
                     if(seType) {
