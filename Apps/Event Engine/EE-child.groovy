@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.4.9 - 02/10/22 - Adjustment to locks code
 *  3.4.8 - 02/08/22 - Added option to include/exclude No Code Unlocks
 *  3.4.7 - 01/31/22 - Adjustment to The Flasher, Upgrade to Switches In Sequence, App Debounce now works with reverse
 *  3.4.6 - 01/29/22 - Added Window Shades and Window Blinds to Actions
@@ -62,7 +63,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.8"
+    state.name = "Event Engine Cog"; state.version = "3.4.9"
 }
 
 definition(
@@ -1967,6 +1968,7 @@ def pageConfig() {
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
                 ["aLZW45":"Inovelli Light Strip (LZW45)"],
+                ["aLifxStrip":"Lifx Pattern Controller"],
                 ["aLock":"Locks"],
                 ["aMode":"Modes"],
                 ["aNotification":"Notifications (speech/push/flash)"],
@@ -2169,6 +2171,24 @@ def pageConfig() {
             } else {
                 app.removeSetting("lzw45Action")
                 app.removeSetting("lzw45Command")
+            }
+            
+            if(actionType.contains("aLifxStrip")) {
+                paragraph "<b>Pattern Controller</b><br><small>For use with the Lifx Strip Light and the Pattern Controller app</small>"
+                if(state.pcMapOfChildren) {
+                    log.debug "In Lifx PC - $state.pcMapOfChildren"
+                    input "pcAction", "enum", title: "Pattern to Control", options: state.pcMapOfChildren, multiple:true, submitOnChange:true
+                    input "pcCommand", "enum", title: "Command", options: ["run"], multiple:false, submitOnChange:true
+                    paragraph "<small>If you don't see the Pattern you're looking for:<br>- Please save this Cog by pressing 'done' at the bottom.<br>- Open up any Lifx Pattern Controller child app and press 'done'<br>- Then come back to finish setting up this option.<br>Thanks</small>"
+                    paragraph "<hr>"
+                    theCogActions += "<b>-</b> Likfx Strip Zone Controller: ${pcAction} - Command: ${pcCommand}<br>"
+                } else {
+                    paragraph "No Patterns were found:<br>- Save this Cog by pressing 'done' at the bottom.<br>- Open up any Pattern Controller child app and press 'done'<br>- Then come back to finish setting up this option.<br>Thanks"
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("pcAction")
+                app.removeSetting("pcCommand")
             }
             
             if(actionType.contains("aLock")) {
@@ -3187,6 +3207,8 @@ def initialize() {
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
         if(snDeviceEvent) subscribe(snDeviceEvent, "alarmStatus", startTheProcess)
         
+        subscribe(location, "pcChildren", pcMapOfChildrenHandler)
+        
         if(switchesToSync) {
             subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
             subscribe(switchesToSync, "hue", switchesToSyncHueHandler)
@@ -3568,6 +3590,7 @@ def startTheProcess(evt) {
                                         if(rmRule) ruleMachineHandler()
                                         if(setGVname && setGVvalue) setGlobalVariableHandler()
                                         if(eeAction) eventEngineHandler()
+                                        if(pcAction) patternControllerHandler()
                                         state.hasntDelayedYet = true
                                         if(timeReverse) {
                                             theDelay = timeReverseMinutes * 60
@@ -4034,7 +4057,14 @@ def deviceHandler(data) {
                 if(logEnable) log.debug "In deviceHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
                     if(state.whoText.contains("unlocked by")) {
-                        if(state.whoText.contains("digital command")) {
+                        if(state.whoText.contains("digital")) {
+                            if(noCodeUnlocks) {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, Including"
+                                deviceTrue2 = deviceTrue2 + 1
+                            } else {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, NOT Including"
+                            }
+                        } else if(state.whoText.contains("physical") || state.whoText.contains("manual")) {
                             if(noCodeUnlocks) {
                                 if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, Including"
                                 deviceTrue2 = deviceTrue2 + 1
@@ -6556,6 +6586,25 @@ def getZdate(data) {            // Modified from iCal Viewer Driver - @mark.cock
     }
     if(logEnable) log.debug "in getZdate - zDate: ${zDate}"    
     state.zDate = zDate
+}
+
+def pcMapOfChildrenHandler(evt) {
+    if(logEnable) log.debug "In pcMapOfChildrenHandler (${state.version})"
+    if(logEnable) log.debug "In pcMapOfChildrenHandler - Received: $evt.value"
+    theData = evt.value.toString().replace("[","").replace("]","").split(",")
+    state.pcMapOfChildren = [:]
+    theData.each { it ->
+        (theId,theName) = it.split(":")
+        if(theId.startsWith(" ")) { theId = theId.substring(1) }
+        if(theName.startsWith(" ")) { theName = theName.substring(1) }
+        state.pcMapOfChildren.put("${theId}","${theName}")
+    }
+    if(logEnable) log.debug "In pcMapOfChildrenHandler - pcMapOfChildren: $state.pcMapOfChildren"
+}
+
+def patternControllerHandler() {
+    if(logEnable) log.debug "In patternControllerHandler (${state.version})"
+    sendLocationEvent(name: "pattern", value: ["${pcAction}", "${pcCommand}"])
 }
 
 def mapOfChildrenHandler(data) {
