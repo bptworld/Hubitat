@@ -10,7 +10,7 @@
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 02/10/22 - Minor Changes
  *  1.1.8 - 01/31/22 - Changes to the Flasher
  *  1.1.7 - 01/07/21 - Fix for changes to speak
  *  1.1.6 - 01/13/21 - Fixed typos
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.8"
+	state.version = "1.1.9"
 }
 
 definition(
@@ -268,6 +269,8 @@ def notificationOptions(){
                             ["Daylight":"Daylight - Energize"],
                             ["Warm White":"Warm White - Relax"],
                             "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    } else {
+                        app.removeSetting("colorMT")
                     }
                 }
 
@@ -280,6 +283,8 @@ def notificationOptions(){
                             ["Daylight":"Daylight - Energize"],
                             ["Warm White":"Warm White - Relax"],
                             "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    } else {
+                        app.removeSetting("colorOT")
                     }
                 }
             }
