@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 02/11/22 - Adjustments
  *  1.1.6 - 02/03/22 - Minor changes, new option - Max hours since device has reported
  *  1.1.5 - 08/20/21 - Added decimal option
  *  1.1.4 - 08/03/21 - Fixed averaging issue
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -287,22 +288,17 @@ def updated() {
 }
 
 def initialize() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        setDefaults()
-        if(theDevices && attrib) {
-            if(triggerMode == "1_Min") runEvery1Minute(averageHandler)
-            if(triggerMode == "5_Min") runEvery5Minutes(averageHandler)
-            if(triggerMode == "10_Min") runEvery10Minutes(averageHandler)
-            if(triggerMode == "15_Min") runEvery15Minutes(averageHandler)
-            if(triggerMode == "30_Min") runEvery30Minutes(averageHandler)
-            if(triggerMode == "1_Hour") runEvery1Hour(averageHandler)
-            if(triggerMode == "3_Hour") runEvery3Hours(averageHandler)
-            schedule(timeToReset, resetHandler)        
-            averageHandler()
-        }
+    setDefaults()
+    if(theDevices && attrib) {
+        if(triggerMode == "1_Min") runEvery1Minute(averageHandler)
+        if(triggerMode == "5_Min") runEvery5Minutes(averageHandler)
+        if(triggerMode == "10_Min") runEvery10Minutes(averageHandler)
+        if(triggerMode == "15_Min") runEvery15Minutes(averageHandler)
+        if(triggerMode == "30_Min") runEvery30Minutes(averageHandler)
+        if(triggerMode == "1_Hour") runEvery1Hour(averageHandler)
+        if(triggerMode == "3_Hour") runEvery3Hours(averageHandler)
+        schedule(timeToReset, resetHandler)        
+        averageHandler()
     }
 }
 
@@ -315,13 +311,18 @@ private removeChildDevices(delete) {
 }
 
 def resetHandler() {
-    if(logEnable) log.debug "In zeroHandler (${state.version})"
-    if(theDevices) {
-        dataDevice.virtualAverage("-")
-        dataDevice.todaysHigh("-")
-        dataDevice.todaysLow("-")
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In resetHandler (${state.version})"
+        if(theDevices) {
+            dataDevice.virtualAverage("-")
+            dataDevice.todaysHigh("-")
+            dataDevice.todaysLow("-")
+        }
+        weeklyResetHandler()
     }
-    weeklyResetHandler()
 }
 
 def weeklyResetHandler() {
@@ -477,30 +478,45 @@ def averageHandler(evt) {
 }
 
 def letsTalk() {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
-    if(useSpeech && fmSpeaker) {
-        fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(state.theMsg)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
+        if(useSpeech && fmSpeaker) {
+            fmSpeaker.latestMessageFrom(state.name)
+            fmSpeaker.speak(state.theMsg)
+        }
+        state.theMsg = ""
+        if(logEnable) log.debug "In letsTalk - *** Finished ***"
     }
-    state.theMsg = ""
-    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def messageHandler() {
-    if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(state.theMsg.contains("%avg%")) {state.theMsg = state.theMsg.replace('%avg%', "${state.theAverage}" )}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In messageHandler (${state.version})"
+        if(state.theMsg.contains("%avg%")) {state.theMsg = state.theMsg.replace('%avg%', "${state.theAverage}" )}
 
-    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+        if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+    }
 }
 
 def pushNow() {
-    if(logEnable) log.debug "In pushNow (${state.version})"
-    thePushMessage = "${app.label} \n"
-    thePushMessage += state.theMsg
-    if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
-    if(state.low) pushMessage.deviceNotification(thePushMessage)
-    if(state.high) pushMessage.deviceNotification(thePushMessage)
-    state.sentPush = true
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In pushNow (${state.version})"
+        thePushMessage = "${app.label} \n"
+        thePushMessage += state.theMsg
+        if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
+        if(state.low) pushMessage.deviceNotification(thePushMessage)
+        if(state.high) pushMessage.deviceNotification(thePushMessage)
+        state.sentPush = true
+    }
 }
 
 def createDataChildDevice() {    
