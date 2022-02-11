@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 02/11/22 - Adjustment to Debug Logs
  *  1.1.7 - 02/11/22 - Adjustments
  *  1.1.6 - 02/03/22 - Minor changes, new option - Max hours since device has reported
  *  1.1.5 - 08/20/21 - Added decimal option
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -197,6 +198,9 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required:false, submitOnChange:true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
 		}
 		display2()
 	}
@@ -283,7 +287,12 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
