@@ -1,0 +1,32 @@
+{
+	"packageName": "Pattern Controller",
+	"minimumHEVersion": "2.3.0",
+	"author": "BPTWorld",
+	"dateReleased": "2022-02-14",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
+	"apps" : [
+		{
+			"id" : "95e2f59c-e14a-4d06-b884-1cd2eb21b257",
+			"name": "Pattern Controller",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/PC%20Parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0",
+			"primary": true
+		},
+		{
+			"id" : "44ea1121-92c2-4e35-8f21-66aab1e41754",
+			"name": "Pattern Controller Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/PC%20Child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		}
+	],
+	"drivers" : [
+	]
+}
