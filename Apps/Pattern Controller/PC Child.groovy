@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 02/14/22 - Fixed a stubborn error!
  *  1.0.0 - 02/14/22 - Initial release.
  *
  */
@@ -47,7 +48,7 @@ import groovy.transform.Field
 
 def setVersion(){
     state.name = "Pattern Controller"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -426,7 +427,7 @@ def resetCurrentStatus(evt) {
                     oldLevel = data[3]
                     oldColorTemp = data[4]
                     oldColorMode = data[5]
-                    value = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel.toInteger()]
+                    setLevelandColorHandler(oldHueColor,oldLevel)
                     if(logEnable) log.debug "In resetCurrentStatus - Working on: $it.displayName - $value"
                     it.setColor(value)
                     if(oldStatus == "off") it.off()
