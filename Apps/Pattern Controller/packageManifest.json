@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2022-02-14",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "",
+	"communityLink": "https://community.hubitat.com/t/release-pattern-controller-create-custom-patterns-with-the-lifx-light-strip/89265",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
