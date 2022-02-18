@@ -40,16 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
-*  3.4.9 - 02/10/22 - Adjustment to locks code
-*  3.4.8 - 02/08/22 - Added option to include/exclude No Code Unlocks
-*  3.4.7 - 01/31/22 - Adjustment to The Flasher, Upgrade to Switches In Sequence, App Debounce now works with reverse
-*  3.4.6 - 01/29/22 - Added Window Shades and Window Blinds to Actions
-*  3.4.5 - 01/25/22 - Minor Changes
-*  3.4.4 - 01/22/22 - Added App Debounce Option, Added Custom Colors Option, Fixed typo in Switches In Sequence
-*  3.4.3 - 01/10/22 - More adjustments to slowDim
-*  3.4.2 - 01/08/22 - Minor changes, Adjustment to slowDim
-*  3.4.1 - 12/20/21 - Changes to Random Lights (reverse)
-*  3.4.0 - 12/12/21 - Fixed Slow Dimming actions
+*  3.5.0 - 02/17/22 - Changes to reverse, hopefully no more flash before turning off
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -63,7 +54,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.4.9"
+    state.name = "Event Engine Cog"; state.version = "3.5.0"
 }
 
 definition(
@@ -2557,7 +2548,7 @@ def pageConfig() {
                 
 // ***** Start Switches per Mode *****   
             if(actionType.contains("aSwitchesPerMode")) {
-                paragraph "<b>Switches Per Mode - NEW</b>"
+                paragraph "<b>Switches Per Mode</b>"
                 input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
                 masterList = masterDimmersPerMode.toString().replace("[","").replace("]","").split(",")
                 paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
@@ -4507,25 +4498,27 @@ def switchesPerModeReverseActionHandler() {
                 if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setColor"
                 try {
                     if(cMode == "CT") {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp)
-                        pauseExecution(actionDelay)
-                        it.setLevel(level)                          
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
                         if(oldStatus == "off" || trueReverse) {                            
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
+                        } else {
+                            pauseExecution(actionDelay)
+                            it.setColorTemperature(cTemp)
                         }
                     } else {
                         def theValue = [hue: hueColor, saturation: saturation, level: level]
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColor(theValue)
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
+                        } else {
+                            pauseExecution(actionDelay)
+                            it.setLevel(level)
+                            pauseExecution(actionDelay)
+                            it.setColor(theValue)
                         }
                     }
                 } catch(e) {
@@ -4538,14 +4531,15 @@ def switchesPerModeReverseActionHandler() {
                 if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setColorTemperature"
                 try {
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level)
-                    pauseExecution(actionDelay)
-                    it.setColorTemperature(cTemp)
                     if(oldStatus == "off" || trueReverse) {
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
+                    } else {
+                        pauseExecution(actionDelay)
+                        it.setLevel(level)
+                        pauseExecution(actionDelay)
+                        it.setColorTemperature(cTemp)
                     }
                 } catch(e) {
                     log.warn(getExceptionMessageWithLine(e))
@@ -4557,12 +4551,13 @@ def switchesPerModeReverseActionHandler() {
                 if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setLevel"
                 try {
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level)
                     if(oldStatus == "off" || trueReverse) {
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
+                    } else {
+                        pauseExecution(actionDelay)
+                        it.setLevel(level)
                     }
                 } catch(e) {
                     log.warn(getExceptionMessageWithLine(e))
@@ -4722,46 +4717,50 @@ def dimmerOnReverseActionHandler() {
                 }
                 if(it.hasCommand("setColor") && state.onColor != "No Change") {
                     if(cMode == "CT") {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp.toInteger())
-                        pauseExecution(actionDelay)
-                        if(level) it.setLevel(level.toInteger())                          
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
                         if(oldStatus == "off" || trueReverse) {                            
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
+                        } else {
+                            pauseExecution(actionDelay)
+                            it.setColorTemperature(cTemp.toInteger())
+                            pauseExecution(actionDelay)
+                            if(level) it.setLevel(level.toInteger())
                         }
                     } else {
                         def theValue = [hue: hueColor.toInteger(), saturation: saturation.toInteger(), level: level.toInteger()]
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColor(theValue)
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
+                        } else {
+                            pauseExecution(actionDelay)
+                            it.setColor(theValue)
                         }
                     }
                 } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
                     if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    if(level) it.setLevel(level.toInteger())
-                    pauseExecution(actionDelay)
-                    it.setColorTemperature(cTemp.toInteger())
                     if(oldStatus == "off" || trueReverse) {
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
-                    }     
+                    } else {
+                        pauseExecution(actionDelay)
+                        if(level) it.setLevel(level.toInteger())
+                        pauseExecution(actionDelay)
+                        it.setColorTemperature(cTemp.toInteger())
+                    }
                 } else if(it.hasCommand("setLevel")) {
                     if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)                   
-                    if(level) it.setLevel(level.toInteger())
                     if(oldStatus == "off" || trueReverse) {
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
+                    } else {
+                        pauseExecution(actionDelay)                   
+                        if(level) it.setLevel(level.toInteger())
                     }
                 }
                 if(name && state.oldMap) state.oldMap.remove(name)
@@ -5769,6 +5768,7 @@ def setLevelandColorHandler(newData) {
     }
     onLevel = state.onLevel.toInteger()
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
+    // if(it.getDataValue("model")) {}
     value = [hue: hueColor, saturation: saturation, level: onLevel]
     if(state.oldMap == null) state.oldMap = [:]
     theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
