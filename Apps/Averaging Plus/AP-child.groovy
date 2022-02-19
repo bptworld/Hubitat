@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 02/19/22 - Changes made by @es_ferret. Thanks
  *  1.1.8 - 02/11/22 - Adjustment to Debug Logs
  *  1.1.7 - 02/11/22 - Adjustments
  *  1.1.6 - 02/03/22 - Minor changes, new option - Max hours since device has reported
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.8"
+	state.version = "1.1.9"
 }
 
 definition(
@@ -420,11 +421,9 @@ def averageHandler(evt) {
                             }
                         }
                     }
-                    if(pushMessage && !state.sentPush) {
-                        state.theMsg = spLowMessage
-                        messageHandler()
-                        pushNow()
-                    }
+                    state.theMsg = spLowMessage
+                    messageHandler()
+                    if(pushMessage && !state.sentPush) pushNow()
                     if(useSpeech && fmSpeaker) letsTalk()
                 }
             }
@@ -447,11 +446,9 @@ def averageHandler(evt) {
                             }
                         }
                     }
-                    if(pushMessage && !state.sentPush) {
-                        messageHandler = spHighMessage
-                        messageHandler()
-                        pushNow()
-                    }
+                    state.theMsg = spHighMessage
+                    messageHandler()
+                    if(pushMessage && !state.sentPush) pushNow()
                     if(useSpeech && fmSpeaker) letsTalk()
                 }
             }
