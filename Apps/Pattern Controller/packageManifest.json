@@ -1,5 +1,5 @@
 {
-	"packageName": "Pattern Controller",
+	"packageName": "Patterns Plus",
 	"minimumHEVersion": "2.3.0",
 	"author": "BPTWorld",
 	"dateReleased": "2022-02-14",
@@ -9,22 +9,31 @@
 	"apps" : [
 		{
 			"id" : "95e2f59c-e14a-4d06-b884-1cd2eb21b257",
-			"name": "Pattern Controller",
+			"name": "Patterns Plus",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/PC%20Parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"primary": true
 		},
 		{
 			"id" : "44ea1121-92c2-4e35-8f21-66aab1e41754",
-			"name": "Pattern Controller Child",
+			"name": "Patterns Plus Child",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/PC%20Child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.2"
+			"version": "1.1.0"
+		},
+		{
+			"id" : "732fac4a-9014-4afa-bafb-6b2aea39c7d9",
+			"name": "Patterns Plus File Convertor Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/PC%20Convertor.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.1.0"
 		}
 	],
 	"drivers" : [
