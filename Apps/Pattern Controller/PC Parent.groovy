@@ -1,5 +1,5 @@
 /**
- *  **************** Pattern Controller Parent ****************
+ *  **************** Patterns Plus Parent ****************
  *
  *  Design Usage:
  *  Create any pattern you want using the zones associated with the Lifx Light Strip.
@@ -33,17 +33,18 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 02/21/22 - Major Update
  *  1.0.0 - 02/14/22 - Initial release.
  *
  */
 
 def setVersion(){
-    state.name = "Pattern Controller"
-	state.version = "1.0.0"
+    state.name = "Patterns Plus"
+	state.version = "1.1.0"
 }
 
 definition(
-    name:"Pattern Controller",
+    name:"Patterns Plus",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Create any pattern you want using the zones associated with the Lifx Light Strip.",
@@ -83,101 +84,80 @@ def mainPage() {
 				paragraph "Create any pattern you want using the zones associated with the Lifx Light Strip."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Pattern Controller Child", namespace: "BPTWorld", title: "<b>Add a new 'Pattern Controller' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Patterns Plus Child", namespace: "BPTWorld", title: "<b>Add a new 'Patterns Plus' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Pattern Controller OLD Child", namespace: "BPTWorld", title: "<b>'Pattern Controller OLD' child</b><br>Once pattern is Exported, the child device should be deleted. This section will be going away on March 1, 2022.", multiple: true)
+                app(name: "anyOpenApp", appName: "Patterns Plus File Convertor Child", namespace: "BPTWorld", title: "<b>'Pattern Controller to 'Patterns Plus' File Convertor' child</b>", multiple: true)
 			}
-            
-            section(getFormat("header-green", "${getImage("Blank")}"+" Lifx Strip Device")) {
-                input "zone1", "capability.switchLevel", title: "Select Zone 1 (z1)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone2", "capability.switchLevel", title: "Select Zone 2 (z2)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone3", "capability.switchLevel", title: "Select Zone 3 (z3)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone4", "capability.switchLevel", title: "Select Zone 4 (z4)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone5", "capability.switchLevel", title: "Select Zone 5 (z5)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone6", "capability.switchLevel", title: "Select Zone 6 (z6)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone7", "capability.switchLevel", title: "Select Zone 7 (z7)", required:false, multiple:false, submitOnChange:true, width:6
-                input "zone8", "capability.switchLevel", title: "Select Zone 8 (z8)", required:false, multiple:false, submitOnChange:true, width:6
-                input "needMore", "bool", title: "Need More?", defaultValue:false, submitOnChange:true
-                if(needMore) {
-                    input "zone9", "capability.switchLevel", title: "Select Zone 9 (z9)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone10", "capability.switchLevel", title: "Select Zone 10 (z10)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone11", "capability.switchLevel", title: "Select Zone 11 (z11)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone12", "capability.switchLevel", title: "Select Zone 12 (z12)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone13", "capability.switchLevel", title: "Select Zone 13 (z13)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone14", "capability.switchLevel", title: "Select Zone 14 (z14)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone15", "capability.switchLevel", title: "Select Zone 15 (z15)", required:false, multiple:false, submitOnChange:true, width:6
-                    input "zone16", "capability.switchLevel", title: "Select Zone 16 (z16)", required:false, multiple:false, submitOnChange:true, width:6
-                }
-            }
-            section() {
-                theZones = []
-                if(zone1) {
-                    theZones << "zone1"
-                    input "testZone1", "button", title: "Test Zone 1", width: 3
-                }
-                if(zone2) {
-                    theZones << "zone2"
-                    input "testZone2", "button", title: "Test Zone 2", width: 3
-                }
-                if(zone3) {
-                    theZones << "zone3"
-                    input "testZone3", "button", title: "Test Zone 3", width: 3
-                }
-                if(zone4) {
-                    theZones << "zone4"
-                    input "testZone4", "button", title: "Test Zone 4", width: 3
-                }
-                if(zone5) {
-                    theZones << "zone5"
-                    input "testZone5", "button", title: "Test Zone 5", width: 3
-                }
-                if(zone6) {
-                    theZones << "zone6"
-                    input "testZone6", "button", title: "Test Zone 6", width: 3
-                }
-                if(zone7) {
-                    theZones << "zone7"
-                    input "testZone7", "button", title: "Test Zone 7", width: 3
-                }
-                if(zone8) {
-                    theZones << "zone8"
-                    input "testZone8", "button", title: "Test Zone 8", width: 3
-                }
-                if(needMore) {
-                    if(zone9) {
-                        theZones << "zone9"
-                        input "testZone9", "button", title: "Test Zone 9", width: 3
-                    }
-                    if(zone10) {
-                        theZones << "zone10"
-                        input "testZone10", "button", title: "Test Zone 10", width: 3
-                    }
-                    if(zone11) {
-                        theZones << "zone11"
-                        input "testZone11", "button", title: "Test Zone 11", width: 3
-                    }
-                    if(zone12) {
-                        theZones << "zone12"
-                        input "testZone12", "button", title: "Test Zone 12", width: 3
-                    }
-                    if(zone13) {
-                        theZones << "zone13"
-                        input "testZone13", "button", title: "Test Zone 13", width: 3
-                    }
-                    if(zone14) {
-                        theZones << "zone14"
-                        input "testZone14", "button", title: "Test Zone 14", width: 3
-                    }
-                    if(zone15) {
-                        theZones << "zone15"
-                        input "testZone15", "button", title: "Test Zone 15", width: 3
-                    }
-                    if(zone16) {
-                        theZones << "zone16"
-                        input "testZone16", "button", title: "Test Zone 16", width: 3
-                    }
-                }
-                input "activeZones", "text", title: "Active Zones (Do NOT Edit)", defaultValue: theZones, required:false, submitOnChange:true
+                             
+            section("${getImage('instructions')} <b>Device Master List:</b>", hideable: true, hidden: true) {
+                input "masterswitchLevel", "capability.switchLevel", title: "Master List of Devices Needed in this App <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
+                masterList = masterswitchLevel.toString().replace("[","").replace("]","").split(", ")
+                masterList = masterList.sort { a, b -> a <=> b }
             }
             
+            section(getFormat("header-green", "${getImage("Blank")}"+" Device Per Zone")) {
+                if(state.working == null) { state.working = false }
+                input "zNumber", "text", title: "Zone Number (1 to 100)", range: '1..100', submitOnChange:true
+                input "zone", "enum", title: "Select Device", options: masterList, required:false, multiple:false, submitOnChange:true
+                if(state.cNum == null) state.cNum = zNumber
+                if(zNumber.toString() != state.cNum.toString()) {
+                    state.cNum = zNumber
+                    state.working = false
+                    if(logEnable) log.debug "In devicePerZone - zNumber doesn't match - removing zone - state.working: $state.working"
+                    app.updateSetting("zone",[type:"enum", value:""])
+                }
+                if(zNumber) {
+                    if(!state.working) {
+                        state.working = true
+                        if(state.zDevices == null) state.zDevices = [:]
+                        wData = state.zDevices.get(zNumber)
+                        if(wData) {
+                            if(logEnable) log.debug "In devicePerZone - wData - Getting Zone info - $wData"
+                            app.updateSetting("zone",[type:"enum", value:"${wData}"])
+                        }
+                    }
+                }            
+                paragraph "<small>Remember to click outside of any field before clicking on a button.</small>"
+                input "enterDevice", "button", title: "Add/Edit Pattern", textColor: "white", backgroundColor: "green", width:3
+                input "delDevice", "bool", title: "Delete Zone/Device", defaultValue:false, submitOnChange:true, width:3
+                if(delDevice) {
+                    state.zDevices.remove(zNumber)
+                    app.updateSetting("zNumber",[type:"text", value:""])
+                    app.updateSetting("zone",[type:"enum", value:""])
+                    app?.updateSetting("delDevice",[value:"false",type:"bool"])
+                }
+                input "delAllDevices", "bool", title: "Delete ALL Zone/Devices", defaultValue:false, submitOnChange:true, width:3
+                if(delAllDevices) {
+                    state.zDevices = [:]
+                    app.updateSetting("zNumber",[type:"text", value:""])
+                    app.updateSetting("zone",[type:"enum", value:""])
+                    app?.updateSetting("delAllDevices",[value:"false",type:"bool"])
+                }
+                input "resetZones", "bool", title: "Reset ALL Device to Off", submitOnChange:true, width: 3
+                if(resetZones) {
+                    masterswitchLevel.each { msl ->
+                        msl.off()
+                        pauseExecution(500)
+                    }
+                    app?.updateSetting("resetZones",[value:"false",type:"bool"])
+                }
+                input "testDevice", "bool", title: "Test Device", submitOnChange:true, width: 3
+                if(testDevice) {
+                    cleanDeviceHandler(zNumber)
+                    if(state.match) {
+                        theDevice = state.td
+                        theDevice.on()
+                        pauseExecution(1000)
+                        theDevice.off()
+                    }
+                    app?.updateSetting("testDevice",[value:"false",type:"bool"])
+                }
+                paragraph "<hr>"
+                makeDisplayTable()
+                paragraph "$state.theTable"
+                paragraph "<hr>"
+            }
+
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
                 input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
@@ -187,57 +167,55 @@ def mainPage() {
 	}
 }
 
+def cleanDeviceHandler(data) {
+    if(logEnable) log.debug "In cleanDeviceHandler (${state.version})"
+    state.match = false
+    state.td = null
+    theDevice = state.zDevices.get(data)
+    tDevice = theDevice.toString().replace(" ","")
+    masterswitchLevel.each { it ->
+        tIt = it.toString().replace(" ","")
+        if(logEnable) log.debug "In cleanDeviceHandler - Checking $tIt - vs - $tDevice"
+        if(tIt == tDevice) {
+            if(logEnable) log.debug "In cleanDeviceHandler - Match!"
+            state.td = it
+            state.match = true
+        }
+    }
+    if(state.match) {
+        if(logEnable) log.debug "In cleanDeviceHandler - Returning: $state.td"
+    } else {
+        if(logEnable) log.debug "In cleanDeviceHandler - NO Match!"
+    }
+}
+
 def appButtonHandler(buttonPressed) {
     if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${buttonPressed}"
-    if(buttonPressed == "testZone1") {
+    if(buttonPressed == "enterDevice") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone1.on()
-        pauseExecution(1000)
-        zone1.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone2") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone2.on()
-        pauseExecution(1000)
-        zone2.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone3") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone3.on()
-        pauseExecution(1000)
-        zone3.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone4") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone4.on()
-        pauseExecution(1000)
-        zone4.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone5") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone5.on()
-        pauseExecution(1000)
-        zone5.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone6") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone6.on()
-        pauseExecution(1000)
-        zone6.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone7") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone7.on()
-        pauseExecution(1000)
-        zone7.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
-    } else if(buttonPressed == "testZone8") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
-        zone8.on()
-        pauseExecution(1000)
-        zone8.off()
-        if(logEnable) log.debug "In appButtonHandler - Finished Working"
+        if(state.zDevices == null) state.zDevices = [:]
+        newZone = zone.replace(" ","")
+        state.zDevices.put(zNumber,zone)       
     }
+}
+
+def makeDisplayTable() {
+    if(logEnable) log.debug "In makeDisplayTable (${state.version})"
+    if(state.zDevices) {
+        state.theTable = "<table width=100%><tr><td><b>Zone</b><td><b>Device</b>"
+        state.zDevices.each { it ->
+            if(logEnable) log.debug "In makeDisplayTable - Working on: $it.key - $it.value"
+            theKey = it.key
+            theValue = it.value
+            state.theTable += "<tr><td>$theKey<td>$theValue"
+        }
+        state.theTable += "</table>"
+    } else {
+        state.theTable = "<table width=100%><tr><td><b>Zone</b><td><b>Device</b>"
+        state.theTable += "</table>"
+    }
+    app.updateSetting("masterZones",[type:"enum", value:"${state.zDevices}"])
+    if(logEnable) log.debug "In makeDisplayTable - Finished making the table"
 }
 
 def pcMapOfChildren(data=null) {
