@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Create a tile with multiple devices and customization options.
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.9 - 02/24/22 - Fixed a cosmetic issue
  *  2.5.8 - 10/09/21 - Adjustment
  *  2.5.7 - 07/03/21 - Minor adjustment
  *  2.5.6 - 06/21/21 - Adjustment to color options
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.8"
+	state.version = "2.5.9"
 }
 
 definition(
@@ -260,8 +261,10 @@ def pageConfig() {
                             input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttr = app."hideAttr_$x"
                             
-                            try{ deviceStatus = theDevice.currentValue("${deviceAtt}").replace(",",".") }
-                            catch (e) {}
+                            try{ deviceStatus = theDevice.currentValue("${deviceAtt}")}
+                            catch (e) {
+                                //log.error(getExceptionMessageWithLine(e))
+                            }
                             if(deviceStatus == null) deviceStatus = "No Data"
                             if(deviceStatus && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
                             
@@ -509,8 +512,11 @@ def pageConfig() {
                             input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttra = app."hideAttra_$x"
                             
-                            try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}").replace(",",".") }
-                            catch (e) {}
+                            try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}")}
+                            catch (e) {
+                                //log.error(getExceptionMessageWithLine(e))
+                            }
+                            log.warn "deviceStatusa: $deviceStatusa"
                             if(deviceStatusa == null) deviceStatusa = "No Data"
                             if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                             
@@ -757,8 +763,10 @@ def pageConfig() {
                             input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttrb = app."hideAttrb_$x"
                             
-                            try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}").replace(",",".") }
-                            catch (e) {}
+                            try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}")}
+                            catch (e) {
+                                //log.error(getExceptionMessageWithLine(e))
+                            }
                             if(deviceStatusb == null) deviceStatusb = "No Data"
                             if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             
