@@ -130,7 +130,7 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
-   		"name": "Pattern Controller",
+   		"name": "Patterns Plus",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/packageManifest.json",
    		"description": "Create any pattern you want using the zones associated with the Lifx Light Strip.",
