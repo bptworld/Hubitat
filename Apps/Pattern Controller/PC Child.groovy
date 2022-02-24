@@ -1,5 +1,5 @@
 /**
- *  **************** Pattern Controller Child App  ****************
+ *  **************** Patterns Plus Child App  ****************
  *
  *  Design Usage:
  *  Create any pattern you want using the zones associated with the Lifx Light Strip (or any color bulb).
@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- * * Making an easier way of adding in patterns
+ *  1.1.0 - 02/21/22 - Massive update
  *  1.0.2 - 02/17/22 - Attempt to stop the flashing before turning off
  *  1.0.1 - 02/14/22 - Fixed a stubborn error!
  *  1.0.0 - 02/14/22 - Initial release.
@@ -49,17 +49,17 @@ import java.text.SimpleDateFormat
 import groovy.transform.Field
 
 def setVersion(){
-    state.name = "Pattern Controller"
-	state.version = "1.0.2"
+    state.name = "Patterns Plus"
+	state.version = "1.1.0"
 }
 
 definition(
-    name: "Pattern Controller Child",
+    name: "Patterns Plus Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Create any pattern you want using the zones associated with the Lifx Light Strip (or any color bulb).",
     category: "Convenience",
-	parent: "BPTWorld:Pattern Controller",
+	parent: "BPTWorld:Patterns Plus",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -80,10 +80,10 @@ def pageConfig() {
             paragraph "This can be used with ANY color bulbs, not just Lifx. Results may vary when using non-Lifx and/or Hue devices."
             paragraph "<b>Important Note:</b> Leave the parent device 'on'. Then control each zone with the child devices."
             paragraph "Each zone is individualy controlled using a set of commands. The command set looks like this:"
-            paragraph "<b>theZone/group : theCMD : theColor : theLevel : theDelay</b>"
-            paragraph "<b>theZone/Group:</b><br> - z# - ie. z3<br> - g# - ie. g1<br>* Zone 1 is closest to the power cord<br><b>theCMD:</b><br> - on - turn on the zone<br> - off - turn off the zone<br> - c - set the zone to a certain color<br><b>theColor:</b><br> - Available Colors: white, daylight, soft white, warm white, blue, green, yellow, orange, pink and red<br> - Custom colors coming soon<br><b>theLevel:</b> - Set the brightness level of the zone (1-100)<br><b>theDelay:</b> - Time in milliseconds to when the next command will be sent"
-            paragraph "ie.<br><b>g2:c:green:50:1</b><br> - Group 2 : set color : color is green : brightness is 50 : next command sent in 1 millisecond"
-            paragraph "<b>z4:c:red:100:100</b><br> - zone 1 : use color : color is red : brightness is 100 : next command sent in 100 milliseconds"
+            paragraph "<b>zone/group ; zgNum ; theCMD ; theColor ; theLevel ; theDelay</b>"
+            paragraph "<b>theZone/Group:</b><br> - z - ie. z<br><b>zgNum</b> - # - ie. 1<br>* Zone 1 is closest to the power cord<br><b>theCMD:</b><br> - on - turn on the zone<br> - off - turn off the zone<br> - c - set the zone to a certain color<br><b>theColor:</b><br> - Available Colors: white, daylight, soft white, warm white, blue, green, yellow, orange, pink and red<br> - Custom colors coming soon<br><b>theLevel:</b> - Set the brightness level of the zone (1-100)<br><b>theDelay:</b> - Time in milliseconds to when the next command will be sent"
+            paragraph "ie.<br><b>g;2;c;green;50;1</b><br> - group ; group 2 ; set color ; color is green ; brightness is 50 ; next command sent in 1 millisecond"
+            paragraph "<b>z;4;c;red;100;100</b><br> - zone ; zone 4 ; set color ; color is red ; brightness is 100 ; next command sent in 100 milliseconds"
             paragraph "Play around with the options and you'll get the hang of it pretty quickly!"
             paragraph "<hr>"
             paragraph "<b>Warning:</b> As with ANY app, sending many commands too fast can and will slow down your hub. This is not meant to turn your house into a dance party but rather as a visual status system."
@@ -92,36 +92,51 @@ def pageConfig() {
         
         section("${getImage('optionsGreen')} <b>Zone Groups:</b>", hideable: true, hidden: true) {            
             paragraph "Remember: Actual zones are setup in the parent app."
-            if(parent.activeZones) {
-                theZones = []
-                aZone = parent.activeZones.toString().split(",")
-                aZone.each { tz ->
-                    theZones << tz
-                }
+            if(parent.masterZones) {
+                masterList = parent.masterZones.toString().replace("[","").replace("]","").replace(" ","").split(",")
+                state.deviceList = masterList.sort { a, b -> a <=> b }
             } else {
                 paragraph "Please setup the zones within the parent app. Thanks."
                 theZones = []
             }
-            input "group1", "enum", title: "Select Group 1 (g1)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group2", "enum", title: "Select Group 2 (g2)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group3", "enum", title: "Select Group 3 (g3)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group4", "enum", title: "Select Group 4 (g4)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group5", "enum", title: "Select Group 5 (g5)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group6", "enum", title: "Select Group 6 (g6)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group7", "enum", title: "Select Group 7 (g7)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
-            input "group8", "enum", title: "Select Group 8 (g8)", options: theZones, required:false, multiple:true, submitOnChange:true, width:6
+            input "group1", "enum", title: "Select Group 1 (g1)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group2", "enum", title: "Select Group 2 (g2)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group3", "enum", title: "Select Group 3 (g3)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group4", "enum", title: "Select Group 4 (g4)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group5", "enum", title: "Select Group 5 (g5)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group6", "enum", title: "Select Group 6 (g6)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group7", "enum", title: "Select Group 7 (g7)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
+            input "group8", "enum", title: "Select Group 8 (g8)", options: state.deviceList, required:false, multiple:true, submitOnChange:true, width:6
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Pattern")) {
-            paragraph "Pattern Command:<br>theZone/group : theCMD : theColor : theLevel : theDelay<br>ie. z1:c:blue:50:1 - g1:off:n:n:250<br><small>* See Information Section above for more!</small>"
-            input "inputSwitch", "bool", title: "Manual or Click Mode", defaultValue:false, submitOnChange:true
+            paragraph "Pattern Command:<br>zone/group ; zgNum ; theCMD ; theColor ; theLevel ; theDelay<br>ie. z;1;c;blue;50;1 - g;1;off;n;n;250<br><small>* See Information Section above for more!</small>"
+            input "inputSwitch", "bool", title: "Click Mode or Manual Input", defaultValue:false, submitOnChange:true
             paragraph "<hr>"
+            input "pNumber", "text", title: "Pattern Number (ie. p01, p05, p10)", submitOnChange:true
+            if(pNumber) {
+                if(pNumber.size() < 3) {
+                    newNumber = new StringBuilder(pNumber).insert(pNumber.length()-1, "0").toString()
+                    app.updateSetting("pNumber",[type:"text", value:"${newNumber}"])
+                }
+            }
+            if(state.cNum == null) state.cNum = pNumber
+            if(pNumber != state.cNum) {
+                state.working = false
+                state.cNum = pNumber
+            }
+            if(state.mPattern == null) state.mPattern = [:]
+            if(state.working == null) state.working = false
+            workingData = state.mPattern.get(pNumber)
+            if(logEnable) paragraph "In Section Pattern - Working: ${state.working} - workingData: ${workingData}"
             if(inputSwitch) {
-                paragraph "*** Work in Progress, Nothing to see here... move along!<br>(This might not even make it, just playing around.) ***"
-                input "pNumber", "text", title: "Pattern Number", range: '1..40', submitOnChange:true
+                data = state.mPattern.get(pNumber)
+                if(data) {
+                    app.updateSetting("mData",[type:"text", value:"${data.toLowerCase()}"])
+                }
+                input "mData", "text", title: "Pattern Command", submitOnChange:true
+            } else {
                 if(pNumber) {
-                    if(state.mPattern == null) state.mPattern = [:]
-                    if(state.working == null) state.working = false
                     if(!state.working) {
                         state.working = true
                         data = state.mPattern.get(pNumber)
@@ -156,9 +171,9 @@ def pageConfig() {
                         ["g":"Group"]
                     ], submitOnChange:true, width:3
                     if(pZG == "g") {
-                        input "pZGNum", "number", title: "Number (1 to 8)", range: '1..8', submitOnChange:true, width:3
+                        input "pZGNum", "text", title: "Number (1 to 8)", range: '1..8', submitOnChange:true, width:3
                     } else {
-                        input "pZGNum", "number", title: "Number (1 to 40)", range: '1..40', submitOnChange:true, width:3
+                        input "pZGNum", "text", title: "Number (01 to 100)", range: '1..100', submitOnChange:true, width:3
                     }
                     input "pCommand", "enum", title: "Command", options: [
                         ["on":"On"],
@@ -166,149 +181,82 @@ def pageConfig() {
                         ["c":"Color"]
                     ], submitOnChange:true, width:3
                     input "pColor", "enum", title: "Color", options: [
-                        ["White":"White"],
-                        ["Daylight":"Daylight"],
-                        ["Soft White":"Soft White"],
-                        ["Warm White":"Warm White"],
-                        ["Blue":"Blue"],
-                        ["Green":"Green"],
-                        ["Yellow":"Yellow"],
-                        ["Orange":"Orange"],
-                        ["Purple":"Purple"],
-                        ["Pink":"Pink"],
-                        ["Red":"Red"]             
+                        ["white":"White"],
+                        ["daylight":"Daylight"],
+                        ["soft white":"Soft White"],
+                        ["warm white":"Warm White"],
+                        ["blue":"Blue"],
+                        ["green":"Green"],
+                        ["yellow":"Yellow"],
+                        ["orange":"Orange"],
+                        ["purple":"Purple"],
+                        ["pink":"Pink"],
+                        ["red":"Red"]             
                     ], submitOnChange:true, width:3
                     input "pLevel", "number", title: "Level (1 to 100)", range: '1..100', submitOnChange:true, width:3
                     input "pDelay", "number", title: "Delay (1 to 10000)", range: '1..10000', submitOnChange:true, width:3
                     paragraph " ", width:3
                     paragraph " ", width:3
-                    input "cancelPattern", "button", title: "Cancel", textColor: "white", backgroundColor: "red", width:3
-                    input "enterPattern", "button", title: "Add/Edit Pattern", textColor: "white", backgroundColor: "green", width:3               
-                    input "rPatterns", "bool", title: "Reset ALL Patters", defaultValue:false, submitOnChange:true, width:3
-                    if(rPatterns) {
-                        input "resetPatterns", "button", title: "Are you Sure?", width:3
-                    }
-                    paragraph "<hr>"
-                    paragraph "$state.mPattern"
-                    makeTheTable()
-                    paragraph "${state.theTable}"
-                    input "refreshMap", "bool", title: "Refresh Pattern", defaultValue:false, submitOnChange:true
-                    if(refreshMap) {
-                        makeTheTable()
-                        app?.updateSetting("refreshMap",[value:"false",type:"bool"])
-                    }
                 } else {
-                    app.removeSetting("pZG")
-                    app.removeSetting("pZGNum")
-                    app.removeSetting("pCommand")
-                    app.removeSetting("pColor")
-                    app.removeSetting("pLevel")
-                    app.removeSetting("pDelay")
-                }            
-                paragraph "<hr>"
-            } else {
-                input "p1", "text", title: "1", submitOnChange:true, width:3
-                input "p2", "text", title: "2", submitOnChange:true, width:3
-                input "p3", "text", title: "3", submitOnChange:true, width:3
-                input "p4", "text", title: "4", submitOnChange:true, width:3
-
-                input "p5", "text", title: "5", submitOnChange:true, width:3
-                input "p6", "text", title: "6", submitOnChange:true, width:3
-                input "p7", "text", title: "7", submitOnChange:true, width:3
-                input "p8", "text", title: "8", submitOnChange:true, width:3
-
-                input "p9", "text", title: "9", submitOnChange:true, width:3
-                input "p10", "text", title: "10", submitOnChange:true, width:3
-                input "p11", "text", title: "11", submitOnChange:true, width:3
-                input "p12", "text", title: "12", submitOnChange:true, width:3
-
-                input "p13", "text", title: "13", submitOnChange:true, width:3
-                input "p14", "text", title: "14", submitOnChange:true, width:3
-                input "p15", "text", title: "15", submitOnChange:true, width:3
-                input "p16", "text", title: "16", submitOnChange:true, width:3
-
-                input "p17", "text", title: "17", submitOnChange:true, width:3
-                input "p18", "text", title: "18", submitOnChange:true, width:3
-                input "p19", "text", title: "19", submitOnChange:true, width:3
-                input "p20", "text", title: "20", submitOnChange:true, width:3
-
-                input "needMore", "bool", title: "Need More?", defaultValue:false, submitOnChange:true
-                if(needMore) {
-                    input "p21", "text", title: "21", submitOnChange:true, width:3
-                    input "p22", "text", title: "22", submitOnChange:true, width:3
-                    input "p23", "text", title: "23", submitOnChange:true, width:3
-                    input "p24", "text", title: "24", submitOnChange:true, width:3
-
-                    input "p25", "text", title: "25", submitOnChange:true, width:3
-                    input "p26", "text", title: "26", submitOnChange:true, width:3
-                    input "p27", "text", title: "27", submitOnChange:true, width:3
-                    input "p28", "text", title: "28", submitOnChange:true, width:3
-
-                    input "p29", "text", title: "29", submitOnChange:true, width:3
-                    input "p30", "text", title: "30", submitOnChange:true, width:3
-                    input "p31", "text", title: "31", submitOnChange:true, width:3
-                    input "p32", "text", title: "32", submitOnChange:true, width:3
-
-                    input "p33", "text", title: "33", submitOnChange:true, width:3
-                    input "p34", "text", title: "34", submitOnChange:true, width:3
-                    input "p35", "text", title: "35", submitOnChange:true, width:3
-                    input "p36", "text", title: "36", submitOnChange:true, width:3
-
-                    input "p37", "text", title: "37", submitOnChange:true, width:3
-                    input "p38", "text", title: "38", submitOnChange:true, width:3
-                    input "p39", "text", title: "39", submitOnChange:true, width:3
-                    input "p40", "text", title: "40", submitOnChange:true, width:3
-                }
-
-                pattern = p1                // Loooooong way
-                if(p2) pattern += "-$p2"
-                if(p3) pattern += "-$p3"
-                if(p4) pattern += "-$p4"
-                if(p5) pattern += "-$p5"
-                if(p6) pattern += "-$p6"
-                if(p7) pattern += "-$p7"
-                if(p8) pattern += "-$p8"
-                if(p9) pattern += "-$p9"
-                if(p10) pattern += "-$p10"
-                if(p11) pattern += "-$p11"
-                if(p12) pattern += "-$p12"
-                if(p13) pattern += "-$p13"
-                if(p14) pattern += "-$p14"
-                if(p15) pattern += "-$p15"
-                if(p16) pattern += "-$p16"
-                if(p17) pattern += "-$p17"
-                if(p18) pattern += "-$p18"
-                if(p19) pattern += "-$p19"
-                if(p20) pattern += "-$p20"
-                if(needMore) {
-                    if(p21) pattern += "-$p21"
-                    if(p22) pattern += "-$p22"
-                    if(p23) pattern += "-$p23"
-                    if(p24) pattern += "-$p24"
-                    if(p25) pattern += "-$p25"
-                    if(p26) pattern += "-$p26"
-                    if(p27) pattern += "-$p27"
-                    if(p28) pattern += "-$p28"
-                    if(p29) pattern += "-$p29"
-                    if(p30) pattern += "-$p30"
-                    if(p31) pattern += "-$p31"
-                    if(p32) pattern += "-$p32"
-                    if(p33) pattern += "-$p33"
-                    if(p34) pattern += "-$p34"
-                    if(p35) pattern += "-$p35"
-                    if(p36) pattern += "-$p36"
-                    if(p37) pattern += "-$p37"
-                    if(p38) pattern += "-$p38"
-                    if(p39) pattern += "-$p39"
-                    if(p40) pattern += "-$p40"
-                }
-
-                state.pattern = pattern
-                if(state.pattern) {
-                    input "testPattern", "button", title: "Test Pattern", width: 3
-                    input "resetZones", "button", title: "Reset Zones (OFF)", width: 3
+                    app.updateSetting("pZG",[type:"enum", value:""])
+                    app.updateSetting("pZGNum",[type:"number", value:""])
+                    app.updateSetting("pCommand",[type:"enum", value:""])
+                    app.updateSetting("pColor",[type:"enum", value:""])
+                    app.updateSetting("pLevel",[type:"number", value:""])
+                    app.updateSetting("pDelay",[type:"number", value:""])
+                } 
+            }
+            paragraph "<small>Remember to click outside of any field before clicking on a button.</small>"
+            input "enterPattern", "button", title: "Add/Edit Pattern", textColor: "white", backgroundColor: "green", width:3
+            input "cancelPattern", "bool", title: "Clear Pattern", submitOnChange:true, width:3
+            if(cancelPattern) {
+                app.updateSetting("pZG",[type:"enum", value:""])
+                app.updateSetting("pZGNum",[type:"number", value:""])
+                app.updateSetting("pCommand",[type:"enum", value:""])
+                app.updateSetting("pColor",[type:"enum", value:""])
+                app.updateSetting("pLevel",[type:"number", value:""])
+                app.updateSetting("pDelay",[type:"number", value:""])
+                app?.updateSetting("cancelPattern",[value:"false",type:"bool"])
+            }               
+            input "rPatterns", "bool", title: "Reset ALL Patterns", defaultValue:false, submitOnChange:true, width:3
+            if(rPatterns) {
+                input "resetPatterns", "bool", title: "Are you Sure?", submitOnChange:true, width:3
+                if(resetPatterns) {
+                    state.mPattern = [:]
+                    makeTheTable()
+                    clearTheBoard()
+                    app?.updateSetting("resetPatterns",[value:"false",type:"bool"])
                 }
             }
+            paragraph "<hr>"
+            makeTheTable()
+            paragraph "${state.theTable}"
+            paragraph "<hr>"
+            if(state.mPattern) {
+                input "testPattern", "bool", title: "Test Pattern", submitOnChange:true, width: 3
+                if(testPattern) {
+                    startTheProcess()
+                    app?.updateSetting("testPattern",[value:"false",type:"bool"])
+                }
+                input "resetZones", "bool", title: "Reset ALL Device to Off", submitOnChange:true, width: 3
+                if(resetZones) {
+                    log.debug "$parent.masterswitchLevel"
+                    parent.masterswitchLevel.each { msl ->
+                        log.debug "resetZones - working on: $msl"
+                        msl.off()
+                        pauseExecution(500)
+                    }
+                    app?.updateSetting("resetZones",[value:"false",type:"bool"])
+                }
+                input "refreshMap", "bool", title: "Refresh Pattern", defaultValue:false, submitOnChange:true, width: 3
+                if(refreshMap) {
+                    makeTheTable()
+                    app?.updateSetting("refreshMap",[value:"false",type:"bool"])
+                }
+            }
+            state.mPattern = state.mPattern.sort { a, b -> a.key <=> b.key }
+            if(logEnable) paragraph "$state.mPattern"
+            paragraph "<hr>"
             href "importExportPage", title:"Import/Export Pattern", description:"Export your Patterns! Then import into a new child app to change then up (colors, speed, etc.)"
         }
         
@@ -351,10 +299,11 @@ def pageConfig() {
 }
 
 def importExportPage() {
-    dynamicPage(name: "importExportPage", title: "Import/Export Options", install:false, uninstall:false) {
+    dynamicPage(name: "importExportPage", title: "", install:false, uninstall:false) {
 		display() 
         section(getFormat("header-green", "${getImage("Blank")}"+" Import/Export Pattern")) {
             paragraph "Import/Export your favorite Patterns! Great for using the same pattern but changing up the colors/speed/etc. File includes all Groups and Pattern Data."
+            paragraph "<small>Note: 1.0.x files are not compatible with this version.</small>"
             paragraph "<hr>"
             paragraph "<b>Hub Security</b><br>In order to read/write files you must specify your Hubitat admin username and password, if enabled."
             input "hubSecurity", "bool", title: "Hub Security", submitOnChange: true
@@ -372,9 +321,15 @@ def importExportPage() {
             if(iPattern) {
                 paragraph "<hr>"
                 paragraph "<b>Import Pattern</b>"
-                input "pName", "text", title: "Name of file to Import <small>(Please do NOT include the .txt file extension)</small>", submitOnChange:true
+                getFileList()
+                input "pName", "enum", title: "List of Files", options: fileList, multiple:false, submitOnChange:true
                 if(pName) {
-                    input "importPattern", "button", title: "Import Pattern", width: 3
+                    input "importPattern", "bool", title: "Input Pattern", submitOnChange:true
+                    if(importPattern) {
+                        importFileHandler()
+                        app?.updateSetting("importPattern",[value:"false",type:"bool"])
+                        app.removeSetting("pName")
+                    }
                 }
                 paragraph "Note: If you want to delete the file at any time. <a href='http://${location.hub.localIP}:8080/hub/fileManager' target=_blank>Click Here</a> to visit the File Manager."
             }
@@ -382,9 +337,20 @@ def importExportPage() {
             if(ePattern) {
                 paragraph "<hr>"
                 paragraph "<b>Export Pattern</b>"
-                input "pName", "text", title: "Name of file to Export <small>(Please do NOT include the .txt file extension)</small>", submitOnChange:true
+                input "newORold", "bool", title: "New File or Existing File", submitOnChange:true
+                if(newORold) {
+                    getFileList()
+                    input "pName", "enum", title: "List of Files", options: fileList, multiple:false, submitOnChange:true
+                } else {
+                    input "pName", "text", title: "Name of file to Export <small>(ie. myPattern.txt)</small>", submitOnChange:true
+                }
                 if(pName) {
-                    input "exportPattern", "button", title: "Export Pattern", width: 3
+                    input "exportPattern", "bool", title: "Export Pattern", submitOnChange:true
+                    if(exportPattern) {
+                        exportFileHandler()
+                        app?.updateSetting("exportPattern",[value:"false",type:"bool"])
+                        app.removeSetting("pName")
+                    }
                 }
             }
         }
@@ -428,33 +394,34 @@ def startTheProcess(evt) {
         if(logEnable) log.debug "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
-        if(state.pattern) {
-            log.trace "state.pattern: ${state.pattern}"
+        if(state.mPattern) {
+            state.mPattern = state.mPattern.sort { a, b -> a.key <=> b.key }
+            if(logEnable) log.debug "In startTheProcess - mPattern: ${state.mPattern}"
             getCurrentStatus()
             numOfPasses = numOfPasses ?: 1
             for(x=0;x < numOfPasses;x++) {
                 if(logEnable) log.debug "     - - - - - Starting the Pattern (pass: $x) - - - - -     "
-                pSplit = state.pattern.split("-")
+                pSplit = state.mPattern.toString().replace("[","").replace("]","").replace(" ","").split(",")
                 pSplit.each { it ->
                     tZone = []
                     stuff = it.replace(" ","")
-                    (theZone,theCMD,theColor,theLevel,theDelay) = stuff.split(":")                  
+                    (theZone,theNum,theCMD,theColor,theLevel,theDelay) = stuff.split(";")                  
                     if(theZone.contains("z")) {
-                        theNum = theZone.drop(1)
+                        if(logEnable) log.debug "In startTheProcess - zone: $theNum"
                         tZone << parent."zone${theNum}"
                     }
-                                       
+                    
                     if(theZone.contains("g")) {
-                        theNum = theZone.drop(1)
                         theGroup = app."group${theNum}".toString()
-                        for(tz=1;tz<17;tz++) {
-                            if(theGroup.contains("zone$tz")) {
+                        if(logEnable) log.debug "In startTheProcess - theGroup: $theGroup"
+                        for(tz=1;tz<101;tz++) {
+                            if(theGroup.contains("${tz}:")) {
                                 tZone << parent."zone${tz}"
                             }
                         }
                     }
                    
-                    if(logEnable) log.debug "In startTheProcess - L379 - tZone: $tZone | $theCMD | $theColor | $theLevel | $theDelay"
+                    if(logEnable) log.debug "In startTheProcess - tZone: $tZone | $theCMD | $theColor | $theLevel | $theDelay"
                     if(theCMD.toLowerCase() == "on") {
                         tZone.each {
                             if(logEnable) log.debug "In startTheProcess - Working on $it - theLevel: $theLevel"
@@ -472,7 +439,6 @@ def startTheProcess(evt) {
                             it.setColor(value)
                         }
                     }
-                    log.warn "pause: $theDelay"
                     pauseExecution(theDelay.toInteger())
                 }
                 if(logEnable) log.debug "     - - - - - End Pattern (pass: $x) - - - - -     "
@@ -508,12 +474,12 @@ def getCurrentStatus() {
 
 def resetCurrentStatus(evt) {
     if(logEnable) log.debug "In resetCurrentStatus (${state.version})"
-    allDevices = [parent.zone1, parent.zone2, parent.zone3, parent.zone4, parent.zone5, parent.zone6, parent.zone7, parent.zone8, parent.zone9, parent.zone10, parent.zone11, parent.zone12, parent.zone13, parent.zone14, parent.zone15, parent.zone16].flatten().findAll{it}
+    allDevices = parent.masterswitchLevel
     for(x=0;x<2;x++) {
         allDevices.each { it ->
             name = (it.displayName).replace(" ","")
             try {
-                if(logEnable) log.debug "In resetCurrentStatus - Getting data for ${name}"
+                //if(logEnable) log.debug "In resetCurrentStatus - Getting data for ${name}"
                 theData = state.oldStatusMap.get(name)
                 if(theData) {
                     data = theData.split("::")
@@ -524,7 +490,7 @@ def resetCurrentStatus(evt) {
                     oldColorTemp = data[4]
                     oldColorMode = data[5]
                     setLevelandColorHandler(oldHueColor,oldLevel)
-                    if(logEnable) log.debug "In resetCurrentStatus - Working on: $it.displayName - $value"
+                    //if(logEnable) log.debug "In resetCurrentStatus - Working on: $it.displayName - $value"
                     if(oldStatus == "off") {
                         it.off()
                     } else {
@@ -532,7 +498,7 @@ def resetCurrentStatus(evt) {
                     }
                     pauseExecution(100)
                 } else {
-                    if(logEnable) log.debug "In resetCurrentStatus - Found NO data"
+                    //if(logEnable) log.debug "In resetCurrentStatus - Found NO data"
                 }
             } catch(e) {
                 log.error(getExceptionMessageWithLine(e))
@@ -706,35 +672,31 @@ String readFile(pName){
         httpGet(params) { resp ->
             if(resp!= null) {
                 data = resp.getData().toString()
-                if(logEnable) log.trace "In readFile - data: $data"
-                
-                theData = data.split(",")
-                dSize = theData.size()
-                for(x=0;x<8;x++) {
-                    theValues = theData[x].split(":")
-                    dataSize = theValues.size()
-                    theGroup = theValues[0]
-                    for(g=1;g<dataSize;g++) {
-                        nV = theValues[g].replaceAll("[^a-zA-Z0-9]", "")
-                        if(nV == "null") {
-                            newValues = "["
-                        } else {
-                            if(g==1) newValues = "[\"${nV}\""
-                            if(g>1) newValues += ",\"${nV}\""
+                if(logEnable) log.trace "In readFile - data: $data"             
+                theData = data.replace("[","").replace("]","").split(", ")
+                theData.each { it ->
+                    (theKey, theValue) = it.split(":")
+                    if(logEnable) log.debug "In readFile - theKey: ${theKey} - theValue: ${theValue}"
+                    if(theKey.contains("group")) {
+                        gData = theValue.split(";")
+                        g=1
+                        gData.each { gd ->
+                            c = gd.replace("!",":").toString()
+                            if(g==1) {
+                                newValues = "[\"${c}\""
+                            } else {
+                                newValues += ",\"${c}\""
+                            }
+                            g+=1
                         }
-                    }
-                    newValues += "]"
-                    if(logEnable) log.debug "In readFile - G - $theGroup: $newValues" 
-                    app.updateSetting("group${theGroup}", [type: "enum", value:"${newValues}"])
-                }
-
-                for(p=8;p<48;p++) {
-                    if(theData[p] == "null") {
-                        if(logEnable) log.debug "In readFile - P - p${p-7}: ${theData[p]}" 
-                        app.updateSetting("p${p-7}",[type:"text",value:""])
+                        newValues += "]"
+                        if(logEnable) log.debug "In readFile - Sending $theKey:$newValues" 
+                        app.updateSetting("${theKey}", [type: "enum", value:"${newValues}"])
                     } else {
-                        if(logEnable) log.debug "In readFile - P - p${p-7}: ${theData[p]}" 
-                        app.updateSetting("p${p-7}",[type:"text",value:"${theData[p]}"])
+                        if(logEnable) log.debug "In readFile - Sending $theKey:$theValue"
+                        tKey = theKey.replace(" ","").trim()
+                        tValue = theValue.replace(" ","").trim()
+                        state.mPattern.put(tKey,tValue)
                     }
                 }
             } else {
@@ -783,36 +745,24 @@ Content-Disposition: form-data; name="folder"
 
 def makeTheTable() {
     if(logEnable) log.debug "In makeTheTable (${state.version})"
-    pSize = state.mPattern.size()
+    mPatternSorted = state.mPattern.sort { a, b -> a.key <=> b.key }
     t=0
-    state.theTable = "<table>"
-    for(x=1;x<pSize+1;x++) {
-        thePatt = "p${x}".toString()
-        data = state.mPattern.get("p1")
-        log.info "data: $data"
-        if(data) {                
-            def theData = data.split(";")
-            theZG = theData[0]
-            theZGNum = theData[1]
-            theCommand = theData[2]
-            theColor = theData[3]
-            theLevel = theData[4]
-            theDelay = theData[5]
-            state.theTable += "${theZG}${theZGNum}-${theCommand}-${theColor}-${theLevel}-${theDelay}"
+    state.theTable = "<table width=100%>"
+    mPatternSorted.each { it ->
+        theKey = it.key
+        theValue = it.value
+        if(theKey=="p01" || theKey=="p05" || theKey=="p09" || theKey=="p13" || theKey=="p17" || theKey=="p21" || theKey=="p25" || theKey=="p29" || theKey=="p33" || theKey=="p37") {
+            state.theTable += "<tr><td><b>$theKey</b><br>$theValue"
         } else {
-            state.theTable += "No Data"
+            state.theTable += "<td><b>$theKey</b><br>$theValue"
         }
-        if(x==1 || x==5 || x==9 || x==13 || x==17 || x==21) {
-            state.theTable += "<tr><td><b>$thePatt</b><br>$patt"
-        } else {
-            state.theTable += "<td><b>$thePatt</b><br>$patt"
-        }
-    }               
+    }
     state.theTable += "</table>"
 }
 
 def clearTheBoard() {
     if(logEnable) log.debug "In clearTheBoard (${state.version})"
+    app.removeSetting("mData")
     app.removeSetting("pZG")
     app.removeSetting("pZGNum")
     app.removeSetting("pCommand")
@@ -822,88 +772,99 @@ def clearTheBoard() {
     state.working = false    
 }
 
+def exportFileHandler() {
+    if(logEnable) log.debug "In exportFileHandler (${state.version})"
+    state.theGroups = [:]
+    for(x=0;x<8;x++) {
+        if(x==0) aGroup = group1
+        if(x==1) aGroup = group2
+        if(x==2) aGroup = group3
+        if(x==3) aGroup = group4
+        if(x==4) aGroup = group5
+        if(x==5) aGroup = group6
+        if(x==6) aGroup = group7
+        if(x==7) aGroup = group8
+        if(aGroup) {
+            group = aGroup.toString().replace("[","").replace("]","").replace(" ","").split(",")
+            if(logEnable) log.debug "In exportFileHandler - Working group: ${x+1} - ${group}"
+            t = 1
+            group.each { it ->
+                if(logEnable) log.debug "In exportFileHandler - Working on:${it}"
+                newIt = it.replace(":","!")
+                if(t==1) {
+                    theZ = "${newIt}"
+                } else {
+                    theZ += ";${newIt}"
+                }
+                t += 1
+            }
+            if(logEnable) log.debug "In exportFileHandler  - Exporting - group${x+1}:$theZ"
+            state.theGroups.put("group${x+1}",theZ)
+            theZ = null
+        }
+    }
+    state.mPattern = state.mPattern.sort { a, b -> a.key <=> b.key }
+    theValue = state.theGroups + mPat
+    if(logEnable) log.debug "In exportFileHandler (${state.version})"
+    writeFile(pName, theValue) 
+}
+
+def importFileHandler() {
+    if(logEnable) log.debug "In importFileHandler (${state.version})"
+    state.mPattern = [:]
+    app.updateSetting("group1",[type:"enum", value:""])
+    app.updateSetting("group2",[type:"enum", value:""])
+    app.updateSetting("group3",[type:"enum", value:""])
+    app.updateSetting("group4",[type:"enum", value:""])
+    app.updateSetting("group5",[type:"enum", value:""])
+    app.updateSetting("group6",[type:"enum", value:""])
+    app.updateSetting("group7",[type:"enum", value:""])
+    app.updateSetting("group8",[type:"enum", value:""])
+    readFile(pName)
+}
+
+Boolean getFileList(){
+    if(logEnable) log.debug "Getting list of files"
+    uri = "http://${location.hub.localIP}:8080/hub/fileManager/json";
+    def params = [
+        uri: uri
+    ]
+    try {
+        fileList = []
+        httpGet(params) { resp ->
+            if (resp != null){
+                if(logEnable) log.debug "Found the files"
+                def json = resp.data
+                for (rec in json.files) {
+                    fileType = rec.name[-3..-1]
+                    if(fileType == "txt") {
+                        fileList << rec.name
+                    }
+                }
+            } else {
+                //
+            }
+        }
+        return fileList
+    } catch (e) {
+        log.error e
+    }
+}
+
 def appButtonHandler(buttonPressed) {
     if(logEnable) log.debug "*************************************************************************"
     if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${buttonPressed}"
-    if(buttonPressed == "testPattern") {
+    if(buttonPressed == "enterPattern") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        startTheProcess()
-    } else if(buttonPressed == "resetZones") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        if(parent.zone1) { parent.zone1.off() }
-        if(parent.zone2) { parent.zone2.off() }
-        if(parent.zone3) { parent.zone3.off() }
-        if(parent.zone4) { parent.zone4.off() }
-        if(parent.zone5) { parent.zone5.off() }
-        if(parent.zone6) { parent.zone6.off() }
-        if(parent.zone7) { parent.zone7.off() }
-        if(parent.zone8) { parent.zone8.off() }
-        if(parent.zone9) { parent.zone9.off() }
-        if(parent.zone10) { parent.zone10.off() }
-        if(parent.zone11) { parent.zone11.off() }
-        if(parent.zone12) { parent.zone12.off() }
-        if(parent.zone13) { parent.zone13.off() }
-        if(parent.zone14) { parent.zone14.off() }
-        if(parent.zone15) { parent.zone15.off() }
-        if(parent.zone16) { parent.zone16.off() }
-    } else if(buttonPressed == "exportPattern") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        if(logEnable) log.debug "In appButtonHandler - exportPattern - P"
-        thePatterns = "$p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8,$p9,$p10,$p11,$p12,$p13,$p14,$p15,$p16,$p17,$p18,$p19,$p20,$p21,$p22,$p23,$p24,$p25,$p26,$p27,$p28,$p29,$p30,$p31,$p32,$p33,$p34,$p35,$p36,$p37,$p38,$p39,$p40"
-        
-        if(logEnable) log.debug "In appButtonHandler - exportPattern - G"
-        for(x=0;x<8;x++) {
-            if(x==0) aGroup = group1
-            if(x==1) aGroup = group2
-            if(x==2) aGroup = group3
-            if(x==3) aGroup = group4
-            if(x==4) aGroup = group5
-            if(x==5) aGroup = group6
-            if(x==6) aGroup = group7
-            if(x==7) aGroup = group8
-            if(aGroup) {
-                if(x==0) {
-                    theGroups = "${x+1}"
-                } else {
-                    theGroups += ",${x+1}"
-                }
-                group = aGroup.toString().replace("[","").replace("]","").replace(" ","").split(",")
-                if(logEnable) log.debug "In appButtonHandler - exportPattern - G - Working group: ${x+1} - ${group}"
-                group.each { it ->
-                    if(logEnable) log.debug "In appButtonHandler - exportPattern - G - Working on:${it}!"
-                    theGroups += ":${it}"
-                }
-            } else {
-                if(x==0) {
-                    theGroups = "${x+1}:null"
-                } else {
-                    theGroups += ",${x+1}:null"
-                }
-            }
+        if(inputSwitch) {
+            newPattern = "${mData}"
+        } else {
+            newPattern = "${pZG};${pZGNum};${pCommand};${pColor.toLowerCase()};${pLevel};${pDelay}".trim()
         }
- 
-        theName = "${pName}.txt"
-        theValue = "${theGroups},${thePatterns}"
-        writeFile(theName, theValue)        
-        app.updateSetting("ePattern",[type:"bool", value:"false"])
-    } else if(buttonPressed == "importPattern") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"          
-        theName = "${pName}.txt"
-        readFile(theName)
-        app.updateSetting("iPattern",[type:"bool", value:"false"])
-    } else if(buttonPressed == "enterPattern") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        newPattern = "${pZG};${pZGNum};${pCommand};${pColor};${pLevel};${pDelay}"
         if(logEnable) log.debug "In appButtonHandler - Setting new pattern: (${pNumber}) - $newPattern"
         if(state.mPattern == null) state.mPattern = [:]
         state.mPattern.put("${pNumber}",newPattern)
         makeTheTable()
-        clearTheBoard()
-    } else if(buttonPressed == "resetPatterns") {
-        state.mPattern = [:]
-        state.working = false
-    } else if(buttonPressed == "cancelPattern") {
-        app.updateSetting("pNumber",[type:"number", value:""])
         clearTheBoard()
     }
     
