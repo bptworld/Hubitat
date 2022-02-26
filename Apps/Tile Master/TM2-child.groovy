@@ -33,16 +33,7 @@
  *
  *  Changes:
  *
- *  2.5.9 - 02/24/22 - Fixed a cosmetic issue
- *  2.5.8 - 10/09/21 - Adjustment
- *  2.5.7 - 07/03/21 - Minor adjustment
- *  2.5.6 - 06/21/21 - Adjustment to color options
- *  2.5.5 - 04/25/21 - Fixed an issue with the last merge.
- *  2.5.4 - 04/25/21 - Added pushbutton control (up to 4 buttons per device, only push event) - Thank you @ilkeraktuna
- *  2.5.3 - 03/27/21 - Sorted Attributes
- *  2.5.2 - 02/08/21 - Adjustment to 'Select the colors to display based on your setpoints'. Setpoints can now include negative numbers.
- *  2.5.1 - 12/20/20 - Adjustments to device value
- *  2.5.0 - 12/06/20 - Added more error catching
+ *  2.6.0 - 02/26/22 - Cosmetic change
  *  ---
  *  1.0.0 - 02/16/19 - Initially started working on this concept.
  *
@@ -53,7 +44,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.9"
+	state.version = "2.6.0"
 }
 
 definition(
@@ -115,11 +106,14 @@ def pageConfig() {
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
                 if(lineToEdit == 1) { 
-                    input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
+                    input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', submitOnChange:true
                     removeExtraLines()
+                } else {
+                    paragraph "How many lines on Tile (range: 1-9)<br><i>Only available when editing line 1</i>"
                 }
+                paragraph "<hr>"
                 theRange = "(1..$howManyLines)"
-                input "lineToEdit", "number", title: "Which line to edit", range:theRange, width:6, submitOnChange:true
+                input "lineToEdit", "number", title: "<b>Which line to edit</b>", range:theRange, submitOnChange:true
             
                 if(state.copyToLine == null) state.copyToLine = false
                 if(logEnable) log.debug "Checking for copied line - state.copyToLine: ${state.copyToLine} - lineToEdit: ${lineToEdit} - copyToNumber: ${state.copyToNumber}"
