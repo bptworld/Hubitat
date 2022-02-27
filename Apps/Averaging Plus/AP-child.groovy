@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.2 - 02/27/22 - Fixed a typo
  *  1.2.1 - 02/27/22 - Adding 'reference' device for Delta
  *  1.2.0 - 02/26/22 - Added option to average a certain device over time, also added time between restriction.
  *  ---
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.1"
+	state.version = "1.2.2"
 }
 
 definition(
@@ -456,9 +457,9 @@ def averageHandler(evt) {
                         }
 
                         mapSize = state.valueMap.size()
-                        theAverage = (totalValue / mapSize).toDouble().round(1)
+                        state.theAverage = (totalValue / mapSize).toDouble().round(1)
                         if(logEnable) log.debug "In averageHandler - mapSize: ${mapSize}"
-                        if(logEnable) log.debug "In averageHandler - theAverage: ${theAverage}"
+                        if(logEnable) log.debug "In averageHandler - theAverage: ${state.theAverage}"
                     }
                 } else {
                     theDevices.each { it ->
@@ -504,14 +505,15 @@ def averageHandler(evt) {
                 if(state.theAverage > weeklyHigh) { dataDevice.weeklyHigh(state.theAverage) }
                 if(state.theAverage < weeklyLow) { dataDevice.weeklyLow(state.theAverage) } 
 
-                if(reference) {
+                if(reference && state.theAverage) {
                     refValue = reference.currentValue("${refAtt}")
+                    if(logEnable) log.debug "In averageHandler - Comparing - refValue: ${refValue} - theAverage: ${state.theAverage}"
                     if(state.theAverage >= refValue) {
                         theDelta = state.theAverage - refValue
                     } else {
                         theDelta = refValue - state.theAverage
                     }
-                    if(logEnable) log.debug "In averageHandler - Sending - refValue: ${refValue} - theDelta: ${theDelta}"
+                    if(logEnable) log.debug "In averageHandler - Sending - theDelta: ${theDelta}"
                     dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
                     dataDevice.sendEvent(name: "delta", value: theDelta, isStateChange: true)
                 }
