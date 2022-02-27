@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.3 - 02/27/22 - I got carried away, major rewrite!
  *  1.2.2 - 02/27/22 - Fixed a typo, other minor changes
  *  1.2.1 - 02/27/22 - Adding 'reference' device for Delta
  *  1.2.0 - 02/26/22 - Added option to average a certain device over time, also added time between restriction.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.2"
+	state.version = "1.2.3"
 }
 
 definition(
@@ -68,10 +69,7 @@ definition(
 
 preferences {
     page(name: "pageConfig")
-    page name: "highSetpointConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
-    page name: "lowSetpointConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
-    page name: "notificationOptions", title: "", install: false, uninstall: false, nextPage: "pageConfig"
-    page name: "refAttConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
+    page name: "actionsConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -100,13 +98,12 @@ def pageConfig() {
             }
         }      
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Average Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Average Options")) {
             input "groupORsingle", "bool", title: "Average a group of devices OR a single device over time", defaultValue:false, submitOnChange:true
             if(groupORsingle) {
                 paragraph "Select a single device to average a certain attribute over time."
                 input "theDevices", "capability.*", title: "Select Device", required:false, multiple:false, submitOnChange:true
             } else {
-                app.removeSetting("theDevices")
                 paragraph "Select a group of devices that share a common attribute to average.<br><small>Note: Does NOT have to be the same 'type' of devices, just share a common attribute, ie. 'temperature'.</small>"
                 input "theDevices", "capability.*", title: "Select Devices", required:false, multiple:true, submitOnChange:true
             }
@@ -147,30 +144,8 @@ def pageConfig() {
             }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Daily Setpoint Options")) {
-            paragraph "If the Daily Average becomes too high or low, notifications can be sent."
-            input "highSetpoint", "number", title: "High Setpoint", required:false, submitOnChange:true, width:6
-            input "lowSetpoint", "number", title: "Low Setpoint", required:false, submitOnChange:true, width:6
-            
-            if(highSetpoint) {
-                if(spHighDevices || sendPushHigh) {
-                    href "highSetpointConfig", title:"${getImage("optionsGreen")} High Setpoint Options", description:"Click here for options"
-                } else {
-                    href "highSetpointConfig", title:"${getImage("optionsRed")} High Setpoint Options", description:"Click here for options"
-                }
-            }
-            
-            if(lowSetpoint) {
-                if(spLowDevices || sendPushLow) {
-                    href "lowSetpointConfig", title:"${getImage("optionsGreen")} Low Setpoint Options", description:"Click here for options"
-                } else {
-                    href "lowSetpointConfig", title:"${getImage("optionsRed")} Low Setpoint Options", description:"Click here for options"
-                }
-            }
-        }
-
         section(getFormat("header-green", "${getImage("Blank")}"+" Reference Options")) {
-            paragraph "This 'Reference' device can be used to find the Delta between the average above and this device."
+            paragraph "This 'Reference' device can be used to compare the average above and this devices value."
             input "reference", "capability.*", title: "Select a Reference Device", required:false, multiple:false, submitOnChange:true
             if(reference) {
                 refAttrs = []
@@ -183,19 +158,52 @@ def pageConfig() {
                 }
                 refAttrs = refAttrs.unique().sort()
                 input "refAtt", "enum", title: "Attribute", options:refAttrs, required:true, multiple:false, submitOnChange:true
-                input "deltaMax", "number", title: "Max Delta value", required:false, submitOnChange:true, width:6
-                if(refAtt) {
-                    href "refAttConfig", title:"${getImage("optionsGreen")} Reference Options", description:"Click here for options"
-                }
             }
         }
         
-        if(highSetpoint || lowSetpoint || deltaHigh || deltaLow) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-                if(speakerSS) {
-                    href "notificationOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Comparison Options")) {            
+            input "percType", "enum", title: "Select the type of percentage to use", options: [
+                ["S":"High/Low Setpoints"],
+                ["1":"average VS reference"],
+                ["2":"newValue VS reference"],
+                ["3":"newValue VS average"],
+                ["4":"newValue VS lastValue"]
+            ], multiple:false, submitOnChange:true
+
+            if(percType == "S") {
+                paragraph "If the Average becomes too high or low, actions can happen."
+                input "highSetpoint", "number", title: "High Setpoint", required:false, submitOnChange:true, width:6
+                input "lowSetpoint", "number", title: "Low Setpoint", required:false, submitOnChange:true, width:6
+            } else if((percType == "1" || percType == "2") && !reference) {
+                paragraph "Please select a Reference Device to use this option"
+            } else {
+                input "percVSdelta", "bool", title: "Use Percentage (off) or Delta Value (on)", defaultValue:false, submitOnChange:true
+                if(percVSdelta) {
+                    input "deltaMax", "number", title: "Max Delta value", required:false, submitOnChange:true, width:6
+                    input "deltaHighLow", "bool", title: "Only valid if Delta is too high or low", defaultValue:false, submitOnChange:true
+                    if(deltaHighLow) {
+                        input "onlyDeltaLowHigh", "bool", title: "Select when Low (off) or High (on)", defaultValue:false, submitOnChange:true
+                        if(onlyDeltaLowHigh) {
+                            paragraph "Delta will only be used when it is too High"
+                        } else {
+                            paragraph "Delta will only be used when it is too Low"
+                        }
+                    } else {
+                        paragraph "Delta will be used for values too high and too Low"
+                    }
                 } else {
-                    href "notificationOptions", title:"${getImage("optionsRed")} Notification Options", description:"Click here for options"
+                    input "pDifference", "number", title: "Percentage Difference", submitOnChange:true
+                    input "percHighLow", "bool", title: "Only valid if Percentage is too high or low", defaultValue:false, submitOnChange:true
+                    if(percHighLow) {
+                        input "onlyPercLowHigh", "bool", title: "Select when Low (off) or High (on)", defaultValue:false, submitOnChange:true
+                        if(onlyPercLowHigh) {
+                            paragraph "Percentage will only be used when it is too High"
+                        } else {
+                            paragraph "Percentage will only be used when it is too Low"
+                        }
+                    } else {
+                        paragraph "Percentage will be used for values too high and too Low"
+                    }
                 }
             }
         }
@@ -203,6 +211,10 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             paragraph "Sometimes a device can stop sending values (ie. run out of battery). With this option, if the device hasn't reported in - in X hours - do not include the value in the average."
             input "maxHours", "number", title: "Max Hours Since Reporting (1 to 24)", range: '1..24', submitOnChange:true
+        }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+            href "actionsConfig", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -246,69 +258,42 @@ def pageConfig() {
 	}
 }
 
-def lowSetpointConfig() {
-	dynamicPage(name: "lowSetpointConfig", title: "", install:false, uninstall:false) {
+def actionsConfig() {
+	dynamicPage(name: "actionsConfig", title: "", install:false, uninstall:false) {
         display()
-        section(getFormat("header-green", "${getImage("Blank")}"+" Average Too Low Options")) {
-            input "spLowDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
+        section(getFormat("header-green", "${getImage("Blank")}"+" Value Too Low Options")) {
+            input "spLowDevices", "capability.switch", title: "Turn on -OR- off Device(s)", required:false, multiple:true, submitOnChange:true
             if(spLowDevices) {
                 input "offORonLow", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
                 if(!offORonLow) {
-                    input "lowTimesOff", "number", title: "How many 'Too Low Averages' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
+                    input "lowTimesOff", "number", title: "How many 'Too Low Value' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
                 } else {
-                    input "lowTimesOn", "number", title: "How many 'Too Low Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                    input "lowTimesOn", "number", title: "How many 'Too Low Value' required in a row to turn switch On", defaultValue:2, submitOnChange:true
                     input "lowDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
                     if(lowDeviceAutoOff) {
-                        input "lowTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
+                        input "lowTimesOff", "number", title: "How many 'Normal Value' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
             }            
             input "sendPushLow", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
-        }       
-    }
-}
-
-def highSetpointConfig() {
-	dynamicPage(name: "highSetpointConfig", title: "", install:false, uninstall:false) {
-        display()
-        section(getFormat("header-green", "${getImage("Blank")}"+" Average Too High Options")) {
-            input "spHighDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Value Too High Options")) {
+            input "spHighDevices", "capability.switch", title: "Turn on -OR- off Device(s)", required:false, multiple:true, submitOnChange:true
             if(spHighDevices) {
                 input "offORonHigh", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
                 if(!offORonHigh) {
-                    input "highTimesOff", "number", title: "How many 'Too High Averages' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
+                    input "highTimesOff", "number", title: "How many 'Too High Value' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
                 } else {                    
-                    input "highTimesOn", "number", title: "How many 'Too High Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                    input "highTimesOn", "number", title: "How many 'Too High Value' required in a row to turn switch On", defaultValue:2, submitOnChange:true
                     input "highDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
                     if(highDeviceAutoOff) {
-                        input "highTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
+                        input "highTimesOff", "number", title: "How many 'Normal Value' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
             }           
             input "sendPushHigh", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
-        }      
-    }
-}
-
-def refAttConfig() {
-	dynamicPage(name: "refAttConfig", title: "", install:false, uninstall:false) {
-        display()
-        section(getFormat("header-green", "${getImage("Blank")}"+" Reference Options")) {
-            input "refDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
-            if(refAttDevices) {
-                input "offORonRef", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
-                if(!offORonRefAtt) {
-                    input "refOff", "number", title: "How many 'Out of Delta Range' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
-                } else {                    
-                    input "refOn", "number", title: "How many 'Out of Delta Range' required in a row to turn switch On", defaultValue:2, submitOnChange:true
-                    input "refAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
-                    if(refAutoOff) {
-                        input "refOff", "number", title: "How many 'Normal Delta' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
-                    }
-                }
-            }        
-            input "sendPushRef", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
-        }      
+        }
     }
 }
 
@@ -447,9 +432,10 @@ def averageHandler(evt) {
                     if(state.active) {
                         if(state.valueMap == null) state.valueMap = []
                         totalValue = 0
-                        num1 = theDevices.currentValue("${attrib}")
-                        if(num1) {
-                            state.valueMap << num1
+                        newValue = theDevices.currentValue("${attrib}")
+                        if(state.lastValue == null) state.lastValue = newValue
+                        if(newValue) {
+                            state.valueMap << newValue
                         }
 
                         state.valueMap.each { it ->
@@ -465,9 +451,9 @@ def averageHandler(evt) {
                     theDevices.each { it ->
                         getTimeDiff(it)
                         if(state.active) {
-                            num1 = it.currentValue("${attrib}")
-                            if(num1) {
-                                num = num1.toDouble()
+                            newValue = it.currentValue("${attrib}")
+                            if(newValue) {
+                                num = newValue.toDouble()
                                 if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
                                 if(num) {
                                     numOfDev += 1
@@ -504,25 +490,121 @@ def averageHandler(evt) {
                 if(state.theAverage < todaysLow) { dataDevice.todaysLow(state.theAverage) }  
                 if(state.theAverage > weeklyHigh) { dataDevice.weeklyHigh(state.theAverage) }
                 if(state.theAverage < weeklyLow) { dataDevice.weeklyLow(state.theAverage) } 
-
-                if(reference && state.theAverage) {
+                
+                // increase = [(new value - original value)/original value] * 100
+                
+                if(logEnable) log.debug "------------------------------------------------"
+                if(reference) {
                     refValue = reference.currentValue("${refAtt}")
-                    if(logEnable) log.debug "In averageHandler - Comparing - refValue: ${refValue} - theAverage: ${state.theAverage}"
-                    if(state.theAverage >= refValue) {
+                    if(percType == "1") {
+                        if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - theAverage: $state.theAverage - refValue: $refValue"
+                        perc = (((state.theAverage - refValue)/refValue) * 100).toDouble().round(1)
+                        if(perc >= 0) { 
+                            if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is UP by ${perc}%"
+                        } else {
+                            if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is DOWN by ${perc}%"
+                        }
                         theDelta = (state.theAverage - refValue).toDouble().round(1)
-                    } else {
-                        theDelta = (refValue - state.theAverage).toDouble().round(1)
+                        if(theDelta >= 0) { 
+                            if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is UP by ${theDelta}"
+                        } else {
+                            if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is DOWN by ${theDelta}"
+                        }
+                        if(logEnable) log.debug "------------------------------------------------"
+                    } else if(percType == "2") {
+                        if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - newValue: $newValue - refValue: $refValue"
+                        perc = (((newValue - refValue)/refValue) * 100).toDouble().round(1)
+                        if(perc >= 0) { 
+                            if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is UP by ${perc}%"
+                        } else {
+                            if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is DOWN by ${perc}%"
+                        }
+                        theDelta = (newValue - refValue).toDouble().round(1)
+                        if(theDelta >= 0) { 
+                            if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is UP by ${theDelta}"
+                        } else {
+                            if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is DOWN by ${theDelta}"
+                        }
+                        if(logEnable) log.debug "------------------------------------------------"
                     }
-                    if(logEnable) log.debug "In averageHandler - Sending - theDelta: ${theDelta}"
-                    dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
-                    dataDevice.sendEvent(name: "delta", value: theDelta, isStateChange: true)
+                } else {
+                    if(logEnable) log.debug "Please select a Reference Device to use this option"
                 }
+                
+                if(percType == "3") {
+                    if(logEnable) log.debug "In averageHandler - percentage 3 - newValue VS average - newValue: $newValue - theAverage: $state.theAverage"
+                    perc = (((newValue - state.theAverage)/state.theAverage) * 100).toDouble().round(1)
+                    if(perc >= 0) { 
+                        if(logEnable) log.debug "In averageHandler - percentage 3 - newValue VS average - Value is UP by ${perc}%"
+                    } else {
+                        if(logEnable) log.debug "In averageHandler - percentage 3 - newValue VS average - Value is DOWN by ${perc}%"
+                    }
+                    theDelta = (newValue - state.theAverage).toDouble().round(1)
+                    if(theDelta >= 0) { 
+                        if(logEnable) log.debug "In averageHandler - Delta 3 - newValue VS average - Value is UP by ${theDelta}"
+                    } else {
+                        if(logEnable) log.debug "In averageHandler - Delta 3 - newValue VS average - Value is DOWN by ${theDelta}"
+                    }
+                    if(logEnable) log.debug "------------------------------------------------"
+                } else if(percType == "4") {
+                    if(logEnable) log.debug "In averageHandler - percentage 4 - newValue VS lastValue - newValue: $newValue - lastValue: $state.lastValue"
+                    perc = (((newValue - state.lastValue)/state.lastValue) * 100).toDouble().round(1)
+                    if(perc >= 0) { 
+                        if(logEnable) log.debug "In averageHandler - percentage 4 - newValue VS lastValue - Value is UP by ${perc}%"
+                    } else {
+                        if(logEnable) log.debug "In averageHandler - percentage 4 - newValue VS lastValue - Value is DOWN by ${perc}%"
+                    }
+                    theDelta = (newValue - state.lastValue).toDouble().round(1)
+                    if(theDelta >= 0) { 
+                        if(logEnable) log.debug "In averageHandler - Delta 4 - newValue VS lastValue - Value is UP by ${theDelta}"
+                    } else {
+                        if(logEnable) log.debug "In averageHandler - Delta 4 - newValue VS lastValue - Value is DOWN by ${theDelta}"
+                    }
+                    state.lastValue = newValue
+                    if(logEnable) log.debug "------------------------------------------------"
+                }
+                if(theDelta)dataDevice.sendEvent(name: "delta", value: theDelta, isStateChange: true)
+                if(refValue) dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
 
                 theData = "${attrib}:${state.theAverage}"
                 if(logEnable) log.debug "In averageHandler - Sending theData: ${theData}"
                 dataDevice.virtualAverage(theData)
 
-                if(lowSetpoint) {
+                if(percType != "S") {
+                    if(percVSdelta) {
+                        if(deltaHighLow) {
+                            if(onlyDeltaLowHigh) {
+                                theHigh = refValue + deltaMax
+                                theLow = null
+                            } else {
+                                theHigh = null
+                                theLow = refValue - deltaMax
+                            }
+                        } else {
+                            theHigh = refValue + deltaMax
+                            theLow = refValue - deltaMax
+                        }
+                    } else {
+                        if(percHighLow) {
+                            if(onlyPercLowHigh) {
+                                theHigh = refValue + pDifference
+                                theLow = null
+                            } else {
+                                theHigh = null
+                                theLow = refValue - pDifference
+                            }
+                        } else {
+                            theHigh = refValue + pDifference
+                            theLow = refValue - pDifference
+                        }
+                    }
+
+                    app.updateSetting("highSetpoint", [type: "number", value: "${theHigh}"])
+                    app.updateSetting("lowSetpoint", [type: "number", value: "${theLow}"])
+                }
+                if(logEnable) log.debug "In averageHandler - highSetpoint: ${highSetpoint} - lowSetpoint: ${lowSetpoint}"
+
+                if(state.theAverage && (lowSetpoint != "null")) {
                     if(state.theAverage <= lowSetpoint) {
                         if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
                         state.low = true
@@ -547,7 +629,7 @@ def averageHandler(evt) {
                     }
                 }
 
-                if(highSetpoint) {
+                if(state.theAverage && (highSetpoint != "null")) {
                     if(state.theAverage >= highSetpoint) {
                         if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
                         state.high = true
@@ -572,7 +654,7 @@ def averageHandler(evt) {
                     }
                 }
 
-                if(highSetpoint && lowSetpoint) {
+                if(state.theAverage && (highSetpoint != "null") && (lowSetpoint != "null")) {
                     if(state.theAverage <= highSetpoint && state.theAverage >= lowSetpoint) {
                         if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
 
@@ -598,45 +680,6 @@ def averageHandler(evt) {
                     } 
                 }
                 
-                if(reference && refAtt && deltaMax) {
-                    if(theDelta >= deltaMax) {
-                        if(logEnable) log.debug "In averageHandler - The Delta (${theDelta}) is GREATER than the deltaMax (${deltaMax})"
-                        state.dlow = true
-                        state.dnTimes = 0
-
-                        if(state.dlTimes == null) state.dlTimes = 0
-                        state.dlTimes = state.dlTimes + 1
-
-                        if(refDevices) {
-                            refDevices.each {
-                                if(offORonRef) {
-                                    it.on()
-                                } else {
-                                    it.off()
-                                }
-                            }
-                        }
-                        state.theMsg = deltaMessage
-                        if(pushMessage || useSpeech) messageHandler()
-                        if(pushMessage && !state.sentPush) pushNow()
-                        if(useSpeech && fmSpeaker) letsTalk()
-                    } else {
-                        if(logEnable) log.debug "In averageHandler - The Delta (${theDelta}) looks good!"
-                        state.dhTimes = 0
-                        state.dlTimes = 0
-
-                        if(state.dnTimes == null) state.dnTimes = 0
-                        state.dnTimes = state.dnTimes + 1
-
-                        if(refDevices && refAutoOff && state.dnTimes >= refOff) {                
-                            refDevices.each {
-                                it.off()
-                            }
-                        }
-
-                        state.sentPush = false
-                    }
-                }
                 if(logEnable) log.debug "     - - - - - End (Averaging) - - - - -     "
             }
         } else {
