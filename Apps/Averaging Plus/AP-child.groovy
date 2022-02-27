@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.2.2 - 02/27/22 - Fixed a typo
+ *  1.2.2 - 02/27/22 - Fixed a typo, other minor changes
  *  1.2.1 - 02/27/22 - Adding 'reference' device for Delta
  *  1.2.0 - 02/26/22 - Added option to average a certain device over time, also added time between restriction.
  *  ---
@@ -509,9 +509,9 @@ def averageHandler(evt) {
                     refValue = reference.currentValue("${refAtt}")
                     if(logEnable) log.debug "In averageHandler - Comparing - refValue: ${refValue} - theAverage: ${state.theAverage}"
                     if(state.theAverage >= refValue) {
-                        theDelta = state.theAverage - refValue
+                        theDelta = (state.theAverage - refValue).toDouble().round(1)
                     } else {
-                        theDelta = refValue - state.theAverage
+                        theDelta = (refValue - state.theAverage).toDouble().round(1)
                     }
                     if(logEnable) log.debug "In averageHandler - Sending - theDelta: ${theDelta}"
                     dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
