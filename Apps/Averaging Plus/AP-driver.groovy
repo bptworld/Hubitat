@@ -4,11 +4,11 @@
  *  Design Usage:
  *  This driver works with the Averaging Plus app.
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2022 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 02/27/22 - Changes to reflect the rewrite
  *  1.0.3 - 08/14/20 - Minor changes
  *  1.0.2 - 06/15/20 - Added capability IlluminanceMeasurement
  *  1.0.1 - 06/10/20 - Lots of changes to match app
@@ -71,11 +72,13 @@ metadata {
         
         attribute "average", "number"
         attribute "battery", "number"
+        attribute "delta", "number"
         attribute "energy", "number"
         attribute "humidity", "number"
         attribute "illuminance", "number"
         attribute "level", "number"
         attribute "power", "number"
+        attribute "reference", "number"
         attribute "temperature", "number"
         attribute "ultravioletIndex", "number"
         attribute "voltage", "number"
@@ -148,6 +151,9 @@ def off() {
 def clearData() {
     if(logEnable) log.info "In Averaging Plus Driver - Clearing the Data"
     sendEvent(name: "average", value: "-")
+    sendEvent(name: "delta", value: "-")
+    sendEvent(name: "reference", value: "-")
+    sendEvent(name: "temperature", value: "-")   
     sendEvent(name: "todaysHigh", value: "-")
     sendEvent(name: "todaysLow", value: "-")
     sendEvent(name: "weeklyHigh", value: "-")
