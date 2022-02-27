@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.1 - 02/27/22 - Adding 'reference' device for Delta
  *  1.2.0 - 02/26/22 - Added option to average a certain device over time, also added time between restriction.
  *  ---
  *  1.0.0 - 05/25/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.0"
+	state.version = "1.2.1"
 }
 
 definition(
@@ -69,6 +70,7 @@ preferences {
     page name: "highSetpointConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "lowSetpointConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "notificationOptions", title: "", install: false, uninstall: false, nextPage: "pageConfig"
+    page name: "refAttConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -78,6 +80,7 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
     		paragraph "Average just about anything. Get notifications based on Setpoints."
             paragraph "<b>How the Averaging works</b><br>- Select a bunch of devices that share an attribute (ie. temperature)<br>- Select the Attribute to average<br>- Select the time frame between averages<br><br>For each device that has the attribute, the value will be added to the total value, then divided by the number of devices that have the attribute."
+            paragraph "<b>How the Delta works</b><br>- The Delta is the difference between the Average and the Reference Device.<br>- The app can then check if the Delta value is within a certain range."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
             paragraph "Each child app needs a virtual device to store the averaging results. This device can also be selected below in the Setpoint options to be used as a switch to control other things."
@@ -102,6 +105,7 @@ def pageConfig() {
                 paragraph "Select a single device to average a certain attribute over time."
                 input "theDevices", "capability.*", title: "Select Device", required:false, multiple:false, submitOnChange:true
             } else {
+                app.removeSetting("theDevices")
                 paragraph "Select a group of devices that share a common attribute to average.<br><small>Note: Does NOT have to be the same 'type' of devices, just share a common attribute, ie. 'temperature'.</small>"
                 input "theDevices", "capability.*", title: "Select Devices", required:false, multiple:true, submitOnChange:true
             }
@@ -120,7 +124,7 @@ def pageConfig() {
                 input "attrib", "enum", title: "Attribute to Average", required:true, multiple:false, submitOnChange:true, options:allAttrsa
                 input "decimals", "bool", title: "Use Decimal Points (off) or Round (On)", defaultValue:false, submitOnChange:true
             }
-            if(theDevices && attrib) { 
+            if(theDevices && attrib && dataDevice) { 
                 match = false
                 list = dataDevice.supportedAttributes
                 lista = list.join(",")
@@ -163,8 +167,29 @@ def pageConfig() {
                 }
             }
         }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" Reference Options")) {
+            paragraph "This 'Reference' device can be used to find the Delta between the average above and this device."
+            input "reference", "capability.*", title: "Select a Reference Device", required:false, multiple:false, submitOnChange:true
+            if(reference) {
+                refAttrs = []
+                attributes = reference.supportedAttributes
+                attributes.each { att ->
+                    theType = att.getDataType()
+                    if(theType == "NUMBER") {
+                        refAttrs << att.name
+                    }
+                }
+                refAttrs = refAttrs.unique().sort()
+                input "refAtt", "enum", title: "Attribute", options:refAttrs, required:true, multiple:false, submitOnChange:true
+                input "deltaMax", "number", title: "Max Delta value", required:false, submitOnChange:true, width:6
+                if(refAtt) {
+                    href "refAttConfig", title:"${getImage("optionsGreen")} Reference Options", description:"Click here for options"
+                }
+            }
+        }
         
-        if(highSetpoint || lowSetpoint) {
+        if(highSetpoint || lowSetpoint || deltaHigh || deltaLow) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
                 if(speakerSS) {
                     href "notificationOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
@@ -173,36 +198,49 @@ def pageConfig() {
                 }
             }
         }
-
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             paragraph "Sometimes a device can stop sending values (ie. run out of battery). With this option, if the device hasn't reported in - in X hours - do not include the value in the average."
             input "maxHours", "number", title: "Max Hours Since Reporting (1 to 24)", range: '1..24', submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
                 }
             }
+        }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            label title: "Enter a name for this automation", required:false, submitOnChange:true
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+                input "resetStuff", "bool", title: "Reset Stats/Averages", required:false, submitOnChange:true
+                if(resetStuff) {
+                    resetHandler()
+                    app.updateSetting("resetStuff",[value:"false",type:"bool"])
+                }
             }
-		}
+        }
 		display2()
 	}
 }
@@ -223,8 +261,7 @@ def lowSetpointConfig() {
                         input "lowTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
-            }
-            
+            }            
             input "sendPushLow", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
         }       
     }
@@ -246,9 +283,30 @@ def highSetpointConfig() {
                         input "highTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
-            }
-            
+            }           
             input "sendPushHigh", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
+        }      
+    }
+}
+
+def refAttConfig() {
+	dynamicPage(name: "refAttConfig", title: "", install:false, uninstall:false) {
+        display()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Reference Options")) {
+            input "refDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
+            if(refAttDevices) {
+                input "offORonRef", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
+                if(!offORonRefAtt) {
+                    input "refOff", "number", title: "How many 'Out of Delta Range' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
+                } else {                    
+                    input "refOn", "number", title: "How many 'Out of Delta Range' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                    input "refAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+                    if(refAutoOff) {
+                        input "refOff", "number", title: "How many 'Normal Delta' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
+                    }
+                }
+            }        
+            input "sendPushRef", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
         }      
     }
 }
@@ -276,6 +334,13 @@ def notificationOptions(){
                 input "spHighMessage", "text", title: "Message", submitOnChange:true
             }
         }
+        
+        if(sendPushRef) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - Delta")) {
+                paragraph "Wildcards:<br>- %avg% - Display the Average value"
+                input "deltaMessage", "text", title: "Message", submitOnChange:true
+            }
+        }
     }
 }
 
@@ -298,7 +363,6 @@ def updated() {
 }
 
 def initialize() {
-    setDefaults()
     if(theDevices && attrib) {
         if(triggerMode == "1_Min") runEvery1Minute(averageHandler)
         if(triggerMode == "5_Min") runEvery5Minutes(averageHandler)
@@ -308,7 +372,7 @@ def initialize() {
         if(triggerMode == "1_Hour") runEvery1Hour(averageHandler)
         if(triggerMode == "3_Hour") runEvery3Hours(averageHandler)
         schedule(timeToReset, resetHandler)
-        if(fromTime && toTime) {
+        if(timeBetween && fromTime && toTime) {
             schedule(fromTime, startTimeBetween)
             schedule(toTime, endTimeBetween)
             theDate1 = toDateTime(fromTime)
@@ -344,6 +408,7 @@ def resetHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In resetHandler (${state.version})"
+        state.valueMap = []
         if(theDevices) {
             dataDevice.virtualAverage("-")
             dataDevice.todaysHigh("-")
@@ -423,7 +488,7 @@ def averageHandler(evt) {
                     if(decimals) state.theAverage = state.theAverage.toInteger()
                     if(logEnable) log.debug "In averageHandler - totalNum: ${totalNum} - numOfDev: ${numOfDev} - theAverage: ${state.theAverage}"
                 }
-
+                
                 todaysHigh = dataDevice.currentValue("todaysHigh")
                 todaysLow = dataDevice.currentValue("todaysLow")
                 weeklyHigh = dataDevice.currentValue("weeklyHigh")
@@ -438,6 +503,18 @@ def averageHandler(evt) {
                 if(state.theAverage < todaysLow) { dataDevice.todaysLow(state.theAverage) }  
                 if(state.theAverage > weeklyHigh) { dataDevice.weeklyHigh(state.theAverage) }
                 if(state.theAverage < weeklyLow) { dataDevice.weeklyLow(state.theAverage) } 
+
+                if(reference) {
+                    refValue = reference.currentValue("${refAtt}")
+                    if(state.theAverage >= refValue) {
+                        theDelta = state.theAverage - refValue
+                    } else {
+                        theDelta = refValue - state.theAverage
+                    }
+                    if(logEnable) log.debug "In averageHandler - Sending - refValue: ${refValue} - theDelta: ${theDelta}"
+                    dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
+                    dataDevice.sendEvent(name: "delta", value: theDelta, isStateChange: true)
+                }
 
                 theData = "${attrib}:${state.theAverage}"
                 if(logEnable) log.debug "In averageHandler - Sending theData: ${theData}"
@@ -462,7 +539,7 @@ def averageHandler(evt) {
                             }
                         }
                         state.theMsg = spLowMessage
-                        messageHandler()
+                        if(pushMessage || useSpeech) messageHandler()
                         if(pushMessage && !state.sentPush) pushNow()
                         if(useSpeech && fmSpeaker) letsTalk()
                     }
@@ -487,14 +564,14 @@ def averageHandler(evt) {
                             }
                         }
                         state.theMsg = spHighMessage
-                        messageHandler()
+                        if(pushMessage || useSpeech) messageHandler()
                         if(pushMessage && !state.sentPush) pushNow()
                         if(useSpeech && fmSpeaker) letsTalk()
                     }
                 }
 
                 if(highSetpoint && lowSetpoint) {
-                    if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
+                    if(state.theAverage <= highSetpoint && state.theAverage >= lowSetpoint) {
                         if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
 
                         state.hTimes = 0
@@ -517,6 +594,46 @@ def averageHandler(evt) {
 
                         state.sentPush = false
                     } 
+                }
+                
+                if(reference && refAtt && deltaMax) {
+                    if(theDelta >= deltaMax) {
+                        if(logEnable) log.debug "In averageHandler - The Delta (${theDelta}) is GREATER than the deltaMax (${deltaMax})"
+                        state.dlow = true
+                        state.dnTimes = 0
+
+                        if(state.dlTimes == null) state.dlTimes = 0
+                        state.dlTimes = state.dlTimes + 1
+
+                        if(refDevices) {
+                            refDevices.each {
+                                if(offORonRef) {
+                                    it.on()
+                                } else {
+                                    it.off()
+                                }
+                            }
+                        }
+                        state.theMsg = deltaMessage
+                        if(pushMessage || useSpeech) messageHandler()
+                        if(pushMessage && !state.sentPush) pushNow()
+                        if(useSpeech && fmSpeaker) letsTalk()
+                    } else {
+                        if(logEnable) log.debug "In averageHandler - The Delta (${theDelta}) looks good!"
+                        state.dhTimes = 0
+                        state.dlTimes = 0
+
+                        if(state.dnTimes == null) state.dnTimes = 0
+                        state.dnTimes = state.dnTimes + 1
+
+                        if(refDevices && refAutoOff && state.dnTimes >= refOff) {                
+                            refDevices.each {
+                                it.off()
+                            }
+                        }
+
+                        state.sentPush = false
+                    }
                 }
                 if(logEnable) log.debug "     - - - - - End (Averaging) - - - - -     "
             }
@@ -547,9 +664,12 @@ def messageHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In messageHandler (${state.version})"
-        if(state.theMsg.contains("%avg%")) {state.theMsg = state.theMsg.replace('%avg%', "${state.theAverage}" )}
-
-        if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+        if(state.theMsg) {
+            if(state.theMsg.contains("%avg%")) {state.theMsg = state.theMsg.replace('%avg%', "${state.theAverage}" )}
+            if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+        } else {
+            if(logEnable) log.debug "In messageHandler - No message to send."
+        }
     }
 }
 
@@ -648,10 +768,9 @@ def endTimeBetween() {
 }
 
 // ********** Normal Stuff **********
-
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
-    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+    app.updateSetting("logEnable",[value:"false",type:"bool"])
 }
 
 def checkEnableHandler() {
@@ -659,17 +778,11 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { state.eSwitch = true }
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") { state.eSwitch = true }
         }
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
     }
-}
-
-def setDefaults() {
-	if(logEnable == null){logEnable = false}
-    state.nTimes = 0
-    state.lTimes = 0
-    state.hTimes = 0
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -682,50 +795,57 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+def getFormat(type, myText="") {			// Modified from @Stephack Code
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+    section() {
+        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" }
+        paragraph getFormat("line")
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-	}       
+    }
 }
 
 def getHeaderAndFooter() {
-    timeSinceNewHeaders()   
-    if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    timeSinceNewHeaders()
+    if(state.checkNow == null) state.checkNow = true
+    if(state.totalHours > 6 || state.checkNow) {
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
             requestContentType: "application/json",
             contentType: "application/json",
-            timeout: 30
+            timeout: 10
         ]
-
         try {
             def result = null
             httpGet(params) { resp ->
                 state.headerMessage = resp.data.headerMessage
                 state.footerMessage = resp.data.footerMessage
             }
-        }
-        catch (e) { }
+        } catch (e) { }
     }
     if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
     if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
@@ -735,11 +855,15 @@ def timeSinceNewHeaders() {
     if(state.previous == null) { 
         prev = new Date()
     } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+        } catch(e) {
+            prev = state.previous
+        }
     }
     def now = new Date()
-    use(TimeCategory) {       
+    use(TimeCategory) {
         state.dur = now - prev
         state.days = state.dur.days
         state.hours = state.dur.hours
