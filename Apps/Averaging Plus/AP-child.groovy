@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.4 - 02/28/22 - Fix for div by zero error
  *  1.2.3 - 02/27/22 - I got carried away, major rewrite!
  *  1.2.2 - 02/27/22 - Fixed a typo, other minor changes
  *  1.2.1 - 02/27/22 - Adding 'reference' device for Delta
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.3"
+	state.version = "1.2.4"
 }
 
 definition(
@@ -162,7 +163,7 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Comparison Options")) {            
-            input "percType", "enum", title: "Select the type of percentage to use", options: [
+            input "percType", "enum", title: "Select the type of comparison to use", options: [
                 ["S":"High/Low Setpoints"],
                 ["1":"average VS reference"],
                 ["2":"newValue VS reference"],
@@ -434,6 +435,7 @@ def averageHandler(evt) {
                         totalValue = 0
                         newValue = theDevices.currentValue("${attrib}")
                         if(state.lastValue == null) state.lastValue = newValue
+                        if(newValue == 0) newValue = 0.00000000001
                         if(newValue) {
                             state.valueMap << newValue
                         }
