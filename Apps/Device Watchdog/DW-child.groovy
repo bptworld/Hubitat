@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.5 - 02/28/22 - Added switch to not call 'config' due to a bug in some drivers
  *  2.4.4 - 11/22/21 - Added option to remove report titles
  *  2.4.3 - 11/14/21 - Bumped up version to check an issue with HPM (non found)
  *  2.4.2 - 11/14/21 - Added a data switch to each type of reporting
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.4"
+	state.version = "2.4.5"
 }
 
 definition(
@@ -241,6 +242,7 @@ def activityConfig() {
             paragraph "Device Watchdog can try to do a refresh on a device before setting it to inactive. Great for seldom used devices, such as a spare bedroom light switch.<br><small>* Note: This does not work on battery operated devices.</small>"
             input "useRefresh", "bool", title: "Use Refresh Options", defaultValue:false, submitOnChange:true
             if(useRefresh) {
+                input "useConfigure", "bool", title: "Include using 'Configure' when trying to check on devices?", defaultValue:false, submitOnChange:true
 				input "maxTimeDiff", "number", title: "How many hours 'since activity' before trying refresh", required:true, defaultValue:24, submitOnChange:true
                 paragraph "Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands (refresh) being sent."
                 input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:false, submitOnChange:true
@@ -1663,9 +1665,11 @@ def refreshDevices(devices) {
                 it.refresh()
                 if(logEnable) log.debug "In refreshDevices - ${it} attempting update using refresh command"
             } else if(it.hasCommand("configure")) {
-                pauseExecution(actionDelay)
-                it.configure()
-                if(logEnable) log.debug "In refreshDevices - ${it} attempting update using configure command"
+                if(useConfigure) {
+                    pauseExecution(actionDelay)
+                    it.configure()
+                    if(logEnable) log.debug "In refreshDevices - ${it} attempting update using configure command"
+                }
             } else {
                 if(logEnable) log.debug "In refreshDevices - ${it} not updated - No refresh or configure commands available."
             }
