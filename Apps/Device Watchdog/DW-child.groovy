@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.6 - 03/01/22 - Added ability to use 'Custom notes' from the Data section of any device
  *  2.4.5 - 02/28/22 - Added switch to not call 'config' due to a bug in some drivers
  *  2.4.4 - 11/22/21 - Added option to remove report titles
  *  2.4.3 - 11/14/21 - Bumped up version to check an issue with HPM (non found)
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.5"
+	state.version = "2.4.6"
 }
 
 definition(
@@ -215,6 +216,12 @@ def batteryConfig() {
 			} else {
 				paragraph "App will only display Devices BELOW Threshold."
 			}
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Additional Data Options")) {
+            paragraph "Since we can now add <a href='https://community.hubitat.com/t/release-custom-device-note-app/88532' target=_blank>Custom Notes</a> to the data section of any device. Display some of the notes within the Battery Report! Perfect for battery type and/or change information!"    
+            input "batData1", "text", title: "Type name of Data field EXACTLY as seen in the Data section of each device. (ie. batteryType)", required:false, submitOnChange:true
+            input "batData2", "text", title: "Type name of Data field EXACTLY as seen in the Data section of each device. (ie. batteryChange)", required:false, submitOnChange:true            
+            paragraph "* Each field will be tacked on to the end of each line of the Battery Report."           
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
             paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
@@ -992,7 +999,7 @@ def myBatteryHandler() {
             reportDateTime = ""
         }
         
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Battery Report${reportDateTime}<td>Level<td>Last Activity"
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Battery Report${reportDateTime}<td>Level<td>Last Activity<td> <td> "
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
@@ -1034,14 +1041,19 @@ def myBatteryHandler() {
                     } else {
                         newDate = "No Data"
                     }
-
+                    
                     theName = it.displayName              
                     if(bFilter1) { theName = theName.replace("${bFilter1}", "") }
                     if(bFilter2) { theName = theName.replace("${bFilter2}", "") }
                     if(bFilter3) { theName = theName.replace("${bFilter3}", "") }
                     if(bFilter4) { theName = theName.replace("${bFilter4}", "") }
 
-                    line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
+                    data1 = it.getDataValue("${batData1}")
+                    data2 = it.getDataValue("${batData2}")
+                    if(data1 == null) data1 = ""
+                    if(data2 == null) data2 = ""
+                    
+                    line = "<tr><td>${theName}<td>${cv}<td>${newDate}<td>${data1}<td>${data2}"
                     batteryMapPhone += "${theName} - ${cv} - ${newDate}\n"
 
                     totalLength = tbl.length() + line.length()
