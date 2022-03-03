@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.2.6 - 03/03/22 - Added Button number, Other minor changes
  *  1.2.5 - 02/01/22 - More changes
  *  1.2.4 - 01/30/22 - Big change to presets, now only allows one preset per child app.
  *  1.2.3 - 01/29/22 - Adjustments to Presets
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.5"
+    state.version = "1.2.6"
 }
 
 definition(
@@ -134,7 +135,10 @@ def pageConfig() {
                 }
 
                 input "button", "capability.pushableButton", title: "Button Device(s)", required:false, multiple:true, submitOnChange:true
-
+                if(button) {
+                    input "buttonNumber", "text", title: "Button Number", defaultValue:1, required:true, submitOnChange:true
+                }
+                
                 input "contact", "capability.contactSensor", title: "Contact Sensor(s)", required:false, multiple:true, submitOnChange:true
                 if(contact) {
                     input "contactValue", "bool", defaultValue: false, title: "Flash when Closed or Open (off = Closed, On = Open)", description: "Options"
@@ -338,9 +342,12 @@ def buttonHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In buttonHandler - Button: $evt.value"
-        atomicState.runLoop = true
-        flashLights()
+        bNumber = evt.value
+        if(logEnable) log.debug "In buttonHandler - Button: $bNumber"
+        if(bNumber == buttonNumber) {
+            atomicState.runLoop = true
+            flashLights()
+        }
     }
 }
 
@@ -533,10 +540,10 @@ def flashLights() {
         if(state.timeBetween) {
             if(state.modeMatch) {
                 if(state.daysMatch) {
-                    if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level}"
+                    state.oldSwitchState = theSwitch.currentValue("switch")
+                    if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level} - Original State: ${state.oldSwitchState}"
                     def delay = delay ?: 1
                     def numFlashes = numFlashes ?: 2
-                    state.oldSwitchState = theSwitch.currentValue("switch")
 
                     if(logEnable) log.debug "In flashLights - switchSaved: $state.switchSaved"
                     if(state.switchSaved == null) state.switchSaved = false
@@ -547,7 +554,6 @@ def flashLights() {
                             oldHueColor = theSwitch.currentValue("hue")
                             oldSaturation = theSwitch.currentValue("saturation")
                             oldLevel = theSwitch.currentValue("level")
-                            oldStatus = theSwitch.currentValue("switch")
                             state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
                             state.switchSaved = true
                             if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
@@ -650,8 +656,10 @@ def setInitialState() {
     } else {
         theSwitch.off()
     }
+    pauseExecution(500)
+    theNewStatus = theSwitch.currentValue("switch")
     state.switchSaved = false
-    if(logEnable) log.debug "In setInitialState - switchSaved is now $state.switchSaved"
+    if(logEnable) log.debug "In setInitialState - ${theSwitch} is now: ${theNewStatus} (original state: ${state.oldSwitchState})"
     if(logEnable) log.debug "******************* Finished - The Flasher *******************"
 }
 
