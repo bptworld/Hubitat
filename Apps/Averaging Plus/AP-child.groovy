@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.5 - 02/28/22 - Lots of little changes, More logging
  *  1.2.4 - 02/28/22 - Fix for div by zero error
  *  1.2.3 - 02/27/22 - I got carried away, major rewrite!
  *  1.2.2 - 02/27/22 - Fixed a typo, other minor changes
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.4"
+	state.version = "1.2.5"
 }
 
 definition(
@@ -169,7 +170,7 @@ def pageConfig() {
                 ["2":"newValue VS reference"],
                 ["3":"newValue VS average"],
                 ["4":"newValue VS lastValue"]
-            ], multiple:false, submitOnChange:true
+            ], multiple:false, required:true, submitOnChange:true
 
             if(percType == "S") {
                 paragraph "If the Average becomes too high or low, actions can happen."
@@ -421,7 +422,7 @@ def averageHandler(evt) {
         if(logEnable) log.debug "In averageHandler (${state.version})"
         if(state.betweenTime) {
             if(theDevices) {
-                if(logEnable) log.debug "     - - - - - Start (Averaging) - - - - -     "
+                if(logEnable) log.debug "     - - - - - Start Averaging ($percType) - - - - -     "
                 totalNum = 0
                 numOfDev = 0
                 state.low = false
@@ -433,9 +434,9 @@ def averageHandler(evt) {
                     if(state.active) {
                         if(state.valueMap == null) state.valueMap = []
                         totalValue = 0
-                        newValue = theDevices.currentValue("${attrib}")
+                        newValue = theDevices.currentValue("${attrib}")                       
+                        if(newValue == 0 || newValue == null) newValue = 0.00000000001
                         if(state.lastValue == null) state.lastValue = newValue
-                        if(newValue == 0) newValue = 0.00000000001
                         if(newValue) {
                             state.valueMap << newValue
                         }
@@ -454,6 +455,7 @@ def averageHandler(evt) {
                         getTimeDiff(it)
                         if(state.active) {
                             newValue = it.currentValue("${attrib}")
+                            if(newValue == 0 || newValue == null || newValue == "-") newValue = 0.00000000001
                             if(newValue) {
                                 num = newValue.toDouble()
                                 if(logEnable) log.debug "In averageHandler - working on ${it} - num: ${num}"
@@ -475,7 +477,7 @@ def averageHandler(evt) {
                         state.theAverage = (totalNum / numOfDev).toDouble().round(1)
                     }
                     if(decimals) state.theAverage = state.theAverage.toInteger()
-                    if(logEnable) log.debug "In averageHandler - totalNum: ${totalNum} - numOfDev: ${numOfDev} - theAverage: ${state.theAverage}"
+                    if(logEnable) log.debug "In averageHandler ($percType) - totalNum: ${totalNum} - numOfDev: ${numOfDev} - theAverage: ${state.theAverage}"
                 }
                 
                 todaysHigh = dataDevice.currentValue("todaysHigh")
@@ -496,45 +498,48 @@ def averageHandler(evt) {
                 // increase = [(new value - original value)/original value] * 100
                 
                 if(logEnable) log.debug "------------------------------------------------"
-                if(reference) {
-                    refValue = reference.currentValue("${refAtt}")
-                    if(percType == "1") {
-                        if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - theAverage: $state.theAverage - refValue: $refValue"
-                        perc = (((state.theAverage - refValue)/refValue) * 100).toDouble().round(1)
-                        if(perc >= 0) { 
-                            if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is UP by ${perc}%"
-                        } else {
-                            if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is DOWN by ${perc}%"
+                if(percType == "1" || percType == "2") {
+                    if(reference) {
+                        refValue = reference.currentValue("${refAtt}")
+                        if(refValue == 0 || refValue == null || refValue == "-") refValue = 0.00000000001
+                        if(percType == "1") {
+                            if(logEnable) log.debug "In averageHandler ($percType) - percentage 1 - average VS reference - theAverage: $state.theAverage - refValue: $refValue"
+                            perc = (((state.theAverage - refValue)/refValue) * 100).toDouble().round(1)
+                            if(perc >= 0) { 
+                                if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is UP by ${perc}%"
+                            } else {
+                                if(logEnable) log.debug "In averageHandler - percentage 1 - average VS reference - Value is DOWN by ${perc}%"
+                            }
+                            theDelta = (state.theAverage - refValue).toDouble().round(1)
+                            if(theDelta >= 0) { 
+                                if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is UP by ${theDelta}"
+                            } else {
+                                if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is DOWN by ${theDelta}"
+                            }
+                            if(logEnable) log.debug "------------------------------------------------"
+                        } else if(percType == "2") {
+                            if(logEnable) log.debug "In averageHandler ($percType) - percentage 2 - newValue VS reference - newValue: $newValue - refValue: $refValue"
+                            perc = (((newValue - refValue)/refValue) * 100).toDouble().round(1)
+                            if(perc >= 0) { 
+                                if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is UP by ${perc}%"
+                            } else {
+                                if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is DOWN by ${perc}%"
+                            }
+                            theDelta = (newValue - refValue).toDouble().round(1)
+                            if(theDelta >= 0) { 
+                                if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is UP by ${theDelta}"
+                            } else {
+                                if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is DOWN by ${theDelta}"
+                            }
+                            if(logEnable) log.debug "------------------------------------------------"
                         }
-                        theDelta = (state.theAverage - refValue).toDouble().round(1)
-                        if(theDelta >= 0) { 
-                            if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is UP by ${theDelta}"
-                        } else {
-                            if(logEnable) log.debug "In averageHandler - Delta 1 - average VS reference - Value is DOWN by ${theDelta}"
-                        }
-                        if(logEnable) log.debug "------------------------------------------------"
-                    } else if(percType == "2") {
-                        if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - newValue: $newValue - refValue: $refValue"
-                        perc = (((newValue - refValue)/refValue) * 100).toDouble().round(1)
-                        if(perc >= 0) { 
-                            if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is UP by ${perc}%"
-                        } else {
-                            if(logEnable) log.debug "In averageHandler - percentage 2 - newValue VS reference - Value is DOWN by ${perc}%"
-                        }
-                        theDelta = (newValue - refValue).toDouble().round(1)
-                        if(theDelta >= 0) { 
-                            if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is UP by ${theDelta}"
-                        } else {
-                            if(logEnable) log.debug "In averageHandler - Delta 2 - newValue VS reference - Value is DOWN by ${theDelta}"
-                        }
-                        if(logEnable) log.debug "------------------------------------------------"
+                    } else {
+                        if(logEnable) log.debug "Please select a Reference Device to use this option"
                     }
-                } else {
-                    if(logEnable) log.debug "Please select a Reference Device to use this option"
                 }
                 
                 if(percType == "3") {
-                    if(logEnable) log.debug "In averageHandler - percentage 3 - newValue VS average - newValue: $newValue - theAverage: $state.theAverage"
+                    if(logEnable) log.debug "In averageHandler ($percType) - percentage 3 - newValue VS average - newValue: $newValue - theAverage: $state.theAverage"
                     perc = (((newValue - state.theAverage)/state.theAverage) * 100).toDouble().round(1)
                     if(perc >= 0) { 
                         if(logEnable) log.debug "In averageHandler - percentage 3 - newValue VS average - Value is UP by ${perc}%"
@@ -549,7 +554,7 @@ def averageHandler(evt) {
                     }
                     if(logEnable) log.debug "------------------------------------------------"
                 } else if(percType == "4") {
-                    if(logEnable) log.debug "In averageHandler - percentage 4 - newValue VS lastValue - newValue: $newValue - lastValue: $state.lastValue"
+                    if(logEnable) log.debug "In averageHandler ($percType) - percentage 4 - newValue VS lastValue - newValue: $newValue - lastValue: $state.lastValue"
                     perc = (((newValue - state.lastValue)/state.lastValue) * 100).toDouble().round(1)
                     if(perc >= 0) { 
                         if(logEnable) log.debug "In averageHandler - percentage 4 - newValue VS lastValue - Value is UP by ${perc}%"
@@ -569,46 +574,58 @@ def averageHandler(evt) {
                 if(refValue) dataDevice.sendEvent(name: "reference", value: refValue, isStateChange: true)
 
                 theData = "${attrib}:${state.theAverage}"
-                if(logEnable) log.debug "In averageHandler - Sending theData: ${theData}"
+                if(logEnable) log.debug "In averageHandler ($percType) - Sending theData: ${theData}"
                 dataDevice.virtualAverage(theData)
 
-                if(percType != "S") {
-                    if(percVSdelta) {
-                        if(deltaHighLow) {
-                            if(onlyDeltaLowHigh) {
-                                theHigh = refValue + deltaMax
-                                theLow = null
+                if(percType == "1" || percType == "2") {
+                    if(reference) {
+                        if(percVSdelta) {
+                            if(refValue && deltaMax) {
+                                if(deltaHighLow) {
+                                    if(onlyDeltaLowHigh) {
+                                        theHigh = refValue + deltaMax
+                                        theLow = null
+                                    } else {
+                                        theHigh = null
+                                        theLow = refValue - deltaMax
+                                    }
+                                } else {
+                                    theHigh = refValue + deltaMax
+                                    theLow = refValue - deltaMax
+                                }
                             } else {
-                                theHigh = null
-                                theLow = refValue - deltaMax
+                                log.warn "In averageHandler ($percType) - Missing a Value: refValue: ${refValue} - deltaMax: ${deltaMax}"
                             }
                         } else {
-                            theHigh = refValue + deltaMax
-                            theLow = refValue - deltaMax
+                            if(refValue && pDifference) {
+                                if(percHighLow) {
+                                    if(onlyPercLowHigh) {
+                                        theHigh = refValue + pDifference
+                                        theLow = null
+                                    } else {
+                                        theHigh = null
+                                        theLow = refValue - pDifference
+                                    }
+                                } else {
+                                    theHigh = refValue + pDifference
+                                    theLow = refValue - pDifference
+                                }
+                            } else {
+                                log.warn "In averageHandler ($percType) - Missing a Value: refValue: ${refValue} - pDifference: ${pDifference}"
+                            }
                         }
                     } else {
-                        if(percHighLow) {
-                            if(onlyPercLowHigh) {
-                                theHigh = refValue + pDifference
-                                theLow = null
-                            } else {
-                                theHigh = null
-                                theLow = refValue - pDifference
-                            }
-                        } else {
-                            theHigh = refValue + pDifference
-                            theLow = refValue - pDifference
-                        }
+                        if(logEnable) log.debug "Please select a Reference Device to use this option"
                     }
-
+                    
                     app.updateSetting("highSetpoint", [type: "number", value: "${theHigh}"])
                     app.updateSetting("lowSetpoint", [type: "number", value: "${theLow}"])
                 }
-                if(logEnable) log.debug "In averageHandler - highSetpoint: ${highSetpoint} - lowSetpoint: ${lowSetpoint}"
+                if(logEnable) log.debug "In averageHandler ($percType) - highSetpoint: ${highSetpoint} - lowSetpoint: ${lowSetpoint}"
 
                 if(state.theAverage && (lowSetpoint != "null")) {
                     if(state.theAverage <= lowSetpoint) {
-                        if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
                         state.low = true
                         state.nTimes = 0
 
@@ -633,7 +650,7 @@ def averageHandler(evt) {
 
                 if(state.theAverage && (highSetpoint != "null")) {
                     if(state.theAverage >= highSetpoint) {
-                        if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
                         state.high = true
                         state.nTimes = 0
 
@@ -658,7 +675,7 @@ def averageHandler(evt) {
 
                 if(state.theAverage && (highSetpoint != "null") && (lowSetpoint != "null")) {
                     if(state.theAverage <= highSetpoint && state.theAverage >= lowSetpoint) {
-                        if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) looks good!"
 
                         state.hTimes = 0
                         state.lTimes = 0
@@ -682,7 +699,7 @@ def averageHandler(evt) {
                     } 
                 }
                 
-                if(logEnable) log.debug "     - - - - - End (Averaging) - - - - -     "
+                if(logEnable) log.debug "     - - - - - End Averaging ($percType) - - - - -     "
             }
         } else {
             if(logEnable) log.debug "In averageHandler - betweenTime: ${state.betweenTime} - Time is outside of range, no average taken."
