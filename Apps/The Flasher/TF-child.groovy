@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.2.7 - 03/04/22 - Changes to Reset old value
  *  1.2.6 - 03/03/22 - Added Button number, Other minor changes
  *  1.2.5 - 02/01/22 - More changes
  *  1.2.4 - 01/30/22 - Big change to presets, now only allows one preset per child app.
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.2.6"
+    state.version = "1.2.7"
 }
 
 definition(
@@ -645,14 +646,15 @@ def doLoopHandler(delay, numFlashes) {
 
 def setInitialState() {
     if(logEnable) log.debug "In setInitialState - Resetting switch - Working on: $theSwitch - oldSwitchState: ${state.oldSwitchState} - oldValue: ${state.oldValue}"
-    if(theSwitch.hasCommand('setColor')) {
-        theSwitch.setColor(state.oldValue)
-    } else if(theSwitch.hasCommand('setLevel')) {
-        theSwitch.setLevel(state.oldValue)
-    }
     pauseExecution(500)
     if(state.oldSwitchState == "on") {
-        theSwitch.on()
+        if(theSwitch.hasCommand('setColor')) {
+            theSwitch.setColor(state.oldValue)
+        } else if(theSwitch.hasCommand('setLevel')) {
+            theSwitch.setLevel(state.oldValue)
+        } else {
+            theSwitch.on()
+        }
     } else {
         theSwitch.off()
     }
