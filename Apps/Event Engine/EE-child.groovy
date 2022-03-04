@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.1 - 03/04/22 - Change to make the Refresh Action run first. Other minor changes
 *  3.5.0 - 02/17/22 - Changes to reverse, hopefully no more flash before turning off
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -54,7 +55,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.5.0"
+    state.name = "Event Engine Cog"; state.version = "3.5.1"
 }
 
 definition(
@@ -1982,11 +1983,10 @@ def pageConfig() {
             paragraph "<hr>"
             if(actionType == null) actionType = " "
 // -----------
-            if(actionType.contains("aBlueIris")) {
-                
+            if(actionType.contains("aBlueIris")) {                
                 paragraph "<b>Blue Iris Control</b>"
                 if(parent.biServer && parent.biUser && parent.biPass) {
-                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot", "Camera_Enable", "Camera_Disable"], required:true, Multiple:false
+                    input "biControl", "enum", title: "Select Control Type", submitOnChange:true, options: ["Switch_Profile", "Switch_Schedule", "Camera_Preset", "Camera_Snapshot", "Camera_Trigger", "Camera_PTZ", "Camera_Reboot", "Camera_Enable", "Camera_Disable"], required:true, Multiple:false             
                     if(biControl == "Switch_Profile") {
                         input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
                             [Pon0:"Profile 0"],
@@ -2220,7 +2220,7 @@ def pageConfig() {
             }
 
             if(actionType.contains("aRefresh")) {
-                paragraph "<b>Refresh Device</b><br><small>* Only works for devices that have the 'refresh' attribute.</small>"
+                paragraph "<b>Refresh Device</b><br>This will run before ANY other actions.<br><small>* Only works for devices that have the 'refresh' attribute.</small>"
                 input "devicesToRefresh", "capability.refresh", title: "Devices to Refresh", multiple:true, submitOnChange:true
                 theCogActions += "<b>-</b> Devices to Refresh: ${devicesToRefresh}<br>"
             } else {
@@ -3533,6 +3533,7 @@ def startTheProcess(evt) {
                                         if(actionType) {
                                             if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
                                             unschedule(permanentDimHandler)
+                                            if(devicesToRefresh) devicesToRefreshActionHandler()
                                             if(actionType.contains("aFan")) { fanActionHandler() }
                                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                                             if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
@@ -3577,7 +3578,6 @@ def startTheProcess(evt) {
                                         if(keypadAction) securityKeypadActionHandler()
                                         if(setHSM) hsmChangeActionHandler()
                                         if(modeAction) modeChangeActionHandler()
-                                        if(devicesToRefresh) devicesToRefreshActionHandler()
                                         if(rmRule) ruleMachineHandler()
                                         if(setGVname && setGVvalue) setGlobalVariableHandler()
                                         if(eeAction) eventEngineHandler()
@@ -4729,7 +4729,8 @@ def dimmerOnReverseActionHandler() {
                             if(level) it.setLevel(level.toInteger())
                         }
                     } else {
-                        def theValue = [hue: hueColor.toInteger(), saturation: saturation.toInteger(), level: level.toInteger()]
+                        if(level) level = level.toInteger()
+                        def theValue = [hue: hueColor, saturation: saturation, level: level]
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
@@ -7026,7 +7027,8 @@ def colorChangeReverseHandler() {
                         }
                     } else {
                         try {
-                            def theValue = [hue: hueColor.toInteger(), saturation: saturation.toInteger(), level: level.toInteger()]
+                            if(level) level = level.toInteger()
+                            def theValue = [hue: hueColor, saturation: saturation, level: level]
                             if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-setColor)- Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                             pauseExecution(actionDelay)
                             it.setColor(theValue)
@@ -7556,10 +7558,7 @@ def biChangeHandler(num) { // library marker BPTWorld.bpt-blueIrisActions, line 
     } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") { // library marker BPTWorld.bpt-blueIrisActions, line 160
         if(logEnable) log.debug "I'm in Camera_Enable/Disable" // library marker BPTWorld.bpt-blueIrisActions, line 161
         biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"            // library marker BPTWorld.bpt-blueIrisActions, line 162
-        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name) // library marker BPTWorld.bpt-blueIrisActions, line 163
-    } else if(biControl == "Switch_Schedule") {     // library marker BPTWorld.bpt-blueIrisActions, line 164
-        if(logEnable) log.debug "I'm in Switch_Schedule" // library marker BPTWorld.bpt-blueIrisActions, line 165
-        biRawCommand = "/admin?schedule=${num}&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 166
+        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name) // library marker BPTWorld.bpt-blueIrisActions, line 163 
     } else { // library marker BPTWorld.bpt-blueIrisActions, line 167
         biRawCommand = "*** Something went wrong! ***" // library marker BPTWorld.bpt-blueIrisActions, line 168
     } // library marker BPTWorld.bpt-blueIrisActions, line 169
