@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.2 - 03/04/22 - Added delay to Refresh
 *  3.5.1 - 03/04/22 - Change to make the Refresh Action run first. Other minor changes
 *  3.5.0 - 02/17/22 - Changes to reverse, hopefully no more flash before turning off
 *  ---
@@ -55,7 +56,7 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.5.1"
+    state.name = "Event Engine Cog"; state.version = "3.5.2"
 }
 
 definition(
@@ -3323,6 +3324,8 @@ def initialize() {
 }
 
 def startTheProcess(evt) {
+    //sendLocationEvent(name: "updateVersionInfo", value: ["${state.name}", "${state.version}"])
+    sendLocationEvent(name: "updateVersionInfo", value: "${app.id}:${state.version}")
     if(switchesToSync) {
         if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
             if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
@@ -3696,6 +3699,7 @@ def startTheProcess(evt) {
                                     if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
                                     state.appStatus = "inactive"
                                     state.appRevStatus = "round1"
+                                    if(devicesToRefresh) devicesToRefreshActionHandler()
                                     if(actionType.contains("aFan")) { fanReverseActionHandler() }
                                     if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
                                     if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
@@ -4837,8 +4841,8 @@ def permanentDimHandler() {
 def devicesToRefreshActionHandler() {
     devicesToRefresh.each { it ->
         if(logEnable) log.debug "In devicesToRefreshActionHandler - Refreshing ${it}"
-        pauseExecution(actionDelay)
         it.refresh()
+        pauseExecution(actionDelay)
     }
 }
 
