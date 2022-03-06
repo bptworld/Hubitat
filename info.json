@@ -4,8 +4,8 @@
    "bundles": [
       {  "name": "Event Engine Cog",
          "version": "3.5.3",
-         "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
-         "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
+         "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
+         "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ],
          "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip"
       },
       {  "name": "Test 2",
