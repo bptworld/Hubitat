@@ -33,7 +33,7 @@
     document.title = 'Hubitat - Event Engine';
     
     document.getElementsByClassName('mdl-layout-title')[0].firstChild.innerHTML = 'Event Engine';
-    // If using the beta, comment out the line above and uncomment the line below.
+    // If using the beta 2.3.1.+, comment out the line above and uncomment the line below.
     //document.getElementsByClassName('mdl-layout__header-row')[0].firstChild.nextSibling.innerHTML = 'Event Engine';
 
     nav.getElementsByClassName('is-active')[0].classList.remove('is-active');
