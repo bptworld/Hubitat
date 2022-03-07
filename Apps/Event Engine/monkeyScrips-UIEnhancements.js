@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name     Event Engine UI enhancements
 // @description Event Engine UI enhancements
-// @version  1
+// @version  2
 // @grant    unsafeWindow
 // @include  http://192.168.86.20/*
 // @require  https://code.highcharts.com/stock/highstock.js
