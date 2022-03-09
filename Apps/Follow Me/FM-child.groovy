@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.4.4 - 03/09/22 - Adjustment to presenceStatus
  *  2.4.3 - 01/25/22 - More work to lastActive
  *  2.4.2 - 01/25/22 - Working on lastActive, added option for Fuschia OS devices (stop the message chopping)
  *  2.4.1 - 01/20/22 - Adjustments to timeBetween and quietTime
@@ -44,11 +45,12 @@
 import groovy.json.*
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
-
+#include BPTWorld.bpt-normalStuff
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.4.3"
+	state.version = "2.4.4"
+    sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
 definition(
@@ -771,12 +773,15 @@ def presenceSensorHandler(evt) {
             atomicState.sZone = true
             if(lastActive == null) lastActive = false
             speakerStatus = "${app.label}:${atomicState.sZone}:${app.id}:${lastActive}"
+            if(logEnable) log.debug "In presenceSensorHandler - ***** speakerStatus: ${speakerStatus} *****"
             gvDevice.sendFollowMeSpeaker(speakerStatus)
             if(logTrace) log.trace "In presenceSensorHandler - ${app.label} - Zone is now ON - sZone: ${atomicState.sZone}"
         }
         if(state.presenceStatus == "not present" && !lastActive) {
             sOff = sZoneWaiting * 60
             runIn(sOff,zoneOffHandler)
+        } else {
+            if(logEnable) log.debug "In presenceSensorHandler - lastActive is True"
         }
     }
 }
@@ -945,7 +950,7 @@ def prioritySpeaker(data) {
     return priSpeaker
 }
 
-def startHandler(evt) { 
+def startHandler(evt=null) { 
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
@@ -972,7 +977,7 @@ def zoneOffHandler(data = null) {
         if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${atomicState.sZone}"
         if(logTrace) log.debug "In zoneOffHandler - ${app.label} - Zone is now off - sZone: ${atomicState.sZone}"
     } else {
-        if(state.contactStatus == "open" || state.motionStatus == "active" || state.switchStatus == "on"){
+        if(state.contactStatus == "open" || state.motionStatus == "active" || state.switchStatus == "on" || state.presenceStatus == "present"){
             atomicState.sZone = true
             if(logEnable) log.debug "In zoneOffHandler - Zone status changed, staying on - sZone: ${atomicState.sZone}"
         } else {
@@ -1042,6 +1047,7 @@ def processQueue() {
 // **********  End code modified from @djgutheinz  **********
 
 def theTalk(msg) {
+    setVersion()
     if(logEnable) log.debug "In theTalk - msg: ${msg}"
     def message =  new JsonSlurper().parseText(msg)
     if(message.message.contains("]")) {
@@ -1668,197 +1674,3 @@ def createDataChildDevice() {
     }
     return statusMessageD
 }
-
-// ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
-library ( // library marker BPTWorld.bpt-normalStuff, line 1
-        base: "app", // library marker BPTWorld.bpt-normalStuff, line 2
-        author: "Bryan Turcotte", // library marker BPTWorld.bpt-normalStuff, line 3
-        category: "Apps", // library marker BPTWorld.bpt-normalStuff, line 4
-        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-normalStuff, line 5
-        name: "bpt-normalStuff", // library marker BPTWorld.bpt-normalStuff, line 6
-        namespace: "BPTWorld", // library marker BPTWorld.bpt-normalStuff, line 7
-        documentationLink: "", // library marker BPTWorld.bpt-normalStuff, line 8
-        version: "1.0.0", // library marker BPTWorld.bpt-normalStuff, line 9
-        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-normalStuff, line 10
-) // library marker BPTWorld.bpt-normalStuff, line 11
-
-import groovy.time.TimeCategory // library marker BPTWorld.bpt-normalStuff, line 13
-import java.text.SimpleDateFormat // library marker BPTWorld.bpt-normalStuff, line 14
-
-def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 16
-    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 17
-    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 18
-    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 19
-} // library marker BPTWorld.bpt-normalStuff, line 20
-
-def parentCheck(){   // library marker BPTWorld.bpt-normalStuff, line 22
-	state.appInstalled = app.getInstallationState()  // library marker BPTWorld.bpt-normalStuff, line 23
-	if(state.appInstalled != 'COMPLETE'){ // library marker BPTWorld.bpt-normalStuff, line 24
-		parentChild = true // library marker BPTWorld.bpt-normalStuff, line 25
-  	} else { // library marker BPTWorld.bpt-normalStuff, line 26
-    	parentChild = false // library marker BPTWorld.bpt-normalStuff, line 27
-  	} // library marker BPTWorld.bpt-normalStuff, line 28
-} // library marker BPTWorld.bpt-normalStuff, line 29
-
-def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 31
-    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 32
-    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 33
-    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 34
-        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 35
-        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 36
-        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 37
-        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 38
-        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 39
-    } // library marker BPTWorld.bpt-normalStuff, line 40
-    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 41
-    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 42
-        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 43
-        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 44
-    } // library marker BPTWorld.bpt-normalStuff, line 45
-} // library marker BPTWorld.bpt-normalStuff, line 46
-
-def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 48
-    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 49
-    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 50
-    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 51
-        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 52
-        try { // library marker BPTWorld.bpt-normalStuff, line 53
-            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 54
-            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 55
-            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 56
-        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 57
-    } else { // library marker BPTWorld.bpt-normalStuff, line 58
-        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 59
-    } // library marker BPTWorld.bpt-normalStuff, line 60
-    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 61
-} // library marker BPTWorld.bpt-normalStuff, line 62
-
-def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 64
-	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 65
-} // library marker BPTWorld.bpt-normalStuff, line 66
-
-private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 68
-	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 69
-} // library marker BPTWorld.bpt-normalStuff, line 70
-
-def letsTalk(msg) { // library marker BPTWorld.bpt-normalStuff, line 72
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 73
-    if(useSpeech && fmSpeaker) { // library marker BPTWorld.bpt-normalStuff, line 74
-        fmSpeaker.latestMessageFrom(state.name) // library marker BPTWorld.bpt-normalStuff, line 75
-        fmSpeaker.speak(msg,null) // library marker BPTWorld.bpt-normalStuff, line 76
-    } // library marker BPTWorld.bpt-normalStuff, line 77
-} // library marker BPTWorld.bpt-normalStuff, line 78
-
-def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 80
-    if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 81
-    theMessage = "${app.label} - ${msg}" // library marker BPTWorld.bpt-normalStuff, line 82
-    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 83
-    sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 84
-} // library marker BPTWorld.bpt-normalStuff, line 85
-
-// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 87
-def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 88
-    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 89
-    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 90
-} // library marker BPTWorld.bpt-normalStuff, line 91
-
-def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 93
-    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 94
-    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 95
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 96
-        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 97
-            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 98
-            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 99
-        } // library marker BPTWorld.bpt-normalStuff, line 100
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 101
-    } // library marker BPTWorld.bpt-normalStuff, line 102
-} // library marker BPTWorld.bpt-normalStuff, line 103
-
-def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 105
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 106
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 107
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 108
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 109
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 110
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 111
-    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 112
-} // library marker BPTWorld.bpt-normalStuff, line 113
-
-def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 115
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 116
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 117
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 118
-} // library marker BPTWorld.bpt-normalStuff, line 119
-
-def display(data) { // library marker BPTWorld.bpt-normalStuff, line 121
-    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 122
-    setVersion() // library marker BPTWorld.bpt-normalStuff, line 123
-    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 124
-    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 125
-        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 126
-            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 127
-        } else { // library marker BPTWorld.bpt-normalStuff, line 128
-            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 129
-        } // library marker BPTWorld.bpt-normalStuff, line 130
-    } // library marker BPTWorld.bpt-normalStuff, line 131
-    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 132
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 133
-        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 134
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 135
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 136
-    } // library marker BPTWorld.bpt-normalStuff, line 137
-} // library marker BPTWorld.bpt-normalStuff, line 138
-
-def display2() { // library marker BPTWorld.bpt-normalStuff, line 140
-    section() { // library marker BPTWorld.bpt-normalStuff, line 141
-        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 142
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 143
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 144
-        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 145
-    } // library marker BPTWorld.bpt-normalStuff, line 146
-} // library marker BPTWorld.bpt-normalStuff, line 147
-
-def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 149
-    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 150
-    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 151
-    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 152
-        def params = [ // library marker BPTWorld.bpt-normalStuff, line 153
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 154
-            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 155
-            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 156
-            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 157
-        ] // library marker BPTWorld.bpt-normalStuff, line 158
-        try { // library marker BPTWorld.bpt-normalStuff, line 159
-            def result = null // library marker BPTWorld.bpt-normalStuff, line 160
-            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 161
-                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 162
-                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 163
-            } // library marker BPTWorld.bpt-normalStuff, line 164
-        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 165
-    } // library marker BPTWorld.bpt-normalStuff, line 166
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 167
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 168
-} // library marker BPTWorld.bpt-normalStuff, line 169
-
-def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 171
-    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 172
-        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 173
-    } else { // library marker BPTWorld.bpt-normalStuff, line 174
-        try { // library marker BPTWorld.bpt-normalStuff, line 175
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 176
-            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 177
-        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 178
-            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 179
-        } // library marker BPTWorld.bpt-normalStuff, line 180
-    } // library marker BPTWorld.bpt-normalStuff, line 181
-    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 182
-    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 183
-        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 184
-        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 185
-        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 186
-        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 187
-    } // library marker BPTWorld.bpt-normalStuff, line 188
-    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 189
-} // library marker BPTWorld.bpt-normalStuff, line 190
-
-// ~~~~~ end include (2) BPTWorld.bpt-normalStuff ~~~~~
