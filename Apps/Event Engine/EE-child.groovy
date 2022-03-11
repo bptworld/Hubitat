@@ -40,6 +40,9 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.3 - 03/11/22 - Added Notification support for Other Devices (ie. webOS TV's).
+*                   - Added option to run cog when system starts up
+*                   - Changes to 'Switches to Color Change'
 *  3.5.2 - 03/04/22 - Added delay to Refresh
 *  3.5.1 - 03/04/22 - Change to make the Refresh Action run first. Other minor changes
 *  3.5.0 - 02/17/22 - Changes to reverse, hopefully no more flash before turning off
@@ -56,7 +59,9 @@ import groovy.transform.Field
 
 
 def setVersion(){
-    state.name = "Event Engine Cog"; state.version = "3.5.2"
+    state.name = "Event Engine Cog"
+    state.version = "3.5.3"
+    sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
 definition(
@@ -2205,7 +2210,7 @@ def pageConfig() {
 
             if(actionType.contains("aNotification")) {
                 paragraph "<b>Notification</b>"
-                if(useSpeech || sendPushMessage || useTheFlasher) {
+                if(useSpeech || sendPushMessage || useTheFlasher || useWebOS) {
                     href "notificationOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here for options"
                 } else {
                     href "notificationOptions", title:"Notification Options", description:"Click here for options"
@@ -2215,9 +2220,14 @@ def pageConfig() {
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
                 app.removeSetting("messageB")
+                app.removeSetting("wmessage")
+                app.removeSetting("wmessageH")
+                app.removeSetting("wmessageL")
+                app.removeSetting("wmessageB")
                 app.removeSetting("useSpeech")
                 app.removeSetting("fmSpeaker")
                 app.removeSetting("sendPushMessage")
+                app.removeSetting("useWebOS")
             }
 
             if(actionType.contains("aRefresh")) {
@@ -2921,8 +2931,12 @@ def pageConfig() {
             } else {
                 label title: "Enter a name for this automation", required:false
             }
-            input "longDescription", "paragraph", title: "Cog Description (optional)", submitOnChange:true
-            input "otherNotes", "paragraph", title: "Other Notes (optional)", submitOnChange:true
+            input "longDescription", "textarea", title: "Cog Description (optional)", submitOnChange:true
+            input "otherNotes", "textarea", title: "Other Notes (optional)", submitOnChange:true
+            input "runAtStartup", "bool", title: "Run on System Startup <small><abbr title='If the system is rebooted for any reason, cog will run once the system comes back up.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+            if(runAtStartup) {
+                theCogActions += "<br><b>*</b> Cog is set to run on system startup<br>"
+            }
             input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", defaultValue:false, submitOnChange:true
             input "logOptions", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logOptions) {
@@ -2957,7 +2971,7 @@ def pageConfig() {
             if(longDescription) paragraph "<b>Description:</b> ${longDescription}<br>"
             if(theCogTriggers) paragraph theCogTriggers.replaceAll("null","NA")
             if(theCogActions) paragraph theCogActions.replaceAll("null","NA")
-            if(theCogNotifications) paragraph theCogNotifications.replaceAll("null","NA")
+            if(state.theCogNotifications) paragraph state.theCogNotifications.replaceAll("null","NA")
             if(otherNotes) {
                 paragraph "<hr>"
                 paragraph "<b>Other Notes:</b> ${otherNotes}<br>"
@@ -2975,13 +2989,13 @@ def pageConfig() {
 
 def notificationOptions(){
     dynamicPage(name: "notificationOptions", title: "Notification Options", install:false, uninstall:false){
-        theCogNotifications += "<b><u>Notifications</u></b><br>"
+        state.theCogNotifications = "<b><u>Notifications</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications. Please be sure to have Follow Me installed before trying to send any notifications."
             input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
             if(useSpeech) {
                 input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required:true, submitOnChange:true
-                theCogNotifications += "<b>-</b> Use Speech: ${fmSpeaker}<br>"
+                state.theCogNotifications += "<b>-</b> Use Speech: ${fmSpeaker}<br>"
             } else {
                 app.removeSetting("fmSpeaker")
             }
@@ -2990,100 +3004,157 @@ def notificationOptions(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
             if(sendPushMessage) {
-                theCogNotifications += "<b>-</b> Send Push: ${sendPushMessage}<br>"
+                state.theCogNotifications += "<b>-</b> Send Push: ${sendPushMessage}<br>"
+            }
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Send Notifications to Other Devices")) {
+            paragraph "Send notifications to things like a webOS Television! (anything that has the 'deviceNotification' command)<br><small>Note: webOS requires the use of <a href='https://github.com/as-j/LG_Smart_TV_hubitat' target=_blank>this code</a>.<br>* The webOS code is not my creation. I can not offer support. For any/all issues please visit <a href='https://community.hubitat.com/t/port-lg-smart-tv-discovery-2012/12761' target=_blank>this post</a>.</small>"
+            input "useWebOS", "capability.notification", title: "Use Other Notifications", multiple:true, required:false, submitOnChange:true
+            if(useWebOS) {
+                state.theCogNotifications += "<b>-</b> Use Other Notifications: ${useWebOS}<br>"
             }
         }
 
-        if(useSpeech || sendPushMessage) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Priority Message Instructions")) { }
-            section("Instructions for Priority Message:", hideable:true, hidden:true) {
-                paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the Volume, Voice and/or Speaker will be adjusted accordingly."
-                paragraph "Format: [priority:sound:speaker]<br><small>Note: Any option not needed, replace with a 0 (zero).</small>"
-                paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Cog.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
-                paragraph "<b>Sound:</b><br>You can also specify a sound file to be played before a message!<br>[1] - [5] - Specify a files URL"
-                paragraph "<b>ie.</b> [L:0:0]Amy is home or [N:3:0]Window has been open too long or [H:0:0]Heat is on and window is open"
-                paragraph "If you JUST want a sound file played with NO speech after, use [L:1:0]. or [N:3:0]. etc. Notice the DOT after the [], that is the message and will not be spoken."
-                paragraph "<b>Speaker:</b><br>While Follow Me allows you to setup your speakers in many ways, sometimes you want it to ONLY speak on a specific device. This option will do just that! Just replace with the corresponding speaker number from the Follow Me Parent App."
-                paragraph "<b>*</b> <i>Be sure to have the 'Priority Speaker Options' section completed in the Follow Me Parent App.</i>"
-                paragraph "<hr>"
-                paragraph "<b>General Notes:</b>"
-                paragraph "Priority Voice and Sound options are only available when using Speech Synth option.<br>Also notice there is no spaces between the option and the message."
-                paragraph "<b>ie.</b> [N:3:0]Window has been open too long"
-            }
+        if(useSpeech || sendPushMessage || useWebOS) {
+            if(useSpeech || sendPushMessage) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Speaker - Priority Message Instructions")) { }
+                section("Instructions for Priority Message:", hideable:true, hidden:true) {
+                    paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the Volume, Voice and/or Speaker will be adjusted accordingly."
+                    paragraph "Format: [priority:sound:speaker]<br><small>Note: Any option not needed, replace with a 0 (zero).</small>"
+                    paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Cog.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
+                    paragraph "<b>Sound:</b><br>You can also specify a sound file to be played before a message!<br>[1] - [5] - Specify a files URL"
+                    paragraph "<b>ie.</b> [L:0:0]Amy is home or [N:3:0]Window has been open too long or [H:0:0]Heat is on and window is open"
+                    paragraph "If you JUST want a sound file played with NO speech after, use [L:1:0]. or [N:3:0]. etc. Notice the DOT after the [], that is the message and will not be spoken."
+                    paragraph "<b>Speaker:</b><br>While Follow Me allows you to setup your speakers in many ways, sometimes you want it to ONLY speak on a specific device. This option will do just that! Just replace with the corresponding speaker number from the Follow Me Parent App."
+                    paragraph "<b>*</b> <i>Be sure to have the 'Priority Speaker Options' section completed in the Follow Me Parent App.</i>"
+                    paragraph "<hr>"
+                    paragraph "<b>General Notes:</b>"
+                    paragraph "Priority Voice and Sound options are only available when using Speech Synth option.<br>Also notice there is no spaces between the option and the message."
+                    paragraph "<b>ie.</b> [N:3:0]Window has been open too long"
+                }
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" Messages Options")) {
-                wc =  "%whoHappened% - Device that caused the event to trigger<br>"
-                wc += "%whatHappened% - Device status that caused the event to trigger<br>"
-                wc += "%time% - Will speak the current time in 24 h<br>"
-                wc += "%time1% - Will speak the current time in 12 h<br>"
-                wc += "%setPointHigh% - If using a setpoint, this will speak the actual High Setpoint<br>"
-                wc += "%setPointLow% - If using a setpoint, this will speak the actual Low Setpoint<br>"
-                if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
-                if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
-                if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
-                paragraph wc
-                if(triggerType) {
-                    if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
-                        paragraph "<b>Setpoint Message Options</b>"
-                        input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
-                        input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
-                        input "messageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
-                        if(messageH) theCogNotifications += "<b>-</b> Message when reading is too high: ${messageH}<br>"
-                        if(messageL) theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
-                        if(messageB) theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
-                    } else {
-                        app.removeSetting("messageH")
-                        app.removeSetting("messageL")
-                        app.removeSetting("messageB")
-                    }
+                section(getFormat("header-green", "${getImage("Blank")}"+" Speaker - Message Options")) {
+                    wc =  "%whoHappened% - Device that caused the event to trigger<br>"
+                    wc += "%whatHappened% - Device status that caused the event to trigger<br>"
+                    wc += "%time% - Will speak the current time in 24 h<br>"
+                    wc += "%time1% - Will speak the current time in 12 h<br>"
+                    wc += "%setPointHigh% - If using a setpoint, this will speak the actual High Setpoint<br>"
+                    wc += "%setPointLow% - If using a setpoint, this will speak the actual Low Setpoint<br>"
+                    if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
+                    if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
+                    if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
+                    paragraph wc
+                    if(triggerType) {
+                        if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
+                            paragraph "<b>Setpoint Message Options</b>"
+                            input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
+                            input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
+                            input "messageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
+                            if(messageH) state.theCogNotifications += "<b>-</b> Message when reading is too high: ${messageH}<br>"
+                            if(messageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${messageL}<br>"
+                            if(messageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${messageB}<br>"
+                        } else {
+                            app.removeSetting("messageH")
+                            app.removeSetting("messageL")
+                            app.removeSetting("messageB")
+                        }
 
-                    if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
-                        paragraph "<b>Random Message Options</b>"
-                        input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                        input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
-                        if(message) theCogNotifications += "<b>-</b> Message: ${message}<br>"
-                        if(msgList) {
-                            def values = "${message}".split(";")
-                            listMap = ""
-                            values.each { item -> listMap += "${item}<br>"}
-                            paragraph "${listMap}"
+                        if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
+                            paragraph "<b>Random Message Options</b>"
+                            input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                            input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
+                            if(message) state.theCogNotifications += "<b>-</b> Message: ${message}<br>"
+                            if(msgList) {
+                                def values = "${message}".split(";")
+                                listMap = ""
+                                values.each { item -> listMap += "${item}<br>"}
+                                paragraph "${listMap}"
+                            }
+                        } else {
+                            app.removeSetting("message")
+                            app.removeSetting("msgList")
                         }
                     } else {
-                        app.removeSetting("message")
-                        app.removeSetting("msgList")
+                        paragraph "<b>Can't add a message until a Condition Type is selected.</b>"
                     }
-                } else {
-                    paragraph "<b>Can't add a message until a Condition Type is selected.</b>"
+                }
+
+                section(getFormat("header-green", "${getImage("Blank")}"+" Repeat Notifications")) {
+                    input "msgRepeat", "bool", title: "Repeat Notifications", description: "List View", defaultValue:false, submitOnChange:true
+                    if(msgRepeat) {
+                        input "msgRepeatMinutes", "number", title: "Repeat every XX minutes", submitOnChange:true, width:6
+                        input "msgRepeatMax", "number", title: "Max number of repeats", submitOnChange:true, width:6
+
+                        if(msgRepeatMinutes && msgRepeatMax) {
+                            paragraph "Message will repeat every ${msgRepeatMinutes} minutes until one of the contacts/switches changes state <b>OR</b> the Max number of repeats is reached (${msgRepeatMax})"
+                            repeatTimeSeconds = ((msgRepeatMinutes * 60) * msgRepeatMax)
+                            int inputNow=repeatTimeSeconds
+                            int nDayNow = inputNow / 86400
+                            int nHrsNow = (inputNow % 86400 ) / 3600
+                            int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+                            int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+                            paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Seconds to reach the max number of repeats (if nothing changes state)"
+                        }
+
+                        input "msgRepeatContact", "capability.contactSensor", title: "Contact to turn the Repeat Off", multiple:false, submitOnChange:true
+                        input "msgRepeatSwitch", "capability.switch", title: "Switch to turn the Repeat Off", multiple:false, submitOnChange:true 
+                        if(msgRepeatContact) { paragraph "<small>* Contact will turn off Repeat when changing to any state.</small>" }
+                        if(msgRepeatSwitch) { paragraph "<small>* Switch will turn off Repeat when changing to any state.</small>" }
+                        state.theCogNotifications += "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
+                    } else {
+                        app.removeSetting("msgRepeatMinutes")
+                        app.removeSetting("msgRepeatContact")
+                        app.removeSetting("msgRepeatSwitch")
+                        app.removeSetting("msgRepeatMax")
+                    }
                 }
             }
-                
-            section(getFormat("header-green", "${getImage("Blank")}"+" Repeat Notifications")) {
-                input "msgRepeat", "bool", title: "Repeat Notifications", description: "List View", defaultValue:false, submitOnChange:true
-                if(msgRepeat) {
-                    input "msgRepeatMinutes", "number", title: "Repeat every XX minutes", submitOnChange:true, width:6
-                    input "msgRepeatMax", "number", title: "Max number of repeats", submitOnChange:true, width:6
-                    
-                    if(msgRepeatMinutes && msgRepeatMax) {
-                    paragraph "Message will repeat every ${msgRepeatMinutes} minutes until one of the contacts/switches changes state <b>OR</b> the Max number of repeats is reached (${msgRepeatMax})"
-                        repeatTimeSeconds = ((msgRepeatMinutes * 60) * msgRepeatMax)
-                        int inputNow=repeatTimeSeconds
-                        int nDayNow = inputNow / 86400
-                        int nHrsNow = (inputNow % 86400 ) / 3600
-                        int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
-                        int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-                        paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Seconds to reach the max number of repeats (if nothing changes state)"
+            if(useWebOS) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Other Device Options")) {
+                    wc =  "%whoHappened% - Device that caused the event to trigger<br>"
+                    wc += "%whatHappened% - Device status that caused the event to trigger<br>"
+                    wc += "%time% - Will speak the current time in 24 h<br>"
+                    wc += "%time1% - Will speak the current time in 12 h<br>"
+                    wc += "%setPointHigh% - If using a setpoint, this will speak the actual High Setpoint<br>"
+                    wc += "%setPointLow% - If using a setpoint, this will speak the actual Low Setpoint<br>"
+                    if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
+                    if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
+                    if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
+                    paragraph wc
+                    if(triggerType) {
+                        if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
+                            paragraph "<b>Setpoint Message Options</b>"
+                            input "wmessageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
+                            input "wmessageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
+                            input "wmessageB", "text", title: "Message to speak when reading is in between", required:false, submitOnChange:true
+                            if(wmessageH) state.theCogNotifications += "<b>-</b> Message when reading is too high: ${wmessageH}<br>"
+                            if(wmessageL) state.theCogNotifications += "<b>-</b> Message when reading is too low: ${wmessageL}<br>"
+                            if(wmessageB) state.theCogNotifications += "<b>-</b> Message when reading is in between: ${wmessageB}<br>"
+                        } else {
+                            app.removeSetting("wmessageH")
+                            app.removeSetting("wmessageL")
+                            app.removeSetting("wmessageB")
+                        }
+
+                        if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
+                            paragraph "<b>Random Message Options</b>"
+                            input "wmessage", "text", title: "Message to be sent - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                            input "wmsgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
+                            if(wmessage) state.theCogNotifications += "<b>-</b> Message: ${wmessage}<br>"
+                            if(wmsgList) {
+                                def values = "${wmessage}".split(";")
+                                wlistMap = ""
+                                values.each { item -> wlistMap += "${item}<br>"}
+                                paragraph "${wlistMap}"
+                            }
+                        } else {
+                            app.removeSetting("wmessage")
+                            app.removeSetting("wmsgList")
+                        }
+                    } else {
+                        paragraph "<b>Can't add a webOS message until a Condition Type is selected.</b>"
                     }
-                    
-                    input "msgRepeatContact", "capability.contactSensor", title: "Contact to turn the Repeat Off", multiple:false, submitOnChange:true
-                    input "msgRepeatSwitch", "capability.switch", title: "Switch to turn the Repeat Off", multiple:false, submitOnChange:true 
-                    if(msgRepeatContact) { paragraph "<small>* Contact will turn off Repeat when changing to any state.</small>" }
-                    if(msgRepeatSwitch) { paragraph "<small>* Switch will turn off Repeat when changing to any state.</small>" }
-                    theCogNotifications += "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
-                } else {
-                    app.removeSetting("msgRepeatMinutes")
-                    app.removeSetting("msgRepeatContact")
-                    app.removeSetting("msgRepeatSwitch")
-                    app.removeSetting("msgRepeatMax")
                 }
             }
         } else {
@@ -3091,8 +3162,13 @@ def notificationOptions(){
             app.removeSetting("messageH")
             app.removeSetting("messageL")
             app.removeSetting("messageB")
+            app.removeSetting("wmessage")
+            app.removeSetting("wmessageH")
+            app.removeSetting("wmessageL")
+            app.removeSetting("wmessageB")
             app.removeSetting("useSpeech")
             app.removeSetting("fmSpeaker")
+            app.removeSetting("useWebOS")
             app.removeSetting("sendPushMessage")
             app.removeSetting("msgRepeat")
             app.removeSetting("msgRepeatMinutes")
@@ -3106,7 +3182,7 @@ def notificationOptions(){
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
                 input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Preset you wish to use", required:true, multiple:false
-                if(useTheFlasher) theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice}<br>"
+                if(useTheFlasher) state.theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice}<br>"
             } else {
                 app.removeSetting("theFlasherDevice")
             }
@@ -3121,11 +3197,11 @@ def installed() {
 def updated() {	
     unschedule()
     unsubscribe()
-    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, "logsOff", [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, "logsOff", [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, "logsOff", [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, "logsOff", [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, "logsOff", [overwrite:false])
     if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
     initialize()
 }
@@ -3161,7 +3237,7 @@ def initialize() {
         if(tempConditionOnly == null) tempConditionOnly = false
         if(thermoConditionOnly == null) thermoConditionOnly = false
         
-        if(startTime) schedule(startTime, certainTime)
+        if(startTime) schedule(startTime, "certainTime")
         if(accelerationEvent && accelerationConditionOnly == false) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
         if(batteryEvent && batteryConditionOnly == false) subscribe(batteryEvent, "battery", startTheProcess)
         if(buttonEvent) {
@@ -3261,8 +3337,8 @@ def initialize() {
         if(timeDaysType) {
             if(timeDaysType.contains("tPeriodic")) { 
                 if(logEnable) log.debug "In initialize - tPeriodic - Creating Cron Jobs"
-                if(preMadePeriodic) { schedule(preMadePeriodic, runAtTime1) }
-                if(preMadePeriodic2) { schedule(preMadePeriodic2, runAtTime2) }
+                if(preMadePeriodic) { schedule(preMadePeriodic, "runAtTime1") }
+                if(preMadePeriodic2) { schedule(preMadePeriodic2, "runAtTime2") }
             } else if(timeDaysType.contains("tHoliday")) {
                 if(logEnable) log.debug "In initialize - tHoliday - Creating Cron Jobs"
                 schedule("0 2 0 ? * * *", checkForHoliday)
@@ -3294,13 +3370,16 @@ def initialize() {
 
         if(ipAddress) {
             schedule("0 0/${timeToPing} * * * ?", pingHandler)
-            runIn(2, pingHandler)
+            runIn(2, "pingHandler")
         }
+        
+        // This will auto run app on system startup
+        if(runAtStartup) { subscribe("location", "systemStart", startTheProcess) }
         
         checkSunHandler() 
         if(fromTime && toTime) {
-            schedule(fromTime, startTimeBetween)
-            schedule(toTime, endTimeBetween)
+            schedule(fromTime, "startTimeBetween")
+            schedule(toTime, "endTimeBetween")
             theDate1 = toDateTime(fromTime)
             theDate2 = toDateTime(toTime)          
             toValue = theDate2.compareTo(theDate1)
@@ -3323,9 +3402,8 @@ def initialize() {
     }
 }
 
-def startTheProcess(evt) {
-    //sendLocationEvent(name: "updateVersionInfo", value: ["${state.name}", "${state.version}"])
-    sendLocationEvent(name: "updateVersionInfo", value: "${app.id}:${state.version}")
+def startTheProcess(evt=null) {
+    setVersion()
     if(switchesToSync) {
         if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
             if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
@@ -3528,7 +3606,7 @@ def startTheProcess(evt) {
                                     state.setpointHighOK = "yes"
                                     state.setpointLowOK = "yes"
                                     state.setpointBetweenOK = "yes"
-                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                    runIn(theDelay, "startTheProcess", [data: "runAfterDelay"])
                                 } else {
                                     certainTimeHasPassedHandler()
                                     if(state.certainTimeHasPassed) {
@@ -3589,7 +3667,7 @@ def startTheProcess(evt) {
                                         if(timeReverse) {
                                             theDelay = timeReverseMinutes * 60
                                             if(logEnable || shortLog) log.debug "In startTheProcess - Reverse will run in ${timeReverseMinutes} minutes"
-                                            runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                                            runIn(theDelay, "startTheProcess", [data: "timeReverse"])
                                         }
                                     } else {
                                         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
@@ -3679,7 +3757,7 @@ def startTheProcess(evt) {
                                     state.appStatus = "inactive"
                                     state.appRevStatus = "round2"
                                     permanentDimHandler()
-                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                    runIn(theDelay, "startTheProcess", [data: "runAfterDelay"])
                                 } else if(dimAfterDelayed && (state.appStatus == "active")) { 
                                     theDelay = theDelay ?: 60
                                     wds = warningDimSec ?: 30
@@ -3687,12 +3765,12 @@ def startTheProcess(evt) {
                                     if(logEnable || shortLog) log.debug "In startTheProcess - Reverse - Will warn ${wds} seconds before Reverse"
                                     state.appStatus = "inactive"
                                     state.appRevStatus = "round2"
-                                    runIn(firstDelay, permanentDimHandler)
-                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                    runIn(firstDelay, "permanentDimHandler")
+                                    runIn(theDelay, "startTheProcess", [data: "runAfterDelay"])
                                 } else {
                                     state.appStatus = "inactive"
                                     state.appRevStatus = "round2"
-                                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
+                                    runIn(theDelay, "startTheProcess", [data: "runAfterDelay"])
                                 }
                             } else {             
                                 if(actionType) {
@@ -5149,7 +5227,7 @@ def slowOffHandler() {
         state.dimStep1 = (difference / seconds) * 10
         if(logEnable) log.debug "In slowOffHandler - highestLevel: ${state.highestLevel} - targetLevel: ${targetLevelLow} - dimStep1: ${state.dimStep1} - color: ${state.onColor}"
         atLeastOneDnOn = false
-        runIn(5,dimStepDown)
+        runIn(5,"dimStepDown")
     }
 }
 
@@ -5177,7 +5255,7 @@ def slowOnHandler() {
         state.dimStep = (difference / seconds) * 10
         if(logEnable) log.debug "In slowOnHandler - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.onColor}"
         atLeastOneUpOn = false
-        runIn(5,dimStepUp)
+        runIn(5,"dimStepUp")
     }
 }
 
@@ -5202,7 +5280,7 @@ def dimStepUp(theValue) {
                 }
             }
             if(atLeastOneUpOn) {
-                runIn(10,dimStepUp)
+                runIn(10,"dimStepUp")
             } else {
                 log.info "${app.label} - All devices are turned off"
             }
@@ -5239,7 +5317,7 @@ def dimStepDown() {
                 }
             }
             if(atLeastOneDnOn) {
-                runIn(10,dimStepDown)
+                runIn(10,"dimStepDown")
             } else {
                 if(logEnable) log.info "${app.label} - All devices are turned off"
             }
@@ -5403,13 +5481,29 @@ def messageHandler() {
         if(triggerType) {
             if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp") || deviceORsetpoint) {
                 if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
-                if(state.setpointHighOK == "no") theMessage = "${messageH}"
-                if(state.setpointLowOK == "no") theMessage = "${messageL}"
-                if(state.setpointBetweenOK == "no") theMessage = "${messageB}"
+                if(messageH || messageL || messageB) {
+                    if(state.setpointHighOK == "no") theMessage = "${messageH}"
+                    if(state.setpointLowOK == "no") theMessage = "${messageL}"
+                    if(state.setpointBetweenOK == "no") theMessage = "${messageB}"
+                } else if(wmessageH || wmessageL || wmessageB) {
+                    if(state.setpointHighOK == "no") theMessage = "${wmessageH}"
+                    if(state.setpointLowOK == "no") theMessage = "${wmessageL}"
+                    if(state.setpointBetweenOK == "no") theMessage = "${wmessageB}"
+                }
             } else {
-                theMessage = message
+                if(message) {
+                    theMessage = message
+                } else if(wmessage) {
+                    theMessage = wmessage
+                }
             }
-            if(theMessage == null) theMessage = message
+            if(theMessage == null) {
+                if(message) {
+                    theMessage = message
+                } else if(wmessage) {
+                    theMessage = wmessage
+                }
+            }
             if(logEnable && extraLogs) log.debug "In messageHandler - Random - raw message: ${theMessage}"
             def values = "${theMessage}".split(";")
             vSize = values.size()
@@ -5445,13 +5539,14 @@ def messageHandler() {
                 if(logEnable) log.debug "In messageHandler - message: ${state.message}"
                 if(useSpeech) letsTalk(state.message)
                 if(sendPushMessage) pushHandler(state.message)
+                if(useWebOS) useWebOSHandler(state.message)
             } else {
                 if(logEnable) log.debug "In messageHandler - No message was found."
             }
         }
         if(msgRepeat) {
             repeatSeconds = msgRepeatMinutes * 60
-            runIn(repeatSeconds, messageHandler)
+            runIn(repeatSeconds, "messageHandler")
         }
     } else {
         if(logEnable) log.debug "In messageHandler - Repeat is now off"
@@ -5552,15 +5647,15 @@ def checkSunHandler() {
         }        
         if(fromSun || timeDaysType.contains("tSunrise")) {                    // Sunrise to Sunset
             if(!sunsetSunriseMatchConditionOnly) {
-                schedule(nextSunriseOffset, runAtTime1)
-                if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, runAtTime2)
+                schedule(nextSunriseOffset, "runAtTime1")
+                if(sunriseEndTime) schedule(sunriseEndTime, "runAtTime2")
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunsetOffset, "runAtTime2")
             }
         } else if(!fromSun || timeDaysType.contains("tSunset")) {             // Sunset to Sunrise
             if(!sunsetSunriseMatchConditionOnly) {
-                schedule(nextSunsetOffset, runAtTime1)
-                if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
-                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, runAtTime2) 
+                schedule(nextSunsetOffset, "runAtTime1")
+                if(sunsetEndTime) schedule(sunsetEndTime, "runAtTime2")
+                if(timeDaysType.contains("tSunsetSunrise")) schedule(nextSunriseOffset, "runAtTime2") 
             }
         } else {
             state.timeBetweenSun = true
@@ -5771,10 +5866,10 @@ def setLevelandColorHandler(newData) {
             saturation = cc6sat.toInteger()
             break;
     }
-    onLevel = state.onLevel.toInteger()
+    onLevel = state.onLevel
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
     // if(it.getDataValue("model")) {}
-    value = [hue: hueColor, saturation: saturation, level: onLevel]
+    value = [hue: hueColor, saturation: saturation, level: onLevel.toInteger()]
     if(state.oldMap == null) state.oldMap = [:]
     theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
     theMap = theSetOldMap.split(",")
@@ -6348,7 +6443,7 @@ def checkForHoliday() {
         } 
         if(state.apiMatch) {
             if(logEnable) log.debug "In checkForHoliday - Setting up trigger at ${apiTimeToTrigger} to startTheProcess."
-            schedule(apiTimeToTrigger, startTheProcess)
+            schedule(apiTimeToTrigger, "startTheProcess")
         } else {
             if(logEnable) log.debug "In checkForHoliday - Today is not a holiday, will check again tomorrow."
             unschedule(startTheProcess)
@@ -6934,58 +7029,62 @@ def colorChangeHandler() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In colorChangeHandler (${state.version}) - Color Selection: ${colorSelection}"		
-        for (numberoflights in switchesToChange) {
-            slpTime = (changeTime*60)
-            def colors = []
-            colors = colorSelection
-            def numLights = switchesToChange.size()
-            def numColors = colors.size()
+        slpTime = (changeTime*60)
+        def colors = []
+        colors = colorSelection
+        def numLights = switchesToChange.size()
+        def numColors = colors.size()
 
-            if(logEnable) log.debug "In colorChangeHandler - pattern: ${pattern}"
-            if (pattern == 'randomize') {
-                randOffset = Math.abs(new Random().nextInt()%numColors)
-                if(logEnable) log.debug "In colorChangeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
-                if (cycleHow == 'combined') {
+        if(logEnable) log.debug "In colorChangeHandler - pattern: ${pattern}"
+        if (pattern == 'randomize') {
+            randOffset = Math.abs(new Random().nextInt()%numColors)
+            if(logEnable) log.debug "In colorChangeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
+            if(cycleHow == 'combined') {
+                state.fromWhere = "colorChangeHandler"
+                state.onLevel = lightLevel
+                state.onColor = colors[randOffset]
+                switchesToChange.each { stc ->
+                    if(logEnable) log.debug "In colorChangeHandler - randomize-combined - stc: ${stc.displayName}, onColor: ${state.onColor} - randOffset: ${randOffset}"
+                    setLevelandColorHandler(stc)
+                }
+            } else {
+                for(def i=0;i<numLights;i++) {
                     state.fromWhere = "colorChangeHandler"
                     state.onLevel = lightLevel
-                    state.onColor = colors[randOffset]
-                    setLevelandColorHandler(switchesToChange)
+                    state.onColor = colors[(randOffset + i) % numColors]
+                    if(logEnable) log.debug "In colorChangeHandler - randomize-randomize - onLights: ${switchesToChange[i]}, onColor: ${state.onColor}"
+                    setLevelandColorHandler(switchesToChange[i])
+                }
+            }
+        } else if (pattern == 'cycle') {
+            if(!state.colorOffset) { state.colorOffset = 0 }
+            if(switchesToChange) {
+                if(state.colorOffset >= numColors ) {
+                    state.colorOffset = 0
+                }
+                if(cycleHow == 'combined') {                       
+                    state.fromWhere = "colorChangeHandler"
+                    state.onLevel = lightLevel
+                    state.onColor = colors[state.colorOffset]
+                    switchesToChange.each { stc ->
+                        if(logEnable) log.debug "In colorChangeHandler - cycle-combined - stc: ${stc.displayName}, onColor: ${state.onColor} - colorOffset: ${state.colorOffset}"
+                        setLevelandColorHandler(stc)
+                    }
                 } else {
-                    for(def i=0;i<numLights;i++) {
+                    for(i=0;i<numLights;i++) {
                         state.fromWhere = "colorChangeHandler"
                         state.onLevel = lightLevel
-                        state.onColor = colors[(randOffset + i) % numColors]
+                        state.onColor = colors[(state.colorOffset + i) % numColors]
+                        if(logEnable) log.debug "In colorChangeHandler - cycle-randomize - onLights: ${switchesToChange[i]}, onColor: ${state.onColor}"
                         setLevelandColorHandler(switchesToChange[i])
                     }
                 }
-            } else if (pattern == 'cycle') {
-                if(!state.colorOffset) { state.colorOffset = 0 }
-                if (switchesToChange.size() > 0) {
-                    if (state.colorOffset >= numColors ) {
-                        state.colorOffset = 0
-                    }
-                    if (cycleHow == 'combined') {
-                        state.fromWhere = "colorChangeHandler"
-                        state.onLevel = lightLevel
-                        state.onColor = colors[state.colorOffset]
-                        setLevelandColorHandler(switchesToChange)
-                        if(logEnable) log.debug "In colorChangeHandler - cycle-combined - switchesToChange: ${switchesToChange}, Colors: ${colors[state.colorOffset]}"
-                    } else {
-                        for(def i=0;i<numLights;i++) {
-                            state.fromWhere = "colorChangeHandler"
-                            state.onLevel = lightLevel
-                            state.onColor = colors[(state.colorOffset + i) % numColors]
-                            setLevelandColorHandler(switchesToChange[i])
-                            if(logEnable) log.debug "In colorChangeHandler - cycle-randomize - onLighgts: ${switchesToChange[i]}, Colors: ${colors[(state.colorOffset + i) % numColors]}"
-                        }
-                    }
-                    state.colorOffset = state.colorOffset + 1
-                }
+                state.colorOffset = state.colorOffset + 1
             }
         }
-        if(logEnable) log.debug "In colorChangeHandler - slpTime: ${slpTime}"
-        runIn(slpTime, startTheProcess)
     }
+    if(logEnable) log.debug "In colorChangeHandler - slpTime: ${slpTime}"
+    runIn(slpTime, "startTheProcess")
 }
 
 def colorChangeReverseHandler() {
@@ -7183,6 +7282,7 @@ def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-norma
 } // library marker BPTWorld.bpt-normalStuff, line 62
 
 def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 64
+    sendLocationEvent(name: "updateVersionInfo", value: "${app.id}:remove")
 	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 65
 } // library marker BPTWorld.bpt-normalStuff, line 66
 
@@ -7204,6 +7304,11 @@ def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 80
     if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 83
     sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 84
 } // library marker BPTWorld.bpt-normalStuff, line 85
+
+def useWebOSHandler(msg){
+    if(logEnable) log.debug "In useWebOSHandler (${state.version}) - Sending to webOS - msg: ${msg}"
+    useWebOS.deviceNotification(msg)
+}
 
 // ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 87
 def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 88
