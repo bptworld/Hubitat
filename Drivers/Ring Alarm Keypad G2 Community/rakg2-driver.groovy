@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.1 - 03/10/22 - Attempt to fix loop
     1.1.0 - 03/10/22 - Fixed device page buttons, now sets HSM status correctly
     1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
     1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
@@ -27,7 +28,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.0"
+    return "1.1.1"
 }
 
 metadata {
@@ -198,8 +199,11 @@ void armNight(delay=0) {
 void armNightEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
-    //keypadUpdateStatus(0x00, state.type, state.code)
-    sendLocationEvent (name: "hsmSetArm", value: "armNight")
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed night") {
+        //keypadUpdateStatus(0x00, state.type, state.code)
+        sendLocationEvent (name: "hsmSetArm", value: "armNight")
+    }
 }
 
 void armAway(delay=0) {
@@ -215,8 +219,11 @@ void armAway(delay=0) {
 void armAwayEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
-    keypadUpdateStatus(0x0B, state.type, state.code)
-    sendLocationEvent (name: "hsmSetArm", value: "armAway")
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed away") {
+        keypadUpdateStatus(0x0B, state.type, state.code)
+        sendLocationEvent (name: "hsmSetArm", value: "armAway")
+    }
 }
 
 void disarm(delay=0) {
@@ -233,10 +240,12 @@ void disarmEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
-    if(sk != "disarmed") { keypadUpdateStatus(0x02, state.type, state.code) }
-    sendLocationEvent (name: "hsmSetArm", value: "disarm")
-    unschedule(armHomeEnd)
-    unschedule(armAwayEnd)
+    if(sk != "disarmed") { 
+        keypadUpdateStatus(0x02, state.type, state.code)
+        sendLocationEvent (name: "hsmSetArm", value: "disarm")
+        unschedule(armHomeEnd)
+        unschedule(armAwayEnd)
+    }
 }
 
 void armHome(delay=0) {
@@ -252,8 +261,11 @@ void armHome(delay=0) {
 void armHomeEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
-    keypadUpdateStatus(0x0A, state.type, state.code)
-    sendLocationEvent (name: "hsmSetArm", value: "armHome")
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed home") {
+        keypadUpdateStatus(0x0A, state.type, state.code)
+        sendLocationEvent (name: "hsmSetArm", value: "armHome")
+    }
 }
 
 void exitDelay(delay){
