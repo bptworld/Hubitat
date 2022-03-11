@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.0 - 03/10/22 - Fixed device page buttons, now sets HSM status correctly
     1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
     1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
     1.0.7 - 01/09/22 - Fixed Chime Tone Volume
@@ -26,7 +27,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.0.9"
+    return "1.1.0"
 }
 
 metadata {
@@ -74,7 +75,7 @@ metadata {
             ["80":"8"],
             ["90":"9"],
             ["100":"10"],
-        ], defaultValue: "10", description: ""    // bptworld        
+        ], defaultValue: "10", description: ""        
         input name: "theTone", type: "enum", title: "Chime tone", options: [
             ["Tone_1":"(Tone_1) Siren (default)"],
             ["Tone_2":"(Tone_2) 3 Beeps"],
@@ -85,9 +86,9 @@ metadata {
             ["Tone_7":"(Tone_7) DoorBell 1"],
             ["Tone_8":"(Tone_8) DoorBell 2"],
             ["Tone_9":"(Tone_9) Invalid Code Sound"],
-        ], defaultValue: "Tone_1", description: ""    // bptworld
-        input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: ""    // bptworld
-        input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""    // bptworld
+        ], defaultValue: "Tone_1", description: ""
+        input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: "" 
+        input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""
         input name: "optEncrypt", type: "bool", title: "Enable lockCode encryption", defaultValue: false, description: ""
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
         input name: "txtEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: true
@@ -160,7 +161,7 @@ void configure() {
     if (logEnable) log.debug "configure()"
     if (!state.initialized) initializeVars()
     if (!state.keypadConfig) initializeVars()
-    keypadUpdateStatus(state.keypadStatus, state.type, state.code)    // changed bptworld
+    keypadUpdateStatus(state.keypadStatus, state.type, state.code)
     runIn(5,pollDeviceData)
 }
 
@@ -188,8 +189,17 @@ void armNight(delay=0) {
     if (logEnable) log.debug "armNight(${delay})"
     if (delay > 0 ) {
         exitDelay(delay)
-        runIn(delay, armHomeEnd)
+        runIn(delay, armNightEnd)
+    } else {
+        runIn(delay, armNightEnd)
     }
+}
+
+void armNightEnd() {
+    if (!state.code) { state.code = "" }
+    if (!state.type) { state.type = "physical" }
+    //keypadUpdateStatus(0x00, state.type, state.code)
+    sendLocationEvent (name: "hsmSetArm", value: "armNight")
 }
 
 void armAway(delay=0) {
@@ -206,6 +216,7 @@ void armAwayEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     keypadUpdateStatus(0x0B, state.type, state.code)
+    sendLocationEvent (name: "hsmSetArm", value: "armAway")
 }
 
 void disarm(delay=0) {
@@ -223,6 +234,7 @@ void disarmEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "disarmed") { keypadUpdateStatus(0x02, state.type, state.code) }
+    sendLocationEvent (name: "hsmSetArm", value: "disarm")
     unschedule(armHomeEnd)
     unschedule(armAwayEnd)
 }
@@ -237,10 +249,11 @@ void armHome(delay=0) {
     }
 }
 
-void armHomeEnd() {    // Changed private to void - bptworld
+void armHomeEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     keypadUpdateStatus(0x0A, state.type, state.code)
+    sendLocationEvent (name: "hsmSetArm", value: "armHome")
 }
 
 void exitDelay(delay){
@@ -400,7 +413,7 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
-            // Added all buttons - bptworld
+            // Added all buttons
             case 2:    // Code sent after hitting the Check Mark
                 state.type="physical"
                 if(!code) code = "check mark"
@@ -531,20 +544,20 @@ private Boolean validatePin(String pincode) {
     boolean retVal = false
     Map lockcodes = [:]
     if (optEncrypt) {
-        try {    // bptworld
+        try {
             lockcodes = parseJson(decrypt(device.currentValue("lockCodes")))
         } catch(e) {
             log.warn "Ring Alarm Keypad G2 Community - No lock codes found."
         }
     } else {
-        try {    // bptworld
+        try {
             lockcodes = parseJson(device.currentValue("lockCodes"))
         } catch(e) {
             log.warn "Ring Alarm Keypad G2 Community - No lock codes found."
         }
     }
     //log.debug "Lock codes: ${lockcodes}"
-    if(lockcodes) {    //bptworld
+    if(lockcodes) {
         lockcodes.each {
             if(it.value["code"] == pincode) {
                 log.debug "found code: ${pincode} user: ${it.value['name']}"
@@ -790,7 +803,7 @@ List<String> commands(List<String> cmds, Long delay=300) {
     return delayBetween(cmds.collect{ zwaveSecureEncap(it) }, delay)
 }
 
-void proximitySensorHandler() {    // bptworld
+void proximitySensorHandler() {
     if(proximitySensor) {
         if (logEnable) log.debug "Turning the Proximity Sensor OFF"
         sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 0).format())
@@ -800,7 +813,7 @@ void proximitySensorHandler() {    // bptworld
     }
 }
 
-def sirenVolumeHandler() {    // bptworld
+def sirenVolumeHandler() {
     if(sirenVolume) {
         if (logEnable) log.debug "Setting the Siren Volume to $sirenVolume"
         sVol = sirenVolume.toInteger()
