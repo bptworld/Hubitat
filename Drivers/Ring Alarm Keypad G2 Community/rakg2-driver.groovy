@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.2 - 03/11/22 - 3rd times a charm
     1.1.1 - 03/10/22 - Attempt to fix loop
     1.1.0 - 03/10/22 - Fixed device page buttons, now sets HSM status correctly
     1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
@@ -28,7 +29,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.1"
+    return "1.1.2"
 }
 
 metadata {
@@ -187,12 +188,17 @@ void keypadUpdateStatus(Integer status,String type="digital", String code) {
 }
 
 void armNight(delay=0) {
-    if (logEnable) log.debug "armNight(${delay})"
-    if (delay > 0 ) {
-        exitDelay(delay)
-        runIn(delay, armNightEnd)
+    if (logEnable) log.debug "In armNight - delay: ${delay}"
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed night") {
+        if (delay > 0 ) {
+            exitDelay(delay)
+            runIn(delay, armNightEnd)
+        } else {
+            runIn(delay, armNightEnd)
+        }
     } else {
-        runIn(delay, armNightEnd)
+        if (logEnable) log.debug "In armNight - securityKeypad already set to 'armed night', so skipping."
     }
 }
 
@@ -207,12 +213,17 @@ void armNightEnd() {
 }
 
 void armAway(delay=0) {
-    if (logEnable) log.debug "armAway(${delay})"
-    if (delay > 0 ) {
-        exitDelay(delay)
-        runIn(delay, armAwayEnd)
+    if (logEnable) log.debug "In armAway - delay: ${delay}"
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed away") {
+        if (delay > 0 ) {
+            exitDelay(delay)
+            runIn(delay, armAwayEnd)
+        } else {
+            armAwayEnd()
+        }
     } else {
-        armAwayEnd()
+        if (logEnable) log.debug "In armAway - securityKeypad already set to 'armed away', so skipping."
     }
 }
 
@@ -226,14 +237,44 @@ void armAwayEnd() {
     }
 }
 
-void disarm(delay=0) {
-    if (logEnable) log.debug "disarm(${delay})"
-    if (delay > 0 ) {
-        exitDelay(delay)
-        runIn(delay, disarmEnd)
+void armHome(delay=0) {
+    if (logEnable) log.debug "In armHome - delay: ${delay}"
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed home") {
+        if (delay > 0) {
+            exitDelay(delay)
+            runIn(delay, armHomeEnd)
+        } else {
+            armHomeEnd()
+        }
     } else {
-        disarmEnd()
+        if (logEnable) log.debug "In armHome - securityKeypad already set to 'armed home', so skipping."
+    }  
+}
+
+void armHomeEnd() {
+    if (!state.code) { state.code = "" }
+    if (!state.type) { state.type = "physical" }
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "armed home") {
+        keypadUpdateStatus(0x0A, state.type, state.code)
+        sendLocationEvent (name: "hsmSetArm", value: "armHome")
     }
+}
+
+void disarm(delay=0) {
+    if (logEnable) log.debug "In disarm - delay: ${delay}"
+    def sk = device.currentValue("securityKeypad")
+    if(sk != "disarmed") {
+        if (delay > 0 ) {
+            exitDelay(delay)
+            runIn(delay, disarmEnd)
+        } else {
+            disarmEnd()
+        }
+    } else {
+        if (logEnable) log.debug "In disarm - securityKeypad already set to 'disarmed', so skipping."
+    }    
 }
 
 void disarmEnd() {
@@ -245,26 +286,6 @@ void disarmEnd() {
         sendLocationEvent (name: "hsmSetArm", value: "disarm")
         unschedule(armHomeEnd)
         unschedule(armAwayEnd)
-    }
-}
-
-void armHome(delay=0) {
-    if (logEnable) log.debug "armHome(${delay})"
-    if (delay > 0) {
-        exitDelay(delay)
-        runIn(delay, armHomeEnd)
-    } else {
-        armHomeEnd()
-    }
-}
-
-void armHomeEnd() {
-    if (!state.code) { state.code = "" }
-    if (!state.type) { state.type = "physical" }
-    def sk = device.currentValue("securityKeypad")
-    if(sk != "armed home") {
-        keypadUpdateStatus(0x0A, state.type, state.code)
-        sendLocationEvent (name: "hsmSetArm", value: "armHome")
     }
 }
 
