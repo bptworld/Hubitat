@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.4 - 03/12/22 - Many small changes
 *  3.5.3 - 03/11/22 - Added Notification support for Other Devices (ie. webOS TV's).
 *                   - Added option to run cog when system starts up
 *                   - Changes to 'Switches to Color Change'
@@ -50,17 +51,12 @@
 *  1.0.0 - 09/05/20 - Initial release.
 */
 
-import groovy.json.*
-import hubitat.helper.RMUtils
-import groovy.time.TimeCategory
-import java.text.SimpleDateFormat
-import java.util.TimeZone
-import groovy.transform.Field
+
 
 
 def setVersion(){
     state.name = "Event Engine Cog"
-    state.version = "3.5.3"
+    state.version = "3.5.4"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -76,6 +72,7 @@ definition(
     iconX2Url: "",
     iconX3Url: "",
     importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-child.groovy",
+    singleThreaded: true
 )
 
 preferences {
@@ -210,7 +207,7 @@ def pageConfig() {
             } else {
                 state.conditionsMap.remove("timeDaysType")
             }         
-            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types <small><abbr title='‘AND’ requires that all selected conditions are true. ‘OR’ requires that any selected condition is true'><b>- INFO -</b></abbr></small>", description: "andOr", defaultValue:false, submitOnChange:true, width:12
+            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types <small><abbr title='‘AND’ requires that all selected conditions are true. ‘OR’ requires that any selected condition is true'><b>- INFO -</b></abbr></small>", description: "andOr", submitOnChange:true, width:12
             if(triggerAndOr) {
                 theData = "${triggerAndOr}"
                 state.conditionsMap.put("triggerAndOr",theData)
@@ -243,14 +240,14 @@ def pageConfig() {
             if(timeDaysType.contains("tMode")) {
                 paragraph "<b>By Mode</b>"
                 input "modeEvent", "mode", title: "By Mode <small><abbr title='Choose the Modes to use with this Cog'><b>- INFO -</b></abbr></small>", multiple:true, submitOnChange:true                
-                input "modeCondition", "bool", title: "When in the selected mode(s) (off) - or - When NOT in the selected Mode(s) (on)", description: "mode", defaultValue:false, submitOnChange:true
+                input "modeCondition", "bool", title: "When in the selected mode(s) (off) - or - When NOT in the selected Mode(s) (on)", description: "mode", submitOnChange:true
                 if(modeCondition) {
                     paragraph "Condition is true when NOT in modes selected."
                 } else {
                     paragraph "Condition is true when in modes selected."
                 }
-                input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
-                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "modeMatchRestriction", "bool", title: "By Mode as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Mode Restriction", submitOnChange:true
+                input "modeMatchConditionOnly", "bool", title: "Use Mode as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - Not while in selected Modes: ${modeCondition} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
@@ -268,8 +265,8 @@ def pageConfig() {
                 input "useDayWeek", "bool", title: "Use Day (off) or Week (On)", description: "Day or Week", defaultVAlue:false, submitOnChange:true, width:6
                 if(useDayWeek) {
                     paragraph "Week starts on Sunday and ends on Saturday", width:6
-                    input "evenDays", "bool", title: "But only on Even Weeks (2,4,6,8,etc)", description: "Even Weeks", defaultValue:false, submitOnChange:true, width:6
-                    input "oddDays", "bool", title: "But only on Odd Weeks (1,3,5,7,etc)", description: "Odd Weeks", defaultValue:false, submitOnChange:true, width:6
+                    input "evenDays", "bool", title: "But only on Even Weeks (2,4,6,8,etc)", description: "Even Weeks", submitOnChange:true, width:6
+                    input "oddDays", "bool", title: "But only on Odd Weeks (1,3,5,7,etc)", description: "Odd Weeks", submitOnChange:true, width:6
                     if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
                     Date date = new Date() 
                     numberWeek = date[Calendar.WEEK_OF_YEAR]
@@ -282,9 +279,9 @@ def pageConfig() {
                     paragraph "<b>The current week number is ${numberWeek}, which is an ${weekIS} number.</b>"    
                     theCogTriggers += "<b>-</b> By Weeks - ${days} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 } else {
-                    input "useDayMonthYear", "bool", title: "Use Day of the Month (off) or Day of the Year (on)", description: "The Days", defaultValue:false, submitOnChange:true, width:6
-                    input "evenDays", "bool", title: "But only on Even Days (2,4,6,8,etc)", description: "Even Days", defaultValue:false, submitOnChange:true, width:6
-                    input "oddDays", "bool", title: "But only on Odd Days (1,3,5,7,etc)", description: "Odd Days", defaultValue:false, submitOnChange:true, width:6
+                    input "useDayMonthYear", "bool", title: "Use Day of the Month (off) or Day of the Year (on)", description: "The Days", submitOnChange:true, width:6
+                    input "evenDays", "bool", title: "But only on Even Days (2,4,6,8,etc)", description: "Even Days", submitOnChange:true, width:6
+                    input "oddDays", "bool", title: "But only on Odd Days (1,3,5,7,etc)", description: "Odd Days", submitOnChange:true, width:6
                     if(evenDays && oddDays) paragraph "<b>Please only select one option, either Even or Odd, not both!</b>"
                     Date date = new Date()
                     if(useDayMonthYear) {
@@ -302,8 +299,8 @@ def pageConfig() {
                     theCogTriggers += "<b>-</b> By Days - ${days} - Use Month/Year: ${useDayMonthYear} - Even: ${evenDays} - Odd: ${oddDays} - as Restriction: ${daysMatchRestriction} - just Condition: ${daysMatchConditionOnly}<br>"
                 }
                 paragraph "<hr>"
-                input "daysMatchRestriction", "bool", defaultValue:false, title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
-                input "daysMatchConditionOnly", "bool", defaultValue:false, title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "daysMatchRestriction", "bool", title: "By Days as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "By Days Restriction", submitOnChange:true
+                input "daysMatchConditionOnly", "bool", title: "Use Days as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 paragraph "<b>Reminder: You'll need to select a Time for the Cog to run on the Days selected here.</b>"
                 paragraph "<hr>"
             } else {
@@ -318,7 +315,7 @@ def pageConfig() {
             if(timeDaysType.contains("tTime")) {
                 paragraph "<b>Certain Time</b>"
                 input "startTime", "time", title: "Time to activate <small><abbr title='Exact time for the Cog to run'><b>- INFO -</b></abbr></small>", description: "Time", required:false, width:12
-                input "repeat", "bool", title: "Repeat", description: "Repeat <small><abbr title='Choose for the Cog to repeat or not'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                input "repeat", "bool", title: "Repeat", description: "Repeat <small><abbr title='Choose for the Cog to repeat or not'><b>- INFO -</b></abbr></small>", submitOnChange:true
                 if(repeat) {
                     input "repeatType", "enum", title: "Repeat schedule <small><abbr title='Choose how often to repeat'><b>- INFO -</b></abbr></small>", options: [
                         ["r1min":"1 Minute"],
@@ -344,8 +341,8 @@ def pageConfig() {
                 paragraph "<b>Between two times</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>"
                 input "fromTime", "time", title: "From <small><abbr title='Exact time for the Cog to start'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
                 input "toTime", "time", title: "To <small><abbr title='Exact time for the Cog to End'><b>- INFO -</b></abbr></small>", required:false, width: 6, submitOnChange:true
-                input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
-                input "timeBetweenMatchConditionOnly", "bool", defaultValue:false, title: "Use Time Between as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "timeBetweenRestriction", "bool", title: "Between two times as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Between two times Restriction", submitOnChange:true
+                input "timeBetweenMatchConditionOnly", "bool", title: "Use Time Between as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(fromTime && toTime) {
                     theDate1 = toDateTime(fromTime)
                     theDate2 = toDateTime(toTime)            
@@ -374,10 +371,10 @@ def pageConfig() {
                     paragraph "<b>'Sunset/Sunrise' and 'Just Sunset' can not be used at the same time. Please deselect one of them.</b>"
                 } else {
                     paragraph "<b>Sunset/Sunrise</b>"
-                    input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on) <small><abbr title='Choose when the Cog will be active'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
+                    input "fromSun", "bool", title: "Sunset to Sunrise (off) or Sunrise to Sunset (on) <small><abbr title='Choose when the Cog will be active'><b>- INFO -</b></abbr></small>", submitOnChange:true, width:6
                     if(fromSun) {
                         paragraph "Sunrise <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
-                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                         if(offsetSunrise == 99) {
                             input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -389,7 +386,7 @@ def pageConfig() {
                             app.removeSetting("sunriseDelayHigh")
                         }
                         paragraph "Sunset"
-                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", submitOnChange:true, width:6
                         input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                         if(offsetSunset == 99) {
                             input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -402,7 +399,7 @@ def pageConfig() {
                         }
                     } else {
                         paragraph "Sunset <small><abbr title='Choose whether or not you want to use offsets. Each offset can be before or after and have a selectable number of minutes.'><b>- INFO -</b></abbr></small>"
-                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, width:6, submitOnChange:true
+                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", width:6, submitOnChange:true
                         input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                         if(offsetSunset == 99) {
                             input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -414,7 +411,7 @@ def pageConfig() {
                             app.removeSetting("sunsetDelayHigh")
                         }
                         paragraph "Sunrise"
-                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                         if(offsetSunrise == 99) {
                             input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -427,9 +424,9 @@ def pageConfig() {
                         }
                     }
                     paragraph "<small>* Be sure offsets don't cause the time to cross back and forth over midnight or this won't work as expected.</small>"
-                    input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset/Sunrise as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
+                    input "timeBetweenSunRestriction", "bool", title: "Sunset/Sunrise as Restriction <small><abbr title='When used as a Restriction, if condidtion is not met nothing will happen based on this condition.'><b>- INFO -</b></abbr></small>", description: "Sunset/Sunrise Restriction", submitOnChange:true
                     checkSunHandler()
-                    input "sunsetSunriseMatchConditionOnly", "bool", defaultValue:false, title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "sunsetSunriseMatchConditionOnly", "bool", title: "Use Sunset/Sunrise as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     paragraph "<hr>"
                     if(fromSun) {
                         theCogTriggers += "<b>-</b> Sunrise to Sunset - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Sunset Offset: ${offsetSunset} - BeforeAfter: ${setBeforeAfter} - with Restriction: ${timeBetweenSunRestriction} - just Condition: ${sunsetSunriseMatchConditionOnly}<br>"
@@ -452,7 +449,7 @@ def pageConfig() {
                 // Messge above will show
             } else if(timeDaysType.contains("tSunrise")) {
                 paragraph "<b>Just Sunrise</b> <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>"
-                input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", submitOnChange:true, width:6
                 input "offsetSunrise", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                 if(offsetSunrise == 99) {
                     input "sunriseDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -463,7 +460,7 @@ def pageConfig() {
                     app.removeSetting("sunriseDelayLow")
                     app.removeSetting("sunriseDelayHigh")
                 }
-                input "sunriseToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                input "sunriseToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", submitOnChange:true
                 if(sunriseToTime) {
                     input "sunriseEndTime", "time", title: "Time to End", description: "Time", required:false
                     paragraph "<small>* Must be BEFORE midnight.</small>"
@@ -477,7 +474,7 @@ def pageConfig() {
                 theCogTriggers += "<b>-</b> After Offsets - timeSunrise: ${state.timeSunrise}<br>"
             } else if(timeDaysType.contains("tSunset")) {
                 paragraph "<b>Just Sunset</b>"
-                input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true, width:6
+                input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset <small><abbr title='This is the start time of the Cog. An offset can also be selected.'><b>- INFO -</b></abbr></small>", submitOnChange:true, width:6
                 input "offsetSunset", "number", title: "Offset (minutes) <small><abbr title='Enter 99 for a Random offset!'><b>- INFO -</b></abbr></small>", width:6, submitOnChange:true
                 if(offsetSunset == 99) {
                     input "sunsetDelayLow", "number", title: "Random Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', width:6, submitOnChange:true
@@ -488,7 +485,7 @@ def pageConfig() {
                     app.removeSetting("sunsetDelayLow")
                     app.removeSetting("sunsetDelayHigh")
                 }
-                input "sunsetToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                input "sunsetToTime", "bool", title: "Set a certain time to turn off <small><abbr title='Choose this to also include an end time.'><b>- INFO -</b></abbr></small>", submitOnChange:true
                 if(sunsetToTime) {
                     input "sunsetEndTime", "time", title: "Time to End", description: "Time", required:false
                     paragraph "<small>* Must be BEFORE midnight.</small>"
@@ -561,7 +558,7 @@ def pageConfig() {
                 input "iCalTime", "time", title: "If event is an all day event, What time to trigger the actions", required:true, submitOnChange:true
                 input "iCalPrior", "number", title: "If event is scheduled for a specific time, How many minutes prior to event to trigger the actions", required:true, submitOnChange:true
                 if(iCalLinks) {
-                    input "showEvents", "bool", title: "Show Upcoming Events (Takes a few seconds to load)", defaultValue:false, submitOnChange:true
+                    input "showEvents", "bool", title: "Show Upcoming Events (Takes a few seconds to load)", submitOnChange:true
                     if(showEvents) {
                         getIcalDataHandler()
                         tDate = new SimpleDateFormat("yyyyMMdd").parse(todaysDate)
@@ -638,13 +635,13 @@ def pageConfig() {
                 paragraph "<b>Acceleration Sensor</b>"
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
                 if(accelerationEvent) {
-                    input "asInactiveActive", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    input "asInactiveActive", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", submitOnChange:true
                     if(asInactiveActive) {
                         paragraph "Condition true when Sensor(s) becomes Active"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Inactive"
                     }
-                    input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(accelerationANDOR) {
                         paragraph "Condition true when <b>any</b> Acceleration Sensor is true"
                     } else {
@@ -658,13 +655,13 @@ def pageConfig() {
                 }
                 input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
                 if(accelerationRestrictionEvent) {
-                    input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Acceleration", submitOnChange:true
                     if(arInactiveActive) {
                         paragraph "Restrict when Sensor(s) becomes Active"
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(accelerationRANDOR) {
                         paragraph "Restrict when <b>any</b> Acceleration Sensor is true"
                     } else {
@@ -676,7 +673,7 @@ def pageConfig() {
                     app.removeSetting("arInactiveActive")
                     app.removeSetting("accelerationRANDOR")
                 }
-                input "accelerationConditionOnly", "bool", defaultValue:false, title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "accelerationConditionOnly", "bool", title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(accelerationConditionOnly) {
                     theCogTriggers += " - Condition Only: ${accelerationConditionOnly}<br>"
                 }
@@ -695,15 +692,15 @@ def pageConfig() {
                 paragraph "<b>Battery</b>"
                 input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
                 if(batteryEvent) {
-                    input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery High", submitOnChange:true
+                    input "setBEPointHigh", "bool", title: "Condition true when Battery is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery High", submitOnChange:true
                     if(setBEPointHigh) {
                         input "beSetPointHigh", "decimal", title: "Battery High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than Setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
+                    input "setBEPointLow", "bool", title: "Condition true when Battery is too Low <small><abbr title='Cog will run when reading is less than Setpoint.'><b>- INFO -</b></abbr></small>", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
                         input "beSetPointLow", "decimal", title: "Battery Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setBEPointBetween", "bool", defaultValue:false, title: "Condition true when Battery is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Battery Between", submitOnChange:true
+                    input "setBEPointBetween", "bool", title: "Condition true when Battery is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Battery Between", submitOnChange:true
                     if(setBEPointBetween) {
                         input "beSetPointLow", "decimal", title: "Battery Low Setpoint", required:true, submitOnChange:true, width:6
                         input "beSetPointHigh", "decimal", title: "Battery High Setpoint", required:true, submitOnChange:true, width:6
@@ -712,7 +709,7 @@ def pageConfig() {
                     if(setBEPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
                     if(setTEPointBetween) paragraph "Cog will trigger when Battery reading is between ${beSetPointLow} and ${beSetPointHigh}"
                 }
-                input "batteryConditionOnly", "bool", defaultValue:false, title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "batteryConditionOnly", "bool", title: "Use Acceleration as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint Low: ${beSetPointLow}, setpoint High: ${beSetPointHigh}, inBetween: ${setBEPointBetween}}<br>"
                 if(batteryConditionOnly) {
                     theCogTriggers += " - Condition Only: ${batteryConditionOnly}<br>"
@@ -758,13 +755,13 @@ def pageConfig() {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactEvent) {
-                    input "csClosedOpen", "bool", title: "Condition true when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", defaultValue:false, submitOnChange:true
+                    input "csClosedOpen", "bool", title: "Condition true when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", submitOnChange:true
                     if(csClosedOpen) {
                         paragraph "Condition true when Sensor(s) become Open"
                     } else {
                         paragraph "Condition true when Sensor(s) become Closed"
                     }
-                    input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Condition true when <b>any</b> Contact Sensor is true"
                     } else {
@@ -791,13 +788,13 @@ def pageConfig() {
 
                 input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactRestrictionEvent) {
-                    input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", defaultValue:false, submitOnChange:true
+                    input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Contact", submitOnChange:true
                     if(crClosedOpen) {
                         paragraph "Restrict when Sensor(s) become Open"
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(contactRANDOR) {
                         paragraph "Restrict when <b>any</b> Contact Sensor is true"
                     } else {
@@ -809,7 +806,7 @@ def pageConfig() {
                     app.removeSetting("crClosedOpen")
                     app.removeSetting("contactRANDOR")
                 }
-                input "contactConditionOnly", "bool", defaultValue:false, title: "Use Contact as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "contactConditionOnly", "bool", title: "Use Contact as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(contactConditionOnly) {
                     theCogTriggers += " - Condition Only: ${contactConditionOnly}<br>"
                 }
@@ -828,13 +825,13 @@ def pageConfig() {
 
                 paragraph "<b>Directional Condition</b> <small><abbr title='Get notified on the direction something is moving in. Great for a Driveway Alert with direction.'><b>- INFO -</b></abbr></small>"
                 paragraph "If device 1 triggers before device 2 - Direction is considered <b>Right</b><br>If device 2 triggers before device 1 - Direction is considered <b>Left</b><br><small>Note: If the wrong direction is reported, simply reverse the two inputs.</small>"
-                input "theType1", "bool", title: "Device 1: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+                input "theType1", "bool", title: "Device 1: Use Motion Sensor (off) or Contact Sensor (on)", submitOnChange:true
                 if(theType1) {
                     input "device1", "capability.contactSensor", title: "Contact Sensor 1", mulitple:false, required:true, submitOnChange:true
                 } else {
                     input "device1", "capability.motionSensor", title: "Motion Sensor 1", mulitple:false, required:true, submitOnChange:true
                 }
-                input "theType2", "bool", title: "Device 2: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+                input "theType2", "bool", title: "Device 2: Use Motion Sensor (off) or Contact Sensor (on)", submitOnChange:true
                 if(theType2) {
                     input "device2", "capability.contactSensor", title: "Contact Sensor 2", mulitple:false, required:true, submitOnChange:true
                 } else {
@@ -857,11 +854,11 @@ def pageConfig() {
                     if(setEEPointHigh) {
                         input "eeSetPointHigh", "decimal", title: "Energy High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy Low", submitOnChange:true
+                    input "setEEPointLow", "bool", title: "Condition true when Energy is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Energy Low", submitOnChange:true
                     if(setEEPointLow) {
                         input "eeSetPointLow", "decimal", title: "Energy Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "eetBEPointBetween", "bool", defaultValue:false, title: "Condition true when Energy is Between two Setpoints <small><abbr title='Cog will run when reading is Between two Setpoints.'><b>- INFO -</b></abbr></small>", description: "Energy Between", submitOnChange:true
+                    input "eetBEPointBetween", "bool", title: "Condition true when Energy is Between two Setpoints <small><abbr title='Cog will run when reading is Between two Setpoints.'><b>- INFO -</b></abbr></small>", description: "Energy Between", submitOnChange:true
                     if(setBEPointBetween) {
                         input "eeSetPointLow", "decimal", title: "Energy Low Setpoint", required:true, submitOnChange:true, width:6
                         input "eeSetPointHigh", "decimal", title: "Energy High Setpoint", required:true, submitOnChange:true, width:6
@@ -871,7 +868,7 @@ def pageConfig() {
                     if(setTEPointBetween) paragraph "Cog will trigger when Energy reading is between ${eeSetPointLow} and ${eeSetPointHigh}"
                 }
                 paragraph "<hr>"
-                input "energyConditionOnly", "bool", defaultValue:false, title: "Use Energy as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "energyConditionOnly", "bool", title: "Use Energy as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint Low: ${eeSetPointLow}, setpoint High: ${eeSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 if(energyConditionOnly) {
                     theCogTriggers += " - Condition Only: ${energyConditionOnly}<br>"
@@ -888,7 +885,7 @@ def pageConfig() {
             if(triggerType.contains("xEventLogWatchdog")) {
                 paragraph "<b>Event/Log Watchdog</b> <small><abbr title='Check if anything special is going on in the event or Log system.'><b>- INFO -</b></abbr></small>"
                 createDeviceSection("Event Watchdog for EE Driver")
-                input "eventLog", "bool", title: "Watch for Events (off) or the Log (on)", defaultValue:false, submitOnChange:true
+                input "eventLog", "bool", title: "Watch for Events (off) or the Log (on)", submitOnChange:true
                 paragraph "<b>Note: Right now the Log watchdog doesn't work. It tends to run wild!</b>"
                 paragraph "<b>Primary Check</b> - Select Keyword or Phrase to Watch<br> - seperate multiple keywords with a semi-colon (;)<br> - If multiple keywords are used, they are considered 'or'"
                 input "ewKeyword1", "text", title: "Primary Keyword",  required:false, submitOnChange:true                 
@@ -909,13 +906,13 @@ def pageConfig() {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required:false, multiple:true, submitOnChange:true
                 if(garageDoorEvent) {
-                    input "gdClosedOpen", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "gdClosedOpen", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", submitOnChange:true
                     if(gdClosedOpen) {
                         paragraph "Condition true when Sensor(s) become Open"
                     } else {
                         paragraph "Condition true when Sensor(s) become Closed"
                     }
-                    input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Condition true when <b>any</b> Garage Door is true"
                     } else {
@@ -930,13 +927,13 @@ def pageConfig() {
 
                 input "garageDoorRestrictionEvent", "capability.garageDoorControl", title: "Restrict By Garage Door", required:false, multiple:true, submitOnChange:true
                 if(garageDoorRestrictionEvent) {
-                    input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Garage Door", submitOnChange:true
                     if(gdrClosedOpen) {
                         paragraph "Restrict when Sensor(s) become Open"
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Restrict when <b>any</b> Garage Door is true"
                     } else {
@@ -948,7 +945,7 @@ def pageConfig() {
                     app.removeSetting("gdsClosedOpen")
                     app.removeSetting("garageDoorRANDOR")
                 }
-                input "garageDoorConditionOnly", "bool", defaultValue:false, title: "Use Garage Door as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "garageDoorConditionOnly", "bool", title: "Use Garage Door as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(garageDoorConditionOnly) {
                     theCogTriggers += " - Condition Only: ${garageDoorConditionOnly}<br>"
                 }
@@ -970,18 +967,18 @@ def pageConfig() {
                     theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
                     theList2 = theList.split(",")              
                     input "globalVariableEvent", "enum", title: "By Global Variable", options: theList2, submitOnChange:true
-                    input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", defaultValue:false, submitOnChange:true
+                    input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", submitOnChange:true
                     if(gvStyle) {
                         if(globalVariableEvent) {
-                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable High", submitOnChange:true
+                            input "setGVPointHigh", "bool", title: "Condition true when Variable is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable High", submitOnChange:true
                             if(setGVPointHigh) {
                                 input "gvSetPointHigh", "decimal", title: "Variable High Setpoint", required:true, submitOnChange:true
                             }
-                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable Low", submitOnChange:true
+                            input "setGVPointLow", "bool", title: "Condition true when Variable is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Variable Low", submitOnChange:true
                             if(setGVPointLow) {
                                 input "gvSetPointLow", "decimal", title: "Variable Low Setpoint", required:true, submitOnChange:true
                             }
-                            input "setGVPointBetween", "bool", defaultValue:false, title: "Condition true when Variable is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Varible Between", submitOnChange:true
+                            input "setGVPointBetween", "bool", title: "Condition true when Variable is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Varible Between", submitOnChange:true
                             if(setGVPointBetween) {
                                 input "gvSetPointLow", "decimal", title: "Variable Low Setpoint", required:true, submitOnChange:true, width:6
                                 input "gvSetPointHigh", "decimal", title: "Variable High Setpoint", required:true, submitOnChange:true, width:6
@@ -1051,7 +1048,7 @@ def pageConfig() {
                     ["/hub/advanced/freeOSMemory":"Check Free OS Memory"]
                 ], submitOnChange:true
                 paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
-                // "xhubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
+                // "xhubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
                 app.removeSetting("xhubSecurity")
                 if(xhubSecurity) {
                     input "xhubUsername", "string", title: "Hub Username", required:true
@@ -1063,7 +1060,7 @@ def pageConfig() {
                 if(xhttpCommand) {
                     if(xhttpCommand.contains("freeOSMemory")) {
                         input "xMinMemory", "number", title: "Minimum amount of Memory Available Set Point", defaultValue:40000, submitOnChange:true
-                        input "xfreeOSMemLog", "bool", title: "Show Free OS Memory in Log with each check", defaultValue:false, submitOnChange:true
+                        input "xfreeOSMemLog", "bool", title: "Show Free OS Memory in Log with each check", submitOnChange:true
                         state.useRollingAverage = true
                     } else {
                         state.useRollingAverage = false
@@ -1082,20 +1079,20 @@ def pageConfig() {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
                 if(humidityEvent) {
-                    input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity High", submitOnChange:true
+                    input "setHEPointHigh", "bool", title: "Condition true when Humidity is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity High", submitOnChange:true
                     if(setHEPointHigh) {
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity Low", submitOnChange:true
+                    input "setHEPointLow", "bool", title: "Condition true when Humidity is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Humidity Low", submitOnChange:true
                     if(setHEPointLow) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setHEPointBetween", "bool", defaultValue:false, title: "Condition true when Humidity is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Humidity Between", submitOnChange:true
+                    input "setHEPointBetween", "bool", title: "Condition true when Humidity is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Humidity Between", submitOnChange:true
                     if(setHEPointBetween) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true, width:6
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "humidityConditionOnly", "bool", title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(humidityConditionOnly) {
                         if(setHEPointHigh) paragraph "Cog will use 'as condition' when Humidity reading is above or equal to ${heSetPointHigh}"
                         if(setHEPointLow) paragraph "Cog will use 'as condition' when Humidity reading is below ${heSetPointLow}"
@@ -1107,7 +1104,7 @@ def pageConfig() {
                     }
                 }
                 paragraph "<hr>"
-                input "humidityConditionOnly", "bool", defaultValue:false, title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "humidityConditionOnly", "bool", title: "Use Humidity as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint Low: ${heSetPointLow}, setpoint High: ${heSetPointHigh}, inBetween: ${setHEPointBetween}<br>"
                 if(humidityConditionOnly) {
                     theCogTriggers += " - Condition Only: ${humidityConditionOnly}<br>"
@@ -1126,20 +1123,20 @@ def pageConfig() {
                 paragraph "<b>Illuminance</b>"
                 input "illuminanceEvent", "capability.illuminanceMeasurement", title: "By Illuminance Setpoints", required:false, multiple:true, submitOnChange:true
                 if(illuminanceEvent) {
-                    input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "High", submitOnChange:true
+                    input "setIEPointHigh", "bool", title: "Condition true when Illuminance is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "High", submitOnChange:true
                     if(setIEPointHigh) {
                         input "ieSetPointHigh", "decimal", title: "Illuminance High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Low", submitOnChange:true
+                    input "setIEPointLow", "bool", title: "Condition true when Illuminance is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Low", submitOnChange:true
                     if(setIEPointLow) {
                         input "ieSetPointLow", "decimal", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setIEPointBetween", "bool", defaultValue:false, title: "Condition true when Illuminance is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Illuminance Between", submitOnChange:true
+                    input "setIEPointBetween", "bool", title: "Condition true when Illuminance is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Illuminance Between", submitOnChange:true
                     if(setIEPointBetween) {
                         input "ieSetPointLow", "decimal", title: "Illuminance Low Setpoint", required:true, submitOnChange:true, width:6
                         input "ieSetPointHigh", "decimal", title: "Illuminance High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "illumConditionOnly", "bool", defaultValue:false, title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "illumConditionOnly", "bool", title: "Use Illuminance as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(illumConditionOnly) {
                         if(setIEPointHigh) paragraph "Cog will use 'as condition' when Illuminance reading is above or equal to ${ieSetPointHigh}"
                         if(setIEPointLow) paragraph "Cog will use 'as condition' when Illuminance reading is below ${ieSetPointLow}"
@@ -1185,13 +1182,13 @@ def pageConfig() {
                 paragraph "<b>Lock</b>"
                 input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:true, submitOnChange:true
                 if(lockEvent) {
-                    input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", defaultValue:false, submitOnChange:true
+                    input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", submitOnChange:true
                     if(lUnlockedLocked) {
                         paragraph "Condition true when Sensor(s) become Locked"
                     } else {
                         paragraph "Condition true when Sensor(s) become Unlocked"
                     }
-                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(lockANDOR) {
                         paragraph "Condition true when <b>any</b> Lock is true"
                     } else {
@@ -1200,7 +1197,7 @@ def pageConfig() {
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
-                    input "noCodeUnlocks", "bool", title: "Include Manual Unlocks (hand turn, key and/or digital without code)", defaultValue:false, submitOnChange:true
+                    input "noCodeUnlocks", "bool", title: "Include Manual Unlocks (hand turn, key and/or digital without code)", submitOnChange:true
                     theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeUnlocks: ${noCodeUnlocks}<br>"
                 } else {
                     app.removeSetting("lockUser")
@@ -1212,13 +1209,13 @@ def pageConfig() {
 
                 input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required:false, multiple:false, submitOnChange:true
                 if(lockRestrictionEvent) {
-                    input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", defaultValue:false, submitOnChange:true
+                    input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", submitOnChange:true
                     if(lrUnlockedLocked) {
                         paragraph "Restrict when Sensor(s) become Locked"
                     } else {
                         paragraph "Restrict when Sensor(s) become Unlocked"
                     }
-                    input "lockRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "lockRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(lockRANDOR) {
                         paragraph "Restrict when <b>any</b> Lock is true"
                     } else {
@@ -1234,7 +1231,7 @@ def pageConfig() {
                     app.removeSetting("lrUnlockedLocked")
                     app.removeSetting("lockRANDOR")
                 }
-                input "lockConditionOnly", "bool", defaultValue:false, title: "Use Lock as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "lockConditionOnly", "bool", title: "Use Lock as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(lockConditionOnly) {
                     theCogTriggers += " - Condition Only: ${lockConditionOnly}<br>"
                 }
@@ -1255,13 +1252,13 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
+                    input "meInactiveActive", "bool", title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
                     if(meInactiveActive) {
                         paragraph "Condition true when Sensor(s) becomes Active"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Inactive"
                     }
-                    input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Condition true when <b>any</b> Motion Sensor is true"
                     } else {
@@ -1276,13 +1273,13 @@ def pageConfig() {
 
                 input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionRestrictionEvent) {
-                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
+                    input "mrInactiveActive", "bool", title: "Motion Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Motion", submitOnChange:true
                     if(mrInactiveActive) {
                         paragraph "Restrict when Sensor(s) becomes Active"
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(motionRANDOR) {
                         paragraph "Restrict when <b>any</b> Motion Sensor is true"
                     } else {
@@ -1294,7 +1291,7 @@ def pageConfig() {
                     app.removeSetting("mrInactiveActive")
                     app.removeSetting("motionRANDOR")
                 }
-                input "motionConditionOnly", "bool", defaultValue:false, title: "Use Motion as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "motionConditionOnly", "bool", title: "Use Motion as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(motionConditionOnly) {
                     theCogTriggers += " - Condition Only: ${motionConditionOnly}<br>"
                 }
@@ -1317,11 +1314,11 @@ def pageConfig() {
                     if(setPEPointHigh) {
                         input "peSetPointHigh", "decimal", title: "Power High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power Low", submitOnChange:true
+                    input "setPEPointLow", "bool", title: "Condition true when Power is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Power Low", submitOnChange:true
                     if(setPEPointLow) {
                         input "peSetPointLow", "decimal", title: "Power Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setPEPointBetween", "bool", defaultValue:false, title: "Condition true when Power is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Power Between", submitOnChange:true
+                    input "setPEPointBetween", "bool", title: "Condition true when Power is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Power Between", submitOnChange:true
                     if(setPEPointBetween) {
                         input "peSetPointLow", "decimal", title: "Power Low Setpoint", required:true, submitOnChange:true, width:6
                         input "peSetPointHigh", "decimal", title: "Power High Setpoint", required:true, submitOnChange:true, width:6
@@ -1330,7 +1327,7 @@ def pageConfig() {
                     if(setPEPointLow) paragraph "Cog will trigger when Power reading is below ${peSetPointLow}"
                     if(setPEPointBetween) paragraph "Cog will trigger when Power reading is between ${peSetPointLow} and ${peSetPointHigh}"
                 }
-                input "powerConditionOnly", "bool", defaultValue:false, title: "Use Power as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "powerConditionOnly", "bool", title: "Use Power as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint Low: ${peSetPointLow}, setpoint High: ${peSetPointHigh}, inBetween: ${setPEPointBetween}<br>"
                 if(powerConditionOnly) {
                     theCogTriggers += " - Condition Only: ${powerConditionOnly}<br>"
@@ -1348,14 +1345,14 @@ def pageConfig() {
                 paragraph "<b>Presence</b>"
                 input "presenceEvent", "capability.presenceSensor", title: "By Presence Sensor", required:false, multiple:true, submitOnChange:true
                 if(presenceEvent) {
-                    input "psPresentNotPresent", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", defaultValue:false, submitOnChange:true
+                    input "psPresentNotPresent", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", submitOnChange:true
                     if(psPresentNotPresent) {
                         paragraph "Condition true when Sensor(s) become Not Present"
                     } else {
                         paragraph "Condition true when Sensor(s) become Present"
                     }
 
-                    input "presenceANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "presenceANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(presenceANDOR) {
                         paragraph "Condition true when <b>any</b> Presence Sensor is true"
                     } else {
@@ -1370,14 +1367,14 @@ def pageConfig() {
 
                 input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required:false, multiple:true, submitOnChange:true
                 if(presenceRestrictionEvent) {
-                    input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", defaultValue:false, submitOnChange:true
+                    input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Present", submitOnChange:true
                     if(prPresentNotPresent) {
                         paragraph "Restrict when Sensor(s) become Not Present"
                     } else {
                         paragraph "Restrict when Sensor(s) become Present"
                     }
 
-                    input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(presentRANDOR) {
                         paragraph "Restrict when <b>any</b> Presence Sensor is true"
                     } else {
@@ -1389,7 +1386,7 @@ def pageConfig() {
                     app.removeSetting("prPresentNotPresent")
                     app.removeSetting("presentRANDOR")
                 }
-                input "presenceConditionOnly", "bool", defaultValue:false, title: "Use Presence as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "presenceConditionOnly", "bool", title: "Use Presence as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(presenceConditionOnly) {
                     theCogTriggers += " - Condition Only: ${presenceConditionOnly}<br>"
                 }
@@ -1474,15 +1471,15 @@ def pageConfig() {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
-                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed <small><abbr title='Choose this to distinguish between a physical push vs Hubitat turning it on.'><b>- INFO -</b></abbr></small>", description: "Switch Type", submitOnChange:true
+                    input "seOffOn", "bool", title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
+                    input "seType", "bool", title: "Only when Physically pushed <small><abbr title='Choose this to distinguish between a physical push vs Hubitat turning it on.'><b>- INFO -</b></abbr></small>", description: "Switch Type", submitOnChange:true
                     if(seOffOn) {
                         paragraph "Condition true when Sensor(s) becomes On"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Off"
                     }
                     if(seType) { paragraph "<small>* Event 'Description Text' must contain '[physical]' for this to work. HE stock drivers do, others may vary.</small>" }
-                    input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Condition true when <b>any</b> Switch is true"
                     } else {
@@ -1499,13 +1496,13 @@ def pageConfig() {
 
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchRestrictionEvent) {
-                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
+                    input "srOffOn", "bool", title: "Switch Off (off) or On (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Switch", submitOnChange:true
                     if(srOffOn) {
                         paragraph "Restrict when Switch(es) are On"
                     } else {
                         paragraph "Restrict when Switch(es) are Off"
                     }
-                    input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(switchRANDOR) {
                         paragraph "Restrict when <b>any</b> Switch is true"
                     } else {
@@ -1517,7 +1514,7 @@ def pageConfig() {
                     app.removeSetting("srOffOn")
                     app.removeSetting("switchRANDOR")
                 }
-                input "switchConditionOnly", "bool", defaultValue:false, title: "Use Switch as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "switchConditionOnly", "bool", title: "Use Switch as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(switchConditionOnly) {
                     theCogTriggers += " - Condition Only: ${switchConditionOnly}<br>"
                 }
@@ -1536,7 +1533,7 @@ def pageConfig() {
 // -----------
             if(triggerType.contains("xSystemStartup")) {
                 paragraph "<b>System Startup</b>"
-                input "startupEvent", "bool", defaultValue:false, title: "Run Cog when system first starts up", description: "System Startup", submitOnChange:true
+                input "startupEvent", "bool", title: "Run Cog when system first starts up", description: "System Startup", submitOnChange:true
                 if(startupEvent) {
                     paragraph "<b>Cog is set to run when system is starting up</b>"
                     theCogTriggers += "<b>-</b> At System Startup: ${startupEvent}<br>"
@@ -1550,20 +1547,20 @@ def pageConfig() {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
                 if(tempEvent) {
-                    input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp High", submitOnChange:true
+                    input "setTEPointHigh", "bool", title: "Condition true when Temperature is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
                         input "teSetPointHigh", "decimal", title: "Temperature High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp Low", submitOnChange:true
+                    input "setTEPointLow", "bool", title: "Condition true when Temperature is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
                         input "teSetPointLow", "decimal", title: "Temperature Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setTEPointBetween", "bool", defaultValue:false, title: "Condition true when Temperature is Between two Setpoints <small><abbr title='Cog will run when reading is between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Temp Between", submitOnChange:true
+                    input "setTEPointBetween", "bool", title: "Condition true when Temperature is Between two Setpoints <small><abbr title='Cog will run when reading is between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Temp Between", submitOnChange:true
                     if(setTEPointBetween) {
                         input "teSetPointLow", "decimal", title: "Temperature Low Setpoint", required:true, submitOnChange:true, width:6
                         input "teSetPointHigh", "decimal", title: "Temperature High Setpoint", required:true, submitOnChange:true, width:6
                     }
-                    input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                    input "tempConditionOnly", "bool", title: "Use Temperature as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                     if(tempConditionOnly) {
                         if(setTEPointHigh && teSetPointHigh) paragraph "Cog will use 'as condition' when Temperature reading is above or equal to ${teSetPointHigh}"
                         if(setTEPointLow && teSetPointLow) paragraph "Cog will use 'as condition' when Temperature reading is below ${teSetPointLow}"
@@ -1574,7 +1571,7 @@ def pageConfig() {
                         if(setTEPointBetween) paragraph "Cog will trigger when Temperature reading is between ${teSetPointLow} and ${teSetPointHigh}"
                     }
                 }
-                input "tempConditionOnly", "bool", defaultValue:false, title: "Use Temp as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "tempConditionOnly", "bool", title: "Use Temp as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint Low: ${teSetPointLow}, setpoint High: ${teSetPointHigh}, inBetween: ${setTEPointBetween}<br>"
                 if(tempConditionOnly) {
                     theCogTriggers += " - Condition Only: ${tempConditionOnly}<br>"
@@ -1592,13 +1589,13 @@ def pageConfig() {
                 paragraph "<b>Thermostat</b>"
                 paragraph "Tracks the state of the thermostat. It will react if not in Idle. (ie. heating or cooling)"
                 input "thermoEvent", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
-                input "thermoANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                input "thermoANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                 if(thermoANDOR) {
                     paragraph "Condition true when <b>any</b> Thermostat is true"
                 } else {
                     paragraph "Condition true when <b>all</b> Thermostats are true"
                 }
-                input "thermoConditionOnly", "bool", defaultValue:false, title: "Use Thermostat as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "thermoConditionOnly", "bool", title: "Use Thermostat as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 if(thermoConditionOnly) {
                     theCogTriggers += " - Condition Only: ${thermoConditionOnly}<br>"
@@ -1661,15 +1658,15 @@ def pageConfig() {
                 paragraph "<b>Voltage</b>"
                 input "voltageEvent", "capability.voltageMeasurement", title: "By Voltage Setpoints", required:false, multiple:true, submitOnChange:true
                 if(voltageEvent) {
-                    input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage High", submitOnChange:true
+                    input "setVEPointHigh", "bool", title: "Condition true when Voltage is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage High", submitOnChange:true
                     if(setVEPointHigh) {
                         input "veSetPointHigh", "decimal", title: "Voltage High Setpoint", required:true, submitOnChange:true
                     }
-                    input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage Low", submitOnChange:true
+                    input "setVEPointLow", "bool", title: "Condition true when Voltage is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Voltage Low", submitOnChange:true
                     if(setVEPointLow) {
                         input "veSetPointLow", "decimal", title: "Voltage Low Setpoint", required:true, submitOnChange:true
                     }
-                    input "setVEPointBetween", "bool", defaultValue:false, title: "Condition true when Voltage is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Voltage Between", submitOnChange:true
+                    input "setVEPointBetween", "bool", title: "Condition true when Voltage is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Voltage Between", submitOnChange:true
                     if(setVEPointBetween) {
                         input "veSetPointLow", "decimal", title: "Voltage Low Setpoint", required:true, submitOnChange:true, width:6
                         input "veSetPointHigh", "decimal", title: "Voltage High Setpoint", required:true, submitOnChange:true, width:6
@@ -1677,7 +1674,7 @@ def pageConfig() {
                     if(veSetPointHigh) paragraph "Cog will trigger when Voltage reading is above or equal to ${veSetPointHigh}"
                     if(veSetPointLow) paragraph "Cog will trigger when Voltage reading is below ${veSetPointLow}"
                 }
-                input "voltageConditionOnly", "bool", defaultValue:false, title: "Use Voltage as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "voltageConditionOnly", "bool", title: "Use Voltage as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint Low: ${veSetPointLow}, setpoint High: ${veSetPointHigh}, inBetween: ${setVEPointBetween}<br>"
                 if(voltageConditionOnly) {
                     theCogTriggers += " - Condition Only: ${voltageConditionOnly}<br>"
@@ -1695,13 +1692,13 @@ def pageConfig() {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required:false, multiple:true, submitOnChange:true
                 if(waterEvent) {
-                    input "wsDryWet", "bool", title: "Condition true when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", defaultValue:false, submitOnChange:true
+                    input "wsDryWet", "bool", title: "Condition true when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", submitOnChange:true
                     if(wsDryWet) {
                         paragraph "Condition true when Sensor(s) become Wet"
                     } else {
                         paragraph "Condition true when Sensor(s) become Dry"
                     }
-                    input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(waterANDOR) {
                         paragraph "Condition true when <b>any</b> Water Sensor is true"
                     } else {
@@ -1716,13 +1713,13 @@ def pageConfig() {
 
                 input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required:false, multiple:true, submitOnChange:true
                 if(waterRestrictionEvent) {
-                    input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", defaultValue:false, submitOnChange:true
+                    input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Water", submitOnChange:true
                     if(wrDryWet) {
                         paragraph "Restrict when Sensor(s) become Wet"
                     } else {
                         paragraph "Restrict when Sensor(s) become Dry"
                     }
-                    input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                    input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(waterANDOR) {
                         paragraph "Restrict when <b>any</b> Water Sensor is true"
                     } else {
@@ -1734,7 +1731,7 @@ def pageConfig() {
                     app.removeSetting("wrDryWet")
                     app.removeSetting("waterRANDOR")
                 }
-                input "waterConditionOnly", "bool", defaultValue:false, title: "Use Water as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "waterConditionOnly", "bool", title: "Use Water as a Condition but NOT as a Trigger <small><abbr title='If this is true, the selection will be included in the Cogs logic BUT can not cause the Cog to start on it's own.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(waterConditionOnly) {
                     theCogTriggers += " - Condition Only: ${waterConditionOnly}<br>"
                 }
@@ -1757,17 +1754,17 @@ def pageConfig() {
                     allAttrs1 = customEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                     allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
                     input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
-                    input "deviceORsetpoint", "bool", defaultValue:false, title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
+                    input "deviceORsetpoint", "bool", title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
                     if(deviceORsetpoint) {
-                        input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom High", submitOnChange:true
+                        input "setSDPointHigh", "bool", title: "Condition true when Custom is too High <small><abbr title='Cog will run when reading is greater than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom High", submitOnChange:true
                         if(setSDPointHigh) {
                             input "sdSetPointHigh", "decimal", title: "Custom High Setpoint", required:true, submitOnChange:true
                         }
-                        input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom Low", submitOnChange:true
+                        input "setSDPointLow", "bool", title: "Condition true when Custom is too Low <small><abbr title='Cog will run when reading is less than setpoint.'><b>- INFO -</b></abbr></small>", description: "Custom Low", submitOnChange:true
                         if(setSDPointLow) {
                             input "sdSetPointLow", "decimal", title: "Custom Low Setpoint", required:true, submitOnChange:true
                         }
-                        input "setSDPointBetween", "bool", defaultValue:false, title: "Condition true when Custom is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Custom Between", submitOnChange:true
+                        input "setSDPointBetween", "bool", title: "Condition true when Custom is Between two Setpoints <small><abbr title='Cog will run when reading is Between two setpoints.'><b>- INFO -</b></abbr></small>", description: "Custom Between", submitOnChange:true
                         if(setSDPointBetween) {
                             input "sdSetPointLow", "decimal", title: "Custom Low Setpoint", required:true, submitOnChange:true, width:6
                             input "sdSetPointHigh", "decimal", title: "Custom High Setpoint", required:true, submitOnChange:true, width:6
@@ -1784,14 +1781,14 @@ def pageConfig() {
                         paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
                         input "custom1", "text", title: "Attribute Value 1", required:true, submitOnChange:true
                         input "custom2", "text", title: "Attribute Value 2", required:true, submitOnChange:true
-                        input "sdCustom1Custom2", "bool", title: "Condition true when ${custom1} (off) or ${custom2} (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Custom", defaultValue:false, submitOnChange:true
+                        input "sdCustom1Custom2", "bool", title: "Condition true when ${custom1} (off) or ${custom2} (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Custom", submitOnChange:true
                         if(sdCustom1Custom2) {
                             paragraph "Condition true when Custom(s) become ${custom1}"
                         } else {
                             paragraph "Condition true when Custom(s) become ${custom2}"
                         }
                         paragraph "* Remember - If Conditions are working backwards, simply reverse your values above."
-                        input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", defaultValue:false, submitOnChange:true
+                        input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                         if(customANDOR) {
                             paragraph "Condition true when <b>any</b> Custom is true"
                         } else {
@@ -1819,16 +1816,16 @@ def pageConfig() {
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || state.useRollingAverage || (customEvent && deviceORsetpoint)) {
-                input "spDirection", "bool", defaultValue:false, title: "Track direction of setpoint <small><abbr title='Condition can also track which direction the setpoint is heading.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
+                input "spDirection", "bool", title: "Track direction of setpoint <small><abbr title='Condition can also track which direction the setpoint is heading.'><b>- INFO -</b></abbr></small>", description: "Cond Only", submitOnChange:true
                 if(spDirection) {
-                    input "spDirDownUp", "bool", defaultValue:false, title: "Condition is 'true' when setpoint is headind Down (off) or Up (on)", description: "Setpoint Direction", submitOnChange:true
+                    input "spDirDownUp", "bool", title: "Condition is 'true' when setpoint is headind Down (off) or Up (on)", description: "Setpoint Direction", submitOnChange:true
                     input "spDirMinValue", "decimal", title: "Min Difference to count towards direction <small><abbr title='If difference between last reading and current reading is less than Min Difference, the current value will be tossed and not used to determine direction.'><b>- INFO -</b></abbr></small>", defaultValue:0, submitOnChange:true
                     paragraph "<hr>"
                 } else {
                     app.removeSetting("spDirDownUp")
                     app.removeSetting("spDirMinValue")
                 }
-                input "setpointRollingAverage", "bool", title: "Use a rolling Average for setpoints <small><abbr title='Use multiple readings instead of a single instance to control the Cog.'><b>- INFO -</b></abbr></small>", description: "average", defaultValue:false, submitOnChange:true
+                input "setpointRollingAverage", "bool", title: "Use a rolling Average for setpoints <small><abbr title='Use multiple readings instead of a single instance to control the Cog.'><b>- INFO -</b></abbr></small>", description: "average", submitOnChange:true
                 if(setpointRollingAverage) {
                     paragraph "<small>*All values are rounded for this option</small>"
                     input "numOfPoints", "number", title: "Number of points to average", required:true, submitOnChange:true
@@ -1836,7 +1833,7 @@ def pageConfig() {
                 } else {
                     app.removeSetting("numOfPoints")
                 }
-                input "useWholeNumber", "bool", title: "Only use Whole Numbers (round each number)", description: "Whole", defaultValue:false, submitOnChange:true
+                input "useWholeNumber", "bool", title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 if(setpointRollingAverage) paragraph "<b>When using a Rolling Average, use Whole Numbers MUST also be true.</b>"
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
                 paragraph "<hr>"
@@ -1861,12 +1858,12 @@ def pageConfig() {
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
-                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Delay Time", submitOnChange:true, width:6
-                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Random Delay", submitOnChange:true, width:6
+                input "setDelay", "bool", title: "<b>Set Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Delay Time", submitOnChange:true, width:6
+                input "randomDelay", "bool", title: "<b>Set Random Delay</b> <small><abbr title='Delay the notifications until all devices have been in state for XX minutes.'><b>- INFO -</b></abbr></small>", description: "Random Delay", submitOnChange:true, width:6
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required:true, multiple:false, range: '1..60', width:6
-                    input "minSec", "bool", title: "Use Minutes (off) or Seconds (on)", description: "minSec", defaultValue:false, submitOnChange:true, width:6
+                    input "minSec", "bool", title: "Use Minutes (off) or Seconds (on)", description: "minSec", submitOnChange:true, width:6
                     paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the actions will be cancelled.</small>"
                     if(minSec) {
                         minSecValue = "Second(s)"
@@ -1918,19 +1915,19 @@ def pageConfig() {
             paragraph "<i>Have something neat that you do with primary and secondary triggers? Please post it on the forums and I just might add it here! Thanks</i>"
         }
         section() {
-            input "useHelper", "bool", title: "Use Condition Helper <small><abbr title='This will help the conditions stay true but not trigger the conditions on its own.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+            input "useHelper", "bool", title: "Use Condition Helper <small><abbr title='This will help the conditions stay true but not trigger the conditions on its own.'><b>- INFO -</b></abbr></small>", submitOnChange:true
             if(useHelper) {
                 input "myContacts2", "capability.contactSensor", title: "Select the Contact sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myContacts2) input "contactOption2", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
+                if(myContacts2) input "contactOption2", "bool", title: "Condition true when Closed (off) or Open (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", submitOnChange:true
                 
                 input "myMotion2", "capability.motionSensor", title: "Select the Motion sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myMotion2) input "motionOption2", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
+                if(myMotion2) input "motionOption2", "bool", title: "Condition true when Inactive (off) or Active (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", submitOnChange:true
                 
                 input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(myPresence2) input "presenceOption2", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
+                if(myPresence2) input "presenceOption2", "bool", title: "Condition true when Present (off) or Not Present (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", submitOnChange:true
                 
                 input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
-                if(mySwitches2) input "switchesOption2", "bool", title: "Condition true when Off (off) or On (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", defaultValue:false, submitOnChange:true
+                if(mySwitches2) input "switchesOption2", "bool", title: "Condition true when Off (off) or On (on) <small><abbr title='Choose which status will be considered true and help keep the Cog in state.'><b>- INFO -</b></abbr></small>", description: "bool", submitOnChange:true
                 paragraph "<small>* All helpers are considered 'OR'</small>"
                 if(myContacts2) {
                     theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Closed/Open: ${contactOption2}<br>"
@@ -2035,7 +2032,7 @@ def pageConfig() {
                     if(biControl == "Camera_Trigger"){
                         input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                         paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
-                        input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
+                        input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", submitOnChange:true
                         theCogActions += "<b>-</b> Blue Iris: ${biControl} - useMethod: ${useMethod}<br>"
                     } else {
                         app.removeSetting("useMethod")
@@ -2262,7 +2259,7 @@ def pageConfig() {
             
             if(actionType.contains("aRule")) {
                 paragraph "<b>Rule Machine</b>"
-                input "rmRuleType", "bool", title: "Rule Type: Legacy Rules (off) or Rule 5.x and Over (on)", defaultValue:false, submitOnChange:true
+                input "rmRuleType", "bool", title: "Rule Type: Legacy Rules (off) or Rule 5.x and Over (on)", submitOnChange:true
                 if(rmRuleType) {
                     def rules50 = RMUtils.getRuleList('5.0')
                     if(rules50) {
@@ -2314,7 +2311,7 @@ def pageConfig() {
                     ["/hub/zwaveRepair":"Zwave Repair"]
                 ], submitOnChange:true
                 paragraph "<b>Does not work with Hub Security Enabled. Work in progress</b>"
-                // "hubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
+                // "hubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
                 app.removeSetting("hubSecurity")
                 if(hubSecurity) {
                     input "hubUsername", "string", title: "Hub Username", required:true
@@ -2387,7 +2384,7 @@ def pageConfig() {
                 paragraph "<b>Switches to Sync</b>"
                 paragraph " - Works with on/off, level, hue, saturation and colorTemperature Attributes.<br> - Each attribute can only change once every 3 seconds<br> - ie. If one switch turns on, all switches will turn on"
                 input "switchesToSync", "capability.switch", title: "Switches to Sync", multiple:true, submitOnChange:true
-                if(switchEvent && switchConditionOnly == false) {
+                if(switchEvent && !switchConditionOnly) {
                     paragraph "Note: When using this option, any Switches selected in the 'By Switch' Condition section above, will not be used to trigger this Cog. Only the switches selected here (Switches to Sync) will trigger this Cog. All other conditions will still be used."
                 }
                 paragraph "<hr>"
@@ -2403,10 +2400,10 @@ def pageConfig() {
                 if(switchesOnAction) theCogActions += "<b>-</b> Switches to turn On: ${switchesOnAction}<br>"
                 if(switchesOffAction) theCogActions += "<b>-</b> Switches to turn Off: ${switchesOffAction}<br>"
                 if(switchesOffAction){
-                    input "permanentDim2", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                    input "permanentDim2", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", submitOnChange:true
                     if(permanentDim2) {
                         input "permanentDimLvl2", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
-                        input "pdColorTemp2", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                        input "pdColorTemp2", "bool", title: "Use Color (off) or Temperature (on)", submitOnChange:true
                         if(pdColorTemp2) {
                             input "pdTemp2", "number", title: "Color Temperature", submitOnChange:true
                             app.removeSetting("pdColor2")
@@ -2438,7 +2435,7 @@ def pageConfig() {
                 input "setOnLC", "capability.switchLevel", title: "Dimmer to set", required:false, multiple:true, submitOnChange:true
                 if(setOnLC) {
                     input "levelLC", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
-                    input "lcColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                    input "lcColorTemp", "bool", title: "Use Color (off) or Temperature (on)", submitOnChange:true
                     if(lcColorTemp) {
                         input "tempLC", "number", title: "Color Temperature", submitOnChange:true
                         app.removeSetting("colorLC")
@@ -2456,8 +2453,8 @@ def pageConfig() {
                     app.removeSetting("lcColorTemp")
                 }
                 paragraph "<hr>"
-                input "switchedDimUpAction", "bool", defaultValue:false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
-                input "switchedDimDnAction", "bool", defaultValue:false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
+                input "switchedDimUpAction", "bool", title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
+                input "switchedDimDnAction", "bool", title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
 
                 if(switchedDimUpAction) {
                     paragraph "<hr>"
@@ -2469,7 +2466,7 @@ def pageConfig() {
                     useCustomColorsHandler()
                     input "colorUp", "enum", title: "Color", required:true, multiple:false, options: theColors
                     paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
-                    input "targetDelay", "bool", defaultValue:false, title: "Delay Until Finished", description: "Target Delay", submitOnChange:true
+                    input "targetDelay", "bool", title: "Delay Until Finished", description: "Target Delay", submitOnChange:true
                     theCogActions += "<b>-</b> Select dimmer devices to slowly rise: ${slowDimmerUp} - Minutes: ${minutesUp} - Starting Level: ${startLevelUp} - Target Level: ${targetLevelHigh} - Color: ${colorUp}<br>"
                 } else {
                     app.removeSetting("slowDimmerUp")
@@ -2485,7 +2482,7 @@ def pageConfig() {
                     paragraph "<b>Slowly Dim Lighting DOWN</b>"
                     input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required:true, multiple:true
                     input "minutesDn", "number", title: "Takes how many minutes to dim (1 to 60)", required:true, multiple:false, defaultValue:15, range: '1..60'
-                    input "useMaxLevel", "bool", title: "Use a set starting level for all lights (off) or dim from the current level of each light (on)", defaultValue:false, submitOnChange:true
+                    input "useMaxLevel", "bool", title: "Use a set starting level for all lights (off) or dim from the current level of each light (on)", submitOnChange:true
                     if(useMaxLevel) {
                         paragraph "The highest level light will start the process of dimming, each light will join in as the dim level reaches the lights current value"
                         app.removeSetting("startLevelLow")
@@ -2493,7 +2490,7 @@ def pageConfig() {
                         input "startLevelLow", "number", title: "Starting Level (5 to 99)", required:true, multiple:false, defaultValue: 99, range: '5..99'
                     }
                     input "targetLevelLow", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
-                    input "dimDnOff", "bool", defaultValue:false, title: "Turn dimmer off after target is reached", description: "Dim Off Options", submitOnChange:true
+                    input "dimDnOff", "bool", title: "Turn dimmer off after target is reached", description: "Dim Off Options", submitOnChange:true
                     input "turnOnBeforeDim", "bool", defaultVAlue:false, title: "Turn dimmer On (if it's off) before dimming", submitOnChange:true
                     useCustomColorsHandler()
                     input "colorDn", "enum", title: "Color", required:true, multiple:false, options: theColors
@@ -2563,13 +2560,13 @@ def pageConfig() {
                 input "masterDimmersPerMode", "capability.switchLevel", title: "Master List of Dimmers Needed in this Cog <small><abbr title='Only devices selected here can be used below. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
                 masterList = masterDimmersPerMode.toString().replace("[","").replace("]","").split(",")
                 paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
-                if(atomicState.working) {
+                if(state.working) {
                     paragraph "Working on <b>$sdPerModeName</b>"
                 } else {
                     input "sdPerModeName", "mode", title: "Mode", required:false, width:6, submitOnChange:true
                 }
 
-                if(sdPerModeName && state.sdPerModeMap && !atomicState.working) {
+                if(sdPerModeName && state.sdPerModeMap && !state.working) {
                     state.found = false
                     app.removeSetting("setDimmersPerMode")
                     app.removeSetting("sdPerModeLevel")
@@ -2584,7 +2581,7 @@ def pageConfig() {
                         def pieces = data.split(":")
                         theMode = pieces[0]
                         if(sdPerModeName.toString() == theMode.toString()) {
-                            atomicState.working = true
+                            state.working = true
                             theMode = pieces[0]; theDevices = pieces[1]; theLevel = pieces[2]; theTempType = pieces[3]; theTemp = pieces[4]; theColor = pieces[5]; theTime = pieces[6]; theTimeType = pieces[7]
                             app.updateSetting("sdPerModeLevel", theLevel)
                             app.updateSetting("sdPerModeColorTemp", [value:"${theTempType}",type:"bool"])
@@ -2596,7 +2593,7 @@ def pageConfig() {
                             state.found = true
                         }
                     }
-                    if(!state.found) { atomicState.working = true }
+                    if(!state.found) { state.working = true }
                 }
                 input "setDimmersPerMode", "enum", title: "Dimmers to set for this Mode", required:false, multiple:true, options:masterList, submitOnChange:true
                 input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, range: '1..99', submitOnChange:true
@@ -2629,7 +2626,7 @@ def pageConfig() {
                 input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
                 input "sdPerModeDel", "button", title: "Delete Mode", width: 3
                 input "sdPerModeClear", "button", title: "Clear Table <small><abbr title='This will delete all Modes, use with caution. This can not be undone.'><b>- INFO -</b></abbr></small>", width: 3
-                //input "refreshMap", "bool", defaultValue:false, title: "Refresh the Map", description: "Map", submitOnChange:true, width:3               
+                //input "refreshMap", "bool", title: "Refresh the Map", description: "Map", submitOnChange:true, width:3               
                 input "sdPerModeRebuild", "button", title: "Rebuild Table <small><abbr title='This should only be needed when changes to the table are made by the developer.'><b>- INFO -</b></abbr></small>", width: 3
                 if(refreshMap) {
                     app.removeSetting("setDimmersPerMode")
@@ -2758,14 +2755,14 @@ def pageConfig() {
             if(fanAction || switchesOnAction || switchesOffAction || deviceSeqAction1 || setOnLC || contactOpenAction || masterDimmersPerMode || lzw45Action || biControl == "Camera_Enable" || biControl == "Camera_Disable" || switchesToChange) {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl || modeEvent) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
-                    input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                    input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", submitOnChange:true
                     paragraph "<small><b>Please only select ONE Reverse Action option</b></small>"
-                    input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
-                    input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
+                    input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", submitOnChange:true
+                    input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", submitOnChange:true
                     if(reverseWithDelay) {
                         paragraph "<hr>"
-                        input "dimWhileDelayed", "bool", title: "Dim lights DURING delay as a warning", defaultValue:false, submitOnChange:true
-                        input "dimAfterDelayed", "bool", title: "Dim lights AFTER delay as a warning", defaultValue:false, submitOnChange:true
+                        input "dimWhileDelayed", "bool", title: "Dim lights DURING delay as a warning", submitOnChange:true
+                        input "dimAfterDelayed", "bool", title: "Dim lights AFTER delay as a warning", submitOnChange:true
                         if(dimWhileDelayed || dimAfterDelayed) {
                             input "warningDimSec", "number", title: "Length of Dim (in Seconds - 1 to 60) <small><abbr title='Be sure this is less than Time To Reverse or it will be cut short.'><b>- INFO -</b></abbr></small>", range: '1..60', width:6
                             input "warningDimLvl", "number", title: "Warning Dim Level (1 to 99)", range: '1..99', width:6
@@ -2776,7 +2773,7 @@ def pageConfig() {
                         app.removeSetting("warningDimSec")
                         app.removeSetting("warningDimLvl")
                     }
-                    input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
+                    input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", submitOnChange:true
                     if(timeReverse) {
                         input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
                     }
@@ -2785,7 +2782,7 @@ def pageConfig() {
                         if(sdTimePerMode) {
                             paragraph "Using Time to Reverse Per Mode."
                         } else {
-                            input "reverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", defaultValue:false, submitOnChange:true
+                            input "reverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", submitOnChange:true
                             if(reverseTimeType) {
                                 input "timeToReverse", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
                             } else {
@@ -2804,9 +2801,9 @@ def pageConfig() {
                     app.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
                 } else if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                     paragraph "<small><b>Please only select ONE Reverse option</b></small>"
-                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
-                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
-                    if(setTEPointBetween) input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Not Between", defaultValue:false, submitOnChange:true
+                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", submitOnChange:true
+                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", submitOnChange:true
+                    if(setTEPointBetween) input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Not Between", submitOnChange:true
                     paragraph "<hr>"
                     app.updateSetting("reverse",[value:"false",type:"bool"])
                     app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
@@ -2850,10 +2847,10 @@ def pageConfig() {
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || masterDimmersPerMode)){
                     paragraph "<hr>"
-                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off <small><abbr title='If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!'><b>- INFO -</b></abbr></small>", submitOnChange:true
                     if(permanentDim) {
                         input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
-                        input "pdColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                        input "pdColorTemp", "bool", title: "Use Color (off) or Temperature (on)", submitOnChange:true
                         if(pdColorTemp) {
                             input "pdTemp", "number", title: "Color Temperature", submitOnChange:true
                             app.removeSetting("pdColor")
@@ -2905,7 +2902,7 @@ def pageConfig() {
         // ********** End Actions **********
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+            input "pauseApp", "bool", title: "Pause App", submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
                     if(!app.label.contains("(Paused)")) {
@@ -2933,16 +2930,16 @@ def pageConfig() {
             }
             input "longDescription", "textarea", title: "Cog Description (optional)", submitOnChange:true
             input "otherNotes", "textarea", title: "Other Notes (optional)", submitOnChange:true
-            input "runAtStartup", "bool", title: "Run on System Startup <small><abbr title='If the system is rebooted for any reason, cog will run once the system comes back up.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+            input "runAtStartup", "bool", title: "Run on System Startup <small><abbr title='If the system is rebooted for any reason, cog will run once the system comes back up.'><b>- INFO -</b></abbr></small>", submitOnChange:true
             if(runAtStartup) {
                 theCogActions += "<br><b>*</b> Cog is set to run on system startup<br>"
             }
-            input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", defaultValue:false, submitOnChange:true
-            input "logOptions", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", submitOnChange:true
+            input "logOptions", "bool", title: "Enable Debug Options", description: "Log Options", submitOnChange:true
             if(logOptions) {
-                input "logEnable", "bool", title: "Enable Debug Logging - THIS is the option you want to turn on, most of the time.", description: "Debug Log", defaultValue:false, submitOnChange:true
-                input "shortLog", "bool", title: "Short Logs - Please only post short logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
-                input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", defaultValue:false, submitOnChange:true
+                input "logEnable", "bool", title: "Enable Debug Logging - THIS is the option you want to turn on, most of the time.", description: "Debug Log", submitOnChange:true
+                input "shortLog", "bool", title: "Short Logs - Please only post short logs if the Developer asks for it", description: "log size", submitOnChange:true
+                input "extraLogs", "bool", title: "Use Extra Logs  - Please only Use Extra logs if the Developer asks for it", description: "Extra Logs", submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
                 paragraph "<hr>"
             } else {
@@ -2952,15 +2949,22 @@ def pageConfig() {
                 app.updateSetting("clearMaps",[value:"false",type:"bool"])
                 app.removeSetting("logOffTime")
             }
-            input "testEnable", "bool", title: "Enable Testing Options", description: "Debug Testing", defaultValue:false, submitOnChange:true
+            input "testEnable", "bool", title: "Enable Testing Options", description: "Debug Testing", submitOnChange:true
             if(testEnable) {
                 paragraph "Note: All of the debug options below are made just for me to test things. But, you may find some of them useful too. Just remember to not complain/post/ask questions about them. They are for testing only and may or may not work at any given time."
-                input "clearMaps", "bool", title: "Clear state.oldMaps and atomicStates", description: "clear", defaultValue:false, submitOnChange:true
+                input "clearMaps", "bool", title: "Clear state.oldMaps", description: "clear", width:6, submitOnChange:true
                 if(clearMaps) {
                     state.oldMap = [:]
-                    atomicState.running = "Stopped"
-                    atomicState.tryRunning = 0
+                    state.running = "Stopped"
+                    state.tryRunning = 0
                     app.updateSetting("clearMaps",[value:"false",type:"bool"])
+                }
+                input "clearStates", "bool", title: "Clear All States", description: "clear", width:6, submitOnChange:true
+                if(clearStates) {
+                    state.clear()
+                    state.running = "Stopped"
+                    state.tryRunning = 0
+                    app.updateSetting("clearStates",[value:"false",type:"bool"])
                 }
             }
         }        
@@ -2978,7 +2982,7 @@ def pageConfig() {
             }
             paragraph "<hr>"
             paragraph "<small>* If you're not seeing your Notification settings, please re-visit the Notifications section.</small>"
-            input "resetCog", "bool", defaultValue:false, title: "Refresh The Cog Description <small>(This will happen immediately)</small>", description: "Cog", submitOnChange:true
+            input "resetCog", "bool", title: "Refresh The Cog Description <small>(This will happen immediately)</small>", description: "Cog", submitOnChange:true
             if(resetCog) {
                 app.updateSetting("resetCog",[value:"false",type:"bool"])
             }
@@ -2992,7 +2996,7 @@ def notificationOptions(){
         state.theCogNotifications = "<b><u>Notifications</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications. Please be sure to have Follow Me installed before trying to send any notifications."
-            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", submitOnChange:true
             if(useSpeech) {
                 input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required:true, submitOnChange:true
                 state.theCogNotifications += "<b>-</b> Use Speech: ${fmSpeaker}<br>"
@@ -3063,7 +3067,7 @@ def notificationOptions(){
                         if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
                             paragraph "<b>Random Message Options</b>"
                             input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                            input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
+                            input "msgList", "bool", title: "Show a list view of the messages", description: "List View", submitOnChange:true
                             if(message) state.theCogNotifications += "<b>-</b> Message: ${message}<br>"
                             if(msgList) {
                                 def values = "${message}".split(";")
@@ -3081,7 +3085,7 @@ def notificationOptions(){
                 }
 
                 section(getFormat("header-green", "${getImage("Blank")}"+" Repeat Notifications")) {
-                    input "msgRepeat", "bool", title: "Repeat Notifications", description: "List View", defaultValue:false, submitOnChange:true
+                    input "msgRepeat", "bool", title: "Repeat Notifications", description: "List View", submitOnChange:true
                     if(msgRepeat) {
                         input "msgRepeatMinutes", "number", title: "Repeat every XX minutes", submitOnChange:true, width:6
                         input "msgRepeatMax", "number", title: "Max number of repeats", submitOnChange:true, width:6
@@ -3140,7 +3144,7 @@ def notificationOptions(){
                         if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp") || !deviceORsetpoint) {
                             paragraph "<b>Random Message Options</b>"
                             input "wmessage", "text", title: "Message to be sent - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                            input "wmsgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
+                            input "wmsgList", "bool", title: "Show a list view of the messages", description: "List View", submitOnChange:true
                             if(wmessage) state.theCogNotifications += "<b>-</b> Message: ${wmessage}<br>"
                             if(wmsgList) {
                                 def values = "${wmessage}".split(";")
@@ -3179,7 +3183,7 @@ def notificationOptions(){
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights. Please be sure to have The Flasher installed before trying to use this option."
-            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            input "useTheFlasher", "bool", title: "Use The Flasher", submitOnChange:true
             if(useTheFlasher) {
                 input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Preset you wish to use", required:true, multiple:false
                 if(useTheFlasher) state.theCogNotifications += "<b>-</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice}<br>"
@@ -3212,12 +3216,12 @@ def initialize() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.trace "***** Initialize (${state.version}) - ${app.label} *****"
-        atomicState.syncOnRunning = "no"
-        atomicState.syncOffRunning = "no"
-        atomicState.syncColorRunning = "no"
-        atomicState.syncHueRunning = "no"
-        atomicState.syncLevelRunning = "no"
-        atomicState.syncSaturationRunning = "no"
+        state.syncOnRunning = "no"
+        state.syncOffRunning = "no"
+        state.syncColorRunning = "no"
+        state.syncHueRunning = "no"
+        state.syncLevelRunning = "no"
+        state.syncSaturationRunning = "no"
         if(accelerationConditionOnly == null) accelerationConditionOnly = false
         if(batteryConditionOnly == null) batteryConditionOnly = false
         if(buttonConditionOnly == null) buttonConditionOnly = false
@@ -3238,8 +3242,8 @@ def initialize() {
         if(thermoConditionOnly == null) thermoConditionOnly = false
         
         if(startTime) schedule(startTime, "certainTime")
-        if(accelerationEvent && accelerationConditionOnly == false) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
-        if(batteryEvent && batteryConditionOnly == false) subscribe(batteryEvent, "battery", startTheProcess)
+        if(accelerationEvent && !accelerationConditionOnly) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
+        if(batteryEvent && !batteryConditionOnly) subscribe(batteryEvent, "battery", startTheProcess)
         if(buttonEvent) {
             bAction = buttonAction.toString()
             if(bAction == "pushed") subscribe(buttonEvent, "pushed", buttonHandler)
@@ -3248,22 +3252,22 @@ def initialize() {
             if(bAction == "released") subscribe(buttonEvent, "released", buttonHandler)            
             if(bAction == "taps") subscribe(buttonEvent, "taps", buttonHandler)
         }
-        if(contactEvent && contactConditionOnly == false) subscribe(contactEvent, "contact", startTheProcess)
-        if(energyEvent && energyConditionOnly == false) subscribe(energyEvent, "energy", startTheProcess)
-        if(garagedoorEvent && garageDoorConditionOnly == false) subscribe(garagedoorEvent, "door", startTheProcess)
+        if(contactEvent && !contactConditionOnly) subscribe(contactEvent, "contact", startTheProcess)
+        if(energyEvent && !energyConditionOnly) subscribe(energyEvent, "energy", startTheProcess)
+        if(garagedoorEvent && !garageDoorConditionOnly) subscribe(garagedoorEvent, "door", startTheProcess)
         if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
         if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
-        if(humidityEvent && humidityConditionOnly == false) subscribe(humidityEvent, "humidity", startTheProcess)
-        if(illuminanceEvent && illumConditionOnly == false) subscribe(illuminanceEvent, "illuminance", startTheProcess)
-        if(lockEvent && lockConditionOnly == false) subscribe(lockEvent, "lock", startTheProcess)
-        if(modeEvent && modeMatchConditionOnly == false) subscribe(location, "mode", startTheProcess)
-        if(motionEvent && motionConditionOnly == false) subscribe(motionEvent, "motion", startTheProcess)
-        if(powerEvent && powerConditionOnly == false) subscribe(powerEvent, "power", startTheProcess)
-        if(presenceEvent && presenceConditionOnly == false) subscribe(presenceEvent, "presence", startTheProcess)
-        if(startupEvent && startupConditionOnly == false) subscribe(location, "systemStart", startTheProcess)
-        if(voltageEvent && voltageConditionOnly == false) subscribe(voltageEvent, "voltage", startTheProcess) 
-        if(tempEvent && tempConditionOnly == false) subscribe(tempEvent, "temperature", startTheProcess)
-        if(thermoEvent && thermoConditionOnly == false) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
+        if(humidityEvent && !humidityConditionOnly) subscribe(humidityEvent, "humidity", startTheProcess)
+        if(illuminanceEvent && !illumConditionOnly) subscribe(illuminanceEvent, "illuminance", startTheProcess)
+        if(lockEvent && !lockConditionOnly) subscribe(lockEvent, "lock", startTheProcess)
+        if(modeEvent && !modeMatchConditionOnly) subscribe(location, "mode", startTheProcess)
+        if(motionEvent && !motionConditionOnly) subscribe(motionEvent, "motion", startTheProcess)
+        if(powerEvent && !powerConditionOnly) subscribe(powerEvent, "power", startTheProcess)
+        if(presenceEvent && !presenceConditionOnly) subscribe(presenceEvent, "presence", startTheProcess)
+        if(startupEvent && !startupConditionOnly) subscribe(location, "systemStart", startTheProcess)
+        if(voltageEvent && !voltageConditionOnly) subscribe(voltageEvent, "voltage", startTheProcess) 
+        if(tempEvent && !tempConditionOnly) subscribe(tempEvent, "temperature", startTheProcess)
+        if(thermoEvent && !thermoConditionOnly) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
         
         if(myContacts2) subscribe(myContacts2, "contact.closed", startTheProcess)
@@ -3285,7 +3289,7 @@ def initialize() {
             subscribe(switchesToSync, "switch.on", switchesToSyncOnHandler)
             subscribe(switchesToSync, "switch.off", switchesToSyncOffHandler)
         } else {
-            if(switchEvent && switchConditionOnly == false) {
+            if(switchEvent && !switchConditionOnly) {
                 subscribe(switchEvent, "switch", startTheProcess)
             }
         }
@@ -3402,37 +3406,37 @@ def initialize() {
     }
 }
 
-def startTheProcess(evt=null) {
+def startTheProcess(evt) {
     setVersion()
     if(switchesToSync) {
-        if(atomicState.syncOnRunning == "yes" || atomicState.syncOffRunning == "yes" || atomicState.syncColorRunning == "yes" || atomicState.syncHueRunning == "yes" || atomicState.syncLevelRunning == "yes" || atomicState.syncSaturationRunning == "yes") {
+        if(state.syncOnRunning == "yes" || state.syncOffRunning == "yes" || state.syncColorRunning == "yes" || state.syncHueRunning == "yes" || state.syncLevelRunning == "yes" || state.syncSaturationRunning == "yes") {
             if(logEnable) log.debug "In startTheProcess - Switch Sync is still Running - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
         }
     } else {
         if(logEnable || shortLog) log.debug "In startTheProcess - Starting - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
-        if(atomicState.running == null) atomicState.running = "Stopped"
-        if(atomicState.tryRunning == null) atomicState.tryRunning = 0
+        if(state.running == null) state.running = "Stopped"
+        if(state.tryRunning == null) state.tryRunning = 0
         checkEnableHandler()
         if(pauseApp || state.eSwitch) {
             log.info "${app.label} is Paused or Disabled"
-        } else if(atomicState.running == "Running") {
-            atomicState.tryRunning += 1
-            if(atomicState.tryRunning > 2) {
-                atomicState.tryRunning = 0
-                atomicState.running = "Stopped"
+        } else if(state.running == "Running") {
+            state.tryRunning += 1
+            if(state.tryRunning > 2) {
+                state.tryRunning = 0
+                state.running = "Stopped"
                 if(logEnable || shortLog) log.debug "*** ${app.label} - Was already running, will run again next time ***"
             } else {
-                if(logEnable || shortLog) log.debug "*** ${app.label} - Already running (${atomicState.tryRunning}) ***"
+                if(logEnable || shortLog) log.debug "*** ${app.label} - Already running (${state.tryRunning}) ***"
             }
         } else if(state.whatToDo == "stop") {
-            atomicState.tryRunning = 0
-            atomicState.running = "Stopped"
+            state.tryRunning = 0
+            state.running = "Stopped"
             if(logEnable || shortLog) log.debug "*** whatToDo: ${state.whatToDo} ***"
             state.whatToDo = ""
         } else if(actionType) {
             try {
-                atomicState.running = "Running"
-                atomicState.tryRunning = 0
+                state.running = "Running"
+                state.tryRunning = 0
                 if(logEnable || shortLog) log.trace "*"
                 if(logEnable || shortLog) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus} ********************"
                 if(actionType.contains("aSwitchesPerMode")) { app.updateSetting("modeMatchRestriction",[value:"true",type:"bool"]) }
@@ -3821,7 +3825,7 @@ def startTheProcess(evt=null) {
                 resetStatesHandler()
                 if(logEnable || shortLog) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus} *********************"
                 if(logEnable || shortLog) log.trace "*"
-                atomicState.running = "Stopped"
+                state.running = "Stopped"
             } catch(e) {
                 resetStatesHandler()
                 log.error(getExceptionMessageWithLine(e))
@@ -3845,10 +3849,10 @@ def checkingWhatToDo() {
         state.timeOK = true
     } else {
         state.timeOK = false
-        if(state.betweenTime == false && timeBetweenRestriction) { state.jumpToStop = true }
-        if(state.timeBetweenSun == false && timeBetweenSunRestriction) { state.jumpToStop = true }
-        if(state.modeMatch == false && modeMatchRestriction) { state.jumpToStop = true }
-        if(state.daysMatch == false && daysMatchRestriction) { state.jumpToStop = true }
+        if(!state.betweenTime && timeBetweenRestriction) { state.jumpToStop = true }
+        if(!state.timeBetweenSun && timeBetweenSunRestriction) { state.jumpToStop = true }
+        if(!state.modeMatch && modeMatchRestriction) { state.jumpToStop = true }
+        if(!state.daysMatch && daysMatchRestriction) { state.jumpToStop = true }
     }
     if(triggerAndOr) {
         theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - securityOK: ${state.securityOK}"
@@ -3924,7 +3928,7 @@ def resetStatesHandler() {
     state.totalRestrictionMatch = 0
     state.totalRestrictions = 0
     state.whatToDo = ""
-    atomicState.running = "Stopped"
+    state.running = "Stopped"
 }
 // ********** Start Conditions **********
 def buttonHandler(evt) {
@@ -3956,160 +3960,152 @@ def buttonHandler(evt) {
         if(logEnable || shortLog) log.debug "In buttonEvent - Button Pressed: ${bNumber} did NOT match Button Needed: ${buttonNumber} - Stopping"
     }
 }
-
-def customDeviceHandler(type) {
-    if(type == "condition") {
-        state.eventName = customEvent;       state.type = sdCustom1Custom2;    state.typeAO = customANDOR
-    } else if(type == "helper") {
+def customDeviceHandler(theType) {
+    state.eventType = specialAtt;    state.typeValue1 = custom1;    state.typeValue2 = custom2
+    if(theType == "condition") {
+        deviceHandler(theType, customEvent, sdCustom1Custom2, customANDOR)
+    } else if(theType == "helper") {
         //
-    } else if(type == "restriction") {
+    } else if(theType == "restriction") {
         //
-    }       
-    state.eventType = specialAtt;    state.typeValue1 = custom1;    state.typeValue2 = custom2    
-    deviceHandler(type)
-}
-def accelerationHandler(type) {
-    if(type == "condition") {
-        state.eventName = accelerationEvent;    state.type = asInactiveActive;    state.typeAO = accelerationANDOR
-    } else if(type == "helper") {
-        //
-    } else if(type == "restriction") {
-        state.eventName = accelerationRestrictionEvent;    state.type = arInactiveActive;    state.typeAO = accelerationRANDOR
     }
+}
+def accelerationHandler(theType) {
     state.eventType = "acceleration";    state.typeValue1 = "active";    state.typeValue2 = "inactive"
-    deviceHandler(type)
+    if(theType == "condition") {
+        deviceHandler(theType, accelerationEvent, asInactiveActive, accelerationANDOR)
+    } else if(theType == "helper") {
+        //
+    } else if(theType == "restriction") {
+        deviceHandler(theType, accelerationRestrictionEvent, arInactiveActive, accelerationRANDOR)
+    } 
 }
-def contactHandler(type) {
-    if(type == "condition") {
-        state.eventName = contactEvent;    state.type = csClosedOpen;    state.typeAO = contactANDOR
-    } else if(type == "helper") {
-        state.eventName = myContacts2;    state.type = contactOption2;    state.typeAO = false
-    } else if(type == "restriction") {
-        state.eventName = contactRestrictionEvent;    state.type = crClosedOpen;    state.typeAO = contactRANDOR
-    }
+def contactHandler(theType) {
     state.eventType = "contact";    state.typeValue1 = "open";    state.typeValue2 = "closed"
-    deviceHandler(type)
-}
-def garageDoorHandler(type) {
-    if(type == "condition") {
-        state.eventName = garageDoorEvent;    state.type = gdClosedOpen;    state.typeAO = garageDoorANDOR
-    } else if(type == "helper") {
-        //
-    } else if(type == "restriction") {
-        state.eventName = garageDoorRestrictionEvent;    state.type = gdrClosedOpen;    state.typeAO = garageDoorRANDOR
+    if(theType == "condition") {
+        deviceHandler(theType, contactEvent, csClosedOpen, contactANDOR)
+    } else if(theType == "helper") {
+        deviceHandler(theType, myContacts2, contactOption2, "false")
+    } else if(theType == "restriction") {
+        deviceHandler(theType, contactRestrictionEvent, crClosedOpen, contactRANDOR)
     }
+}
+def garageDoorHandler(theType) {
     state.eventType = "door";    state.typeValue1 = "open";    state.typeValue2 = "closed"
-    deviceHandler(type)
-}
-def globalVariablesTextHandler(type) {
-    if(type == "condition") {
-        state.eventName = globalVariableEvent;    state.type = true;    state.typeAO = false
-    } else if(type == "helper") {
+    if(theType == "condition") {
+        deviceHandler(theType, garageDoorEvent, gdClosedOpen, garageDoorANDOR)
+    } else if(theType == "helper") {
         //
-    } else if(type == "restriction") {
-        //
+    } else if(theType == "restriction") {
+        deviceHandler(theType, garageDoorRestrictionEvent, gdrClosedOpen, garageDoorRANDOR)
     }
+}
+def globalVariablesTextHandler(theType) {
     state.eventType = "globalVariable";    state.typeValue1 = gvValue;    state.typeValue2 = "noData"
-    deviceHandler(type)
-}
-def lockHandler(type) {
-    if(type == "condition") {
-        state.eventName = lockEvent;    state.type = lUnlockedLocked;    state.typeAO = lockANDOR
-    } else if(type == "helper") {
+    if(theType == "condition") {
+        deviceHandler(theType, globalVariableEvent, "true", "false")
+    } else if(theType == "helper") {
         //
-    } else if(type == "restriction") {
-        state.eventName = lockRestrictionEvent;    state.type = lrUnlockedLocked;    state.typeAO = false
+    } else if(theType == "restriction") {
+        //
     }
+}
+def lockHandler(theType) {
     state.eventType = "lock";    state.typeValue1 = "locked";    state.typeValue2 = "unlocked"
-    deviceHandler(type)
-}
-def motionHandler(type) {
-    if(type == "condition") {
-        state.eventName = motionEvent;    state.type = meInactiveActive;    state.typeAO = motionANDOR
-    } else if(type == "helper") {
-        state.eventName = myMotion2;    state.type = motionOption2;    state.typeAO = false
-    } else if(type == "restriction") {
-        state.eventName = motionRestrictionEvent;    state.type = mrInactiveActive;    state.typeAO = motionRANDOR
+    if(theType == "condition") {
+        deviceHandler(theType, lockEvent, lUnlockedLocked, lockANDOR)
+    } else if(theType == "helper") {
+        //
+    } else if(theType == "restriction") {
+        deviceHandler(theType, lockRestrictionEvent, lrUnlockedLocked, "false")
     }
+}
+def motionHandler(theType) {
     state.eventType = "motion";    state.typeValue1 = "active";    state.typeValue2 = "inactive"
-    deviceHandler(type)
+    if(theType == "condition") {
+        deviceHandler(theType, motionEvent, meInactiveActive, motionANDOR)
+    } else if(theType == "helper") {
+        deviceHandler(theType, myMotion2, motionOption2, "false")
+    } else if(theType == "restriction") {
+        deviceHandler(theType, motionRestrictionEvent, mrInactiveActive, motionRANDOR)
+    }
 }
-def presenceHandler(type) {
-    if(type == "condition") {
-        state.eventName = presenceEvent;    state.type = pePresentNotPresent;    state.typeAO = presenceANDOR
-    } else if(type == "helper") {
-        state.eventName = myPresence2;    state.type = presenceOption2;    state.typeAO = false
-    } else if(type == "restriction") {
-        state.eventName = presenceRestrictionEvent;    state.type = prPresentNotPresent;    state.typeAO = presenceRANDOR
-    }    
+def presenceHandler(theType) {
     state.eventType = "presence";    state.typeValue1 = "not present";    state.typeValue2 = "present"
-    deviceHandler(type)
+    if(theType == "condition") {
+        deviceHandler(theType, presenceEvent, pePresentNotPresent, presenceANDOR)
+    } else if(theType == "helper") {
+        deviceHandler(theType, myPresence2, presenceOption2, "false")
+    } else if(theType == "restriction") {
+        deviceHandler(theType, presenceRestrictionEvent, prPresentNotPresent, presenceRANDOR)
+    }    
 }
-def switchHandler(type) {
-    if(type == "condition") {
-        state.eventName = switchEvent;    state.type = seOffOn;    state.typeAO = switchANDOR
-    } else if(type == "helper") {
-        state.eventName = mySwitches2;    state.type = switchesOption2;    state.typeAO = false
-    } else if(type == "restriction") {
-        state.eventName = switchRestrictionEvent;    state.type = srOffOn;    state.typeAO = switchRANDOR
-    }
+def switchHandler(theType) {
     state.eventType = "switch";    state.typeValue1 = "on";    state.typeValue2 = "off"
-    deviceHandler(type)
-}
-def thermostatHandler(type) {
-    if(type == "condition") {
-        state.eventName = thermoEvent;    state.type = false;    state.typeAO = thermoANDOR
-    } else if(type == "helper") {
-        //
-    } else if(type == "restriction") {
-        //
+    if(theType == "condition") {
+        deviceHandler(theType, switchEvent, seOffOn, switchANDOR)
+    } else if(theType == "helper") {
+        deviceHandler(theType, mySwitches2, switchesOption2, "false")
+    } else if(theType == "restriction") {
+        deviceHandler(theType, switchRestrictionEvent, srOffOn, switchRANDOR)
     }
+}
+def thermostatHandler(theType) {
     state.eventType = "thermostatOperatingState";    state.typeValue1 = "idle";    state.typeValue2 = "thermostatEvent"
-    deviceHandler(type)
-}
-def waterHandler(type) {
-    if(type == "condition") {
-        state.eventName = waterEvent;    state.type = weDryWet;    state.typeAO = waterANDOR
-    } else if(type == "helper") {
+    if(theType == "condition") {
+        deviceHandler(theType, thermoEvent, "false", thermoANDOR)
+    } else if(theType == "helper") {
         //
-    } else if(type == "restriction") {
-        state.eventName = waterRestrictionEvent;    state.type = wrDryWet;    state.typeAO = waterRANDOR
+    } else if(theType == "restriction") {
+        //
     }
+}
+def waterHandler(theType) {
     state.eventType = "water";    state.typeValue1 = "Wet";    state.typeValue2 = "Dry"
-    deviceHandler(type)
+    if(theType == "condition") {
+        deviceHandler(theType, waterEvent, weDryWet, waterANDOR)
+    } else if(theType == "helper") {
+        //
+    } else if(theType == "restriction") {
+        deviceHandler(theType, waterRestrictionEvent, wrDryWet, waterRANDOR)
+    }
 }
 
-def deviceHandler(data) {
-    if(logEnable) log.debug "In deviceHandler (${state.version}) - ${state.eventType.toUpperCase()} - data: ${data}"
+def deviceHandler(theType, eventName, type, typeAO) {
+    if(logEnable) log.debug "In deviceHandler (${state.version}) - ${state.eventType.toUpperCase()} - theType: ${theType}"
     state.deviceMatch = 0;    state.restrictionMatch = 0;    state.count = 0;    deviceTrue1 = 0;    deviceTrue2 = 0
+    if(type == "false") type = false
+    if(type == "true") type = true
+    if(typeAO == "false") typeAO = false
+    if(typeAO == "true") typeAO = true
     if(state.totalConditions == null) state.totalConditions = 0
     if(state.totalMatch == null) state.totalMatch = 0
     if(state.totalMatchHelper == null) state.totalMatchHelper = 0
     if(state.totalRestrictions == null) state.totalRestrictions = 0
     if(state.totalRestrictionMatch == null) state.totalRestrictionMatch = 0
     state.isThereDevices = true
-    if(data == "condition") { state.totalConditions = state.totalConditions + 1 }
-    if(data == "restriction") { state.totalRestrictions = state.totalRestrictions + 1 }
+    if(theType == "condition") { state.totalConditions = state.totalConditions + 1 }
+    if(theType == "restriction") { state.totalRestrictions = state.totalRestrictions + 1 }
     try {
         if(state.eventType == "globalVariable") {
             theList = []
             theList << globalVariableEvent
-            state.eventName = theList
-            state.theCount = state.eventName.size()
+            eventName = theList
+            state.theCount = eventName.size()
         } else {
-            state.theCount = state.eventName.size()
+            state.theCount = eventName.size()
         }
     } catch(e) { 
         state.theCount = 1
     }
     if(state.whoText == null) state.whoText = ""
-    if(state.eventName) {
-        state.eventName.each { it ->
+    if(eventName) {
+        eventName.each { it ->
             if(state.eventType == "globalVariable") {
                 def theData = state.gvMap.get(globalVariableEvent)
                 theValue = theData.toString()
             } else {
-                theValue = it.currentValue("${state.eventType}").toString()
+                theValue = it.currentValue("${state.eventType}")
             }
             if(logEnable) log.debug "In deviceHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
             if(theValue == state.typeValue1) {
@@ -4189,48 +4185,48 @@ def deviceHandler(data) {
             }
         }
     }
-    if(state.type) {
+    if(type) {
         state.deviceMatch = state.deviceMatch + deviceTrue1
     } else {
         state.deviceMatch = state.deviceMatch + deviceTrue2
     }
-    if(logEnable) log.debug "In deviceHandler - ($data) - type: ${state.type} - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - typeAO: ${state.typeAO}"
-    if(state.typeAO) {  // OR (true)
-        if(logEnable) log.debug "In deviceHandler - ($data) - Using OR"
+    if(logEnable) log.debug "In deviceHandler - ($theType) - type: ${type} - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - typeAO: ${typeAO}"
+    if(typeAO) {  // OR (true)
+        if(logEnable) log.debug "In deviceHandler - ($theType) - Using OR"
         if(state.deviceMatch >= 1) {
-            if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
-            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
-            if(data == "restriction") {
+            if(theType == "condition") { state.totalMatch = state.totalMatch + 1 }
+            if(theType == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
+            if(theType == "restriction") {
                 state.totalRestrictionMatch = state.totalRestrictionMatch + 1
                 state.areRestrictions = true
             }
         }
     } else {  // AND (False)
-        if(logEnable) log.debug "In deviceHandler - ($data) - Using AND"
+        if(logEnable) log.debug "In deviceHandler - ($theType) - Using AND"
         if(state.deviceMatch == state.theCount) {           
-            if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
-            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }        
-            if(data == "restriction") {
+            if(theType == "condition") { state.totalMatch = state.totalMatch + 1 }
+            if(theType == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }        
+            if(theType == "restriction") {
                 state.totalRestrictionMatch = state.totalRestrictionMatch + 1
                 state.areRestrictions = true
             }
         }
     }
-    if(state.typeAO) {
-        if(data == "condition") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
-        } else if(data == "helper") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
-        } else if(data == "restriction") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
+    if(typeAO) {
+        if(theType == "condition") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        } else if(theType == "helper") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
+        } else if(theType == "restriction") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
         }
     } else {
-        if(data == "condition") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - AND - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
-        } else if(data == "helper") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
-        } else if(data == "restriction") { 
-            if(logEnable) log.debug "In deviceHandler - ($data) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
+        if(theType == "condition") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - AND - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
+        } else if(theType == "helper") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions}"
+        } else if(theType == "restriction") { 
+            if(logEnable) log.debug "In deviceHandler - ($theType) - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalRestrictionMatch: ${state.totalRestrictionMatch} - totalRestrictions: ${state.totalRestrictions}"
         }    
     }
 }
@@ -4368,7 +4364,7 @@ def setpointHandler() {
                 if(spDirMinValue == null) spDirMinValue = 0
                 if(logEnable) log.debug "In setpointHandler - Checking if theDifference: ${theDifference} is greater than spDirMinValue: ${spDirMinValue}"
                 if(theDifference > spDirMinValue) {
-                    if(spDirDownUp == false) {
+                    if(!spDirDownUp) {
                         if(setpointValue < state.preSPV) {
                             direction = "DOWN"
                             theDirection = true
@@ -4542,17 +4538,16 @@ def switchesPerModeActionHandler() {
                     if(cleanOne == itThree) {
                         if((logEnable) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
                         state.fromWhere = "switchesPerMode"
-                        state.sPDM = itOne
                         state.onColor = "${theColor}"
                         state.onLevel = theLevel
                         state.onTemp = theTemp
-                        setLevelandColorHandler()
+                        setLevelandColorHandler(itOne)
                     }
                 }
             }
         }
     }
-    if(state.modeMatch == false) switchesPerModeReverseActionHandler()
+    if(!state.modeMatch) switchesPerModeReverseActionHandler()
 }
 
 def switchesPerModeReverseActionHandler() {
@@ -4935,7 +4930,7 @@ def additionalSwitchesHandler() {
 def fanActionHandler() {
     fanAction.each { it ->
         if(logEnable) log.debug "In fanActionHandler - Changing ${it} to ${fanSpeed}"
-        if(state.setFanOldMap == false) {
+        if(!state.setFanOldMap) {
             state.oldFanMap = [:]
             name = (it.displayName).replace(" ","")
             status = it.currentValue("speed")
@@ -5694,7 +5689,7 @@ def startTimeBetween() {
 def endTimeBetween() {
     if(logEnable) log.debug "In endTimeBetween (${state.version}) - End"
     state.betweenTime = false
-    if(timeBetweenRestriction == false) { runAtTime2() }
+    if(!timeBetweenRestriction) { runAtTime2() }
 }
 
 def certainTime() {
@@ -5893,7 +5888,7 @@ def setLevelandColorHandler(newData) {
             state.oldMap = [:]
         }
         if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - alreadyThere: ${alreadyThere}"
-        if(alreadyThere == false) {
+        if(!alreadyThere) {
             oldHueColor = newData.currentValue("hue")
             oldSaturation = newData.currentValue("saturation")
             oldLevel = newData.currentValue("level")
@@ -5909,8 +5904,8 @@ def setLevelandColorHandler(newData) {
     }
     
     if(state.fromWhere == "switchesPerMode") {
-        if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - Working on: ${state.sPDM}"
-        theSDPM = state.sPDM.toString().replace(" ","")   
+        if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - Working on: ${newData}"
+        theSDPM = newData.toString().replace(" ","")   
         alreadyThere = false
         try {
             if(state.oldMap == [:]) {
@@ -5930,8 +5925,8 @@ def setLevelandColorHandler(newData) {
             state.oldMap = [:]
         }
         if(logEnable) log.debug "In setLevelandColorHandler - alreadyThere: ${alreadyThere}"
-        theDevice = state.sPDM
-        if(alreadyThere == false) {
+        theDevice = newData
+        if(!alreadyThere) {
             oldHueColor = theDevice.currentValue("hue")
             oldSaturation = theDevice.currentValue("saturation")
             oldLevel = theDevice.currentValue("level")
@@ -5988,7 +5983,7 @@ def setLevelandColorHandler(newData) {
             }
             if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn/switchesPerMode - Working on ${it} - alreadyThere: ${alreadyThere}"
             if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
-            if(alreadyThere == false) {
+            if(!alreadyThere) {
                 oldHueColor = it.currentValue("hue")
                 oldSaturation = it.currentValue("saturation")
                 oldLevel = it.currentValue("level")
@@ -6271,27 +6266,27 @@ def appButtonHandler(buttonPressed) {
     if(sdPerModeName && state.whichButton == "sdPerModeDel") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("del;nothing")
-        atomicState.working = false
+        state.working = false
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
     } else if(state.whichButton == "sdPerModeRebuild") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("rebuild;nothing")
-        atomicState.working = false
+        state.working = false
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
     } else if(sdPerModeName && state.whichButton == "sdPerModeAdd") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("add;nothing")
-        atomicState.working = false
+        state.working = false
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
     } else if(sdPerModeName && state.whichButton == "sdPerModeCancel") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         app.removeSetting("masterDimmersPerMode")
-        atomicState.working = false
+        state.working = false
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
     } else if(state.whichButton == "sdPerModeClear"){
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("clear;nothing")
-        atomicState.working = false
+        state.working = false
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
     } else if(state.whichButton == "resetMaps") {
         state.oldMap = [:]
@@ -6763,10 +6758,10 @@ def certainTimeHasPassedHandler() {
 }
 
 def switchesToSyncOnHandler(evt) {
-    if(atomicState.syncOnRunning == null) atomicState.syncOnRunning = "no"
-    if(atomicState.syncOnRunning == "no") {
-        atomicState.syncOnRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncOnRunning: ${atomicState.syncOnRunning} ----------------------"
+    if(state.syncOnRunning == null) state.syncOnRunning = "no"
+    if(state.syncOnRunning == "no") {
+        state.syncOnRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncOnRunning: ${state.syncOnRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncOnHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6779,18 +6774,18 @@ def switchesToSyncOnHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncOnRunning = "no"
+        state.syncOnRunning = "no"
         if(logEnable) log.debug "In switchesToSyncOnHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncOnRunning: ${atomicState.syncOnRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncOnRunning: ${state.syncOnRunning} ----------------------"
         startTheProcess(evt)
     }
 }
 
 def switchesToSyncOffHandler(evt) {
-    if(atomicState.syncOffRunning == null) atomicState.syncOffRunning = "no"
-    if(atomicState.syncOffRunning == "no") {
-        atomicState.syncOffRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncOffRunning: ${atomicState.syncOffRunning} ----------------------"
+    if(state.syncOffRunning == null) state.syncOffRunning = "no"
+    if(state.syncOffRunning == "no") {
+        state.syncOffRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncOffRunning: ${state.syncOffRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncOffHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6803,18 +6798,18 @@ def switchesToSyncOffHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncOffRunning = "no"
+        state.syncOffRunning = "no"
         if(logEnable) log.debug "In switchesToSyncOffHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncOffRunning: ${atomicState.syncOffRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncOffRunning: ${state.syncOffRunning} ----------------------"
         startTheProcess(evt)
     }
 }
 
 def switchesToSyncColorTempHandler(evt) {
-    if(atomicState.syncColorRunning == null) atomicState.syncColorRunning = "no"
-    if(atomicState.syncColorRunning == "no") {
-        atomicState.syncColorRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncColorRunning: ${atomicState.syncColorRunning} ----------------------"
+    if(state.syncColorRunning == null) state.syncColorRunning = "no"
+    if(state.syncColorRunning == "no") {
+        state.syncColorRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncColorRunning: ${state.syncColorRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncColorTempHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6830,18 +6825,18 @@ def switchesToSyncColorTempHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncColorRunning = "no"
+        state.syncColorRunning = "no"
         if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncColorRunning: ${atomicState.syncColorRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncColorRunning: ${state.syncColorRunning} ----------------------"
         startTheProcess(evt)
     }
 }
 
 def switchesToSyncHueHandler(evt) {
-    if(atomicState.syncHueRunning == null) atomicState.syncHueRunning = "no"
-    if(atomicState.syncHueRunning == "no") {
-        atomicState.syncHueRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncHueRunning: ${atomicState.syncHueRunning} ----------------------"
+    if(state.syncHueRunning == null) state.syncHueRunning = "no"
+    if(state.syncHueRunning == "no") {
+        state.syncHueRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncHueRunning: ${state.syncHueRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncHueHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6857,18 +6852,18 @@ def switchesToSyncHueHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncHueRunning = "no"
+        state.syncHueRunning = "no"
         if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncHueRunning: ${atomicState.syncHueRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncHueRunning: ${state.syncHueRunning} ----------------------"
         startTheProcess(evt)
     }
 }
 
 def switchesToSyncLevelHandler(evt) {
-    if(atomicState.syncLevelRunning == null) atomicState.syncLevelRunning = "no"
-    if(atomicState.syncLevelRunning == "no") {
-        atomicState.syncLevelRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncLevelRunning: ${atomicState.syncLevelRunning} ----------------------"
+    if(state.syncLevelRunning == null) state.syncLevelRunning = "no"
+    if(state.syncLevelRunning == "no") {
+        state.syncLevelRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncLevelRunning: ${state.syncLevelRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncLevelHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6884,18 +6879,18 @@ def switchesToSyncLevelHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncLevelRunning = "no"
+        state.syncLevelRunning = "no"
         if(logEnable) log.debug "In switchesToSyncLevelHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncLevelRunning: ${atomicState.syncLevelRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncLevelRunning: ${state.syncLevelRunning} ----------------------"
         startTheProcess(evt)
     }
 }
 
 def switchesToSyncSaturationHandler(evt) {
-    if(atomicState.syncSaturationRunning == null) atomicState.syncSaturationRunning = "no"
-    if(atomicState.syncSaturationRunning == "no") {
-        atomicState.syncSaturationRunning = "yes"
-        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${atomicState.syncSaturationRunning} ----------------------"
+    if(state.syncSaturationRunning == null) state.syncSaturationRunning = "no"
+    if(state.syncSaturationRunning == "no") {
+        state.syncSaturationRunning = "yes"
+        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${state.syncSaturationRunning} ----------------------"
         if(logEnable) log.debug "In switchesToSyncSaturationHandler (${state.version})"
         whoHappened = evt.displayName
         whoID = evt.deviceId
@@ -6911,9 +6906,9 @@ def switchesToSyncSaturationHandler(evt) {
             }
         }
         pauseExecution(3000)
-        atomicState.syncSaturationRunning = "no"
+        state.syncSaturationRunning = "no"
         if(logEnable) log.debug "In switchesToSyncSaturationHandler - All Done!"
-        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${atomicState.syncSaturationRunning} ----------------------"
+        if(logEnable) log.debug "-------------------- syncSaturationRunning: ${state.syncSaturationRunning} ----------------------"
         startTheProcess(evt)
     }
 }
@@ -7174,7 +7169,7 @@ def colorChangeReverseHandler() {
 }
 
 def useCustomColorsHandler() {
-    input "useCustomColors", "bool", title: "Use Custom Colors", defaultValue:false, submitOnChange:true
+    input "useCustomColors", "bool", title: "Use Custom Colors", submitOnChange:true
     if(useCustomColors) {
         paragraph "<hr>"
         paragraph "<table width=100%><tr><td width=50%><b>Custom Color 1</b><td width=50%><b>Custom Color 2</b></table>"
@@ -7217,6 +7212,141 @@ def useCustomColorsHandler() {
     return theColors
 }
 
+def activeOneHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In Directional Condition - activeOneHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
+        if(evt.value == "open" || evt.value == "active") {
+            if(state.first != "two") { state.first = "one" } 
+            state.motionOneActive = true
+            if(logEnable) log.debug "In Directional Condition - activeOneHandler - first: ${state.first}"
+            if(state.first == "two") activeHandler()
+        } else {
+            inactiveOneHandler()
+        }
+    }
+}
+
+def activeTwoHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In Directional Condition - activeTwoHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}"
+        if(evt.value == "open" || evt.value == "active") {
+            if(state.first != "one") { state.first = "two" }
+            state.motionTwoActive = true
+            if(logEnable) log.debug "In Directional Condition - activeTwoHandler - first: ${state.first}"
+            if(state.first == "one") activeHandler()
+        } else {
+            inactiveTwoHandler()
+        }
+    }
+}
+
+def activeHandler() {
+    if(logEnable) log.debug "In Directional Condition - activeHandler (${state.version})"
+    if(state.motionOneActive && state.motionTwoActive) {
+        if(state.first == "one") { state.direction = "right" }
+        if(state.first == "two") { state.direction = "left" }
+        state.lastDirection = state.direction
+        if(logEnable) log.debug "In Directional Condition - activeHandler - first: ${state.first} - direction: ${state.direction}"
+        if(theDirection == "Right" && state.direction == "right") { 
+            state.totalMatch = 1
+            state.totalConditions = 1
+            startTheProcess("direction") 
+        }
+        if(theDirection == "Left" && state.direction == "left") {
+            state.totalMatch = 1
+            state.totalConditions = 1
+            startTheProcess("direction") 
+        }
+    }
+}
+
+def inactiveOneHandler(evt) {
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler (${state.version})"
+    if(state.first == "one") state.first = ""
+    state.motionOneActive = false
+    state.direction = ""
+    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler - first: ${state.first} - (should be blank)"
+    startTheProcess("reverse")
+}
+
+def inactiveTwoHandler(evt) {
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler (${state.version})"
+    if(state.first == "two") state.first = ""
+    state.motionTwoActive = false
+    state.direction = ""
+    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler - first: ${state.first} - (should be blank)"
+    startTheProcess("reverse")
+}
+
+def securityKeypadActionHandler() {
+    if(logEnable) log.debug "In securityKeypadActionHandler (${state.version})"
+    if(keypadTone) {
+        keypadAction.each { it ->
+            if(logEnable) log.debug "In securityKeypadActionHandler - Sending ${keypadTone} to ${it}"
+            pauseExecution(actionDelay)
+            it.playTone(keypadTone)
+        }
+    }
+}
+
+def lockActionHandler() {
+    if(logEnable) log.debug "In lockActionHandler (${state.version})"
+    if(lockAction) {
+        lockAction.each { it ->
+            if(logEnable) log.debug "In lockActionHandler - Locking ${it}"
+            pauseExecution(actionDelay)
+            it.lock()
+        }
+    }
+    if(unlockAction) {
+        unlockAction.each { it ->
+            if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}"
+            pauseExecution(actionDelay)
+            it.unlock()
+        }
+    }
+}
+
+def lockUserActionHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.warn "In lockUserActionHandler (${state.version})"
+        if(evt) {
+            lockdata = evt.data
+            lockStatus = evt.value
+            lockName = evt.displayName
+            if(logEnable) log.debug "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
+            if(lockStatus == "unlocked") {
+                if(logEnable) log.debug "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+                if(theLocks) {
+                    if (lockdata && !lockdata[0].startsWith("{")) {
+                        lockdata = decrypt(lockdata)
+                        if (lockdata == null) {
+                            log.debug "Unable to decrypt lock code from device: ${lockName}"
+                            return
+                        }
+                    }
+                    def codeMap = parseJson(lockdata ?: "{}").find{ it }
+                    if (!codeMap) {
+                        if(logEnable) log.debug "In lockUserActionHandler - Lock Code not available."
+                        return
+                    }
+                    codeName = "${codeMap?.value?.name}"
+                    if(logEnable) log.debug "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	
+                }
+            }
+        }
+    }
+}
+
 // ~~~~~ start include (2) BPTWorld.bpt-normalStuff ~~~~~
 library ( // library marker BPTWorld.bpt-normalStuff, line 1
         base: "app", // library marker BPTWorld.bpt-normalStuff, line 2
@@ -7230,279 +7360,191 @@ library ( // library marker BPTWorld.bpt-normalStuff, line 1
         disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-normalStuff, line 10
 ) // library marker BPTWorld.bpt-normalStuff, line 11
 
-import groovy.time.TimeCategory // library marker BPTWorld.bpt-normalStuff, line 13
-import java.text.SimpleDateFormat // library marker BPTWorld.bpt-normalStuff, line 14
+import groovy.json.* // library marker BPTWorld.bpt-normalStuff, line 13
+import hubitat.helper.RMUtils // library marker BPTWorld.bpt-normalStuff, line 14
+import java.util.TimeZone // library marker BPTWorld.bpt-normalStuff, line 15
+import groovy.transform.Field // library marker BPTWorld.bpt-normalStuff, line 16
+import groovy.time.TimeCategory // library marker BPTWorld.bpt-normalStuff, line 17
+import java.text.SimpleDateFormat // library marker BPTWorld.bpt-normalStuff, line 18
 
-def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 16
-    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 17
-    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 18
-    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 19
-} // library marker BPTWorld.bpt-normalStuff, line 20
+def checkHubVersion() { // library marker BPTWorld.bpt-normalStuff, line 20
+    hubVersion = getHubVersion() // library marker BPTWorld.bpt-normalStuff, line 21
+    hubFirmware = location.hub.firmwareVersionString // library marker BPTWorld.bpt-normalStuff, line 22
+    log.trace "Hub Info: ${hubVersion} - ${hubFirware}" // library marker BPTWorld.bpt-normalStuff, line 23
+} // library marker BPTWorld.bpt-normalStuff, line 24
 
-def parentCheck(){   // library marker BPTWorld.bpt-normalStuff, line 22
-	state.appInstalled = app.getInstallationState()  // library marker BPTWorld.bpt-normalStuff, line 23
-	if(state.appInstalled != 'COMPLETE'){ // library marker BPTWorld.bpt-normalStuff, line 24
-		parentChild = true // library marker BPTWorld.bpt-normalStuff, line 25
-  	} else { // library marker BPTWorld.bpt-normalStuff, line 26
-    	parentChild = false // library marker BPTWorld.bpt-normalStuff, line 27
-  	} // library marker BPTWorld.bpt-normalStuff, line 28
-} // library marker BPTWorld.bpt-normalStuff, line 29
+def parentCheck(){   // library marker BPTWorld.bpt-normalStuff, line 26
+	state.appInstalled = app.getInstallationState()  // library marker BPTWorld.bpt-normalStuff, line 27
+	if(state.appInstalled != 'COMPLETE'){ // library marker BPTWorld.bpt-normalStuff, line 28
+		parentChild = true // library marker BPTWorld.bpt-normalStuff, line 29
+  	} else { // library marker BPTWorld.bpt-normalStuff, line 30
+    	parentChild = false // library marker BPTWorld.bpt-normalStuff, line 31
+  	} // library marker BPTWorld.bpt-normalStuff, line 32
+} // library marker BPTWorld.bpt-normalStuff, line 33
 
-def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 31
-    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 32
-    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 33
-    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 34
-        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 35
-        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 36
-        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 37
-        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 38
-        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 39
-    } // library marker BPTWorld.bpt-normalStuff, line 40
-    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 41
-    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 42
-        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 43
-        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 44
-    } // library marker BPTWorld.bpt-normalStuff, line 45
-} // library marker BPTWorld.bpt-normalStuff, line 46
+def createDeviceSection(driverName) { // library marker BPTWorld.bpt-normalStuff, line 35
+    paragraph "This child app needs a virtual device to store values. Remember, multiple child apps can share this device if needed." // library marker BPTWorld.bpt-normalStuff, line 36
+    input "useExistingDevice", "bool", title: "Use existing device (off) or have one created for you (on)", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 37
+    if(useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 38
+        input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Front Door')", required:true, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 39
+        paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>" // library marker BPTWorld.bpt-normalStuff, line 40
+        if(dataName) createDataChildDevice(driverName) // library marker BPTWorld.bpt-normalStuff, line 41
+        if(statusMessageD == null) statusMessageD = "Waiting on status message..." // library marker BPTWorld.bpt-normalStuff, line 42
+        paragraph "${statusMessageD}" // library marker BPTWorld.bpt-normalStuff, line 43
+    } // library marker BPTWorld.bpt-normalStuff, line 44
+    input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false // library marker BPTWorld.bpt-normalStuff, line 45
+    if(!useExistingDevice) { // library marker BPTWorld.bpt-normalStuff, line 46
+        app.removeSetting("dataName") // library marker BPTWorld.bpt-normalStuff, line 47
+        paragraph "<small>* Device must use the '${driverName}'.</small>" // library marker BPTWorld.bpt-normalStuff, line 48
+    } // library marker BPTWorld.bpt-normalStuff, line 49
+} // library marker BPTWorld.bpt-normalStuff, line 50
 
-def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 48
-    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 49
-    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 50
-    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 51
-        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 52
-        try { // library marker BPTWorld.bpt-normalStuff, line 53
-            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 54
-            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 55
-            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 56
-        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 57
-    } else { // library marker BPTWorld.bpt-normalStuff, line 58
-        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 59
-    } // library marker BPTWorld.bpt-normalStuff, line 60
-    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 61
-} // library marker BPTWorld.bpt-normalStuff, line 62
-
-def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 64
-    sendLocationEvent(name: "updateVersionInfo", value: "${app.id}:remove")
-	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 65
+def createDataChildDevice(driverName) {     // library marker BPTWorld.bpt-normalStuff, line 52
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})" // library marker BPTWorld.bpt-normalStuff, line 53
+    statusMessageD = "" // library marker BPTWorld.bpt-normalStuff, line 54
+    if(!getChildDevice(dataName)) { // library marker BPTWorld.bpt-normalStuff, line 55
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}" // library marker BPTWorld.bpt-normalStuff, line 56
+        try { // library marker BPTWorld.bpt-normalStuff, line 57
+            addChildDevice("BPTWorld", driverName, dataName, 1234, ["name": "${dataName}", isComponent: false]) // library marker BPTWorld.bpt-normalStuff, line 58
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})" // library marker BPTWorld.bpt-normalStuff, line 59
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>" // library marker BPTWorld.bpt-normalStuff, line 60
+        } catch (e) { if(logEnable) log.debug "Unable to create device - ${e}" } // library marker BPTWorld.bpt-normalStuff, line 61
+    } else { // library marker BPTWorld.bpt-normalStuff, line 62
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>" // library marker BPTWorld.bpt-normalStuff, line 63
+    } // library marker BPTWorld.bpt-normalStuff, line 64
+    return statusMessageD // library marker BPTWorld.bpt-normalStuff, line 65
 } // library marker BPTWorld.bpt-normalStuff, line 66
 
-private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 68
-	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 69
-} // library marker BPTWorld.bpt-normalStuff, line 70
+def uninstalled() { // library marker BPTWorld.bpt-normalStuff, line 68
+    sendLocationEvent(name: "updateVersionInfo", value: "${app.id}:remove") // library marker BPTWorld.bpt-normalStuff, line 69
+	removeChildDevices(getChildDevices()) // library marker BPTWorld.bpt-normalStuff, line 70
+} // library marker BPTWorld.bpt-normalStuff, line 71
 
-def letsTalk(msg) { // library marker BPTWorld.bpt-normalStuff, line 72
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 73
-    if(useSpeech && fmSpeaker) { // library marker BPTWorld.bpt-normalStuff, line 74
-        fmSpeaker.latestMessageFrom(state.name) // library marker BPTWorld.bpt-normalStuff, line 75
-        fmSpeaker.speak(msg,null) // library marker BPTWorld.bpt-normalStuff, line 76
-    } // library marker BPTWorld.bpt-normalStuff, line 77
-} // library marker BPTWorld.bpt-normalStuff, line 78
+private removeChildDevices(delete) { // library marker BPTWorld.bpt-normalStuff, line 73
+	delete.each {deleteChildDevice(it.deviceNetworkId)} // library marker BPTWorld.bpt-normalStuff, line 74
+} // library marker BPTWorld.bpt-normalStuff, line 75
 
-def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 80
-    if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 81
-    theMessage = "${app.label} - ${msg}" // library marker BPTWorld.bpt-normalStuff, line 82
-    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 83
-    sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 84
-} // library marker BPTWorld.bpt-normalStuff, line 85
+def letsTalk(msg) { // library marker BPTWorld.bpt-normalStuff, line 77
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 78
+    if(useSpeech && fmSpeaker) { // library marker BPTWorld.bpt-normalStuff, line 79
+        fmSpeaker.latestMessageFrom(state.name) // library marker BPTWorld.bpt-normalStuff, line 80
+        fmSpeaker.speak(msg,null) // library marker BPTWorld.bpt-normalStuff, line 81
+    } // library marker BPTWorld.bpt-normalStuff, line 82
+} // library marker BPTWorld.bpt-normalStuff, line 83
 
-def useWebOSHandler(msg){
-    if(logEnable) log.debug "In useWebOSHandler (${state.version}) - Sending to webOS - msg: ${msg}"
-    useWebOS.deviceNotification(msg)
-}
+def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 85
+    if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 86
+    theMessage = "${app.label} - ${msg}" // library marker BPTWorld.bpt-normalStuff, line 87
+    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}" // library marker BPTWorld.bpt-normalStuff, line 88
+    sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 89
+} // library marker BPTWorld.bpt-normalStuff, line 90
 
-// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 87
-def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 88
-    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 89
-    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 90
-} // library marker BPTWorld.bpt-normalStuff, line 91
+// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 92
+def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 93
+    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 94
+    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 95
+} // library marker BPTWorld.bpt-normalStuff, line 96
 
-def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 93
-    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 94
-    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 95
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 96
-        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 97
-            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 98
-            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 99
-        } // library marker BPTWorld.bpt-normalStuff, line 100
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 101
-    } // library marker BPTWorld.bpt-normalStuff, line 102
-} // library marker BPTWorld.bpt-normalStuff, line 103
+def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 98
+    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 99
+    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 100
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 101
+        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 102
+            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 103
+            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 104
+        } // library marker BPTWorld.bpt-normalStuff, line 105
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 106
+    } // library marker BPTWorld.bpt-normalStuff, line 107
+} // library marker BPTWorld.bpt-normalStuff, line 108
 
-def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 105
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 106
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 107
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 108
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 109
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 110
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 111
-    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 112
-} // library marker BPTWorld.bpt-normalStuff, line 113
+def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 110
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 111
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 112
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 113
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 114
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 115
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 116
+    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 117
+} // library marker BPTWorld.bpt-normalStuff, line 118
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 115
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 116
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 117
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 118
-} // library marker BPTWorld.bpt-normalStuff, line 119
+def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 120
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 121
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 122
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 123
+} // library marker BPTWorld.bpt-normalStuff, line 124
 
-def display(data) { // library marker BPTWorld.bpt-normalStuff, line 121
-    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 122
-    setVersion() // library marker BPTWorld.bpt-normalStuff, line 123
-    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 124
-    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 125
-        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 126
-            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 127
-        } else { // library marker BPTWorld.bpt-normalStuff, line 128
-            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 129
-        } // library marker BPTWorld.bpt-normalStuff, line 130
-    } // library marker BPTWorld.bpt-normalStuff, line 131
-    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 132
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 133
-        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 134
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 135
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 136
-    } // library marker BPTWorld.bpt-normalStuff, line 137
-} // library marker BPTWorld.bpt-normalStuff, line 138
+def display(data) { // library marker BPTWorld.bpt-normalStuff, line 126
+    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 127
+    setVersion() // library marker BPTWorld.bpt-normalStuff, line 128
+    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 129
+    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 130
+        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 131
+            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 132
+        } else { // library marker BPTWorld.bpt-normalStuff, line 133
+            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 134
+        } // library marker BPTWorld.bpt-normalStuff, line 135
+    } // library marker BPTWorld.bpt-normalStuff, line 136
+    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 137
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 138
+        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 139
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 140
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 141
+    } // library marker BPTWorld.bpt-normalStuff, line 142
+} // library marker BPTWorld.bpt-normalStuff, line 143
 
-def display2() { // library marker BPTWorld.bpt-normalStuff, line 140
-    section() { // library marker BPTWorld.bpt-normalStuff, line 141
-        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 142
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 143
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 144
-        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 145
-    } // library marker BPTWorld.bpt-normalStuff, line 146
-} // library marker BPTWorld.bpt-normalStuff, line 147
+def display2() { // library marker BPTWorld.bpt-normalStuff, line 145
+    section() { // library marker BPTWorld.bpt-normalStuff, line 146
+        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 147
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 148
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 149
+        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 150
+    } // library marker BPTWorld.bpt-normalStuff, line 151
+} // library marker BPTWorld.bpt-normalStuff, line 152
 
-def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 149
-    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 150
-    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 151
-    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 152
-        def params = [ // library marker BPTWorld.bpt-normalStuff, line 153
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 154
-            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 155
-            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 156
-            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 157
-        ] // library marker BPTWorld.bpt-normalStuff, line 158
-        try { // library marker BPTWorld.bpt-normalStuff, line 159
-            def result = null // library marker BPTWorld.bpt-normalStuff, line 160
-            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 161
-                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 162
-                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 163
-            } // library marker BPTWorld.bpt-normalStuff, line 164
-        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 165
-    } // library marker BPTWorld.bpt-normalStuff, line 166
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 167
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 168
-} // library marker BPTWorld.bpt-normalStuff, line 169
+def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 154
+    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 155
+    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 156
+    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 157
+        def params = [ // library marker BPTWorld.bpt-normalStuff, line 158
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 159
+            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 160
+            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 161
+            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 162
+        ] // library marker BPTWorld.bpt-normalStuff, line 163
+        try { // library marker BPTWorld.bpt-normalStuff, line 164
+            def result = null // library marker BPTWorld.bpt-normalStuff, line 165
+            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 166
+                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 167
+                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 168
+            } // library marker BPTWorld.bpt-normalStuff, line 169
+        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 170
+    } // library marker BPTWorld.bpt-normalStuff, line 171
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 172
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 173
+} // library marker BPTWorld.bpt-normalStuff, line 174
 
-def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 171
-    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 172
-        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 173
-    } else { // library marker BPTWorld.bpt-normalStuff, line 174
-        try { // library marker BPTWorld.bpt-normalStuff, line 175
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 176
-            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 177
-        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 178
-            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 179
-        } // library marker BPTWorld.bpt-normalStuff, line 180
-    } // library marker BPTWorld.bpt-normalStuff, line 181
-    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 182
-    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 183
-        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 184
-        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 185
-        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 186
-        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 187
-    } // library marker BPTWorld.bpt-normalStuff, line 188
-    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 189
-} // library marker BPTWorld.bpt-normalStuff, line 190
+def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 176
+    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 177
+        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 178
+    } else { // library marker BPTWorld.bpt-normalStuff, line 179
+        try { // library marker BPTWorld.bpt-normalStuff, line 180
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 181
+            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 182
+        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 183
+            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 184
+        } // library marker BPTWorld.bpt-normalStuff, line 185
+    } // library marker BPTWorld.bpt-normalStuff, line 186
+    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 187
+    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 188
+        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 189
+        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 190
+        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 191
+        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 192
+    } // library marker BPTWorld.bpt-normalStuff, line 193
+    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 194
+} // library marker BPTWorld.bpt-normalStuff, line 195
 
 // ~~~~~ end include (2) BPTWorld.bpt-normalStuff ~~~~~
-
-// ~~~~~ start include (39) BPTWorld.bpt-directionalCondition ~~~~~
-library ( // library marker BPTWorld.bpt-directionalCondition, line 1
-        base: "app", // library marker BPTWorld.bpt-directionalCondition, line 2
-        author: "Bryan Turcotte", // library marker BPTWorld.bpt-directionalCondition, line 3
-        category: "Apps", // library marker BPTWorld.bpt-directionalCondition, line 4
-        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-directionalCondition, line 5
-        name: "bpt-directionalCondition", // library marker BPTWorld.bpt-directionalCondition, line 6
-        namespace: "BPTWorld", // library marker BPTWorld.bpt-directionalCondition, line 7
-        documentationLink: "", // library marker BPTWorld.bpt-directionalCondition, line 8
-        version: "1.0.0", // library marker BPTWorld.bpt-directionalCondition, line 9
-        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-directionalCondition, line 10
-) // library marker BPTWorld.bpt-directionalCondition, line 11
-
-def activeOneHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 13
-    checkEnableHandler() // library marker BPTWorld.bpt-directionalCondition, line 14
-    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-directionalCondition, line 15
-        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-directionalCondition, line 16
-    } else { // library marker BPTWorld.bpt-directionalCondition, line 17
-        if(logEnable) log.debug "In Directional Condition - activeOneHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}" // library marker BPTWorld.bpt-directionalCondition, line 18
-        if(evt.value == "open" || evt.value == "active") { // library marker BPTWorld.bpt-directionalCondition, line 19
-            if(atomicState.first != "two") { atomicState.first = "one" }  // library marker BPTWorld.bpt-directionalCondition, line 20
-            atomicState.motionOneActive = true // library marker BPTWorld.bpt-directionalCondition, line 21
-            if(logEnable) log.debug "In Directional Condition - activeOneHandler - first: ${atomicState.first}" // library marker BPTWorld.bpt-directionalCondition, line 22
-            if(atomicState.first == "two") activeHandler() // library marker BPTWorld.bpt-directionalCondition, line 23
-        } else { // library marker BPTWorld.bpt-directionalCondition, line 24
-            inactiveOneHandler() // library marker BPTWorld.bpt-directionalCondition, line 25
-        } // library marker BPTWorld.bpt-directionalCondition, line 26
-    } // library marker BPTWorld.bpt-directionalCondition, line 27
-} // library marker BPTWorld.bpt-directionalCondition, line 28
-
-def activeTwoHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 30
-    checkEnableHandler() // library marker BPTWorld.bpt-directionalCondition, line 31
-    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-directionalCondition, line 32
-        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-directionalCondition, line 33
-    } else { // library marker BPTWorld.bpt-directionalCondition, line 34
-        if(logEnable) log.debug "In Directional Condition - activeTwoHandler (${state.version}) - evt: ${evt.displayName} - ${evt.value}" // library marker BPTWorld.bpt-directionalCondition, line 35
-        if(evt.value == "open" || evt.value == "active") { // library marker BPTWorld.bpt-directionalCondition, line 36
-            if(atomicState.first != "one") { atomicState.first = "two" } // library marker BPTWorld.bpt-directionalCondition, line 37
-            atomicState.motionTwoActive = true // library marker BPTWorld.bpt-directionalCondition, line 38
-            if(logEnable) log.debug "In Directional Condition - activeTwoHandler - first: ${atomicState.first}" // library marker BPTWorld.bpt-directionalCondition, line 39
-            if(atomicState.first == "one") activeHandler() // library marker BPTWorld.bpt-directionalCondition, line 40
-        } else { // library marker BPTWorld.bpt-directionalCondition, line 41
-            inactiveTwoHandler() // library marker BPTWorld.bpt-directionalCondition, line 42
-        } // library marker BPTWorld.bpt-directionalCondition, line 43
-    } // library marker BPTWorld.bpt-directionalCondition, line 44
-} // library marker BPTWorld.bpt-directionalCondition, line 45
-
-def activeHandler() { // library marker BPTWorld.bpt-directionalCondition, line 47
-    if(logEnable) log.debug "In Directional Condition - activeHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 48
-    if(atomicState.motionOneActive && atomicState.motionTwoActive) { // library marker BPTWorld.bpt-directionalCondition, line 49
-        if(atomicState.first == "one") { state.direction = "right" } // library marker BPTWorld.bpt-directionalCondition, line 50
-        if(atomicState.first == "two") { state.direction = "left" } // library marker BPTWorld.bpt-directionalCondition, line 51
-        state.lastDirection = state.direction // library marker BPTWorld.bpt-directionalCondition, line 52
-        if(logEnable) log.debug "In Directional Condition - activeHandler - first: ${atomicState.first} - direction: ${state.direction}" // library marker BPTWorld.bpt-directionalCondition, line 53
-        if(theDirection == "Right" && state.direction == "right") {  // library marker BPTWorld.bpt-directionalCondition, line 54
-            state.totalMatch = 1 // library marker BPTWorld.bpt-directionalCondition, line 55
-            state.totalConditions = 1 // library marker BPTWorld.bpt-directionalCondition, line 56
-            startTheProcess("direction")  // library marker BPTWorld.bpt-directionalCondition, line 57
-        } // library marker BPTWorld.bpt-directionalCondition, line 58
-        if(theDirection == "Left" && state.direction == "left") { // library marker BPTWorld.bpt-directionalCondition, line 59
-            state.totalMatch = 1 // library marker BPTWorld.bpt-directionalCondition, line 60
-            state.totalConditions = 1 // library marker BPTWorld.bpt-directionalCondition, line 61
-            startTheProcess("direction")  // library marker BPTWorld.bpt-directionalCondition, line 62
-        } // library marker BPTWorld.bpt-directionalCondition, line 63
-    } // library marker BPTWorld.bpt-directionalCondition, line 64
-} // library marker BPTWorld.bpt-directionalCondition, line 65
-
-def inactiveOneHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 67
-    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 68
-    if(atomicState.first == "one") atomicState.first = "" // library marker BPTWorld.bpt-directionalCondition, line 69
-    atomicState.motionOneActive = false // library marker BPTWorld.bpt-directionalCondition, line 70
-    state.direction = "" // library marker BPTWorld.bpt-directionalCondition, line 71
-    if(logEnable) log.debug "In Directional Condition - inactiveOneHandler - first: ${atomicState.first} - (should be blank)" // library marker BPTWorld.bpt-directionalCondition, line 72
-    startTheProcess("reverse") // library marker BPTWorld.bpt-directionalCondition, line 73
-} // library marker BPTWorld.bpt-directionalCondition, line 74
-
-def inactiveTwoHandler(evt) { // library marker BPTWorld.bpt-directionalCondition, line 76
-    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler (${state.version})" // library marker BPTWorld.bpt-directionalCondition, line 77
-    if(atomicState.first == "two") atomicState.first = "" // library marker BPTWorld.bpt-directionalCondition, line 78
-    atomicState.motionTwoActive = false // library marker BPTWorld.bpt-directionalCondition, line 79
-    state.direction = "" // library marker BPTWorld.bpt-directionalCondition, line 80
-    if(logEnable) log.debug "In Directional Condition - inactiveTwoHandler - first: ${atomicState.first} - (should be blank)" // library marker BPTWorld.bpt-directionalCondition, line 81
-    startTheProcess("reverse") // library marker BPTWorld.bpt-directionalCondition, line 82
-} // library marker BPTWorld.bpt-directionalCondition, line 83
-
-// ~~~~~ end include (39) BPTWorld.bpt-directionalCondition ~~~~~
 
 // ~~~~~ start include (7) BPTWorld.bpt-blueIrisActions ~~~~~
 library ( // library marker BPTWorld.bpt-blueIrisActions, line 1
@@ -7667,7 +7709,10 @@ def biChangeHandler(num) { // library marker BPTWorld.bpt-blueIrisActions, line 
     } else if(biControl == "Camera_Enable" || biControl == "Camera_Disable") { // library marker BPTWorld.bpt-blueIrisActions, line 160
         if(logEnable) log.debug "I'm in Camera_Enable/Disable" // library marker BPTWorld.bpt-blueIrisActions, line 161
         biRawCommand = "/admin?camera=${biCamera}&enable=${num}&user=${parent.biUser}&pw=${parent.biPass}"            // library marker BPTWorld.bpt-blueIrisActions, line 162
-        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name) // library marker BPTWorld.bpt-blueIrisActions, line 163 
+        // /admin?camera=x&enable=1 or 0 Enable or disable camera x (short name) // library marker BPTWorld.bpt-blueIrisActions, line 163
+    } else if(biControl == "Switch_Schedule") {     // library marker BPTWorld.bpt-blueIrisActions, line 164
+        if(logEnable) log.debug "I'm in Switch_Schedule" // library marker BPTWorld.bpt-blueIrisActions, line 165
+        biRawCommand = "/admin?schedule=${num}&user=${parent.biUser}&pw=${parent.biPass}"         // library marker BPTWorld.bpt-blueIrisActions, line 166
     } else { // library marker BPTWorld.bpt-blueIrisActions, line 167
         biRawCommand = "*** Something went wrong! ***" // library marker BPTWorld.bpt-blueIrisActions, line 168
     } // library marker BPTWorld.bpt-blueIrisActions, line 169
@@ -7687,81 +7732,3 @@ def biChangeHandler(num) { // library marker BPTWorld.bpt-blueIrisActions, line 
 } // library marker BPTWorld.bpt-blueIrisActions, line 183
 
 // ~~~~~ end include (7) BPTWorld.bpt-blueIrisActions ~~~~~
-
-// ~~~~~ start include (40) BPTWorld.bpt-lockKeypadActions ~~~~~
-library ( // library marker BPTWorld.bpt-lockKeypadActions, line 1
-        base: "app", // library marker BPTWorld.bpt-lockKeypadActions, line 2
-        author: "Bryan Turcotte", // library marker BPTWorld.bpt-lockKeypadActions, line 3
-        category: "Apps", // library marker BPTWorld.bpt-lockKeypadActions, line 4
-        description: "Standard Things for use with BPTWorld Apps", // library marker BPTWorld.bpt-lockKeypadActions, line 5
-        name: "bpt-lockKeypadActions", // library marker BPTWorld.bpt-lockKeypadActions, line 6
-        namespace: "BPTWorld", // library marker BPTWorld.bpt-lockKeypadActions, line 7
-        documentationLink: "", // library marker BPTWorld.bpt-lockKeypadActions, line 8
-        version: "1.0.0", // library marker BPTWorld.bpt-lockKeypadActions, line 9
-        disclaimer: "This library is only for use with BPTWorld Apps and Drivers. If you wish to use any/all parts of this Library, please be sure to copy it to a new library and use a unique name. Thanks!" // library marker BPTWorld.bpt-lockKeypadActions, line 10
-) // library marker BPTWorld.bpt-lockKeypadActions, line 11
-
-def securityKeypadActionHandler() { // library marker BPTWorld.bpt-lockKeypadActions, line 13
-    if(logEnable) log.debug "In securityKeypadActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 14
-    if(keypadTone) { // library marker BPTWorld.bpt-lockKeypadActions, line 15
-        keypadAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 16
-            if(logEnable) log.debug "In securityKeypadActionHandler - Sending ${keypadTone} to ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 17
-            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 18
-            it.playTone(keypadTone) // library marker BPTWorld.bpt-lockKeypadActions, line 19
-        } // library marker BPTWorld.bpt-lockKeypadActions, line 20
-    } // library marker BPTWorld.bpt-lockKeypadActions, line 21
-} // library marker BPTWorld.bpt-lockKeypadActions, line 22
-
-def lockActionHandler() { // library marker BPTWorld.bpt-lockKeypadActions, line 24
-    if(logEnable) log.debug "In lockActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 25
-    if(lockAction) { // library marker BPTWorld.bpt-lockKeypadActions, line 26
-        lockAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 27
-            if(logEnable) log.debug "In lockActionHandler - Locking ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 28
-            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 29
-            it.lock() // library marker BPTWorld.bpt-lockKeypadActions, line 30
-        } // library marker BPTWorld.bpt-lockKeypadActions, line 31
-    } // library marker BPTWorld.bpt-lockKeypadActions, line 32
-    if(unlockAction) { // library marker BPTWorld.bpt-lockKeypadActions, line 33
-        unlockAction.each { it -> // library marker BPTWorld.bpt-lockKeypadActions, line 34
-            if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}" // library marker BPTWorld.bpt-lockKeypadActions, line 35
-            pauseExecution(actionDelay) // library marker BPTWorld.bpt-lockKeypadActions, line 36
-            it.unlock() // library marker BPTWorld.bpt-lockKeypadActions, line 37
-        } // library marker BPTWorld.bpt-lockKeypadActions, line 38
-    } // library marker BPTWorld.bpt-lockKeypadActions, line 39
-} // library marker BPTWorld.bpt-lockKeypadActions, line 40
-
-def lockUserActionHandler(evt) { // library marker BPTWorld.bpt-lockKeypadActions, line 42
-    checkEnableHandler() // library marker BPTWorld.bpt-lockKeypadActions, line 43
-    if(pauseApp || state.eSwitch) { // library marker BPTWorld.bpt-lockKeypadActions, line 44
-        log.info "${app.label} is Paused or Disabled" // library marker BPTWorld.bpt-lockKeypadActions, line 45
-    } else { // library marker BPTWorld.bpt-lockKeypadActions, line 46
-        if(logEnable) log.warn "In lockUserActionHandler (${state.version})" // library marker BPTWorld.bpt-lockKeypadActions, line 47
-        if(evt) { // library marker BPTWorld.bpt-lockKeypadActions, line 48
-            lockdata = evt.data // library marker BPTWorld.bpt-lockKeypadActions, line 49
-            lockStatus = evt.value // library marker BPTWorld.bpt-lockKeypadActions, line 50
-            lockName = evt.displayName // library marker BPTWorld.bpt-lockKeypadActions, line 51
-            if(logEnable) log.debug "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}" // library marker BPTWorld.bpt-lockKeypadActions, line 52
-            if(lockStatus == "unlocked") { // library marker BPTWorld.bpt-lockKeypadActions, line 53
-                if(logEnable) log.debug "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!" // library marker BPTWorld.bpt-lockKeypadActions, line 54
-                if(theLocks) { // library marker BPTWorld.bpt-lockKeypadActions, line 55
-                    if (lockdata && !lockdata[0].startsWith("{")) { // library marker BPTWorld.bpt-lockKeypadActions, line 56
-                        lockdata = decrypt(lockdata) // library marker BPTWorld.bpt-lockKeypadActions, line 57
-                        if (lockdata == null) { // library marker BPTWorld.bpt-lockKeypadActions, line 58
-                            log.debug "Unable to decrypt lock code from device: ${lockName}" // library marker BPTWorld.bpt-lockKeypadActions, line 59
-                            return // library marker BPTWorld.bpt-lockKeypadActions, line 60
-                        } // library marker BPTWorld.bpt-lockKeypadActions, line 61
-                    } // library marker BPTWorld.bpt-lockKeypadActions, line 62
-                    def codeMap = parseJson(lockdata ?: "{}").find{ it } // library marker BPTWorld.bpt-lockKeypadActions, line 63
-                    if (!codeMap) { // library marker BPTWorld.bpt-lockKeypadActions, line 64
-                        if(logEnable) log.debug "In lockUserActionHandler - Lock Code not available." // library marker BPTWorld.bpt-lockKeypadActions, line 65
-                        return // library marker BPTWorld.bpt-lockKeypadActions, line 66
-                    } // library marker BPTWorld.bpt-lockKeypadActions, line 67
-                    codeName = "${codeMap?.value?.name}" // library marker BPTWorld.bpt-lockKeypadActions, line 68
-                    if(logEnable) log.debug "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	 // library marker BPTWorld.bpt-lockKeypadActions, line 69
-                } // library marker BPTWorld.bpt-lockKeypadActions, line 70
-            } // library marker BPTWorld.bpt-lockKeypadActions, line 71
-        } // library marker BPTWorld.bpt-lockKeypadActions, line 72
-    } // library marker BPTWorld.bpt-lockKeypadActions, line 73
-} // library marker BPTWorld.bpt-lockKeypadActions, line 74
-
-// ~~~~~ end include (40) BPTWorld.bpt-lockKeypadActions ~~~~~
