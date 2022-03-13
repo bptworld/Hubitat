@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.3 - 03/13/22 - Announcement, Keytone and Siren volumes can now be controlled from outside sources 
     1.1.2 - 03/11/22 - 3rd times a charm
     1.1.1 - 03/10/22 - Attempt to fix loop
     1.1.0 - 03/10/22 - Fixed device page buttons, now sets HSM status correctly
@@ -29,7 +30,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.2"
+    return "1.1.3"
 }
 
 metadata {
@@ -53,31 +54,24 @@ metadata {
         command "setPartialFunction"
         command "resetKeypad"
         command "playTone", [[name: "Play Tone", type: "STRING", description: "Tone_1, Tone_2, etc."]]
+        command "volAnnouncement", [[name:"Announcement Volume", type:"NUMBER", description: "Volume level (1-10)"]]
+        command "volKeytone", [[name:"Keytone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
+        command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-100)"]]
 
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
         attribute "lastCodeName", "STRING"
         attribute "motion", "STRING"
-
+        attribute "volAnnouncement", "NUMBER"
+        attribute "volKeytone", "NUMBER"
+        attribute "volSiren", "NUMBER"
+        
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
     }
     preferences {
         input name: "about", type: "paragraph", element: "paragraph", title: "Ring Alarm Keypad G2 Community Driver", description: "${version()}<br>Note:<br>The first 3 Tones are alarm sounds that also flash the Red Indicator Bar on the keypads. The rest are more pleasant sounds that could be used for a variety of things."
-        configParams.each { input it.value.input }
-        input name: "sirenVolume", type: "enum", title: "Chime Tone Volume", options: [
-            ["0":"0"],
-            ["10":"1"],
-            ["20":"2"],
-            ["30":"3"],
-            ["40":"4"],
-            ["50":"5"],
-            ["60":"6"],
-            ["70":"7"],
-            ["80":"8"],
-            ["90":"9"],
-            ["100":"10"],
-        ], defaultValue: "10", description: ""        
+        configParams.each { input it.value.input }     
         input name: "theTone", type: "enum", title: "Chime tone", options: [
             ["Tone_1":"(Tone_1) Siren (default)"],
             ["Tone_2":"(Tone_2) 3 Beeps"],
@@ -98,8 +92,8 @@ metadata {
 }
 
 @Field static Map configParams = [
-        4: [input: [name: "configParam4", type: "enum", title: "Announcement Volume", description:"", defaultValue:7, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
-        5: [input: [name: "configParam5", type: "enum", title: "Keytone Volume", description:"", defaultValue:6, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
+        //4: [input: [name: "configParam4", type: "enum", title: "Announcement Volume", description:"", defaultValue:7, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
+        //5: [input: [name: "configParam5", type: "enum", title: "Keytone Volume", description:"", defaultValue:6, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         //6: [input: [name: "configParam6", type: "enum", title: "Siren Volume", description:"", defaultValue:10, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         7: [input: [name: "configParam7", type: "number", title: "Long press Emergency Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
         8: [input: [name: "configParam8", type: "number", title: "Long press Number pad Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
@@ -129,7 +123,9 @@ void updated() {
     sendToDevice(runConfigs())
     updateEncryption()
     proximitySensorHandler()
-    sirenVolumeHandler()
+    volAnnouncement()
+    volKeytone()
+    volSiren()
 }
 
 void installed() {
@@ -147,6 +143,9 @@ void initializeVars() {
     sendEvent(name:"lockCodes", value: "")
     sendEvent(name:"armHomeDelay", value: 5)
     sendEvent(name:"armAwayDelay", value: 5)
+    sendEvent(name:"volAnnouncement", value: 7)
+    sendEvent(name:"volKeytone", value: 5)
+    sendEvent(name:"volSiren", value: 75)
     sendEvent(name:"securityKeypad", value:"disarmed")
     state.keypadConfig=[entryDelay:5, exitDelay: 5, armNightDelay:5, armAwayDelay:5, armHomeDelay: 5, codeLength: 4, partialFunction: "armHome"]
     state.keypadStatus=2
@@ -846,14 +845,61 @@ void proximitySensorHandler() {
     }
 }
 
-def sirenVolumeHandler() {
-    if(sirenVolume) {
-        if (logEnable) log.debug "Setting the Siren Volume to $sirenVolume"
-        sVol = sirenVolume.toInteger()
-        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
-        String hex = Integer.toHexString(sVol)
-        int parsedResult = (int) Long.parseLong(hex, 16)
-        def sVol = "0x${parsedResult}"
+def volAnnouncement(newVol=null) {
+    if(newVol) {
+        def currentVol = device.currentValue('volAnnouncement')
+        if(newVol.toString() == currentVol.toString()) {
+            if (logEnable) log.debug "Announcement Volume hasn't changed, so skipping"
+            def aVol = currentVol.toInteger()
+        } else {
+            if (logEnable) log.debug "Setting the Announcement Volume to $newVol"
+            aVol = newVol.toInteger()
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 4, size: 1, scaledConfigurationValue: aVol).format())
+            String hex = Integer.toHexString(aVol)
+            int parsedResult = (int) Long.parseLong(hex, 16)
+            def aVol = "0x${parsedResult}"
+            sendEvent(name:"volAnnouncement", value: newVol, isStateChange:true)
+        }
+    } else {
+        if (logEnable) log.debug "Announcement value not specified, so skipping"
+    }
+}
+
+def volKeytone(newVol=null) {
+    if(newVol) {
+        def currentVol = device.currentValue('volKeytone')
+        if(newVol.toString() == currentVol.toString()) {
+            if (logEnable) log.debug "Keytone Volume hasn't changed, so skipping"
+            def kVol = currentVol.toInteger()
+        } else {
+            if (logEnable) log.debug "Setting the Keytone Volume to $newVol"
+            kVol = newVol.toInteger()
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: kVol).format())
+            String hex = Integer.toHexString(kVol)
+            int parsedResult = (int) Long.parseLong(hex, 16)
+            def kVol = "0x${parsedResult}"
+            sendEvent(name:"volKeytone", value: newVol, isStateChange:true)
+        }
+    } else {
+        if (logEnable) log.debug "Keytone value not specified, so skipping"
+    }
+}
+
+def volSiren(newVol=null) {
+    if(newVol) {
+        def currentVol = device.currentValue('volSiren')
+        if(newVol.toString() == currentVol.toString()) {
+            if (logEnable) log.debug "Siren Volume hasn't changed, so skipping"
+            def sVol = currentVol.toInteger()
+        } else {
+            if (logEnable) log.debug "Setting the Siren Volume to $newVol"
+            sVol = newVol.toInteger()
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
+            String hex = Integer.toHexString(sVol)
+            int parsedResult = (int) Long.parseLong(hex, 16)
+            def sVol = "0x${parsedResult}"
+            sendEvent(name:"volSiren", value: newVol, isStateChange:true)
+        }
     } else {
         def sVol = "0x90"
     }
@@ -861,8 +907,8 @@ def sirenVolumeHandler() {
 }
 
 def playTone(tone=null) {
-    sirenVolumeHandler()
-    if (logEnable) log.debug "In playTone - tone: ${tone} at Volume: ${sirenVolume} (${sVol})"
+    volSiren()
+    if (logEnable) log.debug "In playTone - tone: ${tone} at Volume: ${sVol}"
     if(!tone) { 
         tone = theTone
         if (logEnable) log.debug "In playTone - Tone is NULL, so setting tone to theTone: ${tone}"
