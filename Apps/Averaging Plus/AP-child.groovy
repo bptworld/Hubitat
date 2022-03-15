@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.6 - 03/14/22 - Chasing a bug
  *  1.2.5 - 02/28/22 - Lots of little changes, More logging
  *  1.2.4 - 02/28/22 - Fix for div by zero error
  *  1.2.3 - 02/27/22 - I got carried away, major rewrite!
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.5"
+	state.version = "1.2.6"
 }
 
 definition(
@@ -623,9 +624,11 @@ def averageHandler(evt) {
                 }
                 if(logEnable) log.debug "In averageHandler ($percType) - highSetpoint: ${highSetpoint} - lowSetpoint: ${lowSetpoint}"
 
+                if(state.theAverage) theAverage = state.theAverage.toInteger()
+                
                 if(state.theAverage && (lowSetpoint != "null")) {
-                    if(state.theAverage <= lowSetpoint) {
-                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
+                    if(theAverage <= lowSetpoint) {
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${theAverage}) is BELOW the low setpoint (${lowSetpoint})"
                         state.low = true
                         state.nTimes = 0
 
@@ -649,8 +652,8 @@ def averageHandler(evt) {
                 }
 
                 if(state.theAverage && (highSetpoint != "null")) {
-                    if(state.theAverage >= highSetpoint) {
-                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
+                    if(theAverage >= highSetpoint) {
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${theAverage}) is ABOVE the high setpoint (${highSetpoint})"
                         state.high = true
                         state.nTimes = 0
 
@@ -674,8 +677,8 @@ def averageHandler(evt) {
                 }
 
                 if(state.theAverage && (highSetpoint != "null") && (lowSetpoint != "null")) {
-                    if(state.theAverage <= highSetpoint && state.theAverage >= lowSetpoint) {
-                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${state.theAverage}) looks good!"
+                    if(theAverage <= highSetpoint && theAverage >= lowSetpoint) {
+                        if(logEnable) log.debug "In averageHandler ($percType) - The average (${theAverage}) looks good!"
 
                         state.hTimes = 0
                         state.lTimes = 0
