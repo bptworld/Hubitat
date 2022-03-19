@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.7 - 03/19/22 - Added speech
  *  1.2.6 - 03/14/22 - Chasing a bug
  *  1.2.5 - 02/28/22 - Lots of little changes, More logging
  *  1.2.4 - 02/28/22 - Fix for div by zero error
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.6"
+	state.version = "1.2.7"
 }
 
 definition(
@@ -73,6 +74,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page name: "actionsConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
+    page name: "notificationOptions", title: "", install: false, uninstall: false, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -217,7 +219,8 @@ def pageConfig() {
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-            href "actionsConfig", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
+            href "actionsConfig", title:"${getImage("optionsGreen")} Action Options", description:"Click here for options"
+            href "notificationOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -277,8 +280,7 @@ def actionsConfig() {
                         input "lowTimesOff", "number", title: "How many 'Normal Value' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
-            }            
-            input "sendPushLow", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
+            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Value Too High Options")) {
@@ -294,40 +296,73 @@ def actionsConfig() {
                         input "highTimesOff", "number", title: "How many 'Normal Value' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
                     }
                 }
-            }           
-            input "sendPushHigh", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
+            }
         }
     }
 }
 
 def notificationOptions(){
-    dynamicPage(name: "notificationOptions", title: "", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) { 
-            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
-            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
-            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
-            paragraph "<hr>"
-            input "pushMessage", "capability.notification", title: "Send a Push notification to certain users", multiple:true, required:false, submitOnChange:true
+    dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false){
+        state.theCogNotifications = "<b><u>Notifications</u></b><br>"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications. Please be sure to have Follow Me installed before trying to send any notifications."
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", submitOnChange:true
+            if(useSpeech) {
+                input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required:true, submitOnChange:true
+                state.theCogNotifications += "<b>-</b> Use Speech: ${fmSpeaker}<br>"
+            } else {
+                app.removeSetting("fmSpeaker")
+            }
         }
 
-        if(sendPushLow) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - Low")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
+            if(sendPushMessage) {
+                state.theCogNotifications += "<b>-</b> Send Push: ${sendPushMessage}<br>"
+            }
+        }
+
+        if(useSpeech || sendPushMessage) {
+            if(useSpeech || sendPushMessage) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Speaker - Priority Message Instructions")) { }
+                section("Instructions for Priority Message:", hideable:true, hidden:true) {
+                    paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the Volume, Voice and/or Speaker will be adjusted accordingly."
+                    paragraph "Format: [priority:sound:speaker]<br><small>Note: Any option not needed, replace with a 0 (zero).</small>"
+                    paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Cog.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
+                    paragraph "<b>Sound:</b><br>You can also specify a sound file to be played before a message!<br>[1] - [5] - Specify a files URL"
+                    paragraph "<b>ie.</b> [L:0:0]Amy is home or [N:3:0]Window has been open too long or [H:0:0]Heat is on and window is open"
+                    paragraph "If you JUST want a sound file played with NO speech after, use [L:1:0]. or [N:3:0]. etc. Notice the DOT after the [], that is the message and will not be spoken."
+                    paragraph "<b>Speaker:</b><br>While Follow Me allows you to setup your speakers in many ways, sometimes you want it to ONLY speak on a specific device. This option will do just that! Just replace with the corresponding speaker number from the Follow Me Parent App."
+                    paragraph "<b>*</b> <i>Be sure to have the 'Priority Speaker Options' section completed in the Follow Me Parent App.</i>"
+                    paragraph "<hr>"
+                    paragraph "<b>General Notes:</b>"
+                    paragraph "Priority Voice and Sound options are only available when using Speech Synth option.<br>Also notice there is no spaces between the option and the message."
+                    paragraph "<b>ie.</b> [N:3:0]Window has been open too long"
+                }
+            }
+        }
+        
+        if(useSpeech || sendPushMessage) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Messages - Low")) {
                 paragraph "Wildcards:<br>- %avg% - Display the Average value"
                 input "spLowMessage", "text", title: "Message", submitOnChange:true
+                input "sendPushLow", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
             }
         }
         
-        if(sendPushHigh) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - High")) {
+        if(useSpeech || sendPushMessage) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Messages - High")) {
                 paragraph "Wildcards:<br>- %avg% - Display the Average value"
                 input "spHighMessage", "text", title: "Message", submitOnChange:true
+                input "sendPushHigh", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
             }
         }
         
-        if(sendPushRef) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - Delta")) {
+        if(useSpeech || sendPushMessage) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Messages - Delta")) {
                 paragraph "Wildcards:<br>- %avg% - Display the Average value"
                 input "deltaMessage", "text", title: "Message", submitOnChange:true
+                input "sendPushDelta", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
             }
         }
     }
@@ -710,21 +745,6 @@ def averageHandler(evt) {
     }
 }
 
-def letsTalk() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
-        if(useSpeech && fmSpeaker) {
-            fmSpeaker.latestMessageFrom(state.name)
-            fmSpeaker.speak(state.theMsg)
-        }
-        state.theMsg = ""
-        if(logEnable) log.debug "In letsTalk - *** Finished ***"
-    }
-}
-
 def messageHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
@@ -740,6 +760,21 @@ def messageHandler() {
     }
 }
 
+def letsTalk() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
+        if(useSpeech && fmSpeaker) {
+            fmSpeaker.latestMessageFrom(state.name)
+            fmSpeaker.speak(state.theMsg)
+        }
+        state.theMsg = ""
+        if(logEnable) log.debug "In letsTalk - *** Finished ***"
+    }
+}
+
 def pushNow() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
@@ -749,8 +784,7 @@ def pushNow() {
         thePushMessage = "${app.label} \n"
         thePushMessage += state.theMsg
         if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
-        if(state.low) pushMessage.deviceNotification(thePushMessage)
-        if(state.high) pushMessage.deviceNotification(thePushMessage)
+        pushMessage.deviceNotification(thePushMessage)
         state.sentPush = true
     }
 }
