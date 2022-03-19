@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.5 - 03/19/22 - Fixed a type with peopleWithMe - Thanks @es_ferret
  *  2.1.4 - 01/31/22 - Changes to reflec the flasher
  *  2.1.3 - 01/15/22 - Fixed a type with aPlace - Nice catch @es_ferret
  *  2.1.2 - 10/21/21 - Adjusted speak() to reflect the new parameters.
@@ -52,7 +53,8 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.4"
+	state.version = "2.1.5"
+    sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
 definition(
@@ -224,7 +226,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Who's With Me")) {
         paragraph "We all know it's annoying to get notifications about someone moving about when you are actually with that person. With this option, those notifications are a thing of the past!"
             input "peopleWithMe", "capability.presenceSensor", title: "Choose other Life360 Device(s)", required:false, multiple:true, submitOnChange:true
-            if(peopleWithYou) {
+            if(peopleWithMe) {
                 input "peopleRadius", "number", title: "Radius to be considered with you", required:false, submitOnChange:true
             } else {
                 
@@ -311,6 +313,7 @@ def initialize() {
 }
 
 def userHandler(evt) {
+    setVersion()
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
