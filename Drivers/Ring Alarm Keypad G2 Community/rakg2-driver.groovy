@@ -4,6 +4,8 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.5 - 03/20/22 - Adustments to Siren Volume
+    1.1.4 - 03/13/22 - All Volumes are now values, 1-10. 
     1.1.3 - 03/13/22 - Announcement, Keytone and Siren volumes can now be controlled from outside sources 
     1.1.2 - 03/11/22 - 3rd times a charm
     1.1.1 - 03/10/22 - Attempt to fix loop
@@ -30,7 +32,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.3"
+    return "1.1.5"
 }
 
 metadata {
@@ -56,11 +58,13 @@ metadata {
         command "playTone", [[name: "Play Tone", type: "STRING", description: "Tone_1, Tone_2, etc."]]
         command "volAnnouncement", [[name:"Announcement Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         command "volKeytone", [[name:"Keytone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
-        command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-100)"]]
+        command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
+        //command "keyBacklightBrightness", [[name:"Key Backlight Brightness", type:"NUMBER", description: "Level (1-100)"]]
 
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
+        //attribute "keyBacklightBrightness", "NUMBER"
         attribute "lastCodeName", "STRING"
         attribute "motion", "STRING"
         attribute "volAnnouncement", "NUMBER"
@@ -143,6 +147,7 @@ void initializeVars() {
     sendEvent(name:"lockCodes", value: "")
     sendEvent(name:"armHomeDelay", value: 5)
     sendEvent(name:"armAwayDelay", value: 5)
+    //sendEvent(name:"keyBacklightBrightness", value: 90)
     sendEvent(name:"volAnnouncement", value: 7)
     sendEvent(name:"volKeytone", value: 5)
     sendEvent(name:"volSiren", value: 75)
@@ -845,19 +850,32 @@ void proximitySensorHandler() {
     }
 }
 
+/*
+def keyBacklightBrightness(newVol=null) {
+    if(newVol) {
+        def currentVol = device.currentValue('keyBacklightBrightness')
+        if(newVol.toString() == currentVol.toString()) {
+            if (logEnable) log.debug "Key Backlight Brightness hasn't changed, so skipping"
+        } else {
+            if (logEnable) log.debug "Setting the Key Backlight Brightness to $newVol"
+            nVol = newVol.toInteger()           
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 13, size: 1, scaledConfigurationValue: nVol).format())
+            sendEvent(name:"keyBacklightBrightness", value: newVol, isStateChange:true)
+        }
+    } else {
+        if (logEnable) log.debug "Key Backlight Brightness value not specified, so skipping"
+    }
+}
+*/
 def volAnnouncement(newVol=null) {
     if(newVol) {
         def currentVol = device.currentValue('volAnnouncement')
         if(newVol.toString() == currentVol.toString()) {
             if (logEnable) log.debug "Announcement Volume hasn't changed, so skipping"
-            def aVol = currentVol.toInteger()
         } else {
             if (logEnable) log.debug "Setting the Announcement Volume to $newVol"
-            aVol = newVol.toInteger()
-            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 4, size: 1, scaledConfigurationValue: aVol).format())
-            String hex = Integer.toHexString(aVol)
-            int parsedResult = (int) Long.parseLong(hex, 16)
-            def aVol = "0x${parsedResult}"
+            nVol = newVol.toInteger()
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 4, size: 1, scaledConfigurationValue: nVol).format())
             sendEvent(name:"volAnnouncement", value: newVol, isStateChange:true)
         }
     } else {
@@ -870,14 +888,10 @@ def volKeytone(newVol=null) {
         def currentVol = device.currentValue('volKeytone')
         if(newVol.toString() == currentVol.toString()) {
             if (logEnable) log.debug "Keytone Volume hasn't changed, so skipping"
-            def kVol = currentVol.toInteger()
         } else {
             if (logEnable) log.debug "Setting the Keytone Volume to $newVol"
-            kVol = newVol.toInteger()
-            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: kVol).format())
-            String hex = Integer.toHexString(kVol)
-            int parsedResult = (int) Long.parseLong(hex, 16)
-            def kVol = "0x${parsedResult}"
+            nVol = newVol.toInteger()
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: nVol).format())
             sendEvent(name:"volKeytone", value: newVol, isStateChange:true)
         }
     } else {
@@ -890,18 +904,20 @@ def volSiren(newVol=null) {
         def currentVol = device.currentValue('volSiren')
         if(newVol.toString() == currentVol.toString()) {
             if (logEnable) log.debug "Siren Volume hasn't changed, so skipping"
-            def sVol = currentVol.toInteger()
+            def sVol = currentVol.toInteger() * 10
         } else {
             if (logEnable) log.debug "Setting the Siren Volume to $newVol"
-            sVol = newVol.toInteger()
+            sVol = newVol.toInteger() * 10
             sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
-            String hex = Integer.toHexString(sVol)
-            int parsedResult = (int) Long.parseLong(hex, 16)
-            def sVol = "0x${parsedResult}"
             sendEvent(name:"volSiren", value: newVol, isStateChange:true)
         }
     } else {
-        def sVol = "0x90"
+        def currentVol = device.currentValue('volSiren')
+        if(currentVol) {
+            sVol = currentVol.toInteger() * 10
+        } else {
+            sVol = 90
+        }
     }
     return sVol
 }
