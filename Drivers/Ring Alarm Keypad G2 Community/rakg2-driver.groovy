@@ -4,7 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-    1.1.5 - 03/20/22 - Adustments to Siren Volume
+    1.1.5 - 03/20/22 - Adjustments to Siren Volume
     1.1.4 - 03/13/22 - All Volumes are now values, 1-10. 
     1.1.3 - 03/13/22 - Announcement, Keytone and Siren volumes can now be controlled from outside sources 
     1.1.2 - 03/11/22 - 3rd times a charm
