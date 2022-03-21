@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.7 - 03/21/22 - Fine tuning
     1.1.6 - 03/21/22 - Alarm has to be disarmed before changing to a different alarm type
     1.1.5 - 03/20/22 - Adjustments to Siren Volume
     1.1.4 - 03/13/22 - All Volumes are now values, 1-10. 
@@ -33,7 +34,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.6"
+    return "1.1.7"
 }
 
 metadata {
@@ -193,7 +194,7 @@ void keypadUpdateStatus(Integer status,String type="digital", String code) {
 }
 
 void armNight(delay=0) {
-    if (logEnable) log.debug "In armNight - delay: ${delay}"
+    if (logEnable) log.debug "In armNight (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed night") {
         if (delay > 0 ) {
@@ -218,7 +219,7 @@ void armNightEnd() {
 }
 
 void armAway(delay=0) {
-    if (logEnable) log.debug "In armAway - delay: ${delay}"
+    if (logEnable) log.debug "In armAway (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed away") {
         if (delay > 0 ) {
@@ -239,11 +240,12 @@ void armAwayEnd() {
     if(sk != "armed away") {
         keypadUpdateStatus(0x0B, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armAway")
+        changeStatus("set")
     }
 }
 
 void armHome(delay=0) {
-    if (logEnable) log.debug "In armHome - delay: ${delay}"
+    if (logEnable) log.debug "In armHome (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed home") {
         if (delay > 0) {
@@ -264,11 +266,12 @@ void armHomeEnd() {
     if(sk != "armed home") {
         keypadUpdateStatus(0x0A, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armHome")
+        changeStatus("set")
     }
 }
 
 void disarm(delay=0) {
-    if (logEnable) log.debug "In disarm - delay: ${delay}"
+    if (logEnable) log.debug "In disarm (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "disarmed") {
         if (delay > 0 ) {
@@ -289,13 +292,15 @@ void disarmEnd() {
     if(sk != "disarmed") { 
         keypadUpdateStatus(0x02, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "disarm")
+        changeStatus("off")
         unschedule(armHomeEnd)
         unschedule(armAwayEnd)
+        unschedule(changeStatus)
     }
 }
 
 void exitDelay(delay){
-    if (logEnable) log.debug "exitDelay(${delay})"
+    if (logEnable) log.debug "In exitDelay (${version()}) - delay: ${delay}"
     if (delay) {
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x12, propertyId:7, value:delay.toInteger()]]).format())
         // update state so that a disarm command during the exit delay resets the indicator lights
@@ -305,13 +310,18 @@ void exitDelay(delay){
     }
 }
 
+def changeStatus(data) {
+    if (logEnable) log.debug "In changeStatus (${version()}) - data: ${data}"
+    sendEvent(name: "alarm", value: data, isStateChange: true)
+}
+
 void setEntryDelay(delay){
-    if (logEnable) log.debug "setEntryDelay(${delay})"
+    if (logEnable) log.debug "In setEntryDelay (${version()}) - delay: ${delay}"
     state.keypadConfig.entryDelay = delay != null ? delay.toInteger() : 0
 }
 
 void setExitDelay(Map delays){
-    if (logEnable) log.debug "setExitDelay(${delays})"
+    if (logEnable) log.debug "In setExitDelay (${version()}) - delay: ${delays}"
     state.keypadConfig.exitDelay = (delays?.awayDelay ?: 0).toInteger()
     state.keypadConfig.armNightDelay = (delays?.nightDelay ?: 0).toInteger()
     state.keypadConfig.armHomeDelay = (delays?.homeDelay ?: 0).toInteger()
@@ -319,29 +329,29 @@ void setExitDelay(Map delays){
 }
 
 void setExitDelay(delay){
-    if (logEnable) log.debug "setExitDelay(${delay})"
+    if (logEnable) log.debug "In setExitDelay (${version()}) - delay: ${delay}"
     state.keypadConfig.exitDelay = delay != null ? delay.toInteger() : 0
 }
 
 void setArmNightDelay(delay){
-    if (logEnable) log.debug "setArmNightDelay(${delay})"
+    if (logEnable) log.debug "In setArmNightDelay (${version()}) - delay: ${delay}"
     state.keypadConfig.armNightDelay = delay != null ? delay.toInteger() : 0
 }
 
 void setArmAwayDelay(delay){
-    if (logEnable) log.debug "setArmAwayDelay(${delay})"
+    if (logEnable) log.debug "In setArmAwayDelay (${version()}) - delay: ${delay}"
     sendEvent(name:"armAwayDelay", value: delay)
     state.keypadConfig.armAwayDelay = delay != null ? delay.toInteger() : 0
 }
 
 void setArmHomeDelay(delay){
-    if (logEnable) log.debug "setArmHomeDelay(${delay})"
+    if (logEnable) log.debug "In setArmHomeDelay (${version()}) - delay: ${delay}"
     sendEvent(name:"armHomeDelay", value: delay)
     state.keypadConfig.armHomeDelay = delay != null ? delay.toInteger() : 0
 
 }
 void setCodeLength(pincodelength) {
-    if (logEnable) log.debug "setCodeLength(${pincodelength})"
+    if (logEnable) log.debug "In setCodeLength (${version()}) - pincodelength: ${pincodelength}"
     eventProcess(name:"codeLength", value: pincodelength, descriptionText: "${device.displayName} codeLength set to ${pincodelength}")
     state.keypadConfig.codeLength = pincodelength
     // set zwave entry code key buffer
@@ -350,7 +360,7 @@ void setCodeLength(pincodelength) {
 }
 
 void setPartialFunction(mode = null) {
-    if (logEnable) log.debug "setPartialFucntion(${mode})"
+    if (logEnable) log.debug "In setPartialFucntion (${version()}) - mode: ${mode}"
     if ( !(mode in ["armHome","armNight"]) ) {
         if (txtEnable) log.warn "custom command used by HSM"
     } else if (mode in ["armHome","armNight"]) {
@@ -361,25 +371,28 @@ void setPartialFunction(mode = null) {
 // alarm capability commands
 
 void off() {
-    if (logEnable) log.debug "off()"
+    if (logEnable) log.debug "In off (${version()})"
     eventProcess(name:"alarm", value:"off")
+    changeStatus("off")
     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:state.keypadStatus, propertyId:2, value:0xFF]]).format())
 }
 
 void both() {
-    if (logEnable) log.debug "both()"
+    if (logEnable) log.debug "In both (${version()})"
     siren()
 }
 
 void siren() {
-    if (logEnable) log.debug "In Siren"
-    eventProcess(name:"alarm", value:"siren")    
+    if (logEnable) log.debug "In Siren (${version()})"
+    eventProcess(name:"alarm", value:"siren")
+    changeStatus("siren")
     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
 }
 
 void strobe() {
-    if (logEnable) log.debug "strobe()"
+    if (logEnable) log.debug "In strobe (${version()})"
     eventProcess(name:"alarm", value:"strobe")
+    changeStatus("strobe")
     List<String> cmds=[]
     cmds.add(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
     cmds.add(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0x00]]).format())
@@ -391,6 +404,7 @@ void zwaveEvent(hubitat.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 void parseEntryControl(Short command, List<Short> commandBytes) {
+    if (logEnable) log.debug "In parseEntryControl (${version()})"
     //log.debug "parse: ${command}, ${commandBytes}"
     if (command == 0x01) {
         Map ecn = [:]
@@ -399,6 +413,7 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
         ecn.eventType = commandBytes[2]
         ecn.eventDataLength = commandBytes[3]
         def currentStatus = device.currentValue('securityKeypad')
+        def alarmStatus = device.currentValue('alarm')
         String code=""
         if (ecn.eventDataLength>0) {
             for (int i in 4..(ecn.eventDataLength+3)) {
@@ -439,7 +454,13 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                             armHome(state.keypadConfig.armHomeDelay)
                         }
                     } else {
-                        if (logEnable) log.debug "In case 6 - Failed - Please Disarm Alarm before changing alarm type - currentStatus: ${currentStatus}"
+                        if(alarmStatus == "active") {
+                            if (logEnable) log.debug "In case 6 - Silenced - Alarm will sound again in 10 seconds - currentStatus: ${currentStatus}"
+                            changeStatus("silent")
+                            runIn(10, changeStatus, [data:"active"])
+                        } else {
+                            if (logEnable) log.debug "In case 6 - Failed - Please Disarm Alarm before changing alarm type - currentStatus: ${currentStatus}"
+                        }
                     }
                 } else {
                     if (logEnable) log.debug "In case 6 - Home Mode Failed - Invalid PIN - currentStatus: ${currentStatus}"
@@ -561,7 +582,7 @@ void entry(){
 }
 
 void entry(entranceDelay){
-    if (logEnable) log.debug "entry(${entranceDelay})"
+    if (logEnable) log.debug "In entry (${version()}) - delay: ${entranceDelay}"
     if (entranceDelay) {
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x11, propertyId:7, value:entranceDelay.toInteger()]]).format())
     }
@@ -876,6 +897,7 @@ def keyBacklightBrightness(newVol=null) {
 }
 */
 def volAnnouncement(newVol=null) {
+    if (logEnable) log.debug "In volAnnouncement (${version()}) - newVol: ${newVol}"
     if(newVol) {
         def currentVol = device.currentValue('volAnnouncement')
         if(newVol.toString() == currentVol.toString()) {
@@ -892,6 +914,7 @@ def volAnnouncement(newVol=null) {
 }
 
 def volKeytone(newVol=null) {
+    if (logEnable) log.debug "In volKeytone (${version()}) - newVol: ${newVol}"
     if(newVol) {
         def currentVol = device.currentValue('volKeytone')
         if(newVol.toString() == currentVol.toString()) {
@@ -908,6 +931,7 @@ def volKeytone(newVol=null) {
 }
 
 def volSiren(newVol=null) {
+    if (logEnable) log.debug "In volSiren (${version()}) - newVol: ${newVol}"
     if(newVol) {
         def currentVol = device.currentValue('volSiren')
         if(newVol.toString() == currentVol.toString()) {
@@ -932,40 +956,50 @@ def volSiren(newVol=null) {
 
 def playTone(tone=null) {
     volSiren()
-    if (logEnable) log.debug "In playTone - tone: ${tone} at Volume: ${sVol}"
+    if (logEnable) log.debug "In playTone (${version()}) - tone: ${tone} at Volume: ${sVol}"
     if(!tone) { 
         tone = theTone
         if (logEnable) log.debug "In playTone - Tone is NULL, so setting tone to theTone: ${tone}"
     }
     if(tone == "Tone_1") {
         if (logEnable) log.debug "In playTone - Tone 1"    // Siren
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_2") {
         if (logEnable) log.debug "In playTone - Tone 2"    // 3 chirps
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0E, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_3") {
         if (logEnable) log.debug "In playTone - Tone 3"    // 4 chirps
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0F, propertyId:2, value:sVol]]).format())
     } else if(tone == "Tone_4") {
         if (logEnable) log.debug "In playTone - Tone 4"    // Navi
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x60, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_5") {
         if (logEnable) log.debug "In playTone - Tone 5"    // Guitar
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_6") {
         if (logEnable) log.debug "In playTone - Tone 6"    // Windchimes
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x62, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_7") {
         if (logEnable) log.debug "In playTone - Tone 7"    // Doorbell 1
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x63, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_8") {
         if (logEnable) log.debug "In playTone - Tone 8"    // Doorbell 2
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x64, propertyId:0x09, value:sVol]]).format())
     } else if(tone == "Tone_9") {
         if (logEnable) log.debug "In playTone - Tone 9"    // Invalid Code Sound
+        changeStatus("active")
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:0x01, value:sVol]]).format())
     } else if(tone == "test") {
         if (logEnable) log.debug "In playTone - test"    // test
+        changeStatus("active")
         //sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:0xFF]]).format())
         //pauseExecution(5000)
         sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x61, propertyId:0x09, value:sVol]]).format())
