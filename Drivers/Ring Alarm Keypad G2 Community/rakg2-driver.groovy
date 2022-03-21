@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.6 - 03/21/22 - Alarm has to be disarmed before changing to a different alarm status
     1.1.5 - 03/20/22 - Adjustments to Siren Volume
     1.1.4 - 03/13/22 - All Volumes are now values, 1-10. 
     1.1.3 - 03/13/22 - Announcement, Keytone and Siren volumes can now be controlled from outside sources 
@@ -32,7 +33,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.5"
+    return "1.1.6"
 }
 
 metadata {
@@ -397,6 +398,7 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
         ecn.dataType = commandBytes[1]
         ecn.eventType = commandBytes[2]
         ecn.eventDataLength = commandBytes[3]
+        def currentStatus = device.currentValue('securityKeypad')
         String code=""
         if (ecn.eventDataLength>0) {
             for (int i in 4..(ecn.eventDataLength+3)) {
@@ -409,32 +411,38 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
             case 5:    // Away Mode Button
                 if (logEnable) log.debug "In case 5 - Away Mode Button"
                 if (validatePin(code) || instantArming) {
-                    if (logEnable) log.debug "In case 5 - Passed"
-                    state.type="physical"
-                    if (!state.keypadConfig.armAwayDelay) { state.keypadConfig.armAwayDelay = 0 }
-                    sendEvent(name:"armingIn", value: state.keypadConfig.armAwayDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
-                    armAway(state.keypadConfig.armAwayDelay)
+                    if(currentStatus == "disarmed") {
+                        if (logEnable) log.debug "In case 5 - Passed - currentStatus: ${currentStatus}"
+                        state.type="physical"
+                        if (!state.keypadConfig.armAwayDelay) { state.keypadConfig.armAwayDelay = 0 }
+                        sendEvent(name:"armingIn", value: state.keypadConfig.armAwayDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
+                        armAway(state.keypadConfig.armAwayDelay)
+                    } else {
+                        if (logEnable) log.debug "In case 5 - Failed - Please Disarm Alarm before changing alarm type - currentStatus: ${currentStatus}"
+                    }
                 } else {
-                    if (logEnable) log.debug "In case 5 - Failed"
+                    if (logEnable) log.debug "In case 5 - Failed - Invalid PIN - currentStatus: ${currentStatus}"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
             case 6:    // Home Mode Button
                 if (logEnable) log.debug "In case 6 - Home Mode Button"
                 if (validatePin(code) || instantArming) {
-                    if (logEnable) log.debug "In case 6 - Passed"
-                    state.type="physical"
-                    if(!state.keypadConfig.partialFunction) state.keypadConfig.partialFunction="armHome"
-                    if (state.keypadConfig.partialFunction == "armHome") {
-                        if (logEnable) log.debug "In case 6 - Partial Passed"
-                        if (!state.keypadConfig.armHomeDelay) { state.keypadConfig.armHomeDelay = 0 }
-                        sendEvent(name:"armingIn", value: state.keypadConfig.armHomeDelay, data:[armMode: armingStates[0x0A].securityKeypadState, armCmd: armingStates[0x0A].hsmCmd], isStateChange:true)
-                        armHome(state.keypadConfig.armHomeDelay)
+                    if(currentStatus == "disarmed") {
+                        if (logEnable) log.debug "In case 6 - Passed"
+                        state.type="physical"
+                        if(!state.keypadConfig.partialFunction) state.keypadConfig.partialFunction="armHome"
+                        if (state.keypadConfig.partialFunction == "armHome") {
+                            if (logEnable) log.debug "In case 6 - Partial Passed"
+                            if (!state.keypadConfig.armHomeDelay) { state.keypadConfig.armHomeDelay = 0 }
+                            sendEvent(name:"armingIn", value: state.keypadConfig.armHomeDelay, data:[armMode: armingStates[0x0A].securityKeypadState, armCmd: armingStates[0x0A].hsmCmd], isStateChange:true)
+                            armHome(state.keypadConfig.armHomeDelay)
+                        }
                     } else {
-                        if (logEnable) log.debug "In case 6 - Partial Failed"
+                        if (logEnable) log.debug "In case 6 - Failed - Please Disarm Alarm before changing alarm type - currentStatus: ${currentStatus}"
                     }
                 } else {
-                    if (logEnable) log.debug "In case 6 - Failed"
+                    if (logEnable) log.debug "In case 6 - Home Mode Failed - Invalid PIN - currentStatus: ${currentStatus}"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
@@ -446,7 +454,7 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                     sendEvent(name:"armingIn", value: 0, data:[armMode: armingStates[0x02].securityKeypadState, armCmd: armingStates[0x02].hsmCmd], isStateChange:true)
                     disarm()
                 } else {
-                    if (logEnable) log.debug "In case 3 - Code Failed"
+                    if (logEnable) log.debug "In case 3 - Disarm Failed - Invalid PIN - currentStatus: ${currentStatus}"
                     sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
                 }
                 break
