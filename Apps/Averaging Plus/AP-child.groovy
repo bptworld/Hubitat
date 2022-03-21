@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.8 - 03/21/22 - Updated logging
  *  1.2.7 - 03/19/22 - Added speech
  *  1.2.6 - 03/14/22 - Chasing a bug
  *  1.2.5 - 02/28/22 - Lots of little changes, More logging
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.7"
+	state.version = "1.2.8"
 }
 
 definition(
@@ -429,7 +430,7 @@ private removeChildDevices(delete) {
 def resetHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+        if(logEnable) log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In resetHandler (${state.version})"
         state.valueMap = []
