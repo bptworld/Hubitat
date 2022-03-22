@@ -4,11 +4,11 @@
  *  Design Usage:
  *  This driver stores the user data to be used with Location Tracker.
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2022 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via:
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -38,6 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
+ *
+ *  1.6.1 - 03/22/22 - Adustment to stop and error when someone pauses themselves in the Life360 phone app. Thanks @jpage4500!
  *  1.6.0 - 01/07/21 - Interim release 
  *  1.5.5 - 12/20/20 - Reliability Improvements + Cleaned up Logging
  *  1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
@@ -322,7 +324,10 @@ def historyClearData() {
 }
 
 def generatePresenceEvent(member, thePlaces, home) {
-
+    if (member.location == null) {
+        // log.info "no location set for $member"
+        return
+    }
     if(logEnable) log.trace "In generatePresenceEvent..."
 
     // Define all variables required upfront and initialize where applicable
