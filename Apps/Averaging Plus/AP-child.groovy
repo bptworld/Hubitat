@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.9 - 03/22/22 - More logging
  *  1.2.8 - 03/21/22 - Updated logging
  *  1.2.7 - 03/19/22 - Added speech
  *  1.2.6 - 03/14/22 - Chasing a bug
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.2.8"
+	state.version = "1.2.9"
 }
 
 definition(
@@ -259,6 +260,8 @@ def pageConfig() {
                     resetHandler()
                     app.updateSetting("resetStuff",[value:"false",type:"bool"])
                 }
+            } else {
+                app.removeSetting("logOffTime")
             }
         }
 		display2()
@@ -370,12 +373,12 @@ def notificationOptions(){
 }
 
 def installed() {
-    log.debug "Installed with settings: ${settings}"
+    if(logEnable) log.debug "Installed with settings (${state.version}): ${settings}"
 	initialize()
 }
 
 def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings}"
+    if(logEnable) log.debug "Updated with settings (${state.version}): ${settings}"
 	unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
@@ -430,7 +433,7 @@ private removeChildDevices(delete) {
 def resetHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        if(logEnable) log.info "${app.label} is Paused or Disabled"
+        if(logEnable) log.info "${app.label} is Paused or Disabled (${state.version}) - 1"
     } else {
         if(logEnable) log.debug "In resetHandler (${state.version})"
         state.valueMap = []
@@ -454,7 +457,7 @@ def weeklyResetHandler() {
 def averageHandler(evt) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+        if (logEnable) log.info "${app.label} is Paused or Disabled (${state.version}) - 2"
     } else {
         if(logEnable) log.debug "In averageHandler (${state.version})"
         if(state.betweenTime) {
@@ -749,7 +752,7 @@ def averageHandler(evt) {
 def messageHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+        if(logEnable) log.info "${app.label} is Paused or Disabled (${state.version}) - 3"
     } else {
         if(logEnable) log.debug "In messageHandler (${state.version})"
         if(state.theMsg) {
@@ -764,7 +767,7 @@ def messageHandler() {
 def letsTalk() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+        if(logEnable) log.info "${app.label} is Paused or Disabled (${state.version}) - 4"
     } else {
         if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
         if(useSpeech && fmSpeaker) {
@@ -779,7 +782,7 @@ def letsTalk() {
 def pushNow() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+        if(logEnable) log.info "${app.label} is Paused or Disabled (${state.version}) - 5"
     } else {
         if(logEnable) log.debug "In pushNow (${state.version})"
         thePushMessage = "${app.label} \n"
@@ -871,19 +874,19 @@ def endTimeBetween() {
 
 // ********** Normal Stuff **********
 def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
+    if(logEnable) log.info "${app.label} - Debug logging auto disabled"
     app.updateSetting("logEnable",[value:"false",type:"bool"])
 }
 
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        if(logEnable) log.debug "In checkEnableHandler (${state.version}) - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             theStatus = it.currentValue("switch")
             if(theStatus == "on") { state.eSwitch = true }
         }
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
+        if(logEnable) log.debug "In checkEnableHandler (${state.version}) - eSwitch: ${state.eSwitch}"
     }
 }
 
