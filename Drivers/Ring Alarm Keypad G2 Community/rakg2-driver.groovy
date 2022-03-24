@@ -626,7 +626,7 @@ private Boolean validatePin(String pincode) {
     if(lockcodes) {
         lockcodes.each {
             if(it.value["code"] == pincode) {
-                log.debug "found code: ${pincode} user: ${it.value['name']}"
+                //log.debug "found code: ${pincode} user: ${it.value['name']}"
                 sendEvent(name:"lastCodeName", value: "${it.value['name']}", isStateChange:true)
                 retVal=true
                 String code = JsonOutput.toJson(["${it.key}":["name": "${it.value.name}", "code": "${it.value.code}", "isInitiator": true]])
