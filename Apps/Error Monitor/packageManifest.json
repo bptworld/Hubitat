@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2022-03-26",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "",
+	"communityLink": "https://community.hubitat.com/t/release-error-monitor-keep-an-eye-out-for-errors-that-may-pop-up-in-the-log/91317",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
