@@ -67,6 +67,13 @@
          "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
+   		"name": "Error Monitor",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/packageManifest.json",
+   		"description": "Keep an eye out for errors that may pop up in the log.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Event Engine",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/packageManifest.json",
