@@ -11,7 +11,7 @@
 			"id" : "df8577e5-917a-4919-b7af-06929166a0c8",
 			"name": "Error Monitor",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/em-app.groovy,
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/em-app.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0",
