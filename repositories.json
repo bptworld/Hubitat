@@ -127,7 +127,7 @@
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Live%20Event%20Reminders/packageManifest.json",
    		"description": "Never miss an important Life Event again! Schedule reminders easily and locally.",
-         "tags": [ "Dashboards", "Notifications", "Tools & Utilities" ]
+         "tags": [ "Dashboards", "Notifications", "Timers", "Tools & Utilities" ]
    	},
       {
    		"name": "One at a Time",
