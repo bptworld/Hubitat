@@ -235,13 +235,6 @@
          "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
    	},
       {
-   		"name": "Simple Reminders",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/packageManifest.json",
-   		"description": "Setup Simple Reminders through out the day.",
-         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Snapshot",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/packageManifest.json",
