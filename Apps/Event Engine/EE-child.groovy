@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.5 - 03/27/22 - Lots of 'Refactoring'
 *  3.5.4 - 03/12/22 - Many small changes
 *  3.5.3 - 03/11/22 - Added Notification support for Other Devices (ie. webOS TV's).
 *                   - Added option to run cog when system starts up
@@ -56,7 +57,7 @@
 
 def setVersion(){
     state.name = "Event Engine Cog"
-    state.version = "3.5.4"
+    state.version = "3.5.5"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2170,14 +2171,19 @@ def pageConfig() {
             if(actionType.contains("aLifxStrip")) {
                 paragraph "<b>Pattern Controller</b><br><small>For use with the Lifx Strip Light and the Pattern Controller app</small>"
                 if(state.pcMapOfChildren) {
-                    log.debug "In Lifx PC - $state.pcMapOfChildren"
                     input "pcAction", "enum", title: "Pattern to Control", options: state.pcMapOfChildren, multiple:true, submitOnChange:true
                     input "pcCommand", "enum", title: "Command", options: ["run"], multiple:false, submitOnChange:true
-                    paragraph "<small>If you don't see the Pattern you're looking for:<br>- Please save this Cog by pressing 'done' at the bottom.<br>- Open up any Lifx Pattern Controller child app and press 'done'<br>- Then come back to finish setting up this option.<br>Thanks</small>"
+                    paragraph "<small>If you don't see the Pattern you're looking for:<br>- Please flip the 'Refresh Patterns' switch to continue.</small>"
                     paragraph "<hr>"
-                    theCogActions += "<b>-</b> Likfx Strip Zone Controller: ${pcAction} - Command: ${pcCommand}<br>"
+                    theCogActions += "<b>-</b> Lifx Strip Zone Controller: ${pcAction} - Command: ${pcCommand}<br>"
                 } else {
-                    paragraph "No Patterns were found:<br>- Save this Cog by pressing 'done' at the bottom.<br>- Open up any Pattern Controller child app and press 'done'<br>- Then come back to finish setting up this option.<br>Thanks"
+                    paragraph "Looks like this is the first time using the Pattern Controller.<br> - Please flip the 'Refresh Patterns' switch, you'll need to flip it twice."
+                }
+                input "getPatterns", "bool", title: "Refresh Patterns", submitOnChange:true
+                if(getPatterns) {
+                    subscribe(location, "pcChildren", pcMapOfChildrenHandler)
+                    sendLocationEvent (name: "getLifxChildren", value: "getChildren")
+                    app.updateSetting("getPatterns",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
             } else {
@@ -3279,7 +3285,7 @@ def initialize() {
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
         if(snDeviceEvent) subscribe(snDeviceEvent, "alarmStatus", startTheProcess)
         
-        subscribe(location, "pcChildren", pcMapOfChildrenHandler)
+        if(aLifxStrip) subscribe(location, "pcChildren", pcMapOfChildrenHandler)
         
         if(switchesToSync) {
             subscribe(switchesToSync, "colorTemperature", switchesToSyncColorTempHandler)
@@ -3789,12 +3795,12 @@ def startTheProcess(evt) {
                                     if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
                                     if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                                     if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
-                                    if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }  
+                                    if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { switchOnReverseActionHandler("aSwitch") }  
                                     if(actionType.contains("aSwitchSequence")) { switchesInSequenceReverseHandler() }
                                     if(actionType.contains("aSwitchesPerMode") && permanentDim) { permanentDimHandler() }
                                     if(actionType.contains("aSwitchesPerMode") && !permanentDim) { switchesPerModeReverseActionHandler() }
                                     if(actionType.contains("aSwitchesColorChange") && permanentDim) { permanentDimHandler() }
-                                    if(actionType.contains("aSwitchesColorChange") && !permanentDim) { colorChangeReverseHandler() }
+                                    if(actionType.contains("aSwitchesColorChange") && !permanentDim) { switchOnReverseActionHandler("aSwitchesColorChange") }
                                     if(additionalSwitches) { additionalSwitchesHandler() }
                                     if(state.betweenTime) {
                                         if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
@@ -4560,10 +4566,10 @@ def switchesPerModeReverseActionHandler() {
                 if(data) {                
                     def theData = data.split("::")
                     oldStatus = theData[0]
-                    hueColor = theData[1].toInteger()
-                    saturation = theData[2].toInteger()
-                    level = theData[3].toInteger()
-                    cTemp = theData[4].toInteger()
+                    hueColor = theData[1]
+                    saturation = theData[2]
+                    level = theData[3]
+                    cTemp = theData[4]
                     cMode = theData[5]
                 } else {
                     if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Found NO data"
@@ -4575,9 +4581,9 @@ def switchesPerModeReverseActionHandler() {
                 if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Using setColor"
                 try {
                     if(cMode == "CT") {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
+                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor CT - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
                         if(oldStatus == "off" || trueReverse) {                            
-                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
+                            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor CT - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         } else {
@@ -4585,7 +4591,7 @@ def switchesPerModeReverseActionHandler() {
                             it.setColorTemperature(cTemp)
                         }
                     } else {
-                        def theValue = [hue: hueColor, saturation: saturation, level: level]
+                        def theValue = [hue: hueColor, saturation: saturation, level: level.toInteger()]
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
@@ -4764,39 +4770,43 @@ def dimmerOnActionHandler() {
     setLevelandColorHandler()
 }
 
-def dimmerOnReverseActionHandler() {
-    if(logEnable) log.debug "In dimmerOnReverseActionHandler (${state.version})"
-    if(setOnLC) {
-        setOnLC.each { it ->
-            currentONOFF = it.currentValue("switch")
-            if(logEnable) log.debug "In dimmerOnReverseActionHandler - ${it.displayName} - ${currentONOFF}"
-            if(logEnable) log.debug "In dimmerOnReverseActionHandler - oldMap: ${state.oldMap}"
-            if(currentONOFF == "on") {
-                name = (it.displayName).replace(" ","")
-                try {
-                    data = state.oldMap.get(name)
-                    if(data) {                
-                        def theData = data.split("::")
-                        oldStatus = theData[0]
-                        hueColor = theData[1]
-                        saturation = theData[2]
-                        level = theData[3]
-                        cTemp = theData[4]
-                        cMode = theData[5]
-                    } else {
-                        if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Found NO data"
-                    }
-                } catch(e) {
-                    log.error(getExceptionMessageWithLine(e))
-                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - Oops, no DATA - Turning Off (${it})"
-                    pauseExecution(actionDelay)
-                    it.off()
+def switchOnReverseActionHandler(data) {
+    if(logEnable) log.debug "In switchOnReverseActionHandler (${state.version}) - $data"
+    if(data == "aSwitch") { theDevices = setOnLC }
+    if(data == "aSwitchesColorChange") { theDevices = switchesToChange }
+    theDevices.each { it ->
+        currentONOFF = it.currentValue("switch")
+        if(logEnable) log.debug "In switchOnReverseActionHandler - ${it.displayName} - ${currentONOFF}"
+        if(logEnable) log.debug "In switchOnReverseActionHandler - oldMap: ${state.oldMap}"
+        if(currentONOFF == "on") {
+            name = (it.displayName).replace(" ","")
+            try {
+                data = state.oldMap.get(name)
+                if(logEnable) log.trace "In switchOnReverseActionHandler - data: ${data}"
+                if(data != "null" && data != null) {                
+                    def theData = data.split("::")
+                    oldStatus = theData[0]
+                    hueColor = theData[1]
+                    saturation = theData[2]
+                    level = theData[3]
+                    cTemp = theData[4]
+                    cMode = theData[5]
+                    theStuff = "good"
+                } else {
+                    if(logEnable) log.debug "In switchOnReverseActionHandler - Found NO data"
                 }
+            } catch(e) {
+                log.error(getExceptionMessageWithLine(e))
+                if(logEnable) log.debug "In switchOnReverseActionHandler - Oops, no DATA - Turning Off (${it})"
+                pauseExecution(actionDelay)
+                it.off()
+            }
+            if(theStuff == "good") {
                 if(it.hasCommand("setColor") && state.onColor != "No Change") {
                     if(cMode == "CT") {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColor CT - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
                         if(oldStatus == "off" || trueReverse) {                            
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                            if(logEnable) log.debug "In switchOnReverseActionHandler - setColor CT - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         } else {
@@ -4806,11 +4816,11 @@ def dimmerOnReverseActionHandler() {
                             if(level) it.setLevel(level.toInteger())
                         }
                     } else {
-                        if(level) level = level.toInteger()
-                        def theValue = [hue: hueColor, saturation: saturation, level: level]
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
+                        log.trace "In switchOnReverseActionHandler - setColor - level: $level"
+                        def theValue = [hue: hueColor, saturation: saturation, level: level.toInteger() ?: 99]
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
-                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                            if(logEnable) log.debug "In switchOnReverseActionHandler - setColor - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         } else {
@@ -4819,9 +4829,9 @@ def dimmerOnReverseActionHandler() {
                         }
                     }
                 } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
-                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
+                    if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
                     if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
                     } else {
@@ -4831,9 +4841,9 @@ def dimmerOnReverseActionHandler() {
                         it.setColorTemperature(cTemp.toInteger())
                     }
                 } else if(it.hasCommand("setLevel")) {
-                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
+                    if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
                     if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Turning light off (${it})"
                         pauseExecution(actionDelay)
                         it.off()
                     } else {
@@ -4843,8 +4853,12 @@ def dimmerOnReverseActionHandler() {
                 }
                 if(name && state.oldMap) state.oldMap.remove(name)
             } else {
-                if(logEnable) log.debug "In dimmerOnReverseActionHandler - ${it} was already off - Nothing to do"
+                if(logEnable) log.debug "In switchOnReverseActionHandler - ${it} - No Data - Stuff is BAD - Turning device OFF"
+                pauseExecution(actionDelay)
+                it.off()
             }
+        } else {
+            if(logEnable) log.debug "In switchOnReverseActionHandler - ${it} was already off - Nothing to do"
         }
     }
 }
@@ -5942,7 +5956,7 @@ def setLevelandColorHandler(newData) {
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
             pauseExecution(actionDelay)
             theDevice.setColor(value)
-        } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA" && state.onColor != "No Change") {
+        } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA" && state.onColor != "No Change" && state.onTemp) {
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
             pauseExecution(actionDelay)
             theDevice.setLevel(onLevel as Integer ?: 99)
@@ -5999,7 +6013,7 @@ def setLevelandColorHandler(newData) {
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - NEW VALUE - ${it.displayName} - setColor: ${value}"
                 pauseExecution(actionDelay)
                 it.setColor(value)
-            } else if(it.hasCommand('setColorTemperature') && state.onColor != "No Change") {
+            } else if(it.hasCommand('setColorTemperature') && state.onColor != "No Change" && state.onTemp) {
                 if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - NEW VALUE - ${it.displayName} - setColorTemp($state.onTemp)"
                 pauseExecution(actionDelay)
                 it.setLevel(onLevel as Integer ?: 99)
@@ -6114,6 +6128,7 @@ def setLevelandColorHandler(newData) {
             }
         }
     }
+    //log.debug "In setLevelandColorHandler - end - oldMap: ${state.oldMap}"
 }
 
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
@@ -7082,92 +7097,6 @@ def colorChangeHandler() {
     runIn(slpTime, "startTheProcess")
 }
 
-def colorChangeReverseHandler() {
-    if(logEnable) log.debug "In colorChangeReverseHandler (${state.version})"
-    if(switchesToChange) {
-        switchesToChange.each { it ->
-            currentONOFF = it.currentValue("switch")
-            if(logEnable) log.debug "In colorChangeReverseHandler - ${it.displayName} - ${currentONOFF}"
-            if(logEnable) log.debug "In colorChangeReverseHandler - oldMap: ${state.oldMap}"
-            if(currentONOFF == "on") {
-                name = (it.displayName).replace(" ","")
-                try {
-                    if(logEnable) log.debug "In colorChangeReverseHandler - Getting data for ${name}"
-                    data = state.oldMap.get(name)
-                    if(data) {                
-                        def theData = data.split("::")
-                        oldStatus = theData[0]
-                        hueColor = theData[1]
-                        saturation = theData[2]
-                        level = theData[3]
-                        cTemp = theData[4]
-                        cMode = theData[5]
-                    } else {
-                        if(logEnable) log.debug "In colorChangeReverseHandler - Found NO data"
-                    }
-                } catch(e) {
-                    log.error(getExceptionMessageWithLine(e))
-                    if(logEnable) log.debug "In colorChangeReverseHandler - Oops, no DATA - Turning Off (${it})"
-                    pauseExecution(actionDelay)
-                    it.off()
-                }
-                if(it.hasCommand("setColor") && state.onColor != "No Change") {
-                    if(cMode == "CT") {
-                        if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-setColorTemp) - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp.toInteger())
-                        pauseExecution(actionDelay)
-                        it.setLevel(level.toInteger())                          
-                        if(oldStatus == "off" || trueReverse) {                            
-                            if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-off) - Turning light off (${it})"
-                            pauseExecution(actionDelay)
-                            it.off()
-                        }
-                    } else {
-                        try {
-                            if(level) level = level.toInteger()
-                            def theValue = [hue: hueColor, saturation: saturation, level: level]
-                            if(logEnable) log.debug "In colorChangeReverseHandler - setColor (CT-setColor)- Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
-                            pauseExecution(actionDelay)
-                            it.setColor(theValue)
-                            if(oldStatus == "off" || trueReverse) {
-                                if(logEnable) log.debug "In colorChangeReverseHandler - setColor - Turning light off (${it})"
-                                pauseExecution(actionDelay)
-                                it.off()
-                            }
-                        } catch(e) {
-                            // moving on
-                        }
-                    }
-                } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
-                    if(logEnable) log.debug "In colorChangeReverseHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level.toInteger())
-                    pauseExecution(actionDelay)
-                    it.setColorTemperature(cTemp.toInteger())
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In colorChangeReverseHandler - setColorTemp - Turning light off (${it})"
-                        pauseExecution(actionDelay)
-                        it.off()
-                    }     
-                } else if(it.hasCommand("setLevel")) {
-                    if(logEnable) log.debug "In colorChangeReverseHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    pauseExecution(actionDelay)
-                    it.setLevel(level.toInteger())
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In colorChangeReverseHandler - setLevel - Turning light off (${it})"
-                        pauseExecution(actionDelay)
-                        it.off()
-                    }
-                }
-                if(name && state.oldMap) state.oldMap.remove(name)
-            } else {
-                if(logEnable) log.debug "In colorChangeReverseHandler - ${it} was already off - Nothing to do"
-            }
-        }
-    }
-}
-
 def useCustomColorsHandler() {
     input "useCustomColors", "bool", title: "Use Custom Colors", submitOnChange:true
     if(useCustomColors) {
@@ -7439,110 +7368,115 @@ def pushHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 85
     sendPushMessage.deviceNotification(theMessage) // library marker BPTWorld.bpt-normalStuff, line 89
 } // library marker BPTWorld.bpt-normalStuff, line 90
 
-// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 92
-def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 93
-    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 94
-    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 95
-} // library marker BPTWorld.bpt-normalStuff, line 96
+def useWebOSHandler(msg){ // library marker BPTWorld.bpt-normalStuff, line 92
+    if(logEnable) log.debug "In useWebOSHandler (${state.version}) - Sending to webOS - msg: ${msg}" // library marker BPTWorld.bpt-normalStuff, line 93
+    useWebOS.deviceNotification(msg) // library marker BPTWorld.bpt-normalStuff, line 94
+} // library marker BPTWorld.bpt-normalStuff, line 95
 
-def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 98
-    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 99
-    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 100
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 101
-        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 102
-            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 103
-            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 104
-        } // library marker BPTWorld.bpt-normalStuff, line 105
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 106
-    } // library marker BPTWorld.bpt-normalStuff, line 107
-} // library marker BPTWorld.bpt-normalStuff, line 108
+// ********** Normal Stuff ********** // library marker BPTWorld.bpt-normalStuff, line 97
+def logsOff() { // library marker BPTWorld.bpt-normalStuff, line 98
+    log.info "${app.label} - Debug logging auto disabled" // library marker BPTWorld.bpt-normalStuff, line 99
+    app.updateSetting("logEnable",[value:"false",type:"bool"]) // library marker BPTWorld.bpt-normalStuff, line 100
+} // library marker BPTWorld.bpt-normalStuff, line 101
 
-def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 110
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 111
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 112
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 113
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 114
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 115
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 116
-    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 117
-} // library marker BPTWorld.bpt-normalStuff, line 118
+def checkEnableHandler() { // library marker BPTWorld.bpt-normalStuff, line 103
+    state.eSwitch = false // library marker BPTWorld.bpt-normalStuff, line 104
+    if(disableSwitch) {  // library marker BPTWorld.bpt-normalStuff, line 105
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}" // library marker BPTWorld.bpt-normalStuff, line 106
+        disableSwitch.each { it -> // library marker BPTWorld.bpt-normalStuff, line 107
+            theStatus = it.currentValue("switch") // library marker BPTWorld.bpt-normalStuff, line 108
+            if(theStatus == "on") { state.eSwitch = true } // library marker BPTWorld.bpt-normalStuff, line 109
+        } // library marker BPTWorld.bpt-normalStuff, line 110
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}" // library marker BPTWorld.bpt-normalStuff, line 111
+    } // library marker BPTWorld.bpt-normalStuff, line 112
+} // library marker BPTWorld.bpt-normalStuff, line 113
 
-def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 120
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 121
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 122
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 123
-} // library marker BPTWorld.bpt-normalStuff, line 124
+def getImage(type) {					// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 115
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/" // library marker BPTWorld.bpt-normalStuff, line 116
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>" // library marker BPTWorld.bpt-normalStuff, line 117
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 118
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 119
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 120
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>" // library marker BPTWorld.bpt-normalStuff, line 121
+    if(type == "logo") return "${loc}logo.png height=60>" // library marker BPTWorld.bpt-normalStuff, line 122
+} // library marker BPTWorld.bpt-normalStuff, line 123
 
-def display(data) { // library marker BPTWorld.bpt-normalStuff, line 126
-    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 127
-    setVersion() // library marker BPTWorld.bpt-normalStuff, line 128
-    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 129
-    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 130
-        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 131
-            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 132
-        } else { // library marker BPTWorld.bpt-normalStuff, line 133
-            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 134
-        } // library marker BPTWorld.bpt-normalStuff, line 135
-    } // library marker BPTWorld.bpt-normalStuff, line 136
-    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 137
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 138
-        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 139
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 140
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 141
-    } // library marker BPTWorld.bpt-normalStuff, line 142
-} // library marker BPTWorld.bpt-normalStuff, line 143
+def getFormat(type, myText="") {			// Modified from @Stephack Code // library marker BPTWorld.bpt-normalStuff, line 125
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>" // library marker BPTWorld.bpt-normalStuff, line 126
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>" // library marker BPTWorld.bpt-normalStuff, line 127
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>" // library marker BPTWorld.bpt-normalStuff, line 128
+} // library marker BPTWorld.bpt-normalStuff, line 129
 
-def display2() { // library marker BPTWorld.bpt-normalStuff, line 145
-    section() { // library marker BPTWorld.bpt-normalStuff, line 146
-        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 147
-        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 148
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 149
-        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 150
-    } // library marker BPTWorld.bpt-normalStuff, line 151
-} // library marker BPTWorld.bpt-normalStuff, line 152
+def display(data) { // library marker BPTWorld.bpt-normalStuff, line 131
+    if(data == null) data = "" // library marker BPTWorld.bpt-normalStuff, line 132
+    setVersion() // library marker BPTWorld.bpt-normalStuff, line 133
+    getHeaderAndFooter() // library marker BPTWorld.bpt-normalStuff, line 134
+    if(app.label) { // library marker BPTWorld.bpt-normalStuff, line 135
+        if(app.label.contains("(Paused)")) { // library marker BPTWorld.bpt-normalStuff, line 136
+            theName = app.label - " <span style='color:red'>(Paused)</span>" // library marker BPTWorld.bpt-normalStuff, line 137
+        } else { // library marker BPTWorld.bpt-normalStuff, line 138
+            theName = app.label // library marker BPTWorld.bpt-normalStuff, line 139
+        } // library marker BPTWorld.bpt-normalStuff, line 140
+    } // library marker BPTWorld.bpt-normalStuff, line 141
+    if(theName == null || theName == "") theName = "New Child App" // library marker BPTWorld.bpt-normalStuff, line 142
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) { // library marker BPTWorld.bpt-normalStuff, line 143
+        paragraph "${state.headerMessage}" // library marker BPTWorld.bpt-normalStuff, line 144
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 145
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true // library marker BPTWorld.bpt-normalStuff, line 146
+    } // library marker BPTWorld.bpt-normalStuff, line 147
+} // library marker BPTWorld.bpt-normalStuff, line 148
 
-def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 154
-    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 155
-    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 156
-    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 157
-        def params = [ // library marker BPTWorld.bpt-normalStuff, line 158
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 159
-            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 160
-            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 161
-            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 162
-        ] // library marker BPTWorld.bpt-normalStuff, line 163
-        try { // library marker BPTWorld.bpt-normalStuff, line 164
-            def result = null // library marker BPTWorld.bpt-normalStuff, line 165
-            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 166
-                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 167
-                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 168
-            } // library marker BPTWorld.bpt-normalStuff, line 169
-        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 170
-    } // library marker BPTWorld.bpt-normalStuff, line 171
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 172
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 173
-} // library marker BPTWorld.bpt-normalStuff, line 174
+def display2() { // library marker BPTWorld.bpt-normalStuff, line 150
+    section() { // library marker BPTWorld.bpt-normalStuff, line 151
+        if(state.appType == "parent") { href "removePage", title:"${getImage("optionsRed")} <b>Remove App and all child apps</b>", description:"" } // library marker BPTWorld.bpt-normalStuff, line 152
+        paragraph getFormat("line") // library marker BPTWorld.bpt-normalStuff, line 153
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>" // library marker BPTWorld.bpt-normalStuff, line 154
+        paragraph "${state.footerMessage}" // library marker BPTWorld.bpt-normalStuff, line 155
+    } // library marker BPTWorld.bpt-normalStuff, line 156
+} // library marker BPTWorld.bpt-normalStuff, line 157
 
-def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 176
-    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 177
-        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 178
-    } else { // library marker BPTWorld.bpt-normalStuff, line 179
-        try { // library marker BPTWorld.bpt-normalStuff, line 180
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 181
-            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 182
-        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 183
-            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 184
-        } // library marker BPTWorld.bpt-normalStuff, line 185
-    } // library marker BPTWorld.bpt-normalStuff, line 186
-    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 187
-    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 188
-        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 189
-        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 190
-        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 191
-        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 192
-    } // library marker BPTWorld.bpt-normalStuff, line 193
-    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 194
-} // library marker BPTWorld.bpt-normalStuff, line 195
+def getHeaderAndFooter() { // library marker BPTWorld.bpt-normalStuff, line 159
+    timeSinceNewHeaders() // library marker BPTWorld.bpt-normalStuff, line 160
+    if(state.checkNow == null) state.checkNow = true // library marker BPTWorld.bpt-normalStuff, line 161
+    if(state.totalHours > 6 || state.checkNow) { // library marker BPTWorld.bpt-normalStuff, line 162
+        def params = [ // library marker BPTWorld.bpt-normalStuff, line 163
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json", // library marker BPTWorld.bpt-normalStuff, line 164
+            requestContentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 165
+            contentType: "application/json", // library marker BPTWorld.bpt-normalStuff, line 166
+            timeout: 10 // library marker BPTWorld.bpt-normalStuff, line 167
+        ] // library marker BPTWorld.bpt-normalStuff, line 168
+        try { // library marker BPTWorld.bpt-normalStuff, line 169
+            def result = null // library marker BPTWorld.bpt-normalStuff, line 170
+            httpGet(params) { resp -> // library marker BPTWorld.bpt-normalStuff, line 171
+                state.headerMessage = resp.data.headerMessage // library marker BPTWorld.bpt-normalStuff, line 172
+                state.footerMessage = resp.data.footerMessage // library marker BPTWorld.bpt-normalStuff, line 173
+            } // library marker BPTWorld.bpt-normalStuff, line 174
+        } catch (e) { } // library marker BPTWorld.bpt-normalStuff, line 175
+    } // library marker BPTWorld.bpt-normalStuff, line 176
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>" // library marker BPTWorld.bpt-normalStuff, line 177
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>" // library marker BPTWorld.bpt-normalStuff, line 178
+} // library marker BPTWorld.bpt-normalStuff, line 179
+
+def timeSinceNewHeaders() {  // library marker BPTWorld.bpt-normalStuff, line 181
+    if(state.previous == null) {  // library marker BPTWorld.bpt-normalStuff, line 182
+        prev = new Date() // library marker BPTWorld.bpt-normalStuff, line 183
+    } else { // library marker BPTWorld.bpt-normalStuff, line 184
+        try { // library marker BPTWorld.bpt-normalStuff, line 185
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ") // library marker BPTWorld.bpt-normalStuff, line 186
+            prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000")) // library marker BPTWorld.bpt-normalStuff, line 187
+        } catch(e) { // library marker BPTWorld.bpt-normalStuff, line 188
+            prev = state.previous // library marker BPTWorld.bpt-normalStuff, line 189
+        } // library marker BPTWorld.bpt-normalStuff, line 190
+    } // library marker BPTWorld.bpt-normalStuff, line 191
+    def now = new Date() // library marker BPTWorld.bpt-normalStuff, line 192
+    use(TimeCategory) { // library marker BPTWorld.bpt-normalStuff, line 193
+        state.dur = now - prev // library marker BPTWorld.bpt-normalStuff, line 194
+        state.days = state.dur.days // library marker BPTWorld.bpt-normalStuff, line 195
+        state.hours = state.dur.hours // library marker BPTWorld.bpt-normalStuff, line 196
+        state.totalHours = (state.days * 24) + state.hours // library marker BPTWorld.bpt-normalStuff, line 197
+    } // library marker BPTWorld.bpt-normalStuff, line 198
+    state.previous = now // library marker BPTWorld.bpt-normalStuff, line 199
+} // library marker BPTWorld.bpt-normalStuff, line 200
 
 // ~~~~~ end include (2) BPTWorld.bpt-normalStuff ~~~~~
 
