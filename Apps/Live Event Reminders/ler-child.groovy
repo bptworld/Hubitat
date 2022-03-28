@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 03/27/22 - Fixed schedules overwriting each other. Added 'repeat in x days'.
  *  1.0.0 - 03/27/22 - Initial release.
  *
  */
@@ -45,7 +46,7 @@
 
 def setVersion(){
     state.name = "Life Event Reminders Child"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -84,13 +85,12 @@ def pageConfig() {
             input "theTime", "time", title: "Event Time", width:6, submitOnChange:true
             input "theText", "text", title: "Event Description", submitOnChange:true
 
-            input "msgRepeat", "bool", title: "Repeat Notifications", description: "Repeat", submitOnChange:true
+            input "msgRepeat", "bool", title: "Repeat Notifications (on day of trigger)", description: "Repeat", submitOnChange:true
             if(msgRepeat) {
                 input "msgRepeatMinutes", "number", title: "Repeat every XX minutes", submitOnChange:true, width:6
                 input "msgRepeatMax", "number", title: "Max number of repeats", submitOnChange:true, width:6
-
                 if(msgRepeatMinutes && msgRepeatMax) {
-                    paragraph "<small>Message will repeat every ${msgRepeatMinutes} minutes until one of the contacts/switches changes state <b>OR</b> the Max number of repeats is reached (${msgRepeatMax})</small>"
+                    paragraph "<small>Message will repeat every ${msgRepeatMinutes} minutes until the switch is turned off <b>OR</b> the Max number of repeats is reached (${msgRepeatMax})</small>"
                     repeatTimeSeconds = ((msgRepeatMinutes * 60) * msgRepeatMax)
                     int inputNow=repeatTimeSeconds
                     int nDayNow = inputNow / 86400
@@ -104,6 +104,8 @@ def pageConfig() {
                 app.removeSetting("msgRepeatMinutes")
                 app.removeSetting("msgRepeatMax")
             }
+            
+            input "repeatInDays", "number", title: "Repeat Notification Every X days", required:false, submitOnChange:true
 
             paragraph "<small>* Remember to click outside any field before clicking on a button.</small>"
             input "bCancel", "button", title: "Cancel", width: 3
@@ -116,14 +118,17 @@ def pageConfig() {
                 theMap = "No devices are setup"
             } else {
                 if(logEnable) log.info "Making new calendarMap display"
-                theMap = "<table width=100%><tr><td><b>Title</b><td><b>Date</b><td><b>Time</b><td><b>Description</b><td><b>Repeat<br>Every</b><td><b>Repeat<br>Max</b>"
+                theMap = "<table width=100%><tr><td><b>Title</b><td><b>Date</b><td><b>Time</b><td><b>Description</b><td><b>Repeat<br>Every</b><td><b>Repeat<br>Max</b><td><b>Days</b>"
                 sortedMap = state.calendarMap.sort { a, b -> a.value <=> b.value }
                 sortedMap.each { cm ->
                     theTitle = cm.key
-                    (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax) = cm.value.split(";")
+                    try {
+                        (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+                    } catch(e) {}
                     if(theRepeatMinutes == "null") theRepeatMinutes = "-"
                     if(theRepeatMax == "null") theRepeatMax = "-"
-                    theMap += "<tr><td>$theTitle<td>$theDate<td>$theTime2<td>$theDesc<td>$theRepeatMinutes<td>$theRepeatMax"
+                    if(theDays == "null") theDays = "-"
+                    theMap += "<tr><td>$theTitle<td>$theDate<td>$theTime2<td>$theDesc<td>$theRepeatMinutes<td>$theRepeatMax<td>$theDays"
                 }
                 theMap += "</table>"
             }
@@ -254,7 +259,9 @@ def startTheProcess(data) {
                     it.on()
                 }
             }
-            (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax) = cm.value.split(";")
+            try {
+                (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+            } catch(e) {}
             if(useSpeech || sendPushMessage) messageHandler(theTitle, theDesc)
         }
     }
@@ -287,8 +294,9 @@ def startTheProcess(data) {
             state.numOfRepeats = 1
         }
     } else {
-        if(logEnable) log.debug "In startTheProcess - No repeat"
+        if(logEnable) log.debug "In startTheProcess - No repeats today"
     }
+    if(repeatInDays) { futureHandler(theTitle, theDate, theTime1, theDays) }
     if(logEnable) log.debug "******************** End startTheProcess (${state.version}) ********************"
 }
 
@@ -310,14 +318,31 @@ def scheduleHandler() {
 	if(logEnable) log.debug "In scheduleHandler (${state.version})"
     state.calendarMap.each { cm ->
         theTitle = cm.key
-        (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax) = cm.value.split(";")
+        try {
+            (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+        } catch(e) {}
         (theYear, theMonth, theDay) = theDate.split("-")
         (theHour, theMin) = theTime1.split(":")
 
         theSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
         if(logEnable) log.debug "In scheduleHandler - Setting schedule for ${theTitle}: 0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
-        schedule(theSchedule, startTheProcess, [data: theTitle])
+        schedule(theSchedule, startTheProcess, [data: theTitle, overwrite:false])
     }
+}
+
+def futureHandler(theTitle, theDate, theTime1, theDays) {
+    if(logEnable) log.debug "In futureHandler (${state.version}) - theTitle: ${theTitle} - theDate: ${theDate} - theTime1: ${theTime1} - theDays: ${theDays}"
+    hmd = theDays.toInteger()
+	Date futureDate = new Date().plus(hmd)
+    if(logEnable) log.debug "In futureHandler - theDays: ${theDays} - futureDate: ${futureDate}"
+    
+    hmdMonth = futureDate.format("MM")
+    hmdDay = futureDate.format("dd")
+    (hmdHour, hmdMin) = theTime1.split(":")
+
+    hmdSchedule = "0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
+	if(logEnable) log.debug "In futureHandler - schedule: 0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
+    schedule(hmdSchedule, startTheProcess, [data: theTitle, overwrite:false])
 }
 
 def appButtonHandler(buttonPressed) {
@@ -335,8 +360,8 @@ def appButtonHandler(buttonPressed) {
         Date newDate = Date.parse("yyyy-MM-dd'T'HH:mm:ss", theTime)
         String timePart1 = newDate.format("HH:mm")      // 24 h
         String timePart2 = newDate.format("hh:mm a")    // 12 h
-        if(logEnable) log.debug "In appButtonHandler - ${theDate} - ${timePart1} - ${timePart2} - ${theText} - ${msgRepeatMinutes} - ${msgRepeatMax}"   
-        state.calendarMap.put(theTitle,"${theDate};${timePart1};${timePart2};${theText};${msgRepeatMinutes};${msgRepeatMax}")
+        if(logEnable) log.debug "In appButtonHandler - ${theDate} - ${timePart1} - ${timePart2} - ${theText} - ${msgRepeatMinutes} - ${msgRepeatMax} - ${repeatInDays}"   
+        state.calendarMap.put(theTitle,"${theDate};${timePart1};${timePart2};${theText};${msgRepeatMinutes};${msgRepeatMax};${repeatInDays}")
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
         
     } else if(buttonPressed == "bCancel") {
