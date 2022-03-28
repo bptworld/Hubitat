@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 03/27/22 - Added 'repeat yearly'
  *  1.0.1 - 03/27/22 - Fixed schedules overwriting each other. Added 'repeat in x days'.
  *  1.0.0 - 03/27/22 - Initial release.
  *
@@ -46,7 +47,7 @@
 
 def setVersion(){
     state.name = "Life Event Reminders Child"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -105,7 +106,8 @@ def pageConfig() {
                 app.removeSetting("msgRepeatMax")
             }
             
-            input "repeatInDays", "number", title: "Repeat Notification Every X days", required:false, submitOnChange:true
+            input "repeatYearly", "bool", title: "Repeat Yearly from start date", defaultValue:false, submitOnChange:true
+            input "repeatInDays", "text", title: "Repeat Every X days from start date", required:false, submitOnChange:true
 
             paragraph "<small>* Remember to click outside any field before clicking on a button.</small>"
             input "bCancel", "button", title: "Cancel", width: 3
@@ -117,18 +119,19 @@ def pageConfig() {
             if(state.calendarMap == null) {
                 theMap = "No devices are setup"
             } else {
-                if(logEnable) log.info "Making new calendarMap display"
-                theMap = "<table width=100%><tr><td><b>Title</b><td><b>Date</b><td><b>Time</b><td><b>Description</b><td><b>Repeat<br>Every</b><td><b>Repeat<br>Max</b><td><b>Days</b>"
+                if(logEnable) log.info "Making new Map display"
+                theMap = "<table width=100%><tr><td><b>Title</b><td><b>Date</b><td><b>Time</b><td><b>Description</b><td><b>Repeat<br>Every</b><td><b>Repeat<br>Max</b><td><b>Days</b><td><b>Year</b>"
                 sortedMap = state.calendarMap.sort { a, b -> a.value <=> b.value }
                 sortedMap.each { cm ->
                     theTitle = cm.key
                     try {
-                        (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+                        (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays, yearly) = cm.value.split(";")
                     } catch(e) {}
-                    if(theRepeatMinutes == "null") theRepeatMinutes = "-"
-                    if(theRepeatMax == "null") theRepeatMax = "-"
-                    if(theDays == "null") theDays = "-"
-                    theMap += "<tr><td>$theTitle<td>$theDate<td>$theTime2<td>$theDesc<td>$theRepeatMinutes<td>$theRepeatMax<td>$theDays"
+                    if(theRepeatMinutes == "null" || theRepeatMinutes == null) theRepeatMinutes = "-"
+                    if(theRepeatMax == "null" || theRepeatMax == null) theRepeatMax = "-"
+                    if(theDays == "null" || theDays == null) theDays = "-"
+                    if(yearly == "null" || yearly == null) yearly = "F"
+                    theMap += "<tr><td>$theTitle<td>$theDate<td>$theTime2<td>$theDesc<td>$theRepeatMinutes<td>$theRepeatMax<td>$theDays<td>$yearly"
                 }
                 theMap += "</table>"
             }
@@ -260,7 +263,7 @@ def startTheProcess(data) {
                 }
             }
             try {
-                (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+                (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays, yearly) = cm.value.split(";")
             } catch(e) {}
             if(useSpeech || sendPushMessage) messageHandler(theTitle, theDesc)
         }
@@ -296,7 +299,7 @@ def startTheProcess(data) {
     } else {
         if(logEnable) log.debug "In startTheProcess - No repeats today"
     }
-    if(repeatInDays) { futureHandler(theTitle, theDate, theTime1, theDays) }
+    if(theDays != "null") { futureHandler(theTitle, theDate, theTime1, theDays) }
     if(logEnable) log.debug "******************** End startTheProcess (${state.version}) ********************"
 }
 
@@ -319,13 +322,18 @@ def scheduleHandler() {
     state.calendarMap.each { cm ->
         theTitle = cm.key
         try {
-            (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays) = cm.value.split(";")
+            (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays, yearly) = cm.value.split(";")
         } catch(e) {}
         (theYear, theMonth, theDay) = theDate.split("-")
         (theHour, theMin) = theTime1.split(":")
 
-        theSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
-        if(logEnable) log.debug "In scheduleHandler - Setting schedule for ${theTitle}: 0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
+        if(yearly == "F") {
+            theSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? ${theYear}"
+            if(logEnable) log.debug "In scheduleHandler - Setting schedule for ${theTitle}: 0 ${theMin} ${theHour} ${theDay} ${theMonth} ? ${theYear}"
+        } else {
+            theSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
+            if(logEnable) log.debug "In scheduleHandler - Setting schedule for ${theTitle}: 0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
+        }
         schedule(theSchedule, startTheProcess, [data: theTitle, overwrite:false])
     }
 }
@@ -338,10 +346,11 @@ def futureHandler(theTitle, theDate, theTime1, theDays) {
     
     hmdMonth = futureDate.format("MM")
     hmdDay = futureDate.format("dd")
+    hmdYear = futureDate.format("yyyy")
     (hmdHour, hmdMin) = theTime1.split(":")
 
-    hmdSchedule = "0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
-	if(logEnable) log.debug "In futureHandler - schedule: 0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
+    hmdSchedule = "0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? ${hmdYear}"
+	if(logEnable) log.debug "In futureHandler - schedule: 0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? ${hmdYear}"
     schedule(hmdSchedule, startTheProcess, [data: theTitle, overwrite:false])
 }
 
@@ -360,8 +369,11 @@ def appButtonHandler(buttonPressed) {
         Date newDate = Date.parse("yyyy-MM-dd'T'HH:mm:ss", theTime)
         String timePart1 = newDate.format("HH:mm")      // 24 h
         String timePart2 = newDate.format("hh:mm a")    // 12 h
-        if(logEnable) log.debug "In appButtonHandler - ${theDate} - ${timePart1} - ${timePart2} - ${theText} - ${msgRepeatMinutes} - ${msgRepeatMax} - ${repeatInDays}"   
-        state.calendarMap.put(theTitle,"${theDate};${timePart1};${timePart2};${theText};${msgRepeatMinutes};${msgRepeatMax};${repeatInDays}")
+        if(repeatYearly == null) repeatYearly = "F"
+        if(repeatYearly == false) repeatYearly = "F"
+        if(repeatYearly == true) repeatYearly = "T"
+        if(logEnable) log.debug "In appButtonHandler - ${theDate} - ${timePart1} - ${timePart2} - ${theText} - ${msgRepeatMinutes} - ${msgRepeatMax} - ${repeatInDays} - ${repeatYearly}"   
+        state.calendarMap.put(theTitle,"${theDate};${timePart1};${timePart2};${theText};${msgRepeatMinutes};${msgRepeatMax};${repeatInDays};${repeatYearly}")
         if(logEnable) log.debug "In appButtonHandler - Finished Working"
         
     } else if(buttonPressed == "bCancel") {
