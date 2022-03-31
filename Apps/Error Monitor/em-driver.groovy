@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release
  *
  */
@@ -53,6 +54,7 @@ metadata {
         command "clearAllData"
         command "appStatus"
         command "clearLogData"
+        command "resetCount"
         
         attribute "switch", "string"
         attribute "status", "string"
@@ -106,6 +108,11 @@ def closeConnection() {
     if(logEnable) log.warn "Error Monitor Driver - Closing webSocket"
 }
 
+def resetCount() {
+    state.sameCount = 1
+    if(logEnable) log.debug "Resetting the Same Count to 1"
+}
+
 def webSocketStatus(String socketStatus) {
     if(logEnable) log.debug "In webSocketStatus - socketStatus: ${socketStatus}"
 	if(socketStatus.startsWith("status: open")) {
@@ -142,7 +149,7 @@ def parse(String description) {
         // This is what the incoming data looks like
         //{"name":"Error Monitor","msg":"Error Monitor Driver - Connected","id":365,"time":"2019-11-24 10:05:07.518","type":"dev","level":"warn"}
         // name, msg, id, time, type, level 
-        
+        if(state.sameCount == null) state.sameCount = 1
         def message =  new JsonSlurper().parseText(theData)                      
         theLevel = message.level.toLowerCase()
         if(theLevel == "error") {
@@ -151,6 +158,16 @@ def parse(String description) {
             if(state.lastMsg == null) state.lastMsg = "-"
             if(message.msg == state.lastMsg) {
                 if(logEnable) log.info "New message is the same as last message, so skipping!"
+                if(state.sameCount >= 11) {
+                    log.warn "************************************************************"
+                    log.warn "Error Monitor is CLOSING its connection!"
+                    log.warn "Please fix the error, then click the 'resetCount' in the data device before turning the connection back on."
+                    log.warn "************************************************************"
+                    closeConnection()
+                    app?.updateSetting("closeConnection",[value:"true",type:"bool"])
+                } else {
+                    state.sameCount += 1
+                }
             } else {
                 device.on()
                 state.lastMsg = message.msg
