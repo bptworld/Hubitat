@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release.
  *
  */
@@ -45,7 +46,7 @@
 
 def setVersion(){
     state.name = "Error Monitor"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -158,7 +159,6 @@ def installed() {
 
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
-    sendToDriver()
 	unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, "logsOff", [overwrite:false])
@@ -182,7 +182,6 @@ def initialize() {
         }
     }
 }
-
 
 def theNotifyStuff(evt) {
     checkEnableHandler()
