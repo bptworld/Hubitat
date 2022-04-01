@@ -1,8 +1,8 @@
 /**
- *  ****************  Life Event Reminders Driver  ****************
+ *  ****************  Life Event Calendar Driver  ****************
  *
  *  Design Usage:
- *  This driver stores the info for Life Event Reminders app.
+ *  This driver stores the info for Life Event Calendar app.
  *
  *  Copyright 2022 Bryan Turcotte (@bptworld)
  *  
@@ -44,7 +44,7 @@
  */
 
 metadata {
-	definition (name: "Life Event Reminders Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Life Event Calendar Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
    		capability "Actuator"
         capability "Switch"
         
@@ -56,7 +56,7 @@ metadata {
     }
     preferences() {    	
         section(){
-            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Life Event Reminders Driver</b>", description: ""
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Life Event Calendar Driver</b>", description: ""
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
             
         }
@@ -64,17 +64,11 @@ metadata {
 }
 
 def installed() {
-	if(logEnable) log.debug "Installing and configuring Life Events Reminders Driver"
-    comingSoon()
+	if(logEnable) log.debug "Installing and configuring Life Events Calendar Driver"
 }
 
 def updated() {	
-    comingSoon()
-}
-
-def comingSoon() {
-    sendEvent(name: "nextEvent", value: "Coming Soon", isStateChange: true)
-    sendEvent(name: "nextThree", value: "Coming Soon", isStateChange: true)
+   
 }
 
 def on() {
