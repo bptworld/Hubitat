@@ -1,5 +1,5 @@
 /**
- *  **************** Life Event Reminders Parent ****************
+ *  **************** Life Event Calendar Parent ****************
  *
  *  Design Usage:
  *  Never miss an important Life Event again! Schedule reminders easily and locally.
@@ -38,12 +38,12 @@
  */
 
 def setVersion(){
-    state.name = "Life Event Reminders"
+    state.name = "Life Event Calendar"
 	state.version = "1.0.0"
 }
 
 definition(
-    name:"Life Event Reminders",
+    name:"Life Event Calendar",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Never miss an important Life Event again! Schedule reminders easily and locally.",
@@ -84,7 +84,7 @@ def mainPage() {
 				paragraph "Never miss an important Life Event again! Schedule reminders easily and locally."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Life Event Reminders Child", namespace: "BPTWorld", title: "<b>Add a new 'Life Event Reminders' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Life Event Calendar Child", namespace: "BPTWorld", title: "<b>Add a new 'Life Event Calendar' child</b>", multiple: true)
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
