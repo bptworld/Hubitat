@@ -1,5 +1,5 @@
 /**
- *  **************** Life Event Reminders App  ****************
+ *  **************** Life Event Calendar App  ****************
  *
  *  Design Usage:
  *  Never miss an important Life Event again! Schedule reminders easily and locally.
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 03/31/22 - Added optional 'delay' between commands. Now displays the Next Event and the Next 3 Events in the Data Device.
  *  1.0.2 - 03/27/22 - Added 'repeat yearly'
  *  1.0.1 - 03/27/22 - Fixed schedules overwriting each other. Added 'repeat in x days'.
  *  1.0.0 - 03/27/22 - Initial release.
@@ -46,17 +47,17 @@
 
 
 def setVersion(){
-    state.name = "Life Event Reminders Child"
-	state.version = "1.0.2"
+    state.name = "Life Event Calendar Child"
+	state.version = "1.0.3"
 }
 
 definition(
-    name: "Life Event Reminders Child",
+    name: "Life Event Calendar Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Never miss an important Life Event again! Schedule reminders easily and locally.",
     category: "Convenience",
-	parent: "BPTWorld:Life Event Reminders",
+	parent: "BPTWorld:Life Event Calendar",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -77,7 +78,7 @@ def pageConfig() {
 		}
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {
-            createDeviceSection("Life Event Reminders Driver")
+            createDeviceSection("Life Event Calendar Driver")
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Add to Calendar")) {
@@ -147,6 +148,12 @@ def pageConfig() {
             }
             input "theSwitches", "capability.switch", title: "Additional Switches to Turn On", required:false, multiple:true, submitOnChange:true
             paragraph "<small>* The switches selected here will automatically turn on with the Event trigger and then turn off when the Event has finished.</small>"
+        }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+            paragraph "Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
+            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:actionDelayValue, required:false, submitOnChange:true
+            input "updateTime", "time", title: "App has to check the calendar each morning, choose the Time to check", required:true, submitOnChange:true
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -247,7 +254,13 @@ def initialize() {
     } else {
         state.oldSwitchValue = null
         state.numOfRepeats = 1
-        scheduleHandler()        
+        dateTime = updateTime.split("T")
+        (updateHour, updateMin) = dateTime[1].split(":")
+        theSchedule = "0 ${updateMin} ${updateHour} * * ? *"
+        schedule(theSchedule, nextHandler)
+        
+        scheduleHandler()
+        nextHandler()
     }
 }
 
@@ -259,6 +272,7 @@ def startTheProcess(data) {
         if(theTitle == data) {
             if(theSwitches) {
                 theSwitches.each { it ->
+                    pauseExecution(actionDelay)
                     it.on()
                 }
             }
@@ -274,7 +288,10 @@ def startTheProcess(data) {
         repeat = false
         if(state.numOfRepeats == null) state.numOfRepeats = 1
         if(state.numOfRepeats < msgRepeatMax) {
-            if(state.numOfRepeats == 1) dataDevice.on()
+            if(state.numOfRepeats == 1) {
+                pauseExecution(actionDelay)
+                dataDevice.on()
+            }
             repeat = dataDevice.currentValue("switch")
             if(repeat == "on") {
                 if(logEnable) log.debug "In startTheProcess - repeat is ${repeat}"
@@ -287,9 +304,11 @@ def startTheProcess(data) {
                 state.numOfRepeats = 1
             }
         } else {
+            pauseExecution(actionDelay)
             dataDevice.off()
             if(theSwitches) {
                 theSwitches.each { it ->
+                    pauseExecution(actionDelay)
                     it.off()
                 }
             }
@@ -315,6 +334,32 @@ def messageHandler(theTitle, theDesc) {
     if(logEnable) log.debug "In messageHandler - message: ${state.message}"
     if(useSpeech) letsTalk(state.message)
     if(sendPushMessage) pushHandler(state.message)
+}
+
+def nextHandler() {
+    if(logEnable) log.debug "In nextHandler (${state.version})"
+    x = 1
+    tDate = new Date()
+    sortedMap = state.calendarMap.sort { a, b -> a.value <=> b.value }
+    sortedMap.each { cm ->
+        theTitle = cm.key
+        try {
+            (theDate, theTime1, theTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays, yearly) = cm.value.split(";")
+        } catch(e) {}
+        (tYear, tMonth, tDay) = theDate.split("-")
+        Date mDate = new Date("${tMonth}/${tDay}/${tYear}")
+        if(mDate.after(tDate)) {
+            if(x == 1) {
+                nextEvent = "$theDate $theTime2 - $theDesc"
+                nextThree = "$theDate $theTime2 - $theDesc<br>"
+                dataDevice.sendEvent(name: "nextEvent", value: nextEvent, isStateChange: true)
+            } else if(x <=3) {
+                nextThree += "$theDate $theTime2 - $theDesc<br>"
+                dataDevice.sendEvent(name: "nextThree", value: nextThree, isStateChange: true)
+            }
+            x += 1
+        }
+    }
 }
 
 def scheduleHandler() {
