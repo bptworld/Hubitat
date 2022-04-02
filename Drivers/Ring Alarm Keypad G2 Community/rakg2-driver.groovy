@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.1.8 - 04/02/22 - Added lastCodeTime
     1.1.7 - 03/21/22 - Fine tuning
     1.1.6 - 03/21/22 - Alarm has to be disarmed before changing to a different alarm type
     1.1.5 - 03/20/22 - Adjustments to Siren Volume
@@ -12,29 +13,15 @@
     1.1.2 - 03/11/22 - 3rd times a charm
     1.1.1 - 03/10/22 - Attempt to fix loop
     1.1.0 - 03/10/22 - Fixed device page buttons, now sets HSM status correctly
-    1.0.9 - 02/04/22 - Added Button Push/Hold capabilities @dkilgore90
-    1.0.8 - 01/18/22 - Added Motion detection (keypad firmware 1.18+)
-    1.0.7 - 01/09/22 - Fixed Chime Tone Volume
-    1.0.6 - 01/02/22 - Pull request by @dkilgore90 - Added more options!
-    1.0.5 - 12/11/21 - Invalid Code Sound now available as a playTone option
-    1.0.4 - 12/10/21 - Added Keypad Tones! Thanks to @arlogilbert for help with the value:hexcode
-    1.0.3 - 12/07/21 - Attempt to stop keypad from saying disarmed when it is already disarmed
-          - TONS of little tweaks and fixes. 
-          - Seperate delays for Home and Away now work.
-    1.0.2 - 11/12/21 - Fixed armAway not respecting the Disarm command
-    1.0.1 - 11/11/21 - Added toggle for Disabling Proximity Sensor
-    1.0.0 - 11/11/21 - Tracking the 3 emergency buttons
-             - Tracking any code entered followed by the 'check mark' button.
-             - Added option to set home/away with a single button push (No code needed)
-             - Fixed error when arming home from keypad
-             - Fixed error when clicking Config
+    ---
+    1.0.0 - 11/11/21 - Initial community release
 */
 
 import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.7"
+    return "1.1.8"
 }
 
 metadata {
@@ -58,7 +45,7 @@ metadata {
         command "setPartialFunction"
         command "resetKeypad"
         command "playTone", [[name: "Play Tone", type: "STRING", description: "Tone_1, Tone_2, etc."]]
-        command "volAnnouncement", [[name:"Announcement Volume", type:"NUMBER", description: "Volume level (1-10)"]]
+        command "volAnnouncement", [[name:"Announcement Volume (Gen2)", type:"NUMBER", description: "Volume level (1-10)"]]
         command "volKeytone", [[name:"Keytone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         //command "keyBacklightBrightness", [[name:"Key Backlight Brightness", type:"NUMBER", description: "Level (1-100)"]]
@@ -68,11 +55,13 @@ metadata {
         attribute "armHomeDelay", "NUMBER"
         //attribute "keyBacklightBrightness", "NUMBER"
         attribute "lastCodeName", "STRING"
+        attribute "lastCodeTime", "STRING"
         attribute "motion", "STRING"
         attribute "volAnnouncement", "NUMBER"
         attribute "volKeytone", "NUMBER"
         attribute "volSiren", "NUMBER"
         
+        fingerprint mfr:"0346", prod:"0101", deviceId:"0201", inClusters:"0x5E,0x59,0x85,0x80,0x70,0x5A,0x7A,0x87,0x72,0x8E,0x71,0x73,0x98,0x6C,0x55,0x86", deviceJoinName:"Ring Alarm Keypad G1"
         fingerprint mfr:"0346", prod:"0101", deviceId:"0301", inClusters:"0x5E,0x98,0x9F,0x6C,0x55", deviceJoinName: "Ring Alarm Keypad G2"
     }
     preferences {
@@ -101,10 +90,10 @@ metadata {
         //4: [input: [name: "configParam4", type: "enum", title: "Announcement Volume", description:"", defaultValue:7, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         //5: [input: [name: "configParam5", type: "enum", title: "Keytone Volume", description:"", defaultValue:6, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
         //6: [input: [name: "configParam6", type: "enum", title: "Siren Volume", description:"", defaultValue:10, options:[0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10"]],parameterSize:1],
-        7: [input: [name: "configParam7", type: "number", title: "Long press Emergency Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
-        8: [input: [name: "configParam8", type: "number", title: "Long press Number pad Duration", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
-        12: [input: [name: "configParam12", type: "number", title: "Security Mode Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
-        13: [input: [name: "configParam13", type: "number", title: "Key Backlight Brightness", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
+        7: [input: [name: "configParam7", type: "number", title: "Long press Emergency Duration (Gen2)", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
+        8: [input: [name: "configParam8", type: "number", title: "Long press Number pad Duration (Gen2)", description:"", defaultValue: 3, range:"2..5"],parameterSize:1],
+        12: [input: [name: "configParam12", type: "number", title: "Security Mode Brightness (Gen2)", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
+        13: [input: [name: "configParam13", type: "number", title: "Key Backlight Brightness (Gen2)", description:"", defaultValue: 100, range:"0..100"],parameterSize:1],
 ]
 @Field static Map armingStates = [
         0x00: [securityKeypadState: "armed night", hsmCmd: "armNight"],
@@ -120,12 +109,17 @@ void logsOff(){
 }
 
 void updated() {
-    log.info "updated..."
+    log.info "In updated - deviceId: ${deviceId}"
     log.warn "debug logging is: ${logEnable == true}"
     log.warn "description logging is: ${txtEnable == true}"
     log.warn "encryption is: ${optEncrypt == true}"
     unschedule()
     if (logEnable) runIn(1800,logsOff)
+    if(getDataValue("inClusters") == "0x5E,0x55,0x9F") { 
+        state.gen = "Gen1"
+    } else if(getDataValue("inClusters") == "0x5E,0x98,0x9F,0x6C,0x55") {
+        state.gen = "Gen2"
+    }
     sendToDevice(runConfigs())
     updateEncryption()
     proximitySensorHandler()
@@ -386,7 +380,13 @@ void siren() {
     if (logEnable) log.debug "In Siren (${version()})"
     eventProcess(name:"alarm", value:"siren")
     changeStatus("siren")
-    sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
+    if(state.gen == "Gen1") {
+        log.debug "Siren - Gen1"
+        // COMMAND_CLASS_INDICATOR_SET([ [indicatorId: "ALARMING", propertyId: "MULTILEVEL_SOUND", value: 100] ]),
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:9, value:100]]).format())
+    } else {
+        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x0C, propertyId:2, value:0xFF]]).format())
+    }
 }
 
 void strobe() {
@@ -414,6 +414,7 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
         ecn.eventDataLength = commandBytes[3]
         def currentStatus = device.currentValue('securityKeypad')
         def alarmStatus = device.currentValue('alarm')
+        Date now = new Date()
         String code=""
         if (ecn.eventDataLength>0) {
             for (int i in 4..(ecn.eventDataLength+3)) {
@@ -484,20 +485,24 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 state.type="physical"
                 if(!code) code = "check mark"
                 sendEvent(name:"lastCodeName", value: "${code}", isStateChange:true)
+                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 break
             case 17:    // Police Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
+                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name: "held", value: 11, isStateChange: true)
                 break
             case 16:    // Fire Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
+                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name: "held", value: 12, isStateChange: true)
                 break
             case 19:    // Medical Button
                 state.type="physical"
                 sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
+                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name: "held", value: 13, isStateChange: true)
                 break
             case 1:     // Button pressed or held, idle timeout reached without explicit submission
@@ -531,16 +536,20 @@ void push(btn) {
 
 void hold(btn) {
     state.type = "digital"
+    Date now = new Date()
     sendEvent(name: "held", value: btn, isStateChange:true)
     switch (btn) {
         case 11:
             sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
+            sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             break
         case 12:
             sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
+            sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             break
         case 13:
             sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
+            sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             break
     }
 }
@@ -624,10 +633,12 @@ private Boolean validatePin(String pincode) {
     }
     //log.debug "Lock codes: ${lockcodes}"
     if(lockcodes) {
+        Date now = new Date()
         lockcodes.each {
             if(it.value["code"] == pincode) {
                 //log.debug "found code: ${pincode} user: ${it.value['name']}"
                 sendEvent(name:"lastCodeName", value: "${it.value['name']}", isStateChange:true)
+                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 retVal=true
                 String code = JsonOutput.toJson(["${it.key}":["name": "${it.value.name}", "code": "${it.value.code}", "isInitiator": true]])
                 if (optEncrypt) {
@@ -844,7 +855,7 @@ void zwaveEvent(hubitat.zwave.commands.supervisionv1.SupervisionGet cmd) {
 void parse(String description) {
     if (logEnable) log.debug "parse - ${description}"
     ver = getDataValue("firmwareVersion")
-    if(ver >= "1.18") {
+    if(ver >= "1.18" && state.gen == "Gen2") {
         if(description.contains("6C01") && description.contains("FF 07 08 00")) {
             sendEvent(name:"motion", value: "active", isStateChange:true)
         } else if(description.contains("6C01") && description.contains("FF 07 00 01 08")) {
@@ -872,10 +883,18 @@ List<String> commands(List<String> cmds, Long delay=300) {
 void proximitySensorHandler() {
     if(proximitySensor) {
         if (logEnable) log.debug "Turning the Proximity Sensor OFF"
-        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 0).format())
+        if(state.gen == "Gen1") {
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 13, size: 1, scaledConfigurationValue: 0).format())
+        } else {
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 0).format())
+        }
     } else {
         if (logEnable) log.debug "Turning the Proximity Sensor ON"
-        sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 1).format())
+        if(state.gen == "Gen1") {
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 13, size: 1, scaledConfigurationValue: 1).format())
+        } else {
+            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 15, size: 1, scaledConfigurationValue: 1).format())
+        }
     }
 }
 
@@ -922,7 +941,11 @@ def volKeytone(newVol=null) {
         } else {
             if (logEnable) log.debug "Setting the Keytone Volume to $newVol"
             nVol = newVol.toInteger()
-            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: nVol).format())
+            if(state.gen == "Gen1") {
+                sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 10, size: 1, scaledConfigurationValue: nVol).format())
+            } else {
+                sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: nVol).format())
+            }
             sendEvent(name:"volKeytone", value: newVol, isStateChange:true)
         }
     } else {
@@ -936,19 +959,23 @@ def volSiren(newVol=null) {
         def currentVol = device.currentValue('volSiren')
         if(newVol.toString() == currentVol.toString()) {
             if (logEnable) log.debug "Siren Volume hasn't changed, so skipping"
-            def sVol = currentVol.toInteger() * 10
+            def sVol = currentVol.toInteger()
         } else {
             if (logEnable) log.debug "Setting the Siren Volume to $newVol"
-            sVol = newVol.toInteger() * 10
-            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
+            sVol = newVol.toInteger()
+            if(state.gen == "Gen1") {
+                sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 12, size: 1, scaledConfigurationValue: sVol).format())
+            } else {
+                sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: sVol).format())
+            }
             sendEvent(name:"volSiren", value: newVol, isStateChange:true)
         }
     } else {
         def currentVol = device.currentValue('volSiren')
         if(currentVol) {
-            sVol = currentVol.toInteger() * 10
+            sVol = currentVol.toInteger()
         } else {
-            sVol = 90
+            sVol = 9
         }
     }
     return sVol
