@@ -4,7 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-    1.1.8 - 04/02/22 - Added lastCodeTime
+    1.1.8 - 04/02/22 - Added lastCodeTime (updates with any keypad actions) and alarmStatusChangeTime (changes when the alarm changes status)
     1.1.7 - 03/21/22 - Fine tuning
     1.1.6 - 03/21/22 - Alarm has to be disarmed before changing to a different alarm type
     1.1.5 - 03/20/22 - Adjustments to Siren Volume
@@ -50,6 +50,7 @@ metadata {
         command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         //command "keyBacklightBrightness", [[name:"Key Backlight Brightness", type:"NUMBER", description: "Level (1-100)"]]
 
+        attribute "alarmStatusChangeTime", "STRING"
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
@@ -206,9 +207,11 @@ void armNightEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
+    Date now = new Date()
     if(sk != "armed night") {
         //keypadUpdateStatus(0x00, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armNight")
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
     }
 }
 
@@ -231,9 +234,11 @@ void armAwayEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
+    Date now = new Date()
     if(sk != "armed away") {
         keypadUpdateStatus(0x0B, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armAway")
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         changeStatus("set")
     }
 }
@@ -257,9 +262,11 @@ void armHomeEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
+    Date now = new Date()
     if(sk != "armed home") {
         keypadUpdateStatus(0x0A, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armHome")
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         changeStatus("set")
     }
 }
@@ -283,9 +290,11 @@ void disarmEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
+    Date now = new Date()
     if(sk != "disarmed") { 
         keypadUpdateStatus(0x02, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "disarm")
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         changeStatus("off")
         unschedule(armHomeEnd)
         unschedule(armAwayEnd)
@@ -342,8 +351,8 @@ void setArmHomeDelay(delay){
     if (logEnable) log.debug "In setArmHomeDelay (${version()}) - delay: ${delay}"
     sendEvent(name:"armHomeDelay", value: delay)
     state.keypadConfig.armHomeDelay = delay != null ? delay.toInteger() : 0
-
 }
+
 void setCodeLength(pincodelength) {
     if (logEnable) log.debug "In setCodeLength (${version()}) - pincodelength: ${pincodelength}"
     eventProcess(name:"codeLength", value: pincodelength, descriptionText: "${device.displayName} codeLength set to ${pincodelength}")
