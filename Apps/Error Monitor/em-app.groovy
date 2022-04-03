@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 04/03/22 - Adjustments
  *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release.
  *
@@ -46,7 +47,7 @@
 
 def setVersion(){
     state.name = "Error Monitor"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -130,7 +131,8 @@ def pageConfig() {
             input "logEnable", "bool", title: "Enable Debug Logging", description: "Log Options", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-                input "testLevel", "button", title: "Test Error Level", width:4
+                input "testLevel1", "button", title: "Test Error 1", width:4
+                input "testLevel2", "button", title: "Test Error 2", width:4
             } else {
                 app.updateSetting("logEnable",[value:"false",type:"bool"])
                 app.removeSetting("logOffTime")
@@ -207,8 +209,10 @@ def appButtonHandler(buttonPressed) {
     if(state.whichButton == "closeConnection"){
         dataDevice.close()
     }  
-    if(state.whichButton == "testLevel"){
-        log.error "Testing Error Level"
+    if(state.whichButton == "testLevel1"){
+        log.error "Testing Error 1"
+    } else if(state.whichButton == "testLevel2"){
+        log.error "Testing Error 2"
     }
 }
 
