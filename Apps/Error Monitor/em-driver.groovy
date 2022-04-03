@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 04/03/22 - Issue with makeList
  *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release
  *
@@ -78,6 +79,10 @@ metadata {
     }
 }
 
+def setVersion() {
+    state.version = "1.0.2"
+}
+
 def installed(){
     log.info "Error Monitor Driver has been Installed"
     clearAllData()
@@ -91,10 +96,11 @@ def updated() {
 
 def initialize() {
     if(logEnable) log.info "In initialize"
+    setVersion()
     if(disableConnection) {
-        if(logEnable) log.info "Error Monitor Driver - webSocket Connection is Disabled in the Device"
+        if(logEnable) log.info "Error Monitor Driver (${state.version}) - webSocket Connection is Disabled in the Device"
     } else {
-        if(logEnable) log.info "Error Monitor Driver - Connecting webSocket"
+        if(logEnable) log.info "Error Monitor Driver (${state.version}) - Connecting webSocket"
         interfaces.webSocket.connect("ws://localhost:8080/logsocket")
     }
 }
@@ -136,9 +142,10 @@ def webSocketStatus(String socketStatus) {
 }
 
 def autoReconnectWebSocket() {
+    setVersion()
     state.delay = (state.delay ?: 0) + 30    
     if(state.delay > 600) state.delay = 600
-    if(logEnable) log.warn "Error Monitor Driver - Connection lost, will try to reconnect in ${state.delay} seconds"
+    if(logEnable) log.warn "Error Monitor Driver (${state.version}) - Connection lost, will try to reconnect in ${state.delay} seconds"
     runIn(state.delay, initialize)
 }
 
@@ -195,23 +202,24 @@ def makeList(theName,theMsg) {
 
         if(logEnable) log.debug "In makeList - added to list - last: ${last}"
         
-        if(state.list) {
-            listSize1 = state.list.size()
-        } else {
-            listSize1 = 0
+        try {
+            listSize = state.list.size()
+        } catch(e) {
+            listSize = 0
         }
 
-        if(logEnable) log.debug "In makeList - listSize1: ${listSize1}"        
+        if(logEnable) log.debug "In makeList - listSize: ${listSize}"        
         int intNumOfLines = 10
-        if (listSize1 > intNumOfLines) state.list.removeAt(intNumOfLines)        
+        if (listSize > intNumOfLines) state.list.removeAt(intNumOfLines)        
         String result1 = state.list.join(",")
         def lines = result1.split(",")
 
         theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
         
-        for (i=0;i<intNumOfLines && i<listSize1;i++) {
+        for (i=0;i<intNumOfLines && i<listSize;i++) {
             combined = theData.length() + lines[i].length() + 16
             if(combined < 1000) {
+                if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
                 def (theApp, theTime, theLMsg) = lines[i].split("::") 
                 theData += "<tr><td>${theApp} <td> - <td>${theTime}<td> - <td>${theLMsg}"
             }
@@ -230,7 +238,9 @@ def makeList(theName,theMsg) {
         sendEvent(name: "bpt-lastLogMessage", value: theMsg, displayed: true)
     }
     catch(e) {
-        log.warn "Error Monitor Driver - In makeList - There was an error within Error Monitor Driver!"
+        setVersion()
+        log.warn "In makeList (${state.version}) - listSize: ${listSize} - lines$i: $lines[i]"
+        log.warn "Error Monitor Driver (${state.version}) - In makeList - There was an error while making the list!"
         log.warn(getExceptionMessageWithLine(e))  
     }
 }
@@ -241,7 +251,9 @@ def appStatus(data){
 }
 
 def clearAllData(){
-	if(logEnable) log.debug "Error Monitor Driver - Clearing ALL data"
+    setVersion()
+	if(logEnable) log.debug "Error Monitor Driver (${state.version}) - Clearing ALL data"
+    off()
     theMsg = "-"
     logCharCount = "0"   
     state.clear()
@@ -253,7 +265,8 @@ def clearAllData(){
 }
 
 def clearLogData(){
-	if(logEnable) log.debug "Error Monitor Driver - Clearing the Log Data"
+    setVersion()
+	if(logEnable) log.debug "Error Monitor Driver (${state.version}) - Clearing the Log Data"
     state.list = []
     sendEvent(name: "bpt-logData", value: state.list, displayed: true)
     sendEvent(name: "numOfCharacters", value: "", displayed: true)
