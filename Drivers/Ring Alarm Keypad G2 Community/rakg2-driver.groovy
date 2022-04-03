@@ -22,7 +22,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.1.8"
+    return "1.1.9"
 }
 
 metadata {
