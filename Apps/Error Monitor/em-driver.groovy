@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/03/22 - More adjustments to makeList
  *  1.0.2 - 04/03/22 - Issue with makeList
  *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release
@@ -80,7 +81,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.2"
+    state.version = "1.0.3"
 }
 
 def installed(){
@@ -220,8 +221,8 @@ def makeList(theName,theMsg) {
             combined = theData.length() + lines[i].length() + 16
             if(combined < 1000) {
                 if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
-                def (theApp, theTime, theLMsg) = lines[i].split("::") 
-                theData += "<tr><td>${theApp} <td> - <td>${theTime}<td> - <td>${theLMsg}"
+                def (sData) = lines[i].split("::") 
+                theData += "<tr><td>${sData[0]} <td> - <td>${sData[1]}<td> - <td>${sData[2]}"
             }
         }
         
