@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/04/22 - Added option for repeating messages
  *  1.0.3 - 04/03/22 - More adjustments to makeList
  *  1.0.2 - 04/03/22 - Issue with makeList
  *  1.0.1 - 03/31/22 - Adjustments
@@ -81,7 +82,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.3"
+    state.version = "1.0.4"
 }
 
 def installed(){
@@ -165,18 +166,26 @@ def parse(String description) {
             theMsg = message.msg.toLowerCase()
             if(state.lastMsg == null) state.lastMsg = "-"
             if(message.msg == state.lastMsg) {
-                if(logEnable) log.info "New message is the same as last message, so skipping!"
+                if(parent.sendDup) {
+                    device.on()
+                    makeList(theName, message.msg)
+                } else {
+                    if(logEnable) log.info "New message is the same as last message, so skipping!"
+                }
                 if(state.sameCount >= 11) {
                     log.warn "************************************************************"
+                    log.warn "The same Error has occurred 10 times in a row."
                     log.warn "Error Monitor is CLOSING its connection!"
-                    log.warn "Please fix the error, then click the 'resetCount' in the data device before turning the connection back on."
+                    log.warn "Please fix the Error before continuing."
                     log.warn "************************************************************"
                     closeConnection()
                     app?.updateSetting("closeConnection",[value:"true",type:"bool"])
+                    state.sameCount = 1
                 } else {
                     state.sameCount += 1
                 }
             } else {
+                state.sameCount = 1
                 device.on()
                 state.lastMsg = message.msg
                 makeList(theName, message.msg)
@@ -221,7 +230,7 @@ def makeList(theName,theMsg) {
             combined = theData.length() + lines[i].length() + 16
             if(combined < 1000) {
                 if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
-                def (sData) = lines[i].split("::") 
+                def sData = lines[i].split("::") 
                 theData += "<tr><td>${sData[0]} <td> - <td>${sData[1]}<td> - <td>${sData[2]}"
             }
         }
