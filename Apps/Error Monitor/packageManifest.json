@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/em-app.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.2",
+			"version": "1.0.3",
 			"primary": true
 		}
 	],
@@ -25,7 +25,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/em-driver.groovy",
 			"required": true,
-			"version": "1.0.3"
+			"version": "1.0.4"
 		}
 	]
 }
