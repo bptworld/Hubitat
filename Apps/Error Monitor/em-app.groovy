@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/04/22 - Added option for repeating errors
  *  1.0.2 - 04/03/22 - Adjustments
  *  1.0.1 - 03/31/22 - Adjustments
  *  1.0.0 - 03/25/22 - Initial release.
@@ -47,7 +48,7 @@
 
 def setVersion(){
     state.name = "Error Monitor"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -93,6 +94,7 @@ def pageConfig() {
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
+            input "sendDup", "bool", title: "Send push even if the Error was the same as the last Error", submitOnChange:true
             paragraph "<hr>"
             paragraph "* The data device specified above will also turn on anytime there is a new error message. This Switch device can be used to trigger any rule/cog/piston."
 		}
