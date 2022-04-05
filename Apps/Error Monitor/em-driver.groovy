@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/05/22 - Fixed an issue with makeList
  *  1.0.4 - 04/04/22 - Added option for repeating messages
  *  1.0.3 - 04/03/22 - More adjustments to makeList
  *  1.0.2 - 04/03/22 - Issue with makeList
@@ -82,7 +83,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.4"
+    state.version = "1.0.5"
 }
 
 def installed(){
@@ -103,6 +104,7 @@ def initialize() {
         if(logEnable) log.info "Error Monitor Driver (${state.version}) - webSocket Connection is Disabled in the Device"
     } else {
         if(logEnable) log.info "Error Monitor Driver (${state.version}) - Connecting webSocket"
+        atomicState.isWorking = false
         interfaces.webSocket.connect("ws://localhost:8080/logsocket")
     }
 }
@@ -203,55 +205,64 @@ def off() {
 }
 
 def makeList(theName,theMsg) {
-    if(logEnable) log.debug "In makeList - working on - theName: ${theName} - ${theMsg}"
-    try {
-        if(state.list == null) state.list = []
-        getDateTime()
-        last = "${theName}::${newDate}::${theMsg}"
-        state.list.add(0,last)  
-
-        if(logEnable) log.debug "In makeList - added to list - last: ${last}"
-        
+    if(atomicState.isWorking == null) atomicState.isWorking = false
+    if(!atomicState.isWorking) {
+        atomicState.isWorking = true
+        if(logEnable) log.debug "In makeList - working on - theName: ${theName} - ${theMsg}"
         try {
-            listSize = state.list.size()
-        } catch(e) {
-            listSize = 0
-        }
+            if(state.list == null) state.list = []
+            getDateTime()
+            last = "${theName}::${newDate}::${theMsg}"
+            state.list.add(0,last)  
 
-        if(logEnable) log.debug "In makeList - listSize: ${listSize}"        
-        int intNumOfLines = 10
-        if (listSize > intNumOfLines) state.list.removeAt(intNumOfLines)        
-        String result1 = state.list.join(",")
-        def lines = result1.split(",")
+            if(logEnable) log.debug "In makeList - added to list - last: ${last}"
 
-        theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
-        
-        for (i=0;i<intNumOfLines && i<listSize;i++) {
-            combined = theData.length() + lines[i].length() + 16
-            if(combined < 1000) {
-                if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
-                def sData = lines[i].split("::") 
-                theData += "<tr><td>${sData[0]} <td> - <td>${sData[1]}<td> - <td>${sData[2]}"
+            try {
+                listSize = state.list.size()
+            } catch(e) {
+                listSize = 0
             }
+
+            if(logEnable) log.debug "In makeList - listSize: ${listSize}"        
+            if (listSize > 10) {
+                state.list.removeAt(listSize-1)
+                listSize = state.list.size()
+            }
+            String result1 = state.list.join(",")
+            def lines = result1.split(",")
+
+            theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
+
+            for (i=0;i<listSize;i++) {
+                combined = theData.length() + lines[i].length() + 16
+                if(combined < 1000) {
+                    //if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
+                    def sData = lines[i].split("::") 
+                    theData += "<tr><td>${sData[0]} <td> - <td>${sData[1]}<td> - <td>${sData[2]}"
+                }
+            }
+
+            theData += "</table></div>"
+            dataCharCount1 = theData.length()
+            if(dataCharCount1 <= 1024) {
+                if(logEnable) log.debug "Error Monitor Attribute - theData - ${dataCharCount1} Characters"
+            } else {
+                theData = "Error Monitor - Too many characters to display on Dashboard (${dataCharCount1}) - removing oldest line"
+                state.list.removeAt(listSize)
+            }
+
+            sendEvent(name: "bpt-logData", value: theData, displayed: true)
+            sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
+            sendEvent(name: "bpt-lastLogMessage", value: theMsg, displayed: true)
+            atomicState.isWorking = false
         }
-        
-        theData += "</table></div>"
-        dataCharCount1 = theData.length()
-        if(dataCharCount1 <= 1024) {
-            if(logEnable) log.debug "Error Monitor Attribute - theData - ${dataCharCount1} Characters"
-        } else {
-            theData = "Error Monitor - Too many characters to display on Dashboard (${dataCharCount1})"
+        catch(e) {
+            setVersion()
+            log.warn "In makeList (${state.version}) - listSize: ${listSize} - lines$i: $lines[i]"
+            log.warn "Error Monitor Driver (${state.version}) - In makeList - There was an error while making the list!"
+            log.warn(getExceptionMessageWithLine(e))
+            atomicState.isWorking = false
         }
-        
-        sendEvent(name: "bpt-logData", value: theData, displayed: true)
-        sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
-        sendEvent(name: "bpt-lastLogMessage", value: theMsg, displayed: true)
-    }
-    catch(e) {
-        setVersion()
-        log.warn "In makeList (${state.version}) - listSize: ${listSize} - lines$i: $lines[i]"
-        log.warn "Error Monitor Driver (${state.version}) - In makeList - There was an error while making the list!"
-        log.warn(getExceptionMessageWithLine(e))  
     }
 }
 
