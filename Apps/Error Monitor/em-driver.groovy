@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 04/06/22 - rinse and repeat
  *  1.0.5 - 04/05/22 - Fixed an issue with makeList
  *  1.0.4 - 04/04/22 - Added option for repeating messages
  *  1.0.3 - 04/03/22 - More adjustments to makeList
@@ -83,7 +84,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.5"
+    state.version = "1.0.6"
 }
 
 def installed(){
@@ -238,7 +239,16 @@ def makeList(theName,theMsg) {
                 if(combined < 1000) {
                     //if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
                     def sData = lines[i].split("::") 
-                    theData += "<tr><td>${sData[0]} <td> - <td>${sData[1]}<td> - <td>${sData[2]}"
+                    try{ 
+                        tName = sData[0]
+                    } catch(e) { tName = "NoData" }
+                    try{ 
+                        tDate = sData[1]
+                    } catch(e) { tDate = "NoData" }
+                    try{ 
+                        tMsg = sData[2]
+                    } catch(e) { tMsg = "NoData" }
+                    theData += "<tr><td>${tName} <td> - <td>${tDate}<td> - <td>${tMsg}"
                 }
             }
 
@@ -295,7 +305,7 @@ def clearLogData(){
 
 def getDateTime() {
 	def date = new Date()
-	if(hourType == false) newDate=date.format("MM-d HH:mm")
-	if(hourType == true) newDate=date.format("MM-d hh:mm")
+	if(hourType == false) newDate=date.format("MM/d-HH:mm")
+	if(hourType == true) newDate=date.format("MM/d-hh:mm")
     return newDate
 }
