@@ -25,7 +25,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/em-driver.groovy",
 			"required": true,
-			"version": "1.0.5"
+			"version": "1.0.6"
 		}
 	]
 }
