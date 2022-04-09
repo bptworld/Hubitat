@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.6 - 04/09/22 - Reworked setTemp
 *  3.5.5 - 03/27/22 - Lots of 'Refactoring'
 *  3.5.4 - 03/12/22 - Many small changes
 *  3.5.3 - 03/11/22 - Added Notification support for Other Devices (ie. webOS TV's).
@@ -57,7 +58,7 @@
 
 def setVersion(){
     state.name = "Event Engine Cog"
-    state.version = "3.5.5"
+    state.version = "3.5.6"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -5800,7 +5801,7 @@ def modeHandler() {
 
 def setLevelandColorHandler(newData) {  
     if(state.onColor == null || state.onColor == "null" || state.onColor == "") state.onColor = "No Change"
-    if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.onColor} - onLevel: ${state.onLevel}"
+    if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.onColor} - temp: ${state.onTemp} - onLevel: ${state.onLevel}"
     switch(state.onColor) {
         case "No Change":
             hueColor = null
@@ -5952,25 +5953,29 @@ def setLevelandColorHandler(newData) {
             state.oldMap.put(name,oldStatus) 
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
         }
-        if(theDevice.hasCommand('setColor') && state.onTemp == "NA" && state.onColor != "No Change") {
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
-            pauseExecution(actionDelay)
-            theDevice.setColor(value)
-        } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA" && state.onColor != "No Change" && state.onTemp) {
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
-            pauseExecution(actionDelay)
-            theDevice.setLevel(onLevel as Integer ?: 99)
-            pauseExecution(actionDelay)
-            onTemp = state.onTemp.toInteger()
-            theDevice.setColorTemperature(onTemp)
-        } else if(theDevice.hasCommand('setLevel')) {
-            if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
-            pauseExecution(actionDelay)
-            theDevice.setLevel(onLevel as Integer ?: 99)
+        if(lcColorTemp) {
+            if(theDevice.hasCommand('setColorTemperature') && state.onTemp) {
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
+                pauseExecution(actionDelay)
+                theDevice.setLevel(onLevel as Integer ?: 99)
+                pauseExecution(actionDelay)
+                onTemp = state.onTemp.toInteger()
+                theDevice.setColorTemperature(onTemp)
+            }
         } else {
-            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - ${theDevice.displayName}, on()"
-            pauseExecution(actionDelay)
-            theDevice.on()
+            if(theDevice.hasCommand('setColor') && state.onColor != "No Change") {
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
+                pauseExecution(actionDelay)
+                theDevice.setColor(value)  
+            } else if(theDevice.hasCommand('setLevel')) {
+                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
+                pauseExecution(actionDelay)
+                theDevice.setLevel(onLevel as Integer ?: 99)
+            } else {
+                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - ${theDevice.displayName}, on()"
+                pauseExecution(actionDelay)
+                theDevice.on()
+            }
         }
     }
     
@@ -6009,26 +6014,30 @@ def setLevelandColorHandler(newData) {
                 state.oldMap.put(name,oldStatus) 
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - ${name} - ${oldStatus}"
             }
-            if(it.hasCommand('setColor') && state.onColor != "No Change") {
-                if(logEnable) log.debug "In setLevelandColorHandler - setColor - NEW VALUE - ${it.displayName} - setColor: ${value}"
-                pauseExecution(actionDelay)
-                it.setColor(value)
-            } else if(it.hasCommand('setColorTemperature') && state.onColor != "No Change" && state.onTemp) {
-                if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - NEW VALUE - ${it.displayName} - setColorTemp($state.onTemp)"
-                pauseExecution(actionDelay)
-                it.setLevel(onLevel as Integer ?: 99)
-                pauseExecution(actionDelay)
-                onTemp = state.onTemp.toInteger()
-                it.setColorTemperature(onTemp)
-            } else if (it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - NEW VALUE - ${it.displayName} - setLevel: ${value}"
-                pauseExecution(actionDelay)
-                it.setLevel(onLevel as Integer ?: 99)
-                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - *** Just setLevel on ${it.displayName} to ${onLevel} ***"
+            if(lcColorTemp) {
+                if(it.hasCommand('setColorTemperature') && state.onTemp) {
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - NEW VALUE - ${it.displayName} - setColorTemp($state.onTemp)"
+                    pauseExecution(actionDelay)
+                    it.setLevel(onLevel as Integer ?: 99)
+                    pauseExecution(actionDelay)
+                    onTemp = state.onTemp.toInteger()
+                    it.setColorTemperature(onTemp)
+                }
             } else {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
-                pauseExecution(actionDelay)
-                it.on()
+                if(it.hasCommand('setColor') && state.onColor != "No Change") {
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColor - NEW VALUE - ${it.displayName} - setColor: ${value}"
+                    pauseExecution(actionDelay)
+                    it.setColor(value)
+                } else if (it.hasCommand('setLevel')) {
+                    if(logEnable) log.debug "In setLevelandColorHandler - setLevel - NEW VALUE - ${it.displayName} - setLevel: ${value}"
+                    pauseExecution(actionDelay)
+                    it.setLevel(onLevel as Integer ?: 99)
+                    if(logEnable) log.debug "In setLevelandColorHandler - setLevel - *** Just setLevel on ${it.displayName} to ${onLevel} ***"
+                } else {
+                    if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                    pauseExecution(actionDelay)
+                    it.on()
+                }
             }
         }
     }
@@ -6105,22 +6114,26 @@ def setLevelandColorHandler(newData) {
                             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - MATCH - Working on: ${itOne}"
                             theDevice = itOne
                             theStatus = theDevice.currentValue("switch")
-                            if(theDevice.hasCommand('setColor') && state.onTemp == "NA") {
-                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColor: $value"
-                                pauseExecution(actionDelay)
-                                theDevice.setColor(value)
-                            } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA") { 
-                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
-                                pauseExecution(actionDelay)
-                                if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
-                                if(warningDimLvl && theStatus == "on") { theDevice.setLevel(warningDimLvl) }
-                                pauseExecution(actionDelay)
-                                theDevice.setColorTemperature(pdTemp)
-                            } else {
-                                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
-                                pauseExecution(actionDelay)
-                                if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
-                                if(warningDimLvl && theStatus == "on") { theDevice.setLevel(warningDimLvl) }
+                            if(lcColorTemp) {
+                                if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA") { 
+                                    if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
+                                    pauseExecution(actionDelay)
+                                    if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
+                                    if(warningDimLvl && theStatus == "on") { theDevice.setLevel(warningDimLvl) }
+                                    pauseExecution(actionDelay)
+                                    theDevice.setColorTemperature(pdTemp)
+                                }
+                            } else {      
+                                if(theDevice.hasCommand('setColor')) {
+                                    if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColor: $value"
+                                    pauseExecution(actionDelay)
+                                    theDevice.setColor(value) 
+                                } else {
+                                    if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
+                                    pauseExecution(actionDelay)
+                                    if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
+                                    if(warningDimLvl && theStatus == "on") { theDevice.setLevel(warningDimLvl) }
+                                }
                             }
                         }
                     }
