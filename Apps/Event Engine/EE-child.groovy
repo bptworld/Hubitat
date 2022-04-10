@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.7 - 04/10/22 - More work on CT
 *  3.5.6 - 04/09/22 - Reworked setTemp
 *  3.5.5 - 03/27/22 - Lots of 'Refactoring'
 *  3.5.4 - 03/12/22 - Many small changes
@@ -58,7 +59,7 @@
 
 def setVersion(){
     state.name = "Event Engine Cog"
-    state.version = "3.5.6"
+    state.version = "3.5.7"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -4803,20 +4804,22 @@ def switchOnReverseActionHandler(data) {
                 it.off()
             }
             if(theStuff == "good") {
-                if(it.hasCommand("setColor") && state.onColor != "No Change") {
-                    if(cMode == "CT") {
-                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColor CT - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level} - trueReverse: ${trueReverse}"                          
-                        if(oldStatus == "off" || trueReverse) {                            
-                            if(logEnable) log.debug "In switchOnReverseActionHandler - setColor CT - Turning light off (${it})"
+                if(cMode == "CT") {
+                    if(it.hasCommand("setColorTemperature")) {
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
+                        if(oldStatus == "off" || trueReverse) {
+                            if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Turning light off (${it})"
                             pauseExecution(actionDelay)
                             it.off()
                         } else {
                             pauseExecution(actionDelay)
-                            it.setColorTemperature(cTemp.toInteger())
-                            pauseExecution(actionDelay)
                             if(level) it.setLevel(level.toInteger())
+                            pauseExecution(actionDelay)
+                            it.setColorTemperature(cTemp.toInteger())
                         }
-                    } else {
+                    }
+                } else {
+                    if(it.hasCommand("setColor")) {
                         log.trace "In switchOnReverseActionHandler - setColor - level: $level"
                         def theValue = [hue: hueColor, saturation: saturation, level: level.toInteger() ?: 99]
                         if(logEnable) log.debug "In switchOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
@@ -4828,28 +4831,16 @@ def switchOnReverseActionHandler(data) {
                             pauseExecution(actionDelay)
                             it.setColor(theValue)
                         }
-                    }
-                } else if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
-                    if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Turning light off (${it})"
-                        pauseExecution(actionDelay)
-                        it.off()
-                    } else {
-                        pauseExecution(actionDelay)
-                        if(level) it.setLevel(level.toInteger())
-                        pauseExecution(actionDelay)
-                        it.setColorTemperature(cTemp.toInteger())
-                    }
-                } else if(it.hasCommand("setLevel")) {
-                    if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
-                    if(oldStatus == "off" || trueReverse) {
-                        if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Turning light off (${it})"
-                        pauseExecution(actionDelay)
-                        it.off()
-                    } else {
-                        pauseExecution(actionDelay)                   
-                        if(level) it.setLevel(level.toInteger())
+                    } else if(it.hasCommand("setLevel")) {
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - trueReverse: ${trueReverse}"
+                        if(oldStatus == "off" || trueReverse) {
+                            if(logEnable) log.debug "In switchOnReverseActionHandler - setLevel - Turning light off (${it})"
+                            pauseExecution(actionDelay)
+                            it.off()
+                        } else {
+                            pauseExecution(actionDelay)                   
+                            if(level) it.setLevel(level.toInteger())
+                        }
                     }
                 }
                 if(name && state.oldMap) state.oldMap.remove(name)
