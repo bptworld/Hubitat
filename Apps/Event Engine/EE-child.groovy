@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.5.8 - 04/13/22 - Adjustments to Reverse
 *  3.5.7 - 04/10/22 - More work on CT
 *  3.5.6 - 04/09/22 - Reworked setTemp
 *  3.5.5 - 03/27/22 - Lots of 'Refactoring'
@@ -59,7 +60,7 @@
 
 def setVersion(){
     state.name = "Event Engine Cog"
-    state.version = "3.5.7"
+    state.version = "3.5.8"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -4805,7 +4806,7 @@ def switchOnReverseActionHandler(data) {
             }
             if(theStuff == "good") {
                 if(cMode == "CT") {
-                    if(it.hasCommand("setColorTemperature")) {
+                    if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
                         if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Turning light off (${it})"
@@ -4819,8 +4820,8 @@ def switchOnReverseActionHandler(data) {
                         }
                     }
                 } else {
-                    if(it.hasCommand("setColor")) {
-                        log.trace "In switchOnReverseActionHandler - setColor - level: $level"
+                    if(it.hasCommand("setColor") && state.onColor != "No Change") {
+                        if(logEnable) log.debug "In switchOnReverseActionHandler - setColor - level: $level"
                         def theValue = [hue: hueColor, saturation: saturation, level: level.toInteger() ?: 99]
                         if(logEnable) log.debug "In switchOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
