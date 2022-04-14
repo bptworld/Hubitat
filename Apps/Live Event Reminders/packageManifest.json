@@ -1,5 +1,5 @@
 {
-	"packageName": "Life Event Reminders",
+	"packageName": "Life Event Calendar",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2022-03-27",
@@ -9,7 +9,7 @@
 	"apps" : [
 		{
 			"id" : "7da34d55-e873-4d36-a924-e88bf3b2d995",
-			"name": "Life Event Reminders",
+			"name": "Life Event Calendar",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Live%20Event%20Reminders/ler-parent.groovy",
 			"required": true,
@@ -19,7 +19,7 @@
 		},
 		{
 			"id" : "d02ca8bc-9219-4c8f-87fa-25c364a12dbe",
-			"name": "Life Event Reminders Child",
+			"name": "Life Event Calendar Child",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Live%20Event%20Reminders/ler-child.groovy",
 			"required": true,
@@ -30,7 +30,7 @@
 	"drivers" : [
 		{
 			"id": "bfc9e81e-ef87-438e-8602-c5ba2de02558",
-			"name": "Life Event Reminders Driver",
+			"name": "Life Event Calendar Driver",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Live%20Event%20Reminders/ler-driver.groovy",
 			"required": true,
