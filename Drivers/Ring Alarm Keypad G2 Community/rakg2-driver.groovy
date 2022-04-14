@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.2.1 - 04/14/22 - Bug hunting
     1.2.0 - 04/04/22 - Fixed Tones
     ---
     1.0.0 - 11/11/21 - Initial Community Release
@@ -13,7 +14,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.0"
+    return "1.2.1"
 }
 
 metadata {
@@ -197,6 +198,7 @@ void armNightEnd() {
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed night") {
         //keypadUpdateStatus(0x00, state.type, state.code)
+        Date now = new Date()
         sendLocationEvent (name: "hsmSetArm", value: "armNight")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
@@ -224,6 +226,7 @@ void armAwayEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed away") {
+        Date now = new Date()
         keypadUpdateStatus(0x0B, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armAway")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
@@ -253,6 +256,7 @@ void armHomeEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed home") {
+        Date now = new Date()
         keypadUpdateStatus(0x0A, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "armHome")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
@@ -282,6 +286,7 @@ void disarmEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "disarmed") { 
+        Date now = new Date()
         keypadUpdateStatus(0x02, state.type, state.code)
         sendLocationEvent (name: "hsmSetArm", value: "disarm")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
@@ -477,6 +482,8 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
             // Added all buttons
             case 2:    // Code sent after hitting the Check Mark
                 state.type="physical"
+                Date now = new Date()
+                long ems = now.getTime()
                 if(!code) code = "check mark"
                 sendEvent(name:"lastCodeName", value: "${code}", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
@@ -484,6 +491,8 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 break
             case 17:    // Police Button
                 state.type="physical"
+                Date now = new Date()
+                long ems = now.getTime()
                 sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
@@ -491,6 +500,8 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 break
             case 16:    // Fire Button
                 state.type="physical"
+                Date now = new Date()
+                long ems = now.getTime()
                 sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
@@ -498,6 +509,8 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 break
             case 19:    // Medical Button
                 state.type="physical"
+                Date now = new Date()
+                long ems = now.getTime()
                 sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
@@ -537,16 +550,22 @@ void hold(btn) {
     sendEvent(name: "held", value: btn, isStateChange:true)
     switch (btn) {
         case 11:
+            Date now = new Date()
+            long ems = now.getTime()
             sendEvent(name:"lastCodeName", value: "police", isStateChange:true)
             sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
             break
         case 12:
+            Date now = new Date()
+            long ems = now.getTime()
             sendEvent(name:"lastCodeName", value: "fire", isStateChange:true)
             sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
             break
         case 13:
+            Date now = new Date()
+            long ems = now.getTime()
             sendEvent(name:"lastCodeName", value: "medical", isStateChange:true)
             sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
             sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
@@ -635,6 +654,8 @@ private Boolean validatePin(String pincode) {
     if(lockcodes) {
         lockcodes.each {
             if(it.value["code"] == pincode) {
+                Date now = new Date()
+                long ems = now.getTime()
                 //log.debug "found code: ${pincode} user: ${it.value['name']}"
                 sendEvent(name:"lastCodeName", value: "${it.value['name']}", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
