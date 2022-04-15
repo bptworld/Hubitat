@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 04/15/22 - Took another crack at makeList, added 'useSafety' feature
  *  1.0.6 - 04/06/22 - rinse and repeat
  *  1.0.5 - 04/05/22 - Fixed an issue with makeList
  *  1.0.4 - 04/04/22 - Added option for repeating messages
@@ -84,7 +85,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.6"
+    state.version = "1.0.7"
 }
 
 def installed(){
@@ -175,7 +176,7 @@ def parse(String description) {
                 } else {
                     if(logEnable) log.info "New message is the same as last message, so skipping!"
                 }
-                if(state.sameCount >= 11) {
+                if(state.sameCount >= 11 && parent.useSafety) {
                     log.warn "************************************************************"
                     log.warn "The same Error has occurred 10 times in a row."
                     log.warn "Error Monitor is CLOSING its connection!"
@@ -214,18 +215,13 @@ def makeList(theName,theMsg) {
             if(state.list == null) state.list = []
             getDateTime()
             last = "${theName}::${newDate}::${theMsg}"
-            state.list.add(0,last)  
-
+            state.list.add(0,last)
             if(logEnable) log.debug "In makeList - added to list - last: ${last}"
 
-            try {
-                listSize = state.list.size()
-            } catch(e) {
-                listSize = 0
-            }
-
+            listSize = state.list.size() ?: 0
             if(logEnable) log.debug "In makeList - listSize: ${listSize}"        
             if (listSize > 10) {
+                if(logEnable) log.debug "In makeList - List size is greater than 10 - Removing oldest entry" 
                 state.list.removeAt(listSize-1)
                 listSize = state.list.size()
             }
@@ -257,7 +253,7 @@ def makeList(theName,theMsg) {
             if(dataCharCount1 <= 1024) {
                 if(logEnable) log.debug "Error Monitor Attribute - theData - ${dataCharCount1} Characters"
             } else {
-                theData = "Error Monitor - Too many characters to display on Dashboard (${dataCharCount1}) - removing oldest line"
+                theData = "Error Monitor - Too many characters to display on Dashboard (${dataCharCount1}) - removing oldest entry"
                 state.list.removeAt(listSize)
             }
 
