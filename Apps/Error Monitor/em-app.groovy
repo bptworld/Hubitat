@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/15/22 - Added option to ignore same error repeating and repeating and repeating...
  *  1.0.3 - 04/04/22 - Added option for repeating errors
  *  1.0.2 - 04/03/22 - Adjustments
  *  1.0.1 - 03/31/22 - Adjustments
@@ -48,7 +49,7 @@
 
 def setVersion(){
     state.name = "Error Monitor"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -73,6 +74,7 @@ def pageConfig() {
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Keep an eye out for errors that may pop up in the log."
+            paragraph "Error Monitor has a couple of failsafe features built in.<br> - If the error message is the same as the last error message, it won't send the push unless you tell it to.<br> - If the same error message is received 10 times in a row, EM will close the connection and put a warning in the log. This is to prevent the hub from slowing down."
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
@@ -99,6 +101,10 @@ def pageConfig() {
             paragraph "* The data device specified above will also turn on anytime there is a new error message. This Switch device can be used to trigger any rule/cog/piston."
 		}
 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+            input "useSafety", "bool", title: "Hub safety option - Turn the connection off is the same error is received 10 times in a row. This can stop a runaway situation that can slow down and/or crash your hub. (recommended to turn on)", defaultValue:false, submitOnChange:true
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", submitOnChange:true
             if(pauseApp) {
