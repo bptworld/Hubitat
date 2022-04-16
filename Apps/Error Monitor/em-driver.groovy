@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 04/15/22 - Minor mods
  *  1.0.7 - 04/15/22 - Took another crack at makeList, added 'useSafety' feature
  *  1.0.6 - 04/06/22 - rinse and repeat
  *  1.0.5 - 04/05/22 - Fixed an issue with makeList
@@ -85,7 +86,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.7"
+    state.version = "1.0.8"
 }
 
 def installed(){
@@ -225,8 +226,7 @@ def makeList(theName,theMsg) {
                 state.list.removeAt(listSize-1)
                 listSize = state.list.size()
             }
-            String result1 = state.list.join(",")
-            def lines = result1.split(",")
+            lines = state.list.toString().split(",")
 
             theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
 
@@ -236,13 +236,13 @@ def makeList(theName,theMsg) {
                     //if(logEnable) log.debug "In makeList - lines$i: $lines[i]"
                     def sData = lines[i].split("::") 
                     try{ 
-                        tName = sData[0]
+                        tName = sData[0].replace("[","")
                     } catch(e) { tName = "NoData" }
                     try{ 
                         tDate = sData[1]
                     } catch(e) { tDate = "NoData" }
                     try{ 
-                        tMsg = sData[2]
+                        tMsg = sData[2].replace("]","")
                     } catch(e) { tMsg = "NoData" }
                     theData += "<tr><td>${tName} <td> - <td>${tDate}<td> - <td>${tMsg}"
                 }
