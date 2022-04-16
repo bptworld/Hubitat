@@ -171,10 +171,10 @@ def parse(String description) {
             theName = message.name
             theMsg = message.msg.toLowerCase().replace(",","")
             if(state.lastMsg == null) state.lastMsg = "-"
-            if(message.msg == state.lastMsg) {
+            if(theMsg == state.lastMsg) {
                 if(parent.sendDup) {
                     device.on()
-                    makeList(theName, message.msg)
+                    makeList(theName, theMsg)
                 } else {
                     if(logEnable) log.info "New message is the same as last message, so skipping!"
                 }
@@ -193,8 +193,8 @@ def parse(String description) {
             } else {
                 state.sameCount = 1
                 device.on()
-                state.lastMsg = message.msg
-                makeList(theName, message.msg)
+                state.lastMsg = theMsg
+                makeList(theName, theMsg)
             }
         }
     }
