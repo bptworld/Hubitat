@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 04/16/22 - For the love of commas!
  *  1.0.8 - 04/15/22 - Minor mods
  *  1.0.7 - 04/15/22 - Took another crack at makeList, added 'useSafety' feature
  *  1.0.6 - 04/06/22 - rinse and repeat
@@ -86,7 +87,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.8"
+    state.version = "1.0.9"
 }
 
 def installed(){
@@ -168,7 +169,7 @@ def parse(String description) {
         theLevel = message.level.toLowerCase()
         if(theLevel == "error") {
             theName = message.name
-            theMsg = message.msg.toLowerCase()
+            theMsg = message.msg.toLowerCase().replace(",","")
             if(state.lastMsg == null) state.lastMsg = "-"
             if(message.msg == state.lastMsg) {
                 if(parent.sendDup) {
