@@ -218,9 +218,9 @@ def appButtonHandler(buttonPressed) {
         dataDevice.close()
     }  
     if(state.whichButton == "testLevel1"){
-        log.error "Testing Error 1"
+        log.error "test.Error1: Error 1: Temp"
     } else if(state.whichButton == "testLevel2"){
-        log.error "Testing Error 2"
+        log.error "test.Error2: Error 2: temp"
     }
 }
 
