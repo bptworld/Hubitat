@@ -8,9 +8,9 @@
          "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ],
          "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip"
       },
-      {  "name": "Test 2",
+      {  "name": "Library - BPTWorld-NormalStuff",
          "version": "1.0.0",
-         "bundle": "",
+         "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
       }
    ]
 }
