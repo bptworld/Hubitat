@@ -10,6 +10,7 @@
       },
       {  "name": "BPTWorld-NormalStuff",
          "version": "1.0.0",
+         "tags": [ "Library"],        
          "bundle": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
       }
    ]
