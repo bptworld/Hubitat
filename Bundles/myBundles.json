@@ -10,8 +10,9 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip"
       },
       {  "name": "BPTWorld-NormalStuff",
-         "updated": "04/16/2022",
          "version": "1.0.0",
+         "updated": "04/16/2022",
+         "description": "For use with all BPTWorld apps.",
          "tags": [ "Library" ],        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
       }
