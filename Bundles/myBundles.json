@@ -6,14 +6,14 @@
          "version": "3.5.8",
          "updated": "04/16/2022",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
-         "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ],
+         "categories": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ],
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip"
       },
       {  "name": "BPTWorld-NormalStuff",
          "version": "1.0.0",
          "updated": "04/16/2022",
          "description": "For use with all BPTWorld apps.",
-         "tags": [ "Library" ],        
+         "categories": [ "Library" ],        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
       }
    ]
