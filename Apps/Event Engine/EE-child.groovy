@@ -40,18 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
-*  3.5.9 - 04/18/22 - Work on IP Ping
-*  3.5.8 - 04/13/22 - Adjustments to Reverse
-*  3.5.7 - 04/10/22 - More work on CT
-*  3.5.6 - 04/09/22 - Reworked setTemp
-*  3.5.5 - 03/27/22 - Lots of 'Refactoring'
-*  3.5.4 - 03/12/22 - Many small changes
-*  3.5.3 - 03/11/22 - Added Notification support for Other Devices (ie. webOS TV's).
-*                   - Added option to run cog when system starts up
-*                   - Changes to 'Switches to Color Change'
-*  3.5.2 - 03/04/22 - Added delay to Refresh
-*  3.5.1 - 03/04/22 - Change to make the Refresh Action run first. Other minor changes
-*  3.5.0 - 02/17/22 - Changes to reverse, hopefully no more flash before turning off
+*  3.6.0 - 04/19/22 - Changes to switchesPerModeReverseActionHandler
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -61,7 +50,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.5.9"
+    state.version = "3.6.0"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -4827,7 +4816,7 @@ def switchOnReverseActionHandler(data) {
             }
             if(theStuff == "good") {
                 if(cMode == "CT") {
-                    if(it.hasCommand("setColorTemperature") && state.onColor != "No Change") {
+                    if(it.hasCommand("setColorTemperature") && state.onTemp) {
                         if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In switchOnReverseActionHandler - setColorTemp - Turning light off (${it})"
@@ -5966,29 +5955,25 @@ def setLevelandColorHandler(newData) {
             state.oldMap.put(name,oldStatus) 
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
         }
-        if(lcColorTemp) {
-            if(theDevice.hasCommand('setColorTemperature') && state.onTemp) {
-                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
-                pauseExecution(actionDelay)
-                theDevice.setLevel(onLevel as Integer ?: 99)
-                pauseExecution(actionDelay)
-                onTemp = state.onTemp.toInteger()
-                theDevice.setColorTemperature(onTemp)
-            }
+        if(theDevice.hasCommand('setColorTemperature') && state.onTemp) {
+            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColorTemp - $theDevice.displayName, setColorTemp($state.onTemp)"
+            pauseExecution(actionDelay)
+            theDevice.setLevel(onLevel as Integer ?: 99)
+            pauseExecution(actionDelay)
+            onTemp = state.onTemp.toInteger()
+            theDevice.setColorTemperature(onTemp)
+        } else if(theDevice.hasCommand('setColor') && state.onColor != "No Change") {
+            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
+            pauseExecution(actionDelay)
+            theDevice.setColor(value)  
+        } else if(theDevice.hasCommand('setLevel')) {
+            if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
+            pauseExecution(actionDelay)
+            theDevice.setLevel(onLevel as Integer ?: 99)
         } else {
-            if(theDevice.hasCommand('setColor') && state.onColor != "No Change") {
-                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
-                pauseExecution(actionDelay)
-                theDevice.setColor(value)  
-            } else if(theDevice.hasCommand('setLevel')) {
-                if(logEnable && extraLogs) log.debug "In setLevelandColorHandler - switchesPerMode - setLevel - $it.displayName, setLevel: $value"
-                pauseExecution(actionDelay)
-                theDevice.setLevel(onLevel as Integer ?: 99)
-            } else {
-                if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - ${theDevice.displayName}, on()"
-                pauseExecution(actionDelay)
-                theDevice.on()
-            }
+            if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - ${theDevice.displayName}, on()"
+            pauseExecution(actionDelay)
+            theDevice.on()
         }
     }
     
