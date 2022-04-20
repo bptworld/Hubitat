@@ -6,7 +6,7 @@
          "version": "3.5.8",
          "updated": "04/16/2022",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
-         "tags": "Automations, Lights, Monitoring, Notifications, Security, Utilities",
+         "tags": "Automations;Lights;Monitoring;Notifications;Security;Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip",
          "forumURL": "na"
       },
