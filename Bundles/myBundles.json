@@ -4,7 +4,7 @@
    "bundles": [
       {  "name": "Event Engine",
          "version": "3.5.8",
-         "updated": "2022/04/16",
+         "updated": "2022-04-16",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
          "tags": "Automations;Lights;Monitoring;Notifications;Security;Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip",
@@ -12,7 +12,7 @@
       },
       {  "name": "BPTWorld-NormalStuff",
          "version": "1.0.0",
-         "updated": "2022/04/16",
+         "updated": "2022-04-16",
          "description": "For use with all BPTWorld apps.",
          "tags": "Library",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
