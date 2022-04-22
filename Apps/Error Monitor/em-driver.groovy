@@ -37,15 +37,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 04/16/22 - For the love of commas!
- *  1.0.8 - 04/15/22 - Minor mods
- *  1.0.7 - 04/15/22 - Took another crack at makeList, added 'useSafety' feature
- *  1.0.6 - 04/06/22 - rinse and repeat
- *  1.0.5 - 04/05/22 - Fixed an issue with makeList
- *  1.0.4 - 04/04/22 - Added option for repeating messages
- *  1.0.3 - 04/03/22 - More adjustments to makeList
- *  1.0.2 - 04/03/22 - Issue with makeList
- *  1.0.1 - 03/31/22 - Adjustments
+ *  1.1.0 - 04/22/22 - Adjustments
+ *  ---
  *  1.0.0 - 03/25/22 - Initial release
  *
  */
@@ -70,7 +63,7 @@ metadata {
         attribute "bpt-logData", "string"        
         attribute "numOfCharacters", "number"
         attribute "keywords", "string"
-        attribute "nKeywords", "string"
+        attribute "goodKeywords", "string"
         attribute "level", "string"
         attribute "appStatus", "string"
         attribute "useSwitch", "string"
@@ -87,7 +80,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.0.9"
+    state.version = "1.1.0"
 }
 
 def installed(){
@@ -168,33 +161,52 @@ def parse(String description) {
         def message =  new JsonSlurper().parseText(theData)                      
         theLevel = message.level.toLowerCase()
         if(theLevel == "error") {
+            skipError = false
             theName = message.name
             theMsg = message.msg.toLowerCase().replace(",","")
-            if(state.lastMsg == null) state.lastMsg = "-"
-            if(theMsg == state.lastMsg) {
-                if(parent.sendDup) {
-                    device.on()
-                    makeList(theName, theMsg)
-                } else {
-                    if(logEnable) log.info "New message is the same as last message, so skipping!"
-                }
-                if(state.sameCount >= 11 && parent.useSafety) {
-                    log.warn "************************************************************"
-                    log.warn "The same Error has occurred 10 times in a row."
-                    log.warn "Error Monitor is CLOSING its connection!"
-                    log.warn "Please fix the Error before continuing."
-                    log.warn "************************************************************"
-                    closeConnection()
-                    app?.updateSetting("closeConnection",[value:"true",type:"bool"])
-                    state.sameCount = 1
-                } else {
-                    state.sameCount += 1
-                }
+            gKeywords = device.currentValue("goodKeywords")
+            if(gKeywords) { 
+                theKeywords = gKeywords.toLowerCase().toString().split(";")
             } else {
-                state.sameCount = 1
-                device.on()
-                state.lastMsg = theMsg
-                makeList(theName, theMsg)
+                theKeywords = "-----".toString().split(";")
+            }
+            theKeywords.each { it ->
+                if(logEnable) log.info "In parse - Checking for goodKeyword: ${it}"
+                if(theMsg.contains("${it}")) {
+                    if(logEnable) log.info "In parse - goodKeyword found, ${it}"
+                    skipError = true
+                }
+            }
+            
+            if(skipError) {
+                if(logEnable) log.info "In parse - goodKeyword found, skipping error."
+            } else {
+                if(state.lastMsg == null) state.lastMsg = "-"
+                if(theMsg == state.lastMsg) {
+                    if(parent.sendDup) {
+                        device.on()
+                        makeList(theName, theMsg)
+                    } else {
+                        if(logEnable) log.info "New message is the same as last message, so skipping!"
+                    }
+                    if(state.sameCount >= 11 && parent.useSafety) {
+                        log.warn "************************************************************"
+                        log.warn "The same Error has occurred 10 times in a row."
+                        log.warn "Error Monitor is CLOSING its connection!"
+                        log.warn "Please fix the Error before continuing."
+                        log.warn "************************************************************"
+                        closeConnection()
+                        app?.updateSetting("closeConnection",[value:"true",type:"bool"])
+                        state.sameCount = 1
+                    } else {
+                        state.sameCount += 1
+                    }
+                } else {
+                    state.sameCount = 1
+                    device.on()
+                    state.lastMsg = theMsg
+                    makeList(theName, theMsg)
+                }
             }
         }
     }
