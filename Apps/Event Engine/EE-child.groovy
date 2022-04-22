@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.1 - 04/22/22 - Adjustments
 *  3.6.0 - 04/19/22 - Changes to switchesPerModeReverseActionHandler
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.0"
+    state.version = "3.6.1"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2370,13 +2371,13 @@ def pageConfig() {
             if(actionType.contains("aSwitchesColorChange")){
                 paragraph "<b>Switches to Color Change</b>"
                 paragraph "Used to change colors between 1 minute and 3 hours"
-                input "switchesToChange", "capability.colorControl", title: "Select Color Changing Switches", required:false, multiple:true
+                input "switchesToChange", "capability.colorControl", title: "Select Color Changing Switches", required:false, multiple:true, submitOnChange:true
                 input "changeTime", "number", title: "Enter the delay between change in minutes (range 1 to 180)", required:true, defaultValue:60, range:'1..180'
-                input "cycleHow", "enum", title: "Cycle each light individually or all together", defaultValue:"individual", options: ["individual","combined"], required:true, multiple:false
-                input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required:true, multiple:false
+                input "cycleHow", "enum", title: "Cycle each light individually or all together", defaultValue:"individual", options: ["individual","combined"], required:true, multiple:false, submitOnChange:true
+                input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required:true, multiple:false, submitOnChange:true
                 useCustomColorsHandler()
-                input "colorSelection", "enum", title: "Choose your colors", options: theColors, required:true, multiple:true
-                input "lightLevel", "number", title: "Lighting Level (1 to 99)", required:true, multiple:false, defaultValue: 99, range: '1..99'
+                input "colorSelection", "enum", title: "Choose your colors", options: theColors, required:true, multiple:true, submitOnChange:true
+                input "lightLevel", "number", title: "Lighting Level (1 to 99)", required:true, multiple:false, defaultValue: 99, range: '1..99', submitOnChange:true
                 paragraph "<hr>"
                 theCogActions +=  "<b>-</b> Switches To Color Change: ${switchesToChange}: changeTime: ${changeTime} - cycleHow: ${cycleHow} - pattern: ${pattern} - colorSelection: ${colorSelection} - lightLevel: ${lightLevel}<br>"
                 
@@ -3831,6 +3832,7 @@ def startTheProcess(evt) {
                                     if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                                 }
                                 state.hasntDelayedReverseYet = true
+                                state.oldMap = [:]
                             }
                         } else {
                             if(logEnable || shortLog) log.debug "In startTheProcess - REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}, so skipping"
@@ -5917,7 +5919,11 @@ def setLevelandColorHandler(newData) {
             state.oldMap.put(name,oldStatus) 
             if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
         }
-        newData.setColor(value)
+        if(logEnable) log.debug "In setLevelandColorHandler - colorChangeHandler - Setting ${newData} to: ${state.onColor} (${value})"
+        currentStatus = newData.currentValue("switch")
+        if(currentStatus == "off") { newData.on() }
+        pauseExecution(actionDelay)
+        newData.setColor(value)      
     }
     
     if(state.fromWhere == "switchesPerMode") {
@@ -5964,6 +5970,8 @@ def setLevelandColorHandler(newData) {
             theDevice.setColorTemperature(onTemp)
         } else if(theDevice.hasCommand('setColor') && state.onColor != "No Change") {
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
+            currentStatus = theDevice.currentValue("switch")
+            if(currentStatus == "off") { theDevice.on() }
             pauseExecution(actionDelay)
             theDevice.setColor(value)  
         } else if(theDevice.hasCommand('setLevel')) {
@@ -6024,6 +6032,8 @@ def setLevelandColorHandler(newData) {
             } else {
                 if(it.hasCommand('setColor') && state.onColor != "No Change") {
                     if(logEnable) log.debug "In setLevelandColorHandler - setColor - NEW VALUE - ${it.displayName} - setColor: ${value}"
+                    currentStatus = it.currentValue("switch")
+                    if(currentStatus == "off") { it.on() }
                     pauseExecution(actionDelay)
                     it.setColor(value)
                 } else if (it.hasCommand('setLevel')) {
@@ -7317,7 +7327,7 @@ import groovy.time.TimeCategory // library marker BPTWorld.bpt-normalStuff, line
 import java.text.SimpleDateFormat // library marker BPTWorld.bpt-normalStuff, line 17
 
 def checkForLibrary() { // library marker BPTWorld.bpt-normalStuff, line 19
-    state.libraryInstalled = 'COMPLETE' // library marker BPTWorld.bpt-normalStuff, line 20
+    state.libraryInstalled = true // library marker BPTWorld.bpt-normalStuff, line 20
     state.libName = "BPTWorld-NormalStuff" // library marker BPTWorld.bpt-normalStuff, line 21
     state.libVersion = "1.0.0" // library marker BPTWorld.bpt-normalStuff, line 22
     sendLocationEvent(name: "updateVersionInfo", value: "${state.libName}:${state.libVersion}") // library marker BPTWorld.bpt-normalStuff, line 23
