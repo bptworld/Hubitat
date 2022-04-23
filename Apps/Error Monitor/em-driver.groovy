@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 04/23/22 - Fixed typo, minor adjustments
  *  1.1.0 - 04/22/22 - Adjustments
  *  ---
  *  1.0.0 - 03/25/22 - Initial release
@@ -80,7 +81,7 @@ metadata {
 }
 
 def setVersion() {
-    state.version = "1.1.0"
+    state.version = "1.1.1"
 }
 
 def installed(){
@@ -185,6 +186,7 @@ def parse(String description) {
                 if(theMsg == state.lastMsg) {
                     if(parent.sendDup) {
                         device.on()
+                        state.lastMsg = theMsg
                         makeList(theName, theMsg)
                     } else {
                         if(logEnable) log.info "New message is the same as last message, so skipping!"
@@ -270,9 +272,9 @@ def makeList(theName,theMsg) {
                 state.list.removeAt(listSize)
             }
 
-            sendEvent(name: "bpt-logData", value: theData, displayed: true)
+            sendEvent(name: "bpt-logData", value: theData, isStateChange: true)
             sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
-            sendEvent(name: "bpt-lastLogMessage", value: theMsg, displayed: true)
+            sendEvent(name: "bpt-lastLogMessage", value: theMsg, isStateChange: true)
             atomicState.isWorking = false
         }
         catch(e) {
