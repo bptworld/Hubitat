@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.2 - 04/22/22 - Added another Reverse option
 *  3.6.1 - 04/22/22 - Adjustments
 *  3.6.0 - 04/19/22 - Changes to switchesPerModeReverseActionHandler
 *  ---
@@ -51,7 +52,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.1"
+    state.version = "3.6.2"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2766,7 +2767,10 @@ def pageConfig() {
                 if(contactEvent || garagedoorEvent || xhttpCommand || lockEvent || motionEvent || presenceEvent || switchEvent || thermoEvent || waterEvent || lzw45Command || tdType || biControl || modeEvent) {
                     paragraph "<b>Reverse</b> <small><abbr title='Description and examples can be found at the top of Cog, in Instructions.'><b>- INFO -</b></abbr></small>" 
                     input "trueReverse", "bool", title: "Reverse to Previous State (off) or Use True Reverse (on) <small><abbr title='- PREVIOUS STATE - Each time the Cog is activated, it stores the State of each device and then restores each device to its previous state when reversed. - TRUE REVERSE - If cog turns a device on, it will turn it off on reverse. Regardless of its previous state.'><b>- INFO -</b></abbr></small>", submitOnChange:true
-                    paragraph "<small><b>Please only select ONE Reverse Action option</b></small>"
+                    
+                    input "reverseTrue", "bool", title: "Only reverse when Cog changes from true to false <small><abbr title='- If one trigger is true but another is false, using reverse can lead to things happening that you do not want. With this option, the cog must have been true before reversing actions.'><b>- INFO -</b></abbr></small>", submitOnChange:true
+                    
+                    paragraph "<small><b>Please only select ONE Reverse Action option below</b></small>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", submitOnChange:true
                     if(reverseWithDelay) {
@@ -2838,6 +2842,9 @@ def pageConfig() {
                 // ***** Start Reverse Stuff *****
                 if(trueReverse) {
                     theCogActions += "<b>-</b> True Reverse: ${trueReverse}<br>"
+                }
+                if(reverseTrue) {
+                    theCogActions += "<b>-</b> Reverse when Cog goes from true to false: ${reverseTrue}<br>"
                 }
                 if(reverse) { 
                     theCogActions += "<b>-</b> Reverse: ${reverse}<br>" 
@@ -3635,8 +3642,9 @@ def startTheProcess(evt) {
                                     certainTimeHasPassedHandler()
                                     if(state.certainTimeHasPassed) {
                                         state.lastRunTime = new Date()
+                                        state.cogTrue = true
                                         if(actionType) {
-                                            if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime}"
+                                            if(logEnable || shortLog) log.debug "In startTheProcess - actionType: ${actionType} - ${state.lastRunTime} - cogTrue: ${state.cogTrue}"
                                             unschedule(permanentDimHandler)
                                             if(devicesToRefresh) devicesToRefreshActionHandler()
                                             if(actionType.contains("aFan")) { fanActionHandler() }
@@ -3796,11 +3804,13 @@ def startTheProcess(evt) {
                                     state.appRevStatus = "round2"
                                     runIn(theDelay, "startTheProcess", [data: "runAfterDelay"])
                                 }
-                            } else {             
-                                if(actionType) {
-                                    if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus}"
+                            } else {
+                                if(!reverseTrue) { state.cogTrue = true }
+                                if(actionType && state.cogTrue) {
+                                    if(logEnable || shortLog) log.debug "In startTheProcess - GOING IN REVERSE - appStatus: ${state.appStatus} - appRevStatus: ${state.appRevStatus} - cogTrue: ${state.cogTrue}"
                                     state.appStatus = "inactive"
                                     state.appRevStatus = "round1"
+                                    state.cogTrue = false
                                     if(devicesToRefresh) devicesToRefreshActionHandler()
                                     if(actionType.contains("aFan")) { fanReverseActionHandler() }
                                     if(actionType.contains("aLZW45") && lzw45Action) { lzw45ReverseHandler() }
