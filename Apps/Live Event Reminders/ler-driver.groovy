@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 04/27/22 - Adjustments for big update
  *  1.0.0 - 03/27/22 - Initial release
  *
  */
@@ -48,17 +49,15 @@ metadata {
    		capability "Actuator"
         capability "Switch"
         
-        //command "putACommandHere"
-        
         attribute "switch", "string"       
         attribute "nextEvent", "string"        
         attribute "nextThree", "string"
+        attribute "currentEvent", "string"
     }
     preferences() {    	
         section(){
             input name: "about", type: "paragraph", element: "paragraph", title: "<b>Life Event Calendar Driver</b>", description: ""
-            input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
-            
+            input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)            
         }
     }
 }
