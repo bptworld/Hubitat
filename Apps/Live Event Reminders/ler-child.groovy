@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/28/22 - Bug hunt
  *  1.0.4 - 04/27/22 - Major rewrite
  *  1.0.3 - 03/31/22 - Added optional 'delay' between commands. Now displays the Next Event and the Next 3 Events in the Data Device.
  *  1.0.2 - 03/27/22 - Added 'repeat yearly'
@@ -49,7 +50,7 @@
 
 def setVersion(){
     state.name = "Life Event Calendar Child"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -302,12 +303,20 @@ def startTheProcess(data) {
     state.calendarMap.each { cm ->
         theTitle = cm.key
         if(theTitle == nTitle) {
-            pauseExecution(actionDelay)
-            dataDevice.$nStatus()
+            pauseExecution(actionDelay ?: 100)
+            if(nStatus == "on") {
+                dataDevice.on()
+            } else {
+                dataDevice.off()
+            }
             if(theSwitches) {
                 theSwitches.each { it ->
-                    pauseExecution(actionDelay)
-                    it.$nStatus()
+                    pauseExecution(actionDelay ?: 100)
+                    if(nStatus == "on") {
+                        it.on()
+                    } else {
+                        it.off()
+                    }
                 }
             }
             
@@ -330,7 +339,7 @@ def startTheProcess(data) {
         if(state.numOfRepeats == null) state.numOfRepeats = 1
         if(state.numOfRepeats < msgRepeatMax) {
             if(state.numOfRepeats == 1) {
-                pauseExecution(actionDelay)
+                pauseExecution(actionDelay ?: 100)
                 dataDevice.on()
             }
             repeat = dataDevice.currentValue("switch")
@@ -345,12 +354,12 @@ def startTheProcess(data) {
                 state.numOfRepeats = 1
             }
         } else {
-            pauseExecution(actionDelay)
+            pauseExecution(actionDelay ?: 100)
             dataDevice.off()
             dataDevice.sendEvent(name: "currentEvent", value: "-", isStateChange: true)
             if(theSwitches) {
                 theSwitches.each { it ->
-                    pauseExecution(actionDelay)
+                    pauseExecution(actionDelay ?: 100)
                     it.off()
                 }
             }
@@ -410,21 +419,27 @@ def scheduleHandler() {
         theTitle = cm.key
         try {
             (theDate, theTime1, theTime2, endDate, endTime1, endTime2, theDesc, theRepeatMinutes, theRepeatMax, theDays, yearly) = cm.value.split(";")
-        } catch(e) {}
+        } catch(e) {
+            log.error e
+        }
         (theYear, theMonth, theDay) = theDate.split("-")
         (theHour, theMin) = theTime1.split(":")
         
         (eYear, eMonth, eDay) = endDate.split("-")
         (eHour, eMin) = endTime1.split(":")
 
-        Date checkDate = new Date("${theMonth}/${theDay}/${theYear}")
+        Date checkDate = new Date("${theMonth}/${theDay}/${theYear} ${eHour}:${eMin}")
         Date now = new Date()
+        if(logEnable) log.debug "In scheduleHandler - checking yearly: ${yearly}"
         if(yearly == "F") {    // Just THIS year
+            if(logEnable) log.debug "In scheduleHandler - checking date: ${checkDate} is before ${now}"
             if(checkDate.after(now)) {          
                 startSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? ${theYear}"
                 endSchedule = "0 ${eMin} ${eHour} ${eDay} ${eMonth} ? ${eYear}"
                 if(logEnable) log.debug "In scheduleHandler - Setting schedule for START: ${theTitle}: 0 ${theMin} ${theHour} ${theDay} ${theMonth} ? ${theYear}"
                 if(logEnable) log.debug "In scheduleHandler - Setting schedule for END: ${theTitle}: 0 ${eMin} ${eHour} ${eDay} ${eMonth} ? ${eYear}"
+            } else {
+                if(logEnable) log.debug "In scheduleHandler - Schedule was set for JUST this year and that date has passed. Skipping."
             }
         } else {               // Year after year after year
             startSchedule = "0 ${theMin} ${theHour} ${theDay} ${theMonth} ? *"
@@ -440,6 +455,7 @@ def scheduleHandler() {
             schedule(endSchedule, startTheProcess, [data: endStuff, overwrite:false])
         }
     }
+    if(logEnable) log.debug "In scheduleHandler - Finished setting up the schedule"
 }
 
 def futureHandler(theTitle, theDate, theTime1, eDate, eTime1, theDays) {
@@ -529,12 +545,15 @@ def checkMapHandler() {
         bulkSize = bulk.size()
         if(logEnable) log.debug "In checkMapHandler - bulkSize: ${bulkSize}"
         if(bulkSize > 10) {
-            if(logEnable) log.debug "In checkMapHandler - map is the right size, something else going on."
+            if(logEnable) log.debug "In checkMapHandler - map is the right size, moving on."
             return
         } else {
             if(logEnable) log.debug "In checkMapHandler - Fixing Map"
             mEDate = mDate
-            endTime = "${mDate} ${mTime1}"
+            (tHour, tMin) = mTime1.split(":")
+            neTime = tMin.toInteger() + 1
+            newEndTime = "${tHour}:${neTime}" 
+            endTime = "${mDate} ${newEndTime}"
             newEndDate = Date.parse("yyyy-MM-dd HH:mm", endTime)
 
             String mETime1 = newEndDate.format("HH:mm")      // 24 h
