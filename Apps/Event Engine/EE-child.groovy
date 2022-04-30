@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.4 - 04/30/22 - Removed time restriction for Time to Reverse ... 3, 2, 1...
 *  3.6.3 - 04/29/22 - Adjusted Time to Reverse
 *  3.6.2 - 04/22/22 - Added another Reverse option
 *  3.6.1 - 04/22/22 - Adjustments
@@ -53,7 +54,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.3"
+    state.version = "3.6.4"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2624,9 +2625,9 @@ def pageConfig() {
                     app.removeSetting("timeToReverse")
                     input "sdReverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)"
                     if(sdReverseTimeType) {
-                        input "sdPerModeTime", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
+                        input "sdPerModeTime", "number", title: "Time to Reverse (in seconds)", submitOnChange:true
                     } else {
-                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes - 1 to 240)", range: '1..240', submitOnChange:true
+                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                     }
                     paragraph "<small>* For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.</small>"
                 } else {
