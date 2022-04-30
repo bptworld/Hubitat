@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.3 - 04/29/22 - Adjusted Time to Reverse
 *  3.6.2 - 04/22/22 - Added another Reverse option
 *  3.6.1 - 04/22/22 - Adjustments
 *  3.6.0 - 04/19/22 - Changes to switchesPerModeReverseActionHandler
@@ -52,7 +53,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.2"
+    state.version = "3.6.3"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2625,7 +2626,7 @@ def pageConfig() {
                     if(sdReverseTimeType) {
                         input "sdPerModeTime", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
                     } else {
-                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                        input "sdPerModeTime", "number", title: "Time to Reverse (in minutes - 1 to 240)", range: '1..240', submitOnChange:true
                     }
                     paragraph "<small>* For use with 'Reverse' below, this can be used to set a different 'Time to Reverse' per mode.</small>"
                 } else {
@@ -2844,7 +2845,7 @@ def pageConfig() {
                     theCogActions += "<b>-</b> True Reverse: ${trueReverse}<br>"
                 }
                 if(reverseTrue) {
-                    theCogActions += "<b>-</b> Reverse when Cog goes from true to false: ${reverseTrue}<br>"
+                    theCogActions += "<b>-</b> Reverse only when Cog goes from true to false: ${reverseTrue}<br>"
                 }
                 if(reverse) { 
                     theCogActions += "<b>-</b> Reverse: ${reverse}<br>" 
