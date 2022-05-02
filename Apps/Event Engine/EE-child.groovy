@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.5 - 05/02/22 - Adjustments
 *  3.6.4 - 04/30/22 - Removed time restriction for Time to Reverse ... 3, 2, 1...
 *  3.6.3 - 04/29/22 - Adjusted Time to Reverse
 *  3.6.2 - 04/22/22 - Added another Reverse option
@@ -54,7 +55,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.4"
+    state.version = "3.6.5"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2791,7 +2792,7 @@ def pageConfig() {
                     }
                     input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", submitOnChange:true
                     if(timeReverse) {
-                        input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                        input "timeReverseMinutes", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                     }
                     if(reverseWithDelay) {
                         paragraph "<hr>"
@@ -2800,9 +2801,9 @@ def pageConfig() {
                         } else {
                             input "reverseTimeType", "bool", title: "Use Minutes (off) or Seconds (on)", submitOnChange:true
                             if(reverseTimeType) {
-                                input "timeToReverse", "number", title: "Time to Reverse (in seconds - 1 to 300)", range: '1..300', submitOnChange:true
+                                input "timeToReverse", "number", title: "Time to Reverse (in seconds)", submitOnChange:true
                             } else {
-                                input "timeToReverse", "number", title: "Time to Reverse (in minutes - 1 to 60)", range: '1..60', submitOnChange:true
+                                input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                             }
                         }
                     }
