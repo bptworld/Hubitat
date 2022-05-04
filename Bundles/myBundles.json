@@ -7,7 +7,7 @@
          "updated": "2022-05-04",
          "description": "Blank!",
          "tags": "Automations;Lights;Monitoring;Notifications;Security;Utilities",
-         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip",
+         "bundleURL": "https://github.com/bptworld/Hubitat/blob/master/Bundles/Blank.zip",
          "forumURL": "na"
       },
       {  "name": "Event Engine",
