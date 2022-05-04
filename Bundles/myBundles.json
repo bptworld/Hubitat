@@ -17,6 +17,14 @@
          "tags": "Library",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/bptNormalStuff.zip",
          "forumURL": "na"
+      },
+      {  "name": "BPTWorld-testLibrary",
+         "version": "1.0.0",
+         "updated": "2022-05-04",
+         "description": "Test Library for BPTWorld apps.",
+         "tags": "Library",        
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/testLibrary.zip",
+         "forumURL": "na"
       }
    ]
 }
