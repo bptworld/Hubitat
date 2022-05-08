@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Monitor devices and sensors. Easily see their status right on your dashboard and/or get a notification - speech and phone.
  *
- *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2022 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 05/08/22 - Major rewrite
  *  2.0.4 - 03/16/21 - Fixed presence, other adjustments
  *  2.0.3 - 01/03/21 - Fix real-time handler names
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -44,12 +45,12 @@
  *
  */
 
-import groovy.time.TimeCategory
-import java.text.SimpleDateFormat
+#include BPTWorld.bpt-normalStuff
 
 def setVersion(){
     state.name = "Snapshot"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
+    sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
 definition(
@@ -67,6 +68,7 @@ definition(
 
 preferences {
 	page(name: "pageConfig")
+    page(name: "speechOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -75,34 +77,33 @@ def pageConfig() {
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "Monitor devices and sensors. Easily see their status right on your dashboard and/or get a notification - speech and phone."	
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Type of Trigger")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Type of Trigger")) {
 			input "reportMode", "enum", required: true, title: "Select Report Type", submitOnChange: true,  options: ["Regular", "Priority"]
 			if(reportMode == "Regular") paragraph "Regular - Will show device state based on options below"
 			if(reportMode == "Priority") paragraph "Priority - Show device state only when it's not what it should be based on options below"
 			input "triggerMode", "enum", required: true, title: "Select Trigger Frequency", submitOnChange: true,  options: ["Real Time", "Every X minutes", "On Demand"]
 			if(triggerMode == "Real Time") {
 				paragraph "<b>Remember - Too many devices updating in real time can slow down and/or crash the hub.</b>"
-				paragraph "Remember to flip this switch off and back on again if any changes to this app have been made."
-				input "realTimeSwitch", "capability.switch", title: "App Control Switch", required: true
 			}
 			if(triggerMode == "Every X minutes") {
 				paragraph "<b>Choose how often to take a Snapshot of your selected devices.</b>"
-				paragraph "Remember to flip this switch off and back on again if any changes to this app have been made."
-				input "repeatSwitch", "capability.switch", title: "App Control Switch", required: true
 				input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: true, range: '1..60'
 			}
 			if(triggerMode == "On Demand") {
-				paragraph "<b>Only take a snapshot when this switch is turned on OR the Maintenance Reset button is pressed.</b>"
-				paragraph "Recommended to create a virtual device with 'Enable auto off' set to '1s'"
-				input "onDemandSwitch", "capability.switch", title: "App Control Switch", required: true
+				paragraph "<b>Only take a snapshot when this switch is turned on.</b>"
+				createDeviceSection("Snapshot Driver")
+                paragraph "<small>Recommended to set 'Enable auto off' to '1s' after creating device</small>"
 			}
+            createDeviceSection("Snapshot Driver")
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Monitor")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Monitor")) {
 			if(reportMode == "Priority") {
 				input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false, submitOnChange: true
 				input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false, submitOnChange: true
 				input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false, submitOnChange: true
 				input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false, submitOnChange: true
+                input "motionActive", "capability.motion", title: "Motion Sensors that should be ACTIVE", multiple: true, required: false, submitOnChange: true
+				input "motionInactive", "capability.motion", title: "Motion Sensors that should be INACTIVE", multiple: true, required: false, submitOnChange: true
 				input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false, submitOnChange: true
 				input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
@@ -121,6 +122,7 @@ def pageConfig() {
             	input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
 				input "water", "capability.waterSensor", title: "Water Sensors", multiple: true, required: false, submitOnChange: true
 				input "locks", "capability.lock", title: "Door Locks", multiple: true, required: false, submitOnChange: true
+                input "motion", "capability.motionSensor", title: "Motion Sensors", multiple: true, required: false, submitOnChange: true
 				input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
                 if(temps) input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true, width: 6
@@ -137,12 +139,16 @@ def pageConfig() {
                 input "contactsClosedColor", "enum", required: true, title: "Color when contact is closed", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
             }
             if(water) {
-                input "wateWetColor", "enum", required: true, title: "Color when water is wet", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "waterWetColor", "enum", required: true, title: "Color when water is wet", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
                 input "waterDryColor", "enum", required: true, title: "Color when water is dry", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
             }
             if(locks || locksLocked || lockUnlocked) {
                 input "locksUnlockedColor", "enum", required: true, title: "Color when lock is unlocked", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
                 input "locksLockedColor", "enum", required: true, title: "Color when lock is locked", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(motion) {
+                input "motionInactiveColor", "enum", required: true, title: "Color when motion is Inactive", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "motionActiveColor", "enum", required: true, title: "Color when motion is Active", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
             }
             if(presence) {
                 input "presenceNotPresentColor", "enum", required: true, title: "Color when presence is Not Present", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
@@ -177,6 +183,9 @@ def pageConfig() {
 				if(locks) {
 					input "lockMode", "enum", required: true, title: "Select Lock Display Output Type", submitOnChange: true,  options: ["Full", "Only Unlocked", "Only Locked"]
 				}
+                if(motion) {
+					input "motionMode", "enum", required: true, title: "Select Motion Display Output Type", submitOnChange: true,  options: ["Full", "Only Active", "Only Inactive"]
+				}
 				if(presence) {
 					input "presenceMode", "enum", required: true, title: "Select Presence Display Output Type", submitOnChange: true,  options: ["Full", "Only Present", "Only Not Present"]
 				}
@@ -188,9 +197,12 @@ def pageConfig() {
 		if(reportMode == "Priority") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Priority Notification Options")) {
 				paragraph "Receive priority device notifications on demand with both voice and pushover options. Great before leaving the house or going to bed."
-				paragraph "Recommended to create a virtual device with 'Enable auto off' set to '1s'"
-				input "priorityCheckSwitch", "capability.switch", title: "Priority Check Switch", required: false
-				paragraph "Each of the following messages will only be spoken if necessary..."
+                if(fmSpeaker) {
+                    href "speechOptions", title:"${getImage("optionsGreen")} Select Notification Options", description:"Click here for Options"
+                } else {
+                    href "speechOptions", title:"${getImage("optionsRed")} Select Notification Options", description:"Click here for Options"
+                }
+				paragraph "Each of the following messages will only be spoken if necessary"
 				input(name: "oRandomPre", type: "bool", defaultValue: "false", title: "Random Pre Message?", description: "Random", submitOnChange: "true")
 				if(!oRandomPre) input "preMsg", "text", required: true, title: "Pre Message - Single message", defaultValue: "Warning"
 				if(oRandomPre) {
@@ -203,7 +215,7 @@ def pageConfig() {
 						paragraph "${listMapPre}"
 					}
 				}
-				input "msgDevice", "text", required: true, title: "Message to speak when a device isn't in the correct state... Will be followed by device names", defaultValue: "The following devices are in the wrong state"
+				input "msgDevice", "text", required: true, title: "Message to speak when a device isn't in the correct state. Will be followed by device names", defaultValue: "The following devices are in the wrong state"
 				input(name: "oRandomPost", type: "bool", defaultValue: "false", title: "Random Post Message?", description: "Random", submitOnChange: "true")
 				if(!oRandomPost) input "postMsg", "text", required: true, title: "Post Message - Single message", defaultValue: "This is all I have to say"
 				if(oRandomPost) {
@@ -216,49 +228,19 @@ def pageConfig() {
 						paragraph "${listMapPost}"
 					}
 				}
-			}	
-        	section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
-          		input "speechMode", "enum", required: false, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
-				if (speechMode == "Music Player"){ 
-              		input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-					paragraph "<hr>"
-					paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
-					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
-					if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
-          		}   
-        		if (speechMode == "Speech Synth"){ 
-         			input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
-          		}
-				input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
-				if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
-      		}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-				paragraph "NOTE: Not all speakers can use volume controls."
-				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
-				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-            	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
-				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
-    			if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
-			}
-    		if(speechMode){ 
-				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-        			input "fromTime", "time", title: "From", required: false
-        			input "toTime", "time", title: "To", required: false
-				}
-    		}
+            }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
-			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Snapshot Tile'<br> - Use our 'Snapshot Tile' Driver<br> - Then select this new device below"
-			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-6, snapshotContact1-6, snapshotLock1-2, snapshotPrioritySwitch1-2, snapshotPriorityContact1-2 or snapshotPriorityLock1-2"
+			paragraph "All you have to do is add the device selected above to one of your dashboards to see your data on a tile!<br>Add a new tile with the following selections"
+			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = switch1-6, contact1-6, lock1-6, etc."
 		}
 		section() {
-			input(name: "snapshotTileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true, required: false, multiple: false)
+            paragraph "To save characters, enter in filters to remove characters from each device name. Must be exact, including case.<br><small>ie. Motion;Sensor;Contact</small>"
+			input "dnFilter", "text", title: "Filters (separtate each with a ; (semicolon))", required:false, submitOnChange:true   
 		}
-        
-        
+                
 		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
@@ -295,13 +277,31 @@ def pageConfig() {
 	}
 }
 
+def speechOptions() {
+    dynamicPage(name: "speechOptions", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) { 
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required:true, submitOnChange:true
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
+            if(sendPushMessage) {
+                input "includeAppName", "bool", title: "Include App name in Push", defaultValue:false, submitOnChange:true
+            }
+    	}
+    }
+}
+
 def installed() {
-    //log.debug "Installed with settings: ${settings}"
+    if(logEnable) log.debug "Installed with settings: ${settings}"
     initialize()
 }
 
 def updated() {	
-    //if(logEnable) log.debug "Updated with settings: ${settings}"
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
@@ -318,22 +318,25 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In initialize..."
-        if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
-        if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
+        if(logEnable) log.debug "In initialize (${state.version})"
+        if(triggerMode == "On Demand") subscribe(dataDevice, "switch.on", onDemandSwitchHandler)
+        if(triggerMode == "Every X minutes") subscribe(dataDevice, "switch", repeatSwitchHandler)
         if(triggerMode == "Real Time" && reportMode == "Regular") {
-            if(switches) subscribe(switches, "switch", switchMapHandler)
-            if(contacts) subscribe(contacts, "contact", contactMapHandler)
-            if(water) subscribe(water, "water", waterMapHandler)
-            if(locks) subscribe(locks, "lock", lockMapHandler)
-            if(presence) subscribe(presence, "presence", presenceMapHandler)
-            if(temps) subscribe(temps, "temperature", tempMapHandler)
+            if(switches) subscribe(switches, "switch", onDemandSwitchHandler)
+            if(contacts) subscribe(contacts, "contact", onDemandSwitchHandler)
+            if(water) subscribe(water, "water", onDemandSwitchHandler)
+            if(locks) subscribe(locks, "lock", onDemandSwitchHandler)
+            if(motion) subscribe(motion, "motion", onDemandSwitchHandler)
+            if(presence) subscribe(presence, "presence", onDemandSwitchHandler)
+            if(temps) subscribe(temps, "temperature", onDemandSwitchHandler)
         }
         if(triggerMode == "Real Time" && reportMode == "Priority") {
             if(switchesOn) subscribe(switchesOn, "switch", priorityHandler)
             if(switchesOff) subscribe(switchesOff, "switch", priorityHandler)
             if(contactsOpen) subscribe(contactsOpen, "contact", priorityHandler)
             if(contactsClosed) subscribe(contactsClosed, "contact", priorityHandler)
+            if(motionInactive) subscribe(motionInactive, "motion.inactive", priorityHandler)
+            if(motionActive) subscribe(motionActive, "motion.active", priorityHandler)
             if(locksUnlocked) subscribe(locksUnlocked, "lock", priorityHandler)
             if(locksLocked) subscribe(locksLocked, "lock", priorityHandler)
             if(temps) subscribe(temps, "temperature", priorityHandler)
@@ -346,17 +349,18 @@ def repeatSwitchHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In repeatSwitchHandler..."
-        state.repeatSwitchStatus = repeatSwitch.currentValue("switch")
+        if(logEnable) log.debug "In repeatSwitchHandler (${state.version})"
+        state.repeatSwitchStatus = dataDevice.currentValue("switch")
         state.runDelay = timeDelay * 60
         if(reportMode == "Regular") {
             if(state.repeatSwitchStatus == "on") {
-                if(switches) switchMapHandler()
-                if(contacts) contactMapHandler()
-                if(water) waterMapHandler()
-                if(locks) lockMapHandler()
-                if(presence) presenceMapHandler()
-                if(temps) tempMapHandler()
+                if(switches) mapHandler("switch")
+                if(contacts) mapHandler("contact")
+                if(water) mapHandler("water")
+                if(locks) mapHandler("lock")
+                if(motion) mapHandler("motion")
+                if(presence) mapHandler("presence")
+                if(temps) mapHandler("temperature")
             }
             runIn(state.runDelay,repeatSwitchHandler)
         }
@@ -374,490 +378,186 @@ def onDemandSwitchHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In onDemandSwitchHandler..."
+        if(logEnable) log.debug "In onDemandSwitchHandler (${state.version})"
         state.onDemandSwitchStatus = evt.value
         if(reportMode == "Regular") {
-            if(state.onDemandSwitchStatus == "on") {
-                if(switches) switchMapHandler()
-                if(contacts) contactMapHandler()
-                if(water) waterMapHandler()
-                if(locks) lockMapHandler()
-                if(presence) presenceMapHandler()
-                if(temps) tempMapHandler()
-            }
+            if(switches) mapHandler("switch")
+            if(contacts) mapHandler("contact")
+            if(water) mapHandler("water")
+            if(locks) mapHandler("lock")
+            if(motion) mapHandler("motion")
+            if(presence) mapHandler("presence")
+            if(temps) mapHandler("temperature")
         }
         if(reportMode == "Priority") {
-            if(state.onDemandSwitchStatus == "on") priorityHandler()
+            priorityHandler()
         }
     }
 }
 
-def switchMapHandler(evt) {
+def mapHandler(data) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "------------------------------- Start Switch Map Handler -------------------------------"
-        state.fSwitchMap1S = "<table width='100%'>"
-        state.fSwitchMap2S = "<table width='100%'>"
-        state.fSwitchMap3S = "<table width='100%'>"
-        state.fSwitchMap4S = "<table width='100%'>"
-        state.fSwitchMap5S = "<table width='100%'>"
-        state.fSwitchMap6S = "<table width='100%'>"
+        setVersion()
+        if(logEnable) log.debug "------------------------------- Start Map Handler (${data})-------------------------------"
         state.count = 0
         state.countOn = 0
         state.countOff = 0
-
-        if(switchMode == "Full" || switchMode == "Only On") {
-            switches.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("switch")
-                try {
-                    powerLvl = it.currentValue("power")
-                    if(powerLvl == null) powerLvl = ""
-                    if(logEnable) log.trace "Snapshot - device: ${it} - power: ${powerLvl}"
-                } catch(e) {
-                    if(logEnable) log.trace "Snapshot - device: ${it} - Doesn't have power attribute"
-                    if(powerLvl == null) powerLvl = ""
+        fMap1S="";fMap2S="";fMap3S="";fMap4S="";fMap5S="";fMap6S=""
+        
+        if(data == "switch") {
+            theDevices = switches
+            if(switchMode == "Full") { dMode = "full" }
+            if(switchMode == "Only On") { dMode = "1" }
+            if(switchMode == "Only Off") { dMode = "2" }
+            onColor = switchesOnColor
+            offColor = switchesOffColor
+        }
+        if(data == "contact") {
+            theDevices = contacts
+            if(contactMode == "Full") { dMode = "full" }
+            if(contactMode == "Only Open") { dMode = "1" }
+            if(contactMode == "Only Closed") { dMode = "2" }
+            onColor = contactsOpenColor
+            offColor = contactsClosedColor
+        }
+        if(data == "water") {
+            theDevices = water
+            if(waterMode == "Full") { dMode = "full" }
+            if(waterMode == "Only Wet") { dMode = "1" }
+            if(waterMode == "Only Dry") { dMode = "2" }
+            onColor = waterWetColor
+            offColor = waterDryColor
+        }
+        if(data == "lock") {
+            theDevices = locks
+            if(lockMode == "Full") { dMode = "full" }
+            if(lockMode == "Only Unlocked") { dMode = "1" }
+            if(lockMode == "Only Locked") { dMode = "2" }
+            onColor = locksUnlockedColor
+            offColor = locksLockedColor
+        }
+        if(data == "motion") {
+            theDevices = motion
+            if(motionMode == "Full") { dMode = "full" }
+            if(motionMode == "Only Active") { dMode = "1" }
+            if(motionMode == "Only Inactive") { dMode = "2" }
+            onColor = motionActiveColor
+            offColor = motionInactiveColor
+        }
+        if(data == "presence") {
+            theDevices = presence
+            if(presenceMode == "Full") { dMode = "full" }
+            if(presenceMode == "Only Not Present") { dMode = "1" }
+            if(presenceMode == "Only Present") { dMode = "2" }
+            onColor = presenceNotPresentColor
+            offColor = presencPresentfColor
+        }
+        if(data == "temperature") {
+            theDevices = temps
+            if(tempMode == "Full") { dMode = "full" }
+            if(tempMode == "Only High") { dMode = "1" }
+            if(tempMode == "Only Low") { dMode = "2" }
+            onColor = tempHighColor
+            offColor = tempLowColor
+        }
+        
+        theDevices = theDevices.sort { it.displayName }
+        filters = dnFilter.split(";")
+        
+        theDevices.each { it ->
+            dName = it.displayName
+            if(filters) {
+                filters.each { filt ->
+                    dName = dName.replace("${filt}", "")
                 }
-                if(logEnable) log.debug "In switchMapHandler - Working on: ${switchName} - ${switchStatus}"
-                if(switchStatus == "on") {  
+            }
+           
+            dStatus = it.currentValue(data)
+            try {
+                powerLvl = it.currentValue("power")
+                if(powerLvl == null) powerLvl = ""
+                if(logEnable) log.trace "Snapshot - device: ${it} - power: ${powerLvl}"
+            } catch(e) {
+                if(logEnable) log.trace "Snapshot - device: ${it} - Doesn't have power attribute"
+                if(powerLvl == null) powerLvl = ""
+            }
+            if(data == "temperature") {
+                tempStatusI = tempStatus.toFloat()
+                tempHighI = tempHigh.toFloat()
+                tempLowI = tempLow.toFloat()
+                if(tempStatusI >= tempHighI) {
+                    dStatus = "high"
+                } else {
+                    dStatus = "low"
+                }
+            }
+            
+            if(logEnable) log.debug "In mapHandler - Working on: ${dName} - ${dStatus}"
+            if(dMode == "full" || dMode == "1") {
+                if(dStatus == "on" || dStatus == "open" || dStatus == "wet" || dStatus == "unlocked" || dStatus == "active" || dStatus == "not present" || dStatus == "high") {  
                     state.count = state.count + 1
                     state.countOn = state.countOn + 1
-                    if(logEnable) log.debug "In switchMapHandler - Building Table ON with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
-                    if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
-                    if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
-                    if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
-                    if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+                    if(logEnable) log.debug "In mapHandler - Building Table ${dStatus} with ${dName} count: ${state.count}"
+                    if((state.count >= 1) && (state.count <= 5)) fMap1S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 6) && (state.count <= 10)) fMap2S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 11) && (state.count <= 15)) fMap3S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 16) && (state.count <= 20)) fMap4S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 21) && (state.count <= 25)) fMap5S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 26) && (state.count <= 30)) fMap6S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${onColor};'>${dStatus}</div></td></tr>"
                 }
             }
-
-            switches.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("switch")
-                try {
-                    powerLvl = it.currentValue("power")
-                    if(powerLvl == null) powerLvl = ""
-                    if(logEnable) log.trace "Snapshot - device: ${it} - power: ${powerLvl}"
-                } catch(e) {
-                    if(logEnable) log.trace "Snapshot - device: ${it} - Doesn't have power attribute"
-                    if(powerLvl == null) powerLvl = ""
-                }
-                if(logEnable) log.debug "In switchMapHandler - Working on: ${switchName} - ${switchStatus}"
-                if(switchMode == "Full" || switchMode == "Only Off") {
-                    if(switchStatus == "off") {
-                        state.count = state.count + 1
-                        state.countOff = state.countOff + 1
-                        if(logEnable) log.debug "In switchMapHandler - Building Table OFF with ${switchName} count: ${state.count}"
-                        if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
-                        if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
-                        if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
-                        if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
-                        if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
-                        if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${switchName}</td><td> ${powerLvl} </td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
-                    }
+            
+            if(dMode == "full" || dMode == "2") {
+                if(dStatus == "off" || dStatus == "closed" || dStatus == "dry" || dStatus == "locked" || dStatus == "inactive" || dStatus == "present" || dStatus == "low") {
+                    state.count = state.count + 1
+                    state.countOff = state.countOff + 1
+                    if(logEnable) log.debug "In mapHandler - Building Table ${dStatus} with ${dName} count: ${state.count}"
+                    if((state.count >= 1) && (state.count <= 5)) fMap1S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 6) && (state.count <= 10)) fMap2S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 11) && (state.count <= 15)) fMap3S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"
+                    if((state.count >= 16) && (state.count <= 20)) fMap4S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"	
+                    if((state.count >= 21) && (state.count <= 25)) fMap5S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"	
+                    if((state.count >= 26) && (state.count <= 30)) fMap6S += "<tr><td align=left>${dName}</td><td> ${powerLvl} </td><td><div style='color: ${offColor};'>${dStatus}</div></td></tr>"	
                 }
             }
         }
 
-        state.fSwitchMap1S += "</table>"
-        state.fSwitchMap2S += "</table>"
-        state.fSwitchMap3S += "</table>"
-        state.fSwitchMap4S += "</table>"
-        state.fSwitchMap5S += "</table>"
-        state.fSwitchMap6S += "</table>"
-
+        fMap1 = "<table width='100%'>${fMap1S}</table>"
+        fMap2 = "<table width='100%'>${fMap2S}</table>"
+        fMap3 = "<table width='100%'>${fMap3S}</table>"
+        fMap4 = "<table width='100%'>${fMap4S}</table>"
+        fMap5 = "<table width='100%'>${fMap5S}</table>"
+        fMap6 = "<table width='100%'>${fMap6S}</table>"
+            
         if(state.count == 0) {
-            state.fSwitchMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
-            state.fSwitchMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
-            state.fSwitchMap3S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
-            state.fSwitchMap4S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
-            state.fSwitchMap5S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
-            state.fSwitchMap6S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+            fMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+            fMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+            fMap3S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+            fMap4S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+            fMap5S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+            fMap6S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
         }
 
-        if(logEnable) log.debug "In switchMapHandler - <br>fSwitchMap1S<br>${state.fSwitchMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotSwitchMap1(state.fSwitchMap1S)
-            snapshotTileDevice.sendSnapshotSwitchMap2(state.fSwitchMap2S)
-            snapshotTileDevice.sendSnapshotSwitchMap3(state.fSwitchMap3S)
-            snapshotTileDevice.sendSnapshotSwitchMap4(state.fSwitchMap4S)
-            snapshotTileDevice.sendSnapshotSwitchMap5(state.fSwitchMap5S)
-            snapshotTileDevice.sendSnapshotSwitchMap6(state.fSwitchMap6S)
-            snapshotTileDevice.sendSnapshotSwitchCountOn(state.countOn)
-            snapshotTileDevice.sendSnapshotSwitchCountOff(state.countOff)
+        if(logEnable) log.debug "In mapHandler - <br>fMap1S<br>${fMap1S}"
+        if(dataDevice) {
+            dataDevice.sendEvent(name: "${data}Map1", value: fMap1, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}Map2", value: fMap2, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}Map3", value: fMap3, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}Map4", value: fMap4, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}Map5", value: fMap5, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}Map6", value: fMap6, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}CountOn", value: state.countOn, isStateChange: true)
+            dataDevice.sendEvent(name: "${data}CountOff", value: state.countOff, isStateChange: true)
         } else {
             log.warn "Snapshot - NO DEVICE choosen to send data to"   
         }
-        if(logEnable) log.debug "------------------------------- End Switch Map Handler -------------------------------"
+        if(logEnable) log.debug "------------------------------- End Map Handler -------------------------------"
     }
 }
 
-def contactMapHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "------------------------------- Start Contact Map Handler -------------------------------"
-        state.fContactMap1S = "<table width='100%'>"
-        state.fContactMap2S = "<table width='100%'>"
-        state.fContactMap3S = "<table width='100%'>"
-        state.fContactMap4S = "<table width='100%'>"
-        state.fContactMap5S = "<table width='100%'>"
-        state.fContactMap6S = "<table width='100%'>"
-        state.count = 0
-        state.countOpen = 0
-        state.countClosed = 0
-
-        if(contactMode == "Full" || contactMode == "Only Open") {
-            contacts.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("contact")
-                if(logEnable) log.debug "In switchMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "open") {
-                    state.count = state.count + 1
-                    state.countOpen = state.countOpen + 1
-                    if(logEnable) log.debug "In contactMapHandler - Building Table OPEN with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                    if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                    if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                    if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                    if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${switchName}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
-                }
-            }
-        }
-
-        if(contactMode == "Full" || contactMode == "Only Closed") {
-            contacts.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("contact")
-                if(logEnable) log.debug "In contactMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "closed") {
-                    state.count = state.count + 1
-                    state.countClosed = state.countClosed + 1
-                    if(logEnable) log.debug "In contactMapHandler - Building Table CLOSED with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                    if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                    if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                    if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                    if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${switchName}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
-                }
-            }
-        }
-
-        state.fContactMap1S += "</table>"
-        state.fContactMap2S += "</table>"
-        state.fContactMap3S += "</table>"
-        state.fContactMap4S += "</table>"
-        state.fContactMap5S += "</table>"
-        state.fContactMap6S += "</table>"
-
-        if(state.count == 0) {
-            state.fContactMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-            state.fContactMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-            state.fContactMap3S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-            state.fContactMap4S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-            state.fContactMap5S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-            state.fContactMap6S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
-        }
-
-        if(logEnable) log.debug "In contactMapHandler - <br>fContactMap1S<br>${state.fContactMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotContactMap1(state.fContactMap1S)
-            snapshotTileDevice.sendSnapshotContactMap2(state.fContactMap2S)
-            snapshotTileDevice.sendSnapshotContactMap3(state.fContactMap3S)
-            snapshotTileDevice.sendSnapshotContactMap4(state.fContactMap4S)
-            snapshotTileDevice.sendSnapshotContactMap5(state.fContactMap5S)
-            snapshotTileDevice.sendSnapshotContactMap6(state.fContactMap6S)
-            snapshotTileDevice.sendSnapshotContactCountOpen(state.countOpen)
-            snapshotTileDevice.sendSnapshotContactCountClosed(state.countClosed)
-        } else {
-            log.warn "Snapshot - NO DEVICE choosen to send data to"   
-        }
-        if(logEnable) log.debug "------------------------------- End Contact Map Handler -------------------------------"
-    }
-}
-
-def waterMapHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "------------------------------- Start Water Map Handler -------------------------------"
-        state.fWaterMap1S = "<table width='100%'>"
-        state.fWaterMap2S = "<table width='100%'>"
-        state.count = 0
-        state.countWet = 0
-        state.countDry = 0
-
-        if(waterMode == "Full" || waterMode == "Only Wet") {
-            water.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("water")
-                if(logEnable) log.debug "In waterMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "wet") {
-                    state.count = state.count + 1
-                    state.countWet = state.countWet + 1
-                    if(logEnable) log.debug "In waterMapHandler - Building Table WET with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${switchName}</td><td><div style='color: ${waterWetColor};'>wet</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${switchName}</td><td><div style='color: ${waterWetColor};'>wet</div></td></tr>"
-                }
-            }
-        }
-
-        if(waterMode == "Full" || waterMode == "Only Dry") {
-            water.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("water")
-                if(logEnable) log.debug "In waterMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "dry") {
-                    state.count = state.count + 1
-                    state.countDry = state.countDry + 1
-                    if(logEnable) log.debug "In waterMapHandler - Building Table DRY with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${switchName}</td><td><div style='color: ${waterDryColor};'>dry</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${switchName}</td><td><div style='color: ${waterDryColor};'>dry</div></td></tr>"
-                }
-            }
-        }
-
-        state.fWaterMap1S += "</table>"
-        state.fWaterMap2S += "</table>"
-
-        if(state.count == 0) {
-            state.fWaterMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No water devices to report</div></td></tr></table>"
-            state.fWaterMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No water devices to report</div></td></tr></table>"
-        }
-
-        if(logEnable) log.debug "In waterMapHandler - <br>fWaterMap1S<br>${state.fWaterMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotWaterMap1(state.fWaterMap1S)
-            snapshotTileDevice.sendSnapshotWaterMap2(state.fWaterMap2S)
-            snapshotTileDevice.sendSnapshotWaterCountWet(state.countWet)
-            snapshotTileDevice.sendSnapshotWaterCountDry(state.countDry)
-        } else {
-            log.warn "Snapshot - NO DEVICE choosen to send data to"   
-        }
-        if(logEnable) log.debug "------------------------------- End Water Map Handler -------------------------------"
-    }
-}
-
-def lockMapHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "------------------------------- Start Lock Map Handler -------------------------------"
-        state.fLockMap1S = "<table width='100%'>"
-        state.fLockMap2S = "<table width='100%'>"
-        state.count = 0
-        state.countUnlocked = 0
-        state.countLocked = 0
-
-        if(lockMode == "Full" || lockMode == "Only Unlocked") {
-            locks.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("lock")
-                if(logEnable) log.debug "In lockMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "unlocked") {
-                    state.count = state.count + 1
-                    state.countUnlocked = state.countUnlocked + 1
-                    if(logEnable) log.debug "In lockMapHandler - Building Table UNLOCKED with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${switchName}</td><td><div style='color: ${locksUnlockedColor};'>unlocked</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${switchName}</td><td><div style='color: ${locksUnlockedColor};'>unlocked</div></td></tr>"
-                }
-            }
-        }
-
-        if(lockMode == "Full" || lockMode == "Only Locked") {
-            locks.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("lock")
-                if(logEnable) log.debug "In lockMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "locked") {
-                    state.count = state.count + 1
-                    state.countLocked = state.countLocked + 1
-                    if(logEnable) log.debug "In lockMapHandler - Building Table LOCKED with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${switchName}</td><td><div style='color: ${locksLockedColor};'>locked</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${switchName}</td><td><div style='color: ${locksLockedColor};'>locked</div></td></tr>"
-                }
-            }
-        }
-
-        state.fLockMap1S += "</table>"
-        state.fLockMap2S += "</table>"
-
-        if(state.count == 0) {
-            state.fLockMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No lock devices to report</div></td></tr></table>"
-            state.fLockMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No lock devices to report</div></td></tr></table>"
-        }
-
-        if(logEnable) log.debug "In lockMapHandler - <br>fLockMap1S<br>${state.fLockMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotLockMap1(state.fLockMap1S)
-            snapshotTileDevice.sendSnapshotLockMap2(state.fLockMap2S)
-            snapshotTileDevice.sendSnapshotLockCountUnlocked(state.countUnlocked)
-            snapshotTileDevice.sendSnapshotLockCountLocked(state.countLocked)
-        } else {
-            log.warn "Snapshot - NO DEVICE choosen to send data to"   
-        }
-        if(logEnable) log.debug "------------------------------- End Lock Map Handler -------------------------------"
-    }
-}
-
-def presenceMapHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "------------------------------- Start Presence Map Handler -------------------------------"
-        if(logEnable) log.debug "In presenceMapHandler - Building Presence Maps"
-        state.fPresenceMap1S = "<table width='100%'>"
-        state.fPresenceMap2S = "<table width='100%'>"
-        state.count = 0
-        state.countNotPresent = 0
-        state.countPresent = 0
-
-        if(presenceMode == "Full" || presenceMode == "Only Not Present") {
-            presence.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("presence")
-                if(logEnable) log.debug "In presenceMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "not present") { 
-                    state.count = state.count + 1
-                    state.countNotPresent = state.countNotPresent + 1
-                    if(logEnable) log.debug "In presenceMapHandler - Building Table Not Present with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${switchName}</td><td><div style='color: ${presenceNotPresentColor};'>not present</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${switchName}</td><td><div style='color: ${presenceNotPresentColor};'>not present</div></td></tr>"
-                }
-            }
-        }
-
-        if(presenceMode == "Full" || presenceMode == "Only Present") {
-            presence.each { it ->
-                switchName = it.displayName
-                switchStatus = it.currentValue("presence")
-                if(logEnable) log.debug "In presenceMapHandler - Working on: ${switchName} - ${switchStatus}" 
-                if(switchStatus == "present") { 
-                    state.count = state.count + 1
-                    state.countPresent = state.countPresent + 1
-                    if(logEnable) log.debug "In presenceMapHandler - Building Table Present with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${switchName}</td><td><div style='color: ${presencePresentColor};'>present</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${switchName}</td><td><div style='color: ${presencePresentColor};'>present</div></td></tr>"
-                }
-            }
-        }
-
-        state.fPresenceMap1S += "</table>"
-        state.fPresenceMap2S += "</table>"
-
-        if(state.count == 0) {
-            state.fPresenceMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No presence devices to report</div></td></tr></table>"
-            state.fPresenceMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No presence devices to report</div></td></tr></table>"
-        }
-
-        if(logEnable) log.debug "In presenceMapHandler - <br>fPresenceMap1S<br>${state.fPresenceMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotPresenceMap1(state.fPresenceMap1S)
-            snapshotTileDevice.sendSnapshotPresenceMap2(state.fPresenceMap2S)
-            snapshotTileDevice.sendSnapshotPresenceCountNotPresent(state.countNotPresent)
-            snapshotTileDevice.sendSnapshotPresenceCountPresent(state.countPresent)
-        } else {
-            log.warn "Snapshot - NO DEVICE choosen to send data to"   
-        }
-        if(logEnable) log.debug "------------------------------- End Presence Map Handler -------------------------------"
-    }
-}
-
-def tempMapHandler(evt) {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        if(logEnable) log.debug "------------------------------- Start Temp Map Handler -------------------------------"
-        if(logEnable) log.debug "In tempMapHandler - Building Temp Maps"
-        state.fTempMap1S = "<table width='100%'>"
-        state.fTempMap2S = "<table width='100%'>"
-        state.count = 0
-        state.countHigh = 0
-        state.countLow = 0
-
-        if(tempMode == "Full" || tempMode == "Only High") {
-            temps.each { it ->
-                switchName = it.displayName
-                tempStatus = it.currentValue("temperature")
-                tempStatusI = tempStatus.toFloat()
-                tempHighI = tempHigh.toFloat()
-                tempLowI = tempLow.toFloat()
-                if(logEnable) log.debug "In tempMapHandler - Working on: ${switchName} - ${tempStatus}" 
-                if(tempStatusI >= tempHighI) { 
-                    state.count = state.count + 1
-                    state.countHigh = state.countHigh + 1
-                    if(logEnable) log.debug "In tempMapHandler - Building Table High with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${switchName}</td><td><div style='color: ${tempHighColor};'>${tempStatusI}</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${switchName}</td><td><div style='color: ${tempHighColor};'>${tempStatusI}</div></td></tr>"
-                }
-            }
-        }
-
-        if(tempMode == "Full") {
-            temps.each { it ->
-                switchName = it.displayName
-                tempStatus = it.currentValue("temperature")
-                tempStatusI = tempStatus.toFloat()
-                tempHighI = tempHigh.toFloat()
-                tempLowI = tempLow.toFloat()
-                if(logEnable) log.debug "In tempMapHandler - Working on: ${switchName} - ${tempStatus}" 
-                if((tempStatusI < tempHighI) && (tempStatusI > tempLowI)) { 
-                    state.count = state.count + 1
-                    if(logEnable) log.debug "In tempMapHandler - Building Table Normal with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${switchName}</td><td>${tempStatusI}</td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${switchName}</td><td>${tempStatusI}</td></tr>"
-                }
-            }
-        }
-
-        if(tempMode == "Full" || tempMode == "Only Low") {
-            temps.each { it ->
-                switchName = it.displayName
-                tempStatus = it.currentValue("temperature")
-                tempStatusI = tempStatus.toFloat()
-                tempHighI = tempHigh.toFloat()
-                tempLowI = tempLow.toFloat()
-                if(logEnable) log.debug "In tempMapHandler - Working on: ${switchName} - ${tempStatus}" 
-                if(tempStatusI <= tempLowI) { 
-                    state.count = state.count + 1
-                    state.countLow = state.countLow + 1
-                    if(logEnable) log.debug "In tempMapHandler - Building Table Low with ${switchName} count: ${state.count}"
-                    if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${switchName}</td><td><div style='color: ${tempLowColor};'>${tempStatusI}</div></td></tr>"
-                    if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${switchName}</td><td><div style='color: ${tempLowColor};'>${tempStatusI}</div></td></tr>"
-                }
-            }
-        }
-
-        state.fTempMap1S += "</table>"
-        state.fTempMap2S += "</table>"
-
-        if(state.count == 0) {
-            state.fTempMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
-            state.fTempMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
-        }
-
-        if(logEnable) log.debug "In tempMapHandler - <br>${state.fTempMap1S}"
-        if(snapshotTileDevice) {
-            snapshotTileDevice.sendSnapshotTempMap1(state.fTempMap1S)
-            snapshotTileDevice.sendSnapshotTempMap2(state.fTempMap2S)
-            snapshotTileDevice.sendSnapshotTempCountHigh(state.countHigh)
-            snapshotTileDevice.sendSnapshotTempCountLow(state.countLow)
-        } else {
-            log.warn "Snapshot - NO DEVICE choosen to send data to"   
-        }
-        if(logEnable) log.debug "------------------------------- End Temp Map Handler -------------------------------"
-    }
-}
 
 // ***** Priority Stuff *****
 
@@ -866,6 +566,7 @@ def priorityHandler(evt){
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        setVersion()
         if(logEnable) log.debug "In priorityHandler"
         state.wrongSwitchPushMap = ""
         state.wrongContactPushMap = ""
@@ -951,9 +652,9 @@ def priorityHandler(evt){
                 state.isPriorityData = "false"
                 state.prioritySwitch = "false"
             }
-            if(snapshotTileDevice) {
-                snapshotTileDevice.sendSnapshotPrioritySwitchMap1(state.pSwitchMap1S)
-                snapshotTileDevice.sendSnapshotPrioritySwitchMap2(state.pSwitchMap2S)
+            if(dataDevice) {
+                dataDevice.sendEvent(name: "prioritySwitchMap1", value: state.pSwitchMap1S, isStateChange: true)
+                dataDevice.sendEvent(name: "prioritySwitchMap2", value: state.pSwitchMap2S, isStateChange: true)
             } else {
                 log.warn "Snapshot - NO DEVICE choosen to send data to"   
             }
@@ -992,7 +693,7 @@ def priorityHandler(evt){
                         state.priorityContact = "true"
                         state.wrongStateContactMap += "${switchName}, "
                         if(logEnable) log.debug "In priorityHandler - Building Table Wrong Contact with ${switchName} count: ${state.count}"
-                        if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: ${contactsClosedColor};'>${switchName}</div></td><td><div style='color: ${contactsClosedolor};'>${switchStatus}</div></td></tr>"
+                        if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: ${contactsClosedColor};'>${switchName}</div></td><td><div style='color: ${contactsClosedColor};'>${switchStatus}</div></td></tr>"
                         if((state.count >= 6) && (state.count <= 10)) state.pContactMap2S += "<tr><td><div style='color: ${contactsClosedColor};'>${switchName}</div></td><td><div style='color: ${contactsClosedColor};'>${switchStatus}</div></td></tr>"
                         state.wrongContactPushMap += "${switchName} \n"
                     }
@@ -1009,14 +710,72 @@ def priorityHandler(evt){
                 state.isPriorityData = "false"
                 state.priorityContact = "false"
             }
-            if(snapshotTileDevice) {
-                snapshotTileDevice.sendSnapshotPriorityContactMap1(state.pContactMap1S)
-                snapshotTileDevice.sendSnapshotPriorityContactMap2(state.pContactMap2S)
+            if(dataDevice) {
+                dataDevice.sendEvent(name: "priorityContactMap1", value: state.pContactMap1S, isStateChange: true)
+                dataDevice.sendEvent(name: "priorityContactMap2", value: state.pContactMap2S, isStateChange: true)
             } else {
                 log.warn "Snapshot - NO DEVICE choosen to send data to"   
             }
         }
 
+        // Start Priority Motion
+        if(motionActive || motionInactive) {
+            if(logEnable) log.debug "In priorityHandler - motion"
+            state.pMotionMap1S = "<table width='100%'>"
+            state.pMotionMap2S = "<table width='100%'>"
+            state.count = 0
+            if(motionInactive) {
+                motionInactive.each { sOn -> 
+                    def switchName = sOn.displayName
+                    def switchStatus = sOn.currentValue('motion')
+                    if(switchStatus == "active") {
+                        state.count = state.count + 1
+                        state.isPriorityData = "true"
+                        state.priorityMotion = "true"
+                        state.wrongStateMotionMap += "${switchName}, "
+                        if(logEnable) log.debug "In priorityHandler - Building Table Wrong Motion with ${switchName} count: ${state.count}"
+                        if((state.count >= 1) && (state.count <= 5)) state.pMotionMap1S += "<tr><td><div style='color: ${motionActiveColor};'>${switchName}</div></td><td><div style='color: ${motionActiveColor};'>${switchStatus}</div></td></tr>"
+                        if((state.count >= 6) && (state.count <= 10)) state.pMotionMap2S += "<tr><td><div style='color: ${motionActiveColor};'>${switchName}</div></td><td><div style='color: ${motionActiveColor};'>${switchStatus}</div></td></tr>"
+                        state.wrongMotionPushMap += "${switchName} \n"
+                    }
+                }
+            }
+
+            if(motionActive) {
+                motionActive.each { sOn -> 
+                    def switchName = sOn.displayName
+                    def switchStatus = sOn.currentValue('motion')
+                    if(switchStatus == "inactive") {
+                        state.count = state.count + 1
+                        state.isPriorityData = "true"
+                        state.priorityMotion = "true"
+                        state.wrongStateMotionMap += "${switchName}, "
+                        if(logEnable) log.debug "In priorityHandler - Building Table Wrong Motion with ${switchName} count: ${state.count}"
+                        if((state.count >= 1) && (state.count <= 5)) state.pMotionMap1S += "<tr><td><div style='color: ${motionInactiveColor};'>${switchName}</div></td><td><div style='color: ${motionInactiveColor};'>${switchStatus}</div></td></tr>"
+                        if((state.count >= 6) && (state.count <= 10)) state.pMotionMap2S += "<tr><td><div style='color: ${motionInactiveColor};'>${switchName}</div></td><td><div style='color: ${motionInactiveColor};'>${switchStatus}</div></td></tr>"
+                        state.wrongMotionPushMap += "${switchName} \n"
+                    }
+                }
+            }
+
+            state.pMotionMap1S += "</table>"
+            state.pMotionMap2S += "</table>"
+
+            if(state.count == 0) {
+                state.pMotionMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No motion to report</div></td></tr></table>"
+                state.pMotionMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No motion to report</div></td></tr></table>"
+                state.wrongMotionPushMap = ""
+                state.isPriorityData = "false"
+                state.priorityMotion = "false"
+            }
+            if(dataDevice) {
+                dataDevice.sendEvent(name: "priorityMotionMap1", value: state.pMotionMap1S, isStateChange: true)
+                dataDevice.sendEvent(name: "priorityMotionMap2", value: state.pMotionMap2S, isStateChange: true)
+            } else {
+                log.warn "Snapshot - NO DEVICE choosen to send data to"   
+            }
+        }
+        
         // Start Priority Locks
 
         if(locksUnlocked || locksLocked) {
@@ -1068,9 +827,9 @@ def priorityHandler(evt){
                 state.isPriorityData = "false"
                 state.priorityLock = "false"
             }
-            if(snapshotTileDevice) {
-                snapshotTileDevice.sendSnapshotPriorityLockMap1(state.pLockMap1S)
-                snapshotTileDevice.sendSnapshotPriorityLockMap2(state.pLockMap2S)
+            if(dataDevice) {
+                dataDevice.sendEvent(name: "priorityLockMap1", value: state.pLockMap1S, isStateChange: true)
+                dataDevice.sendEvent(name: "priorityLockMap2", value: state.pLockMap2S, isStateChange: true)
             } else {
                 log.warn "Snapshot - NO DEVICE choosen to send data to"   
             }
@@ -1135,9 +894,9 @@ def priorityHandler(evt){
                 state.priorityTempHigh = "false"
                 state.priorityTempLow = "false"
             }
-            if(snapshotTileDevice) {
-                snapshotTileDevice.sendSnapshotPriorityTempMap1(state.pTempMap1S)
-                snapshotTileDevice.sendSnapshotPriorityTempMap2(state.pTempMap2S)
+            if(dataDevice) {
+                dataDevice.sendEvent(name: "priorityTempMap1", value: state.pTempMap1S, isStateChange: true)
+                dataDevice.sendEvent(name: "priorityTempMap2", value: state.pTempMap2S, isStateChange: true)
             } else {
                 log.warn "Snapshot - NO DEVICE choosen to send data to"   
             }
@@ -1146,82 +905,15 @@ def priorityHandler(evt){
         if((isDataDevice) && (state.isPriorityData == "true")) isDataDevice.on()
         if((isDataDevice) && (state.isPriorityData == "false")) isDataDevice.off()
 
-        if(speakers) letsTalk()
+        messageHandler()
+        if(fmSpeaker) letsTalk(state.theMsg)
         if(sendPushMessage) pushNow()
     }
 }
 
-def letsTalk() {
-	if(logEnable) log.debug "In letsTalk..."
-		checkTime()
-		checkVol()
-		pauseExecution(atomicState.randomPause)
-		if(logEnable) log.debug "In letsTalk - continuing"
-		if(state.timeBetween == true) {
-			messageHandler()
-			if(logEnable) log.debug "Speaker(s) in use: ${speakers}"
-  			if (speechMode == "Music Player"){ 
-    			if(logEnable) log.debug "Music Player"
-				if(echoSpeaks) {
-					speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
-					if(logEnable) log.debug "In letsTalk - MP Echo Speaks - Wow, that's it!"
-				}
-				if(!echoSpeaks) {
-    				if(volSpeech) speakers.setLevel(state.volume)
-    				speakers.playTextAndRestore(state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Music Player - Wow, that's it!"
-				}
-  			}   
-			if(speechMode == "Speech Synth"){ 
-				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-				atomicState.speechDuration2 = speechDuration * 1000
-				if(logEnable) log.debug "Speech Synth - speakers: ${speakers}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(volSpeech) speakers.setVolume(state.volume)
-				speakers.speak(state.theMsg)
-				pauseExecution(atomicState.speechDuration2)
-				if(volRestore) speakers.setVolume(volRestore)
-				if(logEnable) log.debug "In letsTalk - Speech Synth - Wow, that's it!"
-			}
-			log.info "${app.label} - ${state.theMsg}"
-		} else {
-			if(logEnable) log.debug "In letsTalk - It's quiet time"
-		}
-}
-
-def checkTime() {
-	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) {
-			state.timeBetween = true
-		} else {
-			state.timeBetween = false
-		}
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
-}
-
-def checkVol() {
-	if(logEnable) log.debug "In checkVol..."
-	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-    	if(state.quietTime) {
-    		state.volume = volQuiet
-		} else {
-			state.volume = volSpeech
-		}
-	} else {
-		state.volume = volSpeech
-	}
-	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
-}
-
 def messageHandler() {
-	if(logEnable) log.debug "In messageHandler..."
-    
+	if(logEnable) log.debug "In messageHandler (${state.version})"
+    state.theMsg = null
 	if(oRandomPre) {
 		def values = "${preMsg}".split(";")
 		vSize = values.size()
@@ -1255,7 +947,7 @@ def messageHandler() {
 } 
 
 def pushNow(){
-	if(logEnable) log.debug "In pushNow..."
+	if(logEnable) log.debug "In pushNow (${state.version})"
 	theMsg = ""
 	if(state.prioritySwitch == "true") {
 		state.wrongSwitchPushMap2 = "PRIORITY SWITCHES IN WRONG STATE \n"
@@ -1284,104 +976,4 @@ def pushNow(){
 	}
 	pushMessage = "${theMsg}"
     if(theMsg) sendPushMessage.deviceNotification(pushMessage)
-}
-
-//// ********** Normal Stuff **********
-def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
-    app.updateSetting("logEnable",[value:"false",type:"bool"])
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            theStatus = it.currentValue("switch")
-            if(theStatus == "on") { state.eSwitch = true }
-        }
-        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
-    }
-}
-
-def getImage(type) {					// Modified from @Stephack Code
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
-}
-
-def getFormat(type, myText="") {			// Modified from @Stephack Code
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
-}
-
-def display(data) {
-    if(data == null) data = ""
-    setVersion()
-    getHeaderAndFooter()
-    if(app.label) {
-        if(app.label.contains("(Paused)")) {
-            theName = app.label - " <span style='color:red'>(Paused)</span>"
-        } else {
-            theName = app.label
-        }
-    }
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
-        paragraph "${state.headerMessage}"
-        paragraph getFormat("line")
-        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-    }
-}
-
-def display2() {
-    section() {
-        paragraph getFormat("line")
-        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
-        paragraph "${state.footerMessage}"
-    }
-}
-
-def getHeaderAndFooter() {
-    timeSinceNewHeaders()
-    if(state.totalHours > 4) {
-        def params = [
-            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-            requestContentType: "application/json",
-            contentType: "application/json",
-            timeout: 30
-        ]
-        try {
-            def result = null
-            httpGet(params) { resp ->
-                state.headerMessage = resp.data.headerMessage
-                state.footerMessage = resp.data.footerMessage
-            }
-        }
-        catch (e) { }
-    }
-    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
-}
-
-def timeSinceNewHeaders() { 
-    if(state.previous == null) { 
-        prev = new Date()
-    } else {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
-    }
-    def now = new Date()
-    use(TimeCategory) {
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.totalHours = (state.days * 24) + state.hours
-    }
-    state.previous = now
 }
