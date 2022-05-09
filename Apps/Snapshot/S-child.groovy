@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 05/09/22 - Adjustments
  *  2.0.5 - 05/08/22 - Major rewrite
  *  2.0.4 - 03/16/21 - Fixed presence, other adjustments
  *  2.0.3 - 01/03/21 - Fix real-time handler names
@@ -49,7 +50,7 @@
 
 def setVersion(){
     state.name = "Snapshot"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -465,7 +466,7 @@ def mapHandler(data) {
         }
         
         theDevices = theDevices.sort { it.displayName }
-        filters = dnFilter.split(";")
+        if (dnFilter) filters = dnFilter.split(";")
         
         theDevices.each { it ->
             dName = it.displayName
@@ -485,6 +486,7 @@ def mapHandler(data) {
                 if(powerLvl == null) powerLvl = ""
             }
             if(data == "temperature") {
+                tempStatus = it.currentValue("temperature")
                 tempStatusI = tempStatus.toFloat()
                 tempHighI = tempHigh.toFloat()
                 tempLowI = tempLow.toFloat()
