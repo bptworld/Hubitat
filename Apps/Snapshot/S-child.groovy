@@ -389,6 +389,7 @@ def onDemandSwitchHandler(evt) {
             if(motion) mapHandler("motion")
             if(presence) mapHandler("presence")
             if(temps) mapHandler("temperature")
+            dataDevice.sendEvent(name: "switch", value: "off", isStateChange: true)
         }
         if(reportMode == "Priority") {
             priorityHandler()
@@ -477,13 +478,17 @@ def mapHandler(data) {
             }
            
             dStatus = it.currentValue(data)
-            try {
-                powerLvl = it.currentValue("power")
-                if(powerLvl == null) powerLvl = ""
-                if(logEnable) log.trace "Snapshot - device: ${it} - power: ${powerLvl}"
-            } catch(e) {
-                if(logEnable) log.trace "Snapshot - device: ${it} - Doesn't have power attribute"
-                if(powerLvl == null) powerLvl = ""
+            if (switchPower) {
+                try {
+                    powerLvl = it.currentValue("power")
+                    if(powerLvl == null) powerLvl = ""
+                    if(logEnable) log.trace "Snapshot - device: ${it} - power: ${powerLvl}"
+                } catch(e) {
+                    if(logEnable) log.trace "Snapshot - device: ${it} - Doesn't have power attribute"
+                    if(powerLvl == null) powerLvl = ""
+                }
+            } else {
+                powerLvl = ""
             }
             if(data == "temperature") {
                 tempStatus = it.currentValue("temperature")
