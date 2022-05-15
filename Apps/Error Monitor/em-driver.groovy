@@ -35,13 +35,7 @@
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Changes:
- *
- *  1.1.1 - 04/23/22 - Fixed typo, minor adjustments
- *  1.1.0 - 04/22/22 - Adjustments
- *  ---
- *  1.0.0 - 03/25/22 - Initial release
- *
+ *  Release notes can be found in the child app header
  */
 
 import groovy.json.*
@@ -173,8 +167,12 @@ def parse(String description) {
             }
             theKeywords.each { it ->
                 if(logEnable) log.info "In parse - Checking for goodKeyword: ${it}"
+                if(theName.contains("${it}")) {
+                    if(logEnable) log.info "In parse - goodKeyword found in Name, ${it}"
+                    skipError = true
+                }
                 if(theMsg.contains("${it}")) {
-                    if(logEnable) log.info "In parse - goodKeyword found, ${it}"
+                    if(logEnable) log.info "In parse - goodKeyword found in Message, ${it}"
                     skipError = true
                 }
             }
@@ -184,11 +182,15 @@ def parse(String description) {
             } else {
                 if(state.lastMsg == null) state.lastMsg = "-"
                 if(theMsg == state.lastMsg) {
-                    if(parent.sendDup) {
-                        device.on()
-                        state.lastMsg = theMsg
-                        makeList(theName, theMsg)
-                    } else {
+                    try{
+                        if(parent.sendDup) {
+                            device.on()
+                            state.lastMsg = theMsg
+                            makeList(theName, theMsg)
+                        } else {
+                            if(logEnable) log.info "New message is the same as last message, so skipping!"
+                        }
+                    } catch(e) {
                         if(logEnable) log.info "New message is the same as last message, so skipping!"
                     }
                     if(state.sameCount >= 11 && parent.useSafety) {
