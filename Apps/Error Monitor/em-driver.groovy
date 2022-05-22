@@ -74,10 +74,6 @@ metadata {
     }
 }
 
-def setVersion() {
-    state.version = "1.1.1"
-}
-
 def installed(){
     log.info "Error Monitor Driver has been Installed"
     clearAllData()
@@ -91,7 +87,6 @@ def updated() {
 
 def initialize() {
     if(logEnable) log.info "In initialize"
-    setVersion()
     if(disableConnection) {
         if(logEnable) log.info "Error Monitor Driver (${state.version}) - webSocket Connection is Disabled in the Device"
     } else {
@@ -138,7 +133,6 @@ def webSocketStatus(String socketStatus) {
 }
 
 def autoReconnectWebSocket() {
-    setVersion()
     state.delay = (state.delay ?: 0) + 30    
     if(state.delay > 600) state.delay = 600
     if(logEnable) log.warn "Error Monitor Driver (${state.version}) - Connection lost, will try to reconnect in ${state.delay} seconds"
@@ -280,7 +274,6 @@ def makeList(theName,theMsg) {
             atomicState.isWorking = false
         }
         catch(e) {
-            setVersion()
             log.warn "In makeList (${state.version}) - listSize: ${listSize} - lines$i: $lines[i]"
             log.warn "Error Monitor Driver (${state.version}) - In makeList - There was an error while making the list!"
             log.warn(getExceptionMessageWithLine(e))
@@ -295,7 +288,6 @@ def appStatus(data){
 }
 
 def clearAllData(){
-    setVersion()
 	if(logEnable) log.debug "Error Monitor Driver (${state.version}) - Clearing ALL data"
     off()
     theMsg = "-"
@@ -304,12 +296,10 @@ def clearAllData(){
     state.list = []
     sendEvent(name: "bpt-logData", value: state.list, displayed: true)	
     sendEvent(name: "bpt-lastLogMessage", value: theMsg, displayed: true)
-    sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
-    
+    sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)  
 }
 
 def clearLogData(){
-    setVersion()
 	if(logEnable) log.debug "Error Monitor Driver (${state.version}) - Clearing the Log Data"
     state.list = []
     sendEvent(name: "bpt-logData", value: state.list, displayed: true)
