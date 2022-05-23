@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.9 - 05/23/22 - Adjustments to wording on locks
 *  3.6.8 - 05/23/22 - Added Locking options to Locks
 *  3.6.7 - 05/23/22 - Adjustments to Switches by mode
 *  3.6.6 - 05/16/22 - Removed Event Engine from Actions
@@ -58,7 +59,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.8"
+    state.version = "3.6.9"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -4156,7 +4157,7 @@ def deviceHandler(theType, eventName, type, typeAO) {
             if(theValue == state.typeValue1) {
                 if(logEnable) log.debug "In deviceHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
-                    if(state.whoText.contains("locked by")) {
+                    if(state.whoText.contains("was locked") || state.whoText.contains("locked by")) {
                         if(state.whoText.contains("digital")) {
                             if(noCodeLocks) {
                                 if(logEnable) log.debug "In deviceHandler - Lock was digitally locked, Including"
@@ -4214,7 +4215,7 @@ def deviceHandler(theType, eventName, type, typeAO) {
             } else if(theValue == state.typeValue2) { 
                 if(logEnable) log.debug "In deviceHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
-                    if(state.whoText.contains("unlocked by")) {
+                    if(state.whoText.contains("was unlocked") || state.whoText.contains("unlocked by")) {
                         if(state.whoText.contains("digital")) {
                             if(noCodeUnlocks) {
                                 if(logEnable) log.debug "In deviceHandler - Lock was digitally unlocked, Including"
