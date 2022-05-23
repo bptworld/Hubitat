@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.8 - 05/23/22 - Added Locking options to Locks
 *  3.6.7 - 05/23/22 - Adjustments to Switches by mode
 *  3.6.6 - 05/16/22 - Removed Event Engine from Actions
 *  3.6.5 - 05/02/22 - Adjustments
@@ -57,7 +58,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.7"
+    state.version = "3.6.8"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -1195,9 +1196,9 @@ def pageConfig() {
                 if(lockEvent) {
                     input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on) <small><abbr title='Choose which status will be considered true and run the Cog'><b>- INFO -</b></abbr></small>", description: "Lock", submitOnChange:true
                     if(lUnlockedLocked) {
-                        paragraph "Condition true when Sensor(s) become Locked"
+                        paragraph "Condition true when Lock(s) become Locked"
                     } else {
-                        paragraph "Condition true when Sensor(s) become Unlocked"
+                        paragraph "Condition true when Lock(s) become Unlocked"
                     }
                     input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on) <small><abbr title='‘AND’ requires that ALL selected devices are in the state selected. ‘OR’ requires that ANY selected device is in the state selected.'><b>- INFO -</b></abbr></small>", description: "And Or", submitOnChange:true
                     if(lockANDOR) {
@@ -1208,8 +1209,13 @@ def pageConfig() {
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
-                    input "noCodeUnlocks", "bool", title: "Include Manual Unlocks (hand turn, key and/or digital without code)", submitOnChange:true
-                    theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeUnlocks: ${noCodeUnlocks}<br>"
+                    if(lUnlockedLocked) {
+                        input "noCodeLocks", "bool", title: "Include Manual Locks (hand turn, key and/or digital without code)", submitOnChange:true
+                        theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeLocks: ${noCodeLocks}<br>"
+                    } else {
+                        input "noCodeUnlocks", "bool", title: "Include Manual Unlocks (hand turn, key and/or digital without code)", submitOnChange:true
+                        theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeUnlocks: ${noCodeUnlocks}<br>"
+                    }
                 } else {
                     app.removeSetting("lockUser")
                     app.removeSetting("lockEvent")
@@ -4149,7 +4155,51 @@ def deviceHandler(theType, eventName, type, typeAO) {
             if(logEnable) log.debug "In deviceHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
             if(theValue == state.typeValue1) {
                 if(logEnable) log.debug "In deviceHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
-                if(state.eventType == "switch") {
+                if(state.eventType == "lock") {
+                    if(state.whoText.contains("locked by")) {
+                        if(state.whoText.contains("digital")) {
+                            if(noCodeLocks) {
+                                if(logEnable) log.debug "In deviceHandler - Lock was digitally locked, Including"
+                                deviceTrue1 = deviceTrue1 + 1
+                            } else {
+                                if(logEnable) log.debug "In deviceHandler - Lock was digitally locked, NOT Including"
+                            }
+                        } else if(state.whoText.contains("keypad")) {
+                            if(noCodeLocks) {
+                                if(logEnable) log.debug "In deviceHandler - Lock was locked by keypad, Including"
+                                deviceTrue1 = deviceTrue1 + 1
+                            } else {
+                                if(logEnable) log.debug "In deviceHandler - Lock was locked by keypad, NOT Including"
+                            }
+                        } else if(state.whoText.contains("physical") || state.whoText.contains("manual")) {
+                            if(noCodeLocks) {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually locked, Including"
+                                deviceTrue1 = deviceTrue1 + 1
+                            } else {
+                                if(logEnable) log.debug "In deviceHandler - Lock was manually locked, NOT Including"
+                            }
+                        } else if(lockUser) {
+                            state.whoUnlocked = it.currentValue("lastCodeName")
+                            lockUser.each { us ->
+                                if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                                if(us == state.whoUnlocked) { 
+                                    if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
+                                    deviceTrue1 = deviceTrue1 + 1
+                                }
+                            }
+                        } else {
+                            if(logEnable) log.debug "In deviceHandler - No user selected, moving on"
+                            deviceTrue1 = deviceTrue1 + 1
+                        }
+                    } else {
+                        if(noCodeLocks) {
+                            if(logEnable) log.debug "In deviceHandler - Lock was manually locked, Including"
+                            deviceTrue1 = deviceTrue1 + 1
+                        } else {
+                            if(logEnable) log.debug "In deviceHandler - Lock was manually locked, NOT Including"
+                        }
+                    }
+                } else if(state.eventType == "switch") {
                     if(seType) {
                         if(logEnable) log.debug "In deviceHandler - Switch - ONLY Physical"
                         if(state.whoText.contains("[physical]")) { deviceTrue1 = deviceTrue1 + 1 }
@@ -4167,10 +4217,10 @@ def deviceHandler(theType, eventName, type, typeAO) {
                     if(state.whoText.contains("unlocked by")) {
                         if(state.whoText.contains("digital")) {
                             if(noCodeUnlocks) {
-                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, Including"
+                                if(logEnable) log.debug "In deviceHandler - Lock was digitally unlocked, Including"
                                 deviceTrue2 = deviceTrue2 + 1
                             } else {
-                                if(logEnable) log.debug "In deviceHandler - Lock was manually unlocked, NOT Including"
+                                if(logEnable) log.debug "In deviceHandler - Lock was digitally unlocked, NOT Including"
                             }
                         } else if(state.whoText.contains("physical") || state.whoText.contains("manual")) {
                             if(noCodeUnlocks) {
