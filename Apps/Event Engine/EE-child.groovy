@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.7.1 - 05/23/22 - Added Look for a 'special' lock message when all other options won't work
 *  3.7.0 - 05/23/22 - Added wildcard %whoLocked% to message options
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.7.0"
+    state.version = "3.7.1"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -1201,6 +1202,12 @@ def pageConfig() {
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User <small><abbr title='Only the selected users will trigger the Cog to run. Leave blank for all users.'><b>- INFO -</b></abbr></small>", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using Hub Mesh and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
+                    input "specialMessage", "bool", title: "Look for a 'special' lock message when all other options won't work", submitOnChange:true
+                    if(specialMessage) {
+                        input "sLockMessage", "text", title: "When lock message contains (separate multiple messages with a semi-colon ';')", submitOnChange:true
+                    } else {
+                        app.removeSetting("sLockMessage")
+                    }
                     if(lUnlockedLocked) {
                         input "noCodeLocks", "bool", title: "Include Manual Locks (hand turn, key and/or digital without code)", submitOnChange:true
                         theCogTriggers += "<b>-</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}, noCodeLocks: ${noCodeLocks}<br>"
@@ -4184,8 +4191,18 @@ def deviceHandler(theType, eventName, type, typeAO) {
                                     deviceTrue1 = deviceTrue1 + 1
                                 }
                             }
+                        } else if(specialMessage) {
+                            tMessage = sLockMessage.split(";")
+                            tMessage.each { ms ->
+                                if(logEnable && extraLogs) log.debug "Checking lock for message - $ms"
+                                if(state.whoText.contains("${ms}")) {
+                                    if(logEnable && extraLogs) log.debug "MATCH: ${ms}"
+                                    state.whoLocked = "${ms}"
+                                    deviceTrue1 = deviceTrue1 + 1
+                                }
+                            }
                         } else {
-                            if(logEnable) log.debug "In deviceHandler - No user selected, moving on"
+                            if(logEnable) log.debug "In deviceHandler - moving on"
                             deviceTrue1 = deviceTrue1 + 1
                         }
                     } else {
@@ -4235,8 +4252,18 @@ def deviceHandler(theType, eventName, type, typeAO) {
                                     deviceTrue2 = deviceTrue2 + 1
                                 }
                             }
+                        } else if(specialMessage) {
+                            tMessage = sLockMessage.split(";")
+                            tMessage.each { ms ->
+                                if(logEnable && extraLogs) log.debug "Checking lock for message - $ms"
+                                if(state.whoText.contains("${ms}")) {
+                                    if(logEnable && extraLogs) log.debug "MATCH: ${ms}"
+                                    state.whoUnlocked = "${ms}"
+                                    deviceTrue1 = deviceTrue1 + 1
+                                }
+                            }
                         } else {
-                            if(logEnable) log.debug "In deviceHandler - No user selected, moving on"
+                            if(logEnable) log.debug "In deviceHandler - moving on"
                             deviceTrue2 = deviceTrue2 + 1
                         }
                     } else {
