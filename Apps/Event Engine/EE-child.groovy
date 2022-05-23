@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.6.7 - 05/23/22 - Adjustments to Switches by mode
 *  3.6.6 - 05/16/22 - Removed Event Engine from Actions
 *  3.6.5 - 05/02/22 - Adjustments
 *  3.6.4 - 04/30/22 - Removed time restriction for Time to Reverse ... 3, 2, 1...
@@ -56,7 +57,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.6"
+    state.version = "3.6.7"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -2614,7 +2615,7 @@ def pageConfig() {
                     if(!state.found) { state.working = true }
                 }
                 input "setDimmersPerMode", "enum", title: "Dimmers to set for this Mode", required:false, multiple:true, options:masterList, submitOnChange:true
-                input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, range: '1..99', submitOnChange:true
+                input "sdPerModeLevel", "number", title: "On Level (1 to 99 - Leave blank to keep the Current Level)", required:false, multiple:false, range: '1..99', submitOnChange:true
                 input "sdPerModeColorTemp", "bool", title: "Use Color (off) or Temperature (on)", submitOnChange:true
                 if(sdPerModeColorTemp) {
                     input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
@@ -4577,8 +4578,8 @@ def switchesPerModeActionHandler() {
                         if((logEnable) || shortLog) log.debug "In switchesPerModeActionHandler - MATCH - Sending: ${itOne}"
                         state.fromWhere = "switchesPerMode"
                         state.onColor = "${theColor}"
-                        state.onLevel = theLevel
                         state.onTemp = theTemp
+                        state.onLevel = theLevel
                         setLevelandColorHandler(itOne)
                     }
                 }
@@ -4623,7 +4624,8 @@ def switchesPerModeReverseActionHandler() {
                             it.setColorTemperature(cTemp)
                         }
                     } else {
-                        def theValue = [hue: hueColor, saturation: saturation, level: level.toInteger()]
+                        if(level) level = level.toInteger()
+                        def theValue = [hue: hueColor, saturation: saturation, level: level]
                         if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue} - trueReverse: ${trueReverse}"
                         if(oldStatus == "off" || trueReverse) {
                             if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning light off (${it})"
@@ -5822,6 +5824,8 @@ def modeHandler() {
 
 def setLevelandColorHandler(newData) {  
     if(state.onColor == null || state.onColor == "null" || state.onColor == "") state.onColor = "No Change"
+    if(state.onLevel == "NA") state.onLevel = null
+    if(state.onTemp == "NA") state.onTemp = null
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.onColor} - temp: ${state.onTemp} - onLevel: ${state.onLevel}"
     switch(state.onColor) {
         case "No Change":
@@ -5900,7 +5904,8 @@ def setLevelandColorHandler(newData) {
     onLevel = state.onLevel
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
     // if(it.getDataValue("model")) {}
-    value = [hue: hueColor, saturation: saturation, level: onLevel.toInteger()]
+    if(onLevel) onLevel = onLevel.toInteger()
+    value = [hue: hueColor, saturation: saturation, level: onLevel]
     if(state.oldMap == null) state.oldMap = [:]
     theSetOldMap = state.oldMap.toString().replace("[","").replace("]","")
     theMap = theSetOldMap.split(",")
@@ -5983,8 +5988,10 @@ def setLevelandColorHandler(newData) {
             pauseExecution(actionDelay)
             theDevice.setLevel(onLevel as Integer ?: 99)
             pauseExecution(actionDelay)
-            onTemp = state.onTemp.toInteger()
-            theDevice.setColorTemperature(onTemp)
+            if(state.onTemp) {
+                onTemp = state.onTemp.toInteger()
+                theDevice.setColorTemperature(onTemp)
+            }
         } else if(theDevice.hasCommand('setColor') && state.onColor != "No Change") {
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
             currentStatus = theDevice.currentValue("switch")
@@ -6043,8 +6050,10 @@ def setLevelandColorHandler(newData) {
                     pauseExecution(actionDelay)
                     it.setLevel(onLevel as Integer ?: 99)
                     pauseExecution(actionDelay)
-                    onTemp = state.onTemp.toInteger()
-                    it.setColorTemperature(onTemp)
+                    if(state.onTemp) {
+                        onTemp = state.onTemp.toInteger()
+                        it.setColorTemperature(onTemp)
+                    }
                 }
             } else {
                 if(it.hasCommand('setColor') && state.onColor != "No Change") {
