@@ -40,16 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
-*  3.6.9 - 05/23/22 - Adjustments to wording on locks
-*  3.6.8 - 05/23/22 - Added Locking options to Locks
-*  3.6.7 - 05/23/22 - Adjustments to Switches by mode
-*  3.6.6 - 05/16/22 - Removed Event Engine from Actions
-*  3.6.5 - 05/02/22 - Adjustments
-*  3.6.4 - 04/30/22 - Removed time restriction for Time to Reverse ... 3, 2, 1...
-*  3.6.3 - 04/29/22 - Adjusted Time to Reverse
-*  3.6.2 - 04/22/22 - Added another Reverse option
-*  3.6.1 - 04/22/22 - Adjustments
-*  3.6.0 - 04/19/22 - Changes to switchesPerModeReverseActionHandler
+*  3.7.0 - 05/23/22 - Added wildcard %whoLocked% to message options
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -59,7 +50,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.6.9"
+    state.version = "3.7.0"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -3078,7 +3069,10 @@ def notificationOptions(){
                     wc += "%setPointHigh% - If using a setpoint, this will speak the actual High Setpoint<br>"
                     wc += "%setPointLow% - If using a setpoint, this will speak the actual Low Setpoint<br>"
                     if(theType1) wc += "%lastDirection% - Will speak the last direction reported<br>" 
-                    if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
+                    if(lockEvent) {
+                        wc += "%whoLocked% - The name of the person who locked the door<br>"
+                        wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
+                    }
                     if(iCalLinks) wc += "%iCalValue% - Uses the last iCal event value<br>"
                     paragraph wc
                     if(triggerType) {
@@ -4120,6 +4114,7 @@ def waterHandler(theType) {
 def deviceHandler(theType, eventName, type, typeAO) {
     if(logEnable) log.debug "In deviceHandler (${state.version}) - ${state.eventType.toUpperCase()} - theType: ${theType}"
     state.deviceMatch = 0;    state.restrictionMatch = 0;    state.count = 0;    deviceTrue1 = 0;    deviceTrue2 = 0
+    state.whoLocked = null; state.whoUnlocked = null
     if(type == "false") type = false
     if(type == "true") type = true
     if(typeAO == "false") typeAO = false
@@ -4180,11 +4175,12 @@ def deviceHandler(theType, eventName, type, typeAO) {
                                 if(logEnable) log.debug "In deviceHandler - Lock was manually locked, NOT Including"
                             }
                         } else if(lockUser) {
-                            state.whoUnlocked = it.currentValue("lastCodeName")
+                            if(logEnable) log.debug "In deviceHandler - Lock was locked by code - Checking"
                             lockUser.each { us ->
-                                if(logEnable && extraLogs) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                                if(us == state.whoUnlocked) { 
-                                    if(logEnable && extraLogs) log.debug "MATCH: ${state.whoUnlocked}"
+                                if(logEnable && extraLogs) log.debug "Checking lock names - $us"
+                                if(state.whoText.contains("${us}")) {
+                                    if(logEnable && extraLogs) log.debug "MATCH: ${us}"
+                                    state.whoLocked = "${us}"
                                     deviceTrue1 = deviceTrue1 + 1
                                 }
                             }
@@ -5600,7 +5596,8 @@ def messageHandler() {
         if(state.message) { 
             if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
             if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
-            if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}            
+            if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
+            if (state.message.contains("%whoLocked%")) {state.message = state.message.replace('%whoLocked%', state.whoLocked)}
             if (state.message.contains("%setPointHigh%")) {
                 spHigh = state.setpointHigh.toString()
                 state.message = state.message.replace('%setPointHigh%', spHigh)
