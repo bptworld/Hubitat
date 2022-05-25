@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.7.3 - 05/25/22 - Added Hub Variables to both Conditions and Actions!
 *  3.7.2 - 05/24/22 - Adjustment to 'special message' in Lock handler
 *  3.7.1 - 05/23/22 - Added Look for a 'special' lock message when all other options won't work
 *  3.7.0 - 05/23/22 - Added wildcard %whoLocked% to message options
@@ -52,7 +53,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.7.2"
+    state.version = "3.7.3"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -145,11 +146,11 @@ def pageConfig() {
                 ["xEnergy":"Energy Setpoint"],
                 ["xEventLogWatchdog":"Event/Log Watchdog (beta)"],
                 ["xGarageDoor":"Garage Doors"],
-                ["xGVar":"Global Variables"],
+                ["xGVar":"EE Global Variables"],
                 ["xHSMAlert":"HSM Alerts (Beta)"],
                 ["xHSMStatus":"HSM Status (Beta)"],
                 ["xHubCheck":"Hub Check Options"],
-                //["xHubVariable":"Hub Variables"],
+                ["xHubVariable":"Hub Variables"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
                 ["xIPPing":"IP Ping"],
@@ -958,12 +959,12 @@ def pageConfig() {
             }
 // -----------
             if(triggerType.contains("xGVar")) {
-                paragraph "<b>Global Variables</b>"
-                paragraph "<small>Be sure to setup a Global Variable in the parent app before trying to use this option.</small>"
+                paragraph "<b>EE Global Variables</b>"
+                paragraph "<small>Be sure to setup an EE Global Variable in the parent app before trying to use this option.</small>"
                 if(state.gvMap) {
                     theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
                     theList2 = theList.split(",")              
-                    input "globalVariableEvent", "enum", title: "By Global Variable", options: theList2, submitOnChange:true
+                    input "globalVariableEvent", "enum", title: "By EE Global Variable", options: theList2, submitOnChange:true
                     input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", submitOnChange:true
                     if(gvStyle) {
                         if(globalVariableEvent) {
@@ -984,7 +985,7 @@ def pageConfig() {
                             if(setGVPointLow) paragraph "Cog will trigger when Variable reading is below ${gvSetPointLow}"
                             if(setGVPointBetween) paragraph "Cog will trigger when Variable reading is between ${gvSetPointLow} and ${gvSetPointHigh}"
                             app.removeSetting("gvValue")
-                            theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
+                            theCogTriggers += "<b>-</b> By EE Global Variable Setpoints: ${globalVariableEvent} - setpoint Low: ${gvSetPointLow}, setpoint High: ${gvSetPointHigh}, inBetween: ${setGVPointBetween}<br>"
                         }
                     } else {
                         input "gvValue", "text", title: "Value", required:false, submitOnChange:true
@@ -992,10 +993,10 @@ def pageConfig() {
                         app.removeSetting("gvSetPointLow")
                         app.removeSetting("setGVPointHigh")
                         app.removeSetting("setGVPointLow")
-                        theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
+                        theCogTriggers += "<b>-</b> By EE Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
                 } else {
-                    paragraph "<b>In order to use the Global Variables, please be sure to do the following</b><br>- Setup at least one Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
+                    paragraph "<b>In order to use the EE Global Variables, please be sure to do the following</b><br>- Setup at least one EE Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
                 }
                 paragraph "<hr>"               
             } else {
@@ -1073,31 +1074,43 @@ def pageConfig() {
             }
 // -----------            
             if(triggerType.contains("xHubVariable")) {
-                paragraph "<b>Hub Variable</b>"
+                paragraph "<b>Hub Variables</b>"
                 HashMap varMap = getAllGlobalVars()
                 state.varList = []              
                 varMap.each {
                     state.varList.add("$it.key")
                 }
-                input "theVariable", "enum", title: "Select Variable", options: state.varList.sort(), multiple:false, required:false, submitOnChange:true
-                input "varComp", "enum", title: "Comparision", options: [
-                    ["equals":"Equals"],
-                    ["nEquals":"Doesn't Equal"],
-                    ["contains":"Contains"],
-                    ["nContains":"Doesn't Contain"],
-                    ["changed":"Changed"],
-                    ["isNull":"Is Empty"],
-                ], submitOnChange:true
-                if(varComp) {
-                    if(varComp.isNumber()) {
-                        input "varText", "number", title: "Value (number)", submitOnChange:true
-                    } else if(!varComp.isNumber()) {
-                        input "varText", "text", title: "Value (text)", submitOnChange:true
-                    } else {
-                        app.removeSetting("varText")
+                input "theVariable", "enum", title: "Select Variable", options: state.varList.sort(), multiple:false, required:false, submitOnChange:true, width:6
+                if(theVariable) {
+                    varData = getGlobalVar(theVariable)
+                    if(varData.type == "integer" || varData.type == "bigdecimal") {
+                        input "varComp", "enum", title: "Comparision", options: ["equals", "does not equal", "less than", "greater than", "less than or equal to", "greater than or equal to", "changed", "increased", "decreased"], submitOnChange:true, width:6
+                        if(varComp == "equals" || varComp == "does not equal" || varComp == "less than" || varComp == "greater than" || varComp == "less than or equal to" || varComp == "greater than or equal to") {
+                            input "varCompValue", "number", title: "Value (${varData.type})", submitOnChange:true
+                        }
+                    } else if(varData.type == "string") {
+                        input "varComp", "enum", title: "Comparision", options: ["equals", "does not equal", "contains", "changed", "is empty"], submitOnChange:true, width:6
+                        if(varComp == "equals" || varComp == "does not equal" || varComp == "contains") {
+                            input "varCompValue", "text", title: "Value (${varData.type})", submitOnChange:true
+                        }
+                    } else if(varData.type == "boolean") {
+                        input "varComp", "enum", title: "Boolean", options: ["true", "false", "changed"], submitOnChange:true, width:6
+                    } else if(varData.type == "datetime") {
+                        paragraph "Work in progress"
                     }
+                    paragraph "Current Value: ${varData.value}"
+                    if(logEnable) {
+                        paragraph "<hr>"
+                        paragraph "varData: ${varData}"
+                    }
+                } else {
+                    app.removeSetting("varText")
                 }
-                
+                theCogTriggers += "<b>-</b> By Hub Variable: ${theVariable} - Comp: ${varComp}, Comp Value: ${varCompValue}<br>"                
+            } else {
+                app.removeSetting("theVariable")
+                app.removeSetting("varComp")
+                app.removeSetting("varCompValue")
             }
 // -----------
             if(triggerType.contains("xHumidity")) {
@@ -2011,6 +2024,7 @@ def pageConfig() {
                 ["aEventEngine":"Event Engine"],
                 ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
+                ["aHubVariables":"Hub Variables"],
                 ["aHSM":"Hubitat Safety Monitor"],
                 ["aLZW45":"Inovelli Light Strip (LZW45)"],
                 ["aLifxStrip":"Lifx Pattern Controller"],
@@ -2021,7 +2035,7 @@ def pageConfig() {
                 ["aSecurityKeypad":"Ring Security Keypad G2"],
                 ["aRule":"Rule Machine"],
                 ["aSendHTTP":"Send Hub Command"],
-                ["aGVar":"Set Global Variable"],
+                ["aGVar":"Set EE Global Variable"],
                 ["aSwitch":"Switches"],
                 ["aSwitchSequence":"Switches In Sequence"],
                 ["aSwitchesPerMode":"Switches Per Mode"],
@@ -2169,6 +2183,105 @@ def pageConfig() {
                 app.removeSetting("garageDoorOpenAction")
             }
 
+            if(actionType.contains("aHubVariables")) {
+                paragraph "<b>Hub Variables</b>"
+                paragraph "<small>Be sure to setup Hub Variables in the Settings/Hub Variables section of Hubitat.</small>"
+                HashMap varMap = getAllGlobalVars()
+                state.varList = []              
+                varMap.each {
+                    state.varList.add("$it.key")
+                }
+                input "theActVariable", "enum", title: "Select Variable", options: state.varList.sort(), multiple:false, required:false, submitOnChange:true, width:4
+                if(theActVariable) {
+                    varActData = getGlobalVar(theActVariable)
+                    if(varActData.type == "integer" || varActData.type == "bigdecimal") {
+                        input "varOperation", "enum", title: "Operation", options: ["Set Number", "Add Number", "Device Attribute - Replace", "Device Attribute - Add To"], submitOnChange:true, width:6
+                        if(varOperation == "Set Number") {
+                            input "varOperationValue", "number", title: "Value - Sets a completely new value", submitOnChange:true
+                            paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                        } else if(varOperation == "Add Number") {
+                            if(varActData.type == "integer") {
+                                input "varOperationValue", "number", title: "Value - Add this integer to the variable", submitOnChange:true
+                            } else {
+                                input "varOperationValue", "text", title: "Value - Add this bigdecimal to the variable", submitOnChange:true
+                            }
+                            paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                        } else if(varOperation == "Device Attribute - Replace" || varOperation == "Device Attribute - Add To") {
+                            input "varOperationDevice", "capability.*", title: "Select Device", multiple:false, submitOnChange:true, width:6
+                            if(varOperationDevice) {
+                                allAttrs = []
+                                attributes = varOperationDevice.supportedAttributes
+                                attributes.each { att ->
+                                    theType = att.getDataType()
+                                    if(theType == "NUMBER") {
+                                        allAttrs << att.name
+                                    }
+                                }
+                                allAttrs = allAttrs.unique().sort()
+                                input "varOperationAttribute", "enum", title: "Select Attribute", options:allAttrs, submitOnChange:true, width:6
+                                paragraph "<small>* Note: only 'number' attributes are shown</small>"
+                            }
+                            paragraph "<hr>"
+                            if(theActVariable) {
+                                paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                            }
+                            if(varOperationAttribute) {
+                                curVal = varOperationDevice.currentValue("$varOperationAttribute")
+                                paragraph "${varOperationDevice} - Current Value: ${curVal}"
+                            }
+                        }
+                    } else if(varActData.type == "string") {
+                        input "varOperation", "enum", title: "Operation", options: ["Set String", "Remove String", "Replace String", "Device Attribute"], submitOnChange:true, width:6
+                        if(varOperation == "Set String") {
+                            input "varOperationValue", "text", title: "Value - Sets a completely new string", submitOnChange:true
+                            paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                        } else if(varOperation == "Remove String") {
+                            input "varOperationValue", "text", title: "Value - Can be any part of the string", submitOnChange:true
+                            paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                        } else if(varOperation == "Replace String") {
+                            input "varOperationValueOld", "text", title: "Value - Can be any part of the string", submitOnChange:true
+                            input "varOperationValueNew", "text", title: "Replacement String", submitOnChange:true
+                            paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                        } else if(varOperation == "Device Attribute") {
+                            input "varOperationDevice", "capability.*", title: "Select Device", multiple:false, submitOnChange:true, width:6
+                            if(varOperationDevice) {
+                                allAttrs = []
+                                attributes = varOperationDevice.supportedAttributes
+                                attributes.each { att ->
+                                    allAttrs << att.name
+                                }
+                                allAttrs = allAttrs.unique().sort()
+                                input "varOperationAttribute", "enum", title: "Select Attribute", options:allAttrs, submitOnChange:true, width:6
+                            }
+                            paragraph "<hr>"
+                            if(theActVariable) {
+                                paragraph "${varActData.name} - Current Value: ${varActData.value}"
+                            }
+                            if(varOperationAttribute) {
+                                curVal = varOperationDevice.currentValue("$varOperationAttribute")
+                                paragraph "${varOperationDevice} - Current Value: ${curVal}"
+                            }
+                        }                      
+                    } else if(varActData.type == "boolean") {
+                        input "varOperationValue", "enum", title: "Set Boolean", options: ["true", "false"], submitOnChange:true, width:6
+                        paragraph "${varActData.name} - Current Value: ${varActData.value}"                      
+                    } else if(varActData.type == "datetime") {
+                        paragraph "Work in progress"
+                    }
+                    
+                    if(logEnable) {
+                        paragraph "<hr>"
+                        paragraph "varActData: ${varActData}"
+                    }
+                }  
+                paragraph "<hr>"
+                theCogActions += "<b>-</b> Set Hub Variable: ${theActVariable} - Operator: ${actVar}<br>"
+                
+            } else {
+                app.removeSetting("theActVariable")
+                app.removeSetting("setGVvalue")
+            }
+            
             if(actionType.contains("aHSM")) {
                 paragraph "<b>HSM</b>"
                 input "setHSM", "enum", title: "Set HSM state", required:false, multiple:false, options: [
@@ -2397,19 +2510,19 @@ def pageConfig() {
             }
 
             if(actionType.contains("aGVar")) {
-                paragraph "<b>Set Global Variable</b>"
-                paragraph "<small>Be sure to setup a Global Variable in the parent app before trying to use this option.</small>"
+                paragraph "<b>Set EE Global Variable</b>"
+                paragraph "<small>Be sure to setup an EE Global Variable in the parent app before trying to use this option.</small>"
                 if(state.gvMap) {
                     theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
                     theList2 = theList.split(",")              
-                    input "setGVname", "enum", title: "Select Global Variable to Set", options: theList2, submitOnChange:true, width:6
+                    input "setGVname", "enum", title: "Select EE Global Variable to Set", options: theList2, submitOnChange:true, width:6
                     if(setGVname) {
                         input "setGVvalue", "text", title: "Value", required:false, submitOnChange:true, width:6
                     }
                     paragraph "<hr>"
-                    theCogActions += "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
+                    theCogActions += "<b>-</b> Set EE Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
                 } else {
-                    paragraph "<b>In order to use the Global Variables, please be sure to do the following</b><br>- Setup at least one Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
+                    paragraph "<b>In order to use the EE Global Variables, please be sure to do the following</b><br>- Setup at least one EE Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
                 }
             } else {
                 app.removeSetting("setGVname")
@@ -3346,7 +3459,11 @@ def initialize() {
         if(keypadEvent) subscribe(keypadEvent, "securityKeypad", startTheProcess)
         if(snDeviceEvent) subscribe(snDeviceEvent, "alarmStatus", startTheProcess)
         
-        if(theVariable) subscribe(location, "theVariable", startTheProcess)
+        if(theVariable) {
+            var="variable:$theVariable"
+            subscribe(location, "$var", startTheProcess)
+            getGlobalVarCurrent()
+        }
         
         if(aLifxStrip) subscribe(location, "pcChildren", pcMapOfChildrenHandler)
         
@@ -3603,6 +3720,11 @@ def startTheProcess(evt) {
                                 state.ipStatusOK = true
                             }
                         }
+                        if(theVariable) {
+                            hubVariableConditions()
+                        } else {
+                            state.variablesOK = true
+                        }
                         if(keypadEvent) { 
                             securityKeypadHandler(evt)
                         } else {
@@ -3701,6 +3823,7 @@ def startTheProcess(evt) {
                                             if(devicesToRefresh) devicesToRefreshActionHandler()
                                             if(actionType.contains("aFan")) { fanActionHandler() }
                                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                                            if(actionType.contains("aHubVariables") && theActVariable) { hubVariableActions() }
                                             if(actionType.contains("aLZW45") && lzw45Action) { lzw45ActionHandler() }
                                             if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
                                             if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
@@ -3938,14 +4061,14 @@ def checkingWhatToDo() {
         if(!state.daysMatch && daysMatchRestriction) { state.jumpToStop = true }
     }
     if(triggerAndOr) {
-        theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - ipStatusOK: ${state.ipStatusOK} - securityOK: ${state.securityOK}"
+        theStatus = "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - ipStatusOK: ${state.ipStatusOK} - securityOK: ${state.securityOK} - variablesOK: ${state.variablesOK}"
         if(theStatus.contains("true")) {
             if(logEnable) log.debug "${theStatus}"
         } else {
             if(logEnable) log.warn "${theStatus}"
         }
         if(state.timeOK) {
-            if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK || state.ipStatusOK || state.securityOK) {
+            if((state.totalMatch >= 1) || state.setpointOK || state.transitionOK || state.ipStatusOK || state.securityOK || state.variablesOK) {
                 state.everythingOK = true
             } else {
                 if(state.totalMatchHelper >= 1) {
@@ -3959,14 +4082,14 @@ def checkingWhatToDo() {
             if(logEnable) log.warn "In checkingWhatToDo - USING OR - timeOK FAILED - everythingOK: ${state.everythingOK}"
         }
     } else {
-        theStatus = "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - ipStatusOK: ${state.ipStatusOK} - securityOK: ${state.securityOK}"
+        theStatus = "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - transitionOK: ${state.transitionOK} - ipStatusOK: ${state.ipStatusOK} - securityOK: ${state.securityOK} - variablesOK: ${state.variablesOK}"
         if(theStatus.contains("false")) {
             if(logEnable) log.warn "${theStatus}"
         } else {
             if(logEnable) log.debug "${theStatus}"
         }
         if(state.timeOK) {
-            if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK && state.ipStatusOK && state.securityOK) {
+            if((state.totalMatch == state.totalConditions) && state.setpointOK && state.transitionOK && state.ipStatusOK && state.securityOK && state.variablesOK) {
                 state.everythingOK = true
             } else {
                 if(state.totalMatchHelper >= 1) {
@@ -7449,6 +7572,256 @@ def lockUserActionHandler(evt) {
                 }
             }
         }
+    }
+}
+
+def getGlobalVarCurrent() {
+    if(logEnable) log.debug "In getGlobalVarCurrent (${state.version})"
+    varData = getGlobalVar(theVariable)
+    state.varCurrentValue = varData.value
+    if(logEnable) log.debug "In getGlobalVarCurrent - variable: ${theVariable} - value: ${state.varCurrentValue}"
+}
+
+def hubVariableConditions() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In hubVariableConditions (${state.version})"
+        state.variablesOK = false
+        varData = getGlobalVar(theVariable)
+        if(logEnable) log.debug "In hubVariableConditions - varData: ${varData}"
+        if(varData.type == "integer" || varData.type == "bigdecimal") {
+            if(varComp == "equals") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- varCompValue: ${varCompValue}"
+                if(varData.value == varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "does not equal") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- varCompValue: ${varCompValue}"
+                if(varData.value != varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "less than") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Less Than- varCompValue: ${varCompValue}"
+                if(varData.value < varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "greater than") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Greater Than- varCompValue: ${varCompValue}"
+                if(varData.value > varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "less than or equal to") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Less Than or Equal To- varCompValue: ${varCompValue}"
+                if(varData.value <= varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "greater than or equal to") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Greater Than or Equal To- varCompValue: ${varCompValue}"
+                if(varData.value >= varCompValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "changed") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Changed- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value != state.varCurrentValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "increased") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Increased- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value > state.varCurrentValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "decreased") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Decreased- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value < state.varCurrentValue) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} ??"
+            }
+        } else if(varData.type == "string") {
+            if(varComp == "equals") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- varCompValue: ${varCompValue}"
+                if(varData.value.toString() == varCompValue.toString()) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "does not equal") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- varCompValue: ${varCompValue}"
+                if(varData.value.toString() != varCompValue.toString()) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "contains") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Contains- varCompValue: ${varCompValue}"
+                if(varCompValue.toString().contains("${varData.value.toString()}")) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "changed") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -Changed- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value.toString() != state.varCurrentValue.toString()) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "is empty") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -is empty- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value == null || varData.value == "") {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} ??"
+            }
+        } else if(varData.type == "boolean") {
+            if(varComp == "true") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- true"
+                if(varData.value.toString() == "true") {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "false") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- false"
+                if(varData.value.toString() == "false") {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else if(varComp == "changed") {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} - varData: ${varData.value} -VS- varCurrentValue: ${state.varCurrentValue}"
+                if(varData.value.toString() == state.varCurrentValue.toString()) {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - Match!"
+                    state.variablesOK = true
+                } else {
+                    if(logEnable) log.debug "In hubVariableConditions - ${varComp} - NO Match!"
+                }
+            } else {
+                if(logEnable) log.debug "In hubVariableConditions - ${varComp} ??"
+            }            
+        } else {
+            if(logEnable) log.debug "In hubVariableConditions - ${varComp} - No Match"
+        }
+        if(logEnable) log.debug "In hubVariableConditions - variablesOK: ${state.variablesOK}"
+        state.varCurrentValue = varData.value
+    }
+}
+
+def hubVariableActions() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In hubVariableActions (${state.version})"
+        if(theActVariable) {
+            varActData = getGlobalVar(theActVariable)
+            if(varActData.type == "integer") {
+                if(logEnable) log.debug "In hubVariableActions - integer"
+                if(varOperation == "Set Number") {
+                    setGlobalVar(theActVariable, varOperationValue.toInteger())
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $varOperationValue"
+                } else if(varOperation == "Add Number") {
+                    newValue = varActData.value + varOperationValue.toInteger()
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                } else if(varOperation == "Device Attribute - Replace") {
+                    curVal = varOperationDevice.currentValue("$varOperationAttribute").toInteger()
+                    setGlobalVar(theActVariable, curVal)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $curVal"
+                } else if(varOperation == "Device Attribute - Add To") {
+                    curVal = varOperationDevice.currentValue("$varOperationAttribute").toInteger()
+                    newValue = varActData.value + curVal
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                }
+            } else if(varActData.type == "bigdecimal") {
+                if(logEnable) log.debug "In hubVariableActions - bigdecimal"
+                if(varOperation == "Set Number") {
+                    setGlobalVar(theActVariable, varOperationValue.toDouble())
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $varOperationValue"
+                } else if(varOperation == "Add Number") {
+                    newValue = varActData.value + varOperationValue.toDouble()
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                } else if(varOperation == "Device Attribute - Replace") {
+                    curVal = varOperationDevice.currentValue("$varOperationAttribute").toDouble()
+                    setGlobalVar(theActVariable, curVal)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $curVal"
+                } else if(varOperation == "Device Attribute - Add To") {
+                    curVal = varOperationDevice.currentValue("$varOperationAttribute").toDouble()
+                    newValue = varActData.value + curVal
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                }   
+            } else if(varActData.type == "string") {
+                if(logEnable) log.debug "In hubVariableActions - string"
+                if(varOperation == "Set String") {
+                    setGlobalVar(theActVariable, varOperationValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $varOperationValue"
+                } else if(varOperation == "Remove String") {
+                    newValue = varActData.value.replace("$varOperationValue", "")
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                } else if(varOperation == "Replace String") {
+                    newValue = varActData.value.replace("$varOperationValueOld", "$varOperationValueNew")
+                    setGlobalVar(theActVariable, newValue)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $newValue"
+                } else if(varOperation == "Device Attribute") {
+                    curVal = varOperationDevice.currentValue("$varOperationAttribute")
+                    setGlobalVar(theActVariable, curVal)
+                    if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $curVal"
+                }                      
+            } else if(varActData.type == "boolean") {
+                if(logEnable) log.debug "In hubVariableActions - boolean"
+                setGlobalVar(theActVariable, varOperationValue)
+                if(logEnable) log.debug "In hubVariableActions - Setting $theActVariable to $varOperationValue"                    
+            } else if(varActData.type == "datetime") {
+                if(logEnable) log.debug "In hubVariableActions - datetime"
+                paragraph "Work in progress"
+            } else {
+                if(logEnable) log.debug "In hubVariableActions - no match - ${varActData.type}"
+            }
+        }       
     }
 }
 
