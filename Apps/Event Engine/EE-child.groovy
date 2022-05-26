@@ -40,6 +40,7 @@
 * * - Still more to do with iCal (work on reoccuring)
 * * - Need to Fix sorting with event engine cog list
 *
+*  3.7.6 - 05/26/22 - Teenie weenie small change to make @danabw happy
 *  3.7.5 - 05/26/22 - Added 'Include cog name in message' to Push Notification options
 *  3.7.4 - 05/25/22 - Adjustments
 *  3.7.3 - 05/25/22 - Added Hub Variables to both Conditions and Actions!
@@ -55,7 +56,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "3.7.5"
+    state.version = "3.7.6"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 
@@ -3728,7 +3729,12 @@ def startTheProcess(evt) {
                         if(theVariable) {
                             hubVariableConditions()
                         } else {
-                            state.variablesOK = true
+                            if(logEnable) log.debug "In startTheProcess - NOT using Hub Variables - Setting value based on triggerAndOr: ${triggerAndOr}"
+                            if(triggerAndOr) {
+                                state.variablesOK = false
+                            } else {
+                                state.variablesOK = true
+                            }
                         }
                         if(keypadEvent) { 
                             securityKeypadHandler(evt)
