@@ -32,9 +32,9 @@
          "forumURL": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454"
       },
       {  "name": "Event Engine",
-         "version": "3.6.6",
-         "updated": "2022-05-16",
-         "changes": "Removed EE actions",
+         "version": "3.7.6",
+         "updated": "2022-05-27",
+         "changes": "Adjustments",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
          "specialInfo": "All BPTWorld apps use the library bpt-normalStuff, be sure to download this bundle before ANY BPTWorld app.",
          "tags": "Automations;Lights;Monitoring;Notifications;Security;Utilities",
