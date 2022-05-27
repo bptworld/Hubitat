@@ -41,10 +41,10 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip",
          "forumURL": "https://community.hubitat.com/t/release-event-engine-automate-your-world-with-easy-to-use-cogs-rev-up-complex-automations-with-just-a-few-clicks/49727"
       },
-      {  "name": "BPTWorld-NormalStuff",
+      {  "name": "bpt-normalStuff",
          "version": "1.0.0",
          "updated": "2022-04-16",
-         "changes": "Nothing to see here, move along",
+         "changes": "",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "",
          "tags": "Library",        
