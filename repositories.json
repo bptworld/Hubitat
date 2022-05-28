@@ -25,6 +25,13 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
+   		"name": "Bundle Manager",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/BM.groovy",
+   		"description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
+         "tags": [ "Tools & Utilities" ]
+   	},
+      {
    		"name": "Chromecast Helper",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
