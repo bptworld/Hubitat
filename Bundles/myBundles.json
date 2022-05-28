@@ -2,16 +2,6 @@
    "headerMessage": "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a> - Always free and available to everyone!</div>",
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
    "bundles": [
-      {  "name": "blank",
-         "version": "1.0.0",
-         "updated": "2022-05-04",
-         "changes": "changes",
-         "description": "blank",
-         "specialInfo": "",
-         "tags": "Library",        
-         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/testLibrary.zip",
-         "forumURL": "na"
-      },
       {  "name": "Averaging Plus",
          "version": "1.3.0",
          "updated": "2022-05-06",
@@ -49,7 +39,7 @@
          "specialInfo": "",
          "tags": "Library",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/NormalStuffLibrary.zip",
-         "forumURL": "na"
+         "forumURL": ""
       }
    ]
 }
