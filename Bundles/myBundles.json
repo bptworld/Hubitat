@@ -12,6 +12,16 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/AveragingPlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
       },
+      {  "name": "Bundle Manager",
+         "version": "1.0.0",
+         "updated": "2022-05-28",
+         "changes": "Inital Release",
+         "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
+         "specialInfo": "",
+         "tags": "Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/BundleManager.zip",
+         "forumURL": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567/3"
+      },
       {  "name": "Device Check Plus",
          "version": "1.2.7",
          "updated": "2021-11-19",
