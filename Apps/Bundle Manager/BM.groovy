@@ -555,9 +555,11 @@ def findBundles() {
 
                 appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${theName}</b>"
                 if(isInstalled) appsList += " ${getImage("checkMarkGreen2")}"
-                appsList += " - ${authorName} (${hubitatName})<br>Updated: ${theUpdated}<br>${theDescription}<br><br>"
-                if(theSpecialInfo != "na" && theSpecialInfo != "NA") {
-                    appsList += "<i>${theSpecialInfo}</i><br><br>"
+                appsList += " - ${authorName} (${hubitatName})<br>Updated: ${theUpdated}<br>${theDescription}"
+                if(theSpecialInfo == "na" || theSpecialInfo == "NA") {
+                    appsList += "<hr>"
+                } else {
+                    appsList += "<br><br><i>${theSpecialInfo}</i><br><br>"
                 }
                 appsList += "Tags: ${theTags}<br>${theLinks}</div>"
             }
