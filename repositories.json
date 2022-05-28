@@ -27,7 +27,7 @@
       {
    		"name": "Bundle Manager",
    		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/BM.groovy",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/packageManifest.json",
    		"description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "tags": [ "Tools & Utilities" ]
    	},
