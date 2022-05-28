@@ -1,8 +1,0 @@
-{
-    "masterBundles": [{
-	    "hubitatName": "BPTWorld",
-	    "authorName": "Bryan Turcotte",
-	    "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Bundles/myBundles.json"
-        }	
-    ]
-}
