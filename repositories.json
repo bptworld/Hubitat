@@ -18,13 +18,6 @@
          "tags": [ "Dashboards", "Monitoring", "Timers" ]
    	},
       {
-   		"name": "Averaging Plus",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/packageManifest.json",
-   		"description": "Average just about anything. Get notifications based on Setpoints.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
    		"name": "Bundle Manager",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/packageManifest.json",
@@ -46,46 +39,11 @@
          "tags": [ "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
-   		"name": "Device Check Plus",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManifest.json",
-   		"description": "Check selected devices, then warn you what's not in the right state.",
-         "tags": [ "Dashboards", "Doors & Windows", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Device Sequencer",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
    		"description": "Turn on/off several devices in a row, with a user defined pause in between each.",
          "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Device Transformer",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Transformer/packageManifest.json",
-   		"description": "Transform a device into a virtual multi-sensor device.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Device Watchdog",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on your devices and see how long it's been since they checked in.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Error Monitor",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Error%20Monitor/packageManifest.json",
-   		"description": "Keep an eye out for errors that may pop up in the log.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Event Engine",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/packageManifest.json",
-   		"description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
-         "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Follow Me",
