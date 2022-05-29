@@ -3,9 +3,9 @@
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
    "bundles": [
       {  "name": "Averaging Plus",
-         "version": "1.3.0",
-         "updated": "2022-05-06",
-         "changes": "Added to Bundle Manager",
+         "version": "1.3.1",
+         "updated": "2022-05-29",
+         "changes": "Fixed timeBetween",
          "description": "Average just about anything. Get notifications based on Setpoints.",
          "specialInfo": "All BPTWorld apps use the library bpt-normalStuff, be sure to download this bundle before ANY BPTWorld app.",
          "tags": "Utilities",
