@@ -7,7 +7,7 @@
          "updated": "2022-05-06",
          "changes": "Added to Bundle Manager",
          "description": "Average just about anything. Get notifications based on Setpoints.",
-         "specialInfo": "na",
+         "specialInfo": "All BPTWorld apps use the library bpt-normalStuff, be sure to download this bundle before ANY BPTWorld app.",
          "tags": "Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/AveragingPlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
@@ -27,7 +27,7 @@
          "updated": "2021-11-19",
          "changes": "Fixed again",
          "description": "Check selected devices, then warn you what's not in the right state.",
-         "specialInfo": "na",
+         "specialInfo": "All BPTWorld apps use the library bpt-normalStuff, be sure to download this bundle before ANY BPTWorld app.",
          "tags": "Dashboards;Monitoring;Notifications;Security;Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceCheckPlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454"
