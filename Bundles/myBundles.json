@@ -43,8 +43,8 @@
          "forumURL": "https://community.hubitat.com/t/release-event-engine-automate-your-world-with-easy-to-use-cogs-rev-up-complex-automations-with-just-a-few-clicks/49727"
       },
       {  "name": "Normal Stuff Library",
-         "version": "1.0.0",
-         "updated": "2022-05-26",
+         "version": "1.0.1",
+         "updated": "2022-05-29",
          "changes": "na",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "na",
