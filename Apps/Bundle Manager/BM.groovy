@@ -31,6 +31,10 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 05/30/22 - Rearranged some things
+ *  1.0.3 - 05/29/22 - More options - changes and enhancements
+ *  1.0.2 - 05/29/22 - Minor changes
+ *  1.0.1 - 05/29/22 - Minor changes
  *  1.0.0 - 05/28/22 - Initial release.
  */
 
@@ -44,7 +48,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.0"
+	state.version = "1.0.4"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -68,196 +72,189 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
-        //checkRequirements()
-        state.reqPassed = true
-        if(state.reqPassed) {
-            display()
-            section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
-                app.removeSetting("searchtags")
-                app.removeSetting("bunSearch")
-                app.removeSetting("bunSearchNOT")
-                app.removeSetting("bunSearchType")
-                app.removeSetting("bunAuthor")
-                app.removeSetting("showAllBundles")
-                app.removeSetting("showNewBundles")
-                input "newBundles", "bool", title: "Update Master Bundle List <small><abbr title='Remember, it sometimes takes a minute or two for GitHub to reflect any changes made by a developer.'><b>- INFO -</b></abbr></small><br><small>* Switch will turn back off when finished</small>", defaultValue:false, submitOnChange:true, width:6
-                paragraph "<center><i>This can take a minute to run!<br>Please be patient.</i></center>", width:6
-                if(newBundles) {
-                    getMasterBundleList()    
-                    app.updateSetting("newBundles",[value:"false",type:"bool"])
-                }
-                href "searchOptions", title:"Search Options", description:"Click here to search for Bundles!"
-                paragraph "<center>${state.theStats}<br><small>Bundles Last Updated: $state.lastUpdated</small></center>"
+        display()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
+            app.removeSetting("searchtags")
+            app.removeSetting("bunSearch")
+            app.removeSetting("bunSearchNOT")
+            app.removeSetting("bunSearchType")
+            app.removeSetting("bunAuthor")
+            app.removeSetting("showAllBundles")
+            app.removeSetting("showNewBundles")
+            input "checkMasterBundles", "bool", title: "Update Master Bundle List <small><abbr title='Remember, it sometimes takes a minute or two for GitHub to reflect any changes made by a developer.'><b>- INFO -</b></abbr></small><br><small>* Switch will turn back off when finished</small>", defaultValue:false, submitOnChange:true, width:6
+            paragraph "<center><i>This can take a minute to run!<br>Please be patient.</i></center>", width:6
+            if(checkMasterBundles) {
+                getMasterBundleList()    
+                app.updateSetting("checkMasterBundles",[value:"false",type:"bool"])
             }
+            href "searchOptions", title:"Search Options", description:"Click here to search for Bundles!"
+            paragraph "<center>${state.theStats}<br><small>Bundles Last Updated: $state.lastUpdated</small></center>"
+        }
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" Installed Bundle Options")) { 
-                input "checkApps", "bool", title: "Check for Installed Bundle Updates", defaultValue:false, submitOnChange:true,width:6
-                if(checkApps) {
-                    checkBundleHandler()
-                    app.updateSetting("checkApps",[value:"false",type:"bool"])
-                }
-                input "autoUpdate", "bool", title: "Auto update Bundles", defaultValue:false, submitOnChange:true, width:6
+        section(getFormat("header-green", "${getImage("Blank")}"+" Installed Bundle Options")) { 
+            input "checkBundles", "bool", title: "Check for Installed Bundle Updates", defaultValue:false, submitOnChange:true,width:6
+            if(checkBundles) {
+                if(checkMasterBundlesFirst) getMasterBundleList()
+                checkBundleHandler()
+                app.updateSetting("checkBundles",[value:"false",type:"bool"])
+            }
+            input "checkMasterBundlesFirst", "bool", title: "Auto Check Master Bundles First", defaultValue:false, submitOnChange:true, width:6
+            input "autoUpdate", "bool", title: "Auto update Bundles", defaultValue:false, submitOnChange:true
 
-                if(state.appsToUpdate == [:]) {
-                    theApps = "<table><tr><td><b><u>Bundles to Update</u></b>"
-                    theApps += "<tr><td>There are no Bundles to update. If you think this may not be right, be sure to 'Update Master Bundle List' above. Then come back here and 'Check for Installed Bundle Updates' again."
-                    theApps += "</table>"
-                    paragraph "${theApps}"
-                } else {
-                    if(!autoUpdate) {
-                        try{
-                            theInputList = [:]
-                            tbundles = []
-                            theApps = "<table><tr><td><b><u>Bundles to Update</u></b><td> <td><b><u>New Version</u></b>"
-                            state.appsToUpdate.each { tapps ->
-                                theKey = tapps.key
-                                theValue = tapps.value
-                                (tVer, tBun) = theValue.split(";")
-                                theApps += "<tr><td>$theKey<td> - <td>$tVer"
-                                theInputList.put(theKey, tBun)  
-                            }
-                            theApps += "</table>"
-                            paragraph "${theApps}"
-                            theInputList.each{ il ->
-                                theKey = il.key
-                                tbundles << theKey
-                            }
-                            input "toUpdate", "enum", title: "Select Bundles to Update", options: tbundles, multiple:true, submitOnChange:true
-                            if(toUpdate) {
-                                input "doUpdates", "bool", title: "Update Bundles", defaultValue:false, submitOnChange:true
-                                paragraph "<small>* Switch will turn back off when finished</small>"
-                                if(doUpdates) {
-                                    toUpdate.each{ tu ->
-                                        theBundle = state.appsToUpdate.get(tu)
-                                        (bVer, bURL) = theBundle.split(";")
-                                        installBundleHandler(bURL)
-                                    }
-                                    app.updateSetting("doUpdates",[value:"false",type:"bool"])
+            if(state.appsToUpdate == [:]) {
+                theApps = "<table><tr><td><b><u>Bundles to Update</u></b>"
+                theApps += "<tr><td>There are no Bundles to update. If you think this may not be right, be sure to 'Update Master Bundle List' above. Then come back here and 'Check for Installed Bundle Updates' again."
+                theApps += "</table>"
+                paragraph "${theApps}"
+            } else {
+                if(!autoUpdate) {
+                    try{
+                        theInputList = [:]
+                        tbundles = []
+                        theApps = "<table><tr><td><b><u>Bundles to Update</u></b><td> <td><b><u>New Version</u></b>"
+                        state.appsToUpdate.each { tapps ->
+                            theKey = tapps.key
+                            theValue = tapps.value
+                            (tVer, tBun) = theValue.split(";")
+                            theApps += "<tr><td>$theKey<td> - <td>$tVer"
+                            theInputList.put(theKey, tBun)  
+                        }
+                        theApps += "</table>"
+                        paragraph "${theApps}"
+                        theInputList.each{ il ->
+                            theKey = il.key
+                            tbundles << theKey
+                        }
+                        input "toUpdate", "enum", title: "Select Bundles to Update", options: tbundles, multiple:true, submitOnChange:true
+                        if(toUpdate) {
+                            input "doUpdates", "bool", title: "Update Bundles", defaultValue:false, submitOnChange:true
+                            paragraph "<small>* Switch will turn back off when finished<br><i>Please be patient.</i></small>"
+                            if(doUpdates) {
+                                toUpdate.each{ tu ->
+                                    theBundle = state.appsToUpdate.get(tu)
+                                    (bVer, bURL) = theBundle.split(";")
+                                    installBundleHandler(bURL)
                                 }
+                                app.updateSetting("doUpdates",[value:"false",type:"bool"])
                             }
-                            app.updateSetting("checkApps",[value:"false",type:"bool"])
-                        } catch(e) { 
-                            log.error(getExceptionMessageWithLine(e))
                         }
-                    }
-                }
-
-                paragraph "<hr>"
-                if(state.versionMap) smSize = state.versionMap.size()
-                input "showMap", "bool", title: "Show Installed Bundle Versions<br><small>* There are ${smSize} bundles installed</small>", defaultValue:false, submitOnChange:true
-                if(showMap) {
-                    if(state.versionMap) {
-                        sortedMap = state.versionMap.sort()
-                        smHalf = (smSize / 2).toInteger()
-                        count = 0
-                        col1 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
-                        col2 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
-                        sortedMap.each { stuff ->
-                            if(count <= smHalf) {
-                                col1 += "<tr><td>${stuff.key}<td> - <td> ${stuff.value}"
-                            } else {
-                                col2 += "<tr><td>${stuff.key}<td> - <td> ${stuff.value}"
-                            }
-                            count += 1
-                        }
-                        if(smSize / 2 != 0) { col2 += "<tr><td colspan=3> " }
-                        col1 += "</table>"
-                        col2 += "</table>"
-                        theMap = "<table align=center>"
-                        theMap += "<tr><td>${col1}<td>      <td>${col2}"                  
-                        theMap += "</table>"
-                        paragraph "${theMap}"
-                    } else {
-                        paragraph "Version Info not available"
+                        app.updateSetting("checkBundles",[value:"false",type:"bool"])
+                    } catch(e) { 
+                        log.error(getExceptionMessageWithLine(e))
                     }
                 }
             }
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-                input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-                if(pauseApp) {
-                    if(app.label) {
-                        if(!app.label.contains("(Paused)")) {
-                            app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
+            paragraph "<hr>"
+            if(state.versionMap) smSize = state.versionMap.size()
+            input "showMap", "bool", title: "Show Installed Bundle Versions <small><abbr title='This list will auto-populate as each app/driver compatible with BM runs.'><b>- INFO -</b></abbr></small><br><small>* Note, you won't see the updated version until the app is either opened or executes.</small><br><small>* There are ${smSize} bundles installed</small>", defaultValue:false, submitOnChange:true
+            if(showMap) {
+                if(state.versionMap) {
+                    sortedMap = state.versionMap.sort()
+                    smHalf = (smSize / 2).toInteger()
+                    count = 0
+                    col1 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
+                    col2 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
+                    sortedMap.each { stuff ->
+                        if(count <= smHalf) {
+                            col1 += "<tr><td>${stuff.key}<td> - <td> ${stuff.value}"
+                        } else {
+                            col2 += "<tr><td>${stuff.key}<td> - <td> ${stuff.value}"
                         }
+                        count += 1
                     }
+                    if(smSize / 2 != 0) { col2 += "<tr><td colspan=3> " }
+                    col1 += "</table>"
+                    col2 += "</table>"
+                    theMap = "<table align=center>"
+                    theMap += "<tr><td>${col1}<td>      <td>${col2}"                  
+                    theMap += "</table>"
+                    paragraph "${theMap}"
                 } else {
-                    if(app.label) {
-                        if(app.label.contains("(Paused)")) {
-                            app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
-                        }
-                    }
+                    paragraph "Version Info not available"
                 }
             }
-            section() {
-                paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-                input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
-            }
+        }
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-                input "hubSecurity", "bool", title: "Hub Security", submitOnChange:true
-                if(hubSecurity) {
-                    input "hubUsername", "string", title: "Hub Username", required:true, submitOnChange:true, width:6
-                    input "hubPassword", "password", title: "Hub Password", required:true, submitOnChange:true, width:6
-                }
-                input "updateBundleListAt", "bool", title: "Automatically Check for New Bundles each day", defaultValue:false, submitOnChange:true, width:7
-                if(updateBundleListAt) {
-                    input "timeUpdate", "time", title: "Time to update bundle list", submitOnChange:true, width:5
-                }
-                input "checkBundlesAt", "bool", title: "Automatically Check Bundles each day", defaultValue:false, submitOnChange:true, width:7
-                if(checkBundlesAt) {
-                    input "timeCheck", "time", title: "Time to check bundles for updates", submitOnChange:true, width:5
-                    input "pushUpdates", "bool", title: "Receive push when updates are available", defaultValue:false, submitOnChange:true
-                    if(pushUpdates) {
-                        input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
-                        input "pushICN", "bool", title: "Include cog name in message", defaultValue:false, submitOnChange:true
-                        input "pushNoUpdates", "bool", title: "Also send when no bundles need updating", defaultValue:false, submitOnChange:true
-                    } else {
-                        app.removeSetting("sendPushMessage")
-                        app.updateSetting("pushUpdates",[value:"false",type:"bool"])
-                        app.updateSetting("pushNoUpdates",[value:"false",type:"bool"])
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
+                }
+            } else {
+                if(app.label) {
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
+                }
+            }
+        }
+        section() {
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            input "hubSecurity", "bool", title: "Hub Security", submitOnChange:true
+            if(hubSecurity) {
+                input "hubUsername", "string", title: "Hub Username", required:true, submitOnChange:true, width:6
+                input "hubPassword", "password", title: "Hub Password", required:true, submitOnChange:true, width:6
+            }
+            input "updateBundleListAt", "bool", title: "Automatically Check for New Bundles each day", defaultValue:false, submitOnChange:true, width:7
+            if(updateBundleListAt) {
+                input "timeUpdate", "time", title: "Time to update bundle list", submitOnChange:true, width:5
+            }
+            input "checkBundlesAt", "bool", title: "Automatically Check Bundles each day", defaultValue:false, submitOnChange:true, width:7
+            if(checkBundlesAt) {
+                input "timeCheck", "time", title: "Time to check bundles for updates", submitOnChange:true, width:5
+                input "pushUpdates", "bool", title: "Receive push when updates are available", defaultValue:false, submitOnChange:true
+                if(pushUpdates) {
+                    input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
+                    input "pushICN", "bool", title: "Include cog name in message", defaultValue:false, submitOnChange:true
+                    input "pushHN", "bool", title: "Include hub name in message", defaultValue:false, submitOnChange:true
+                    input "pushNoUpdates", "bool", title: "Also send when no bundles need updating", defaultValue:false, submitOnChange:true
                 } else {
                     app.removeSetting("sendPushMessage")
                     app.updateSetting("pushUpdates",[value:"false",type:"bool"])
                     app.updateSetting("pushNoUpdates",[value:"false",type:"bool"])
                 }
+            } else {
+                app.removeSetting("sendPushMessage")
+                app.updateSetting("pushUpdates",[value:"false",type:"bool"])
+                app.updateSetting("pushNoUpdates",[value:"false",type:"bool"])
             }
+        }
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-                input "showUpdates", "bool", title: "Show updating process in log", defaultValue:false, submitOnChange:true
-                input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-                if(logEnable) {
-                    input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-                    input "clearMap", "bool", title: "Clear Map", defaultValue:false, submitOnChange:true, width:3
-                    if(clearMap) {
-                        input "clearMap2", "bool", title: "<b>Are you sure</b>", defaultValue:false, submitOnChange:true, width:3
-                        if(clearMap2) {
-                            state.versionMap = [:]
-                            app.updateSetting("clearMap2",[value:"false",type:"bool"])
-                            app.updateSetting("clearMap",[value:"false",type:"bool"])
-                        }
-                    } else {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
+            input "showUpdates", "bool", title: "Show updating process in log", defaultValue:false, submitOnChange:true
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+                input "clearMap", "bool", title: "Clear Map", defaultValue:false, submitOnChange:true, width:3
+                if(clearMap) {
+                    input "clearMap2", "bool", title: "<b>Are you sure</b>", defaultValue:false, submitOnChange:true, width:3
+                    if(clearMap2) {
+                        state.versionMap = [:]
                         app.updateSetting("clearMap2",[value:"false",type:"bool"])
+                        app.updateSetting("clearMap",[value:"false",type:"bool"])
                     }
+                } else {
+                    app.updateSetting("clearMap2",[value:"false",type:"bool"])
                 }
             }
-            display2()
         }
+        display2()
     }
 }
 
 def checkRequirements() {
     if(location.hub.firmwareVersionString > "2.3.2.117") {
-        state.reqPassed = true
+        state.firmwarePassed = true
     } else {
-        state.reqPassed = false
-        display()
-        section() {
-            paragraph "${getImage("optionsRed")} <b>Bundle Manager requires Hub Firmware 2.3.2.118 or above.</b>"
-            paragraph "Please try again once your hub is updated."
-        }
-        display2()
+        state.firmwarePassed = false
     }
 }
 
@@ -284,6 +281,7 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        checkRequirements()
         subscribe(location, "updateVersionInfo", updateVersionHandler)
         if(updateBundleListAt) { schedule(timeUpdate, "getMasterBundleList") }
         if(checkBundlesAt) { schedule(timeCheck, "checkBundleHandler") }
@@ -417,7 +415,7 @@ def findBundles() {
                     }
                 } else {
                     if(searchtags) {
-                        theTagValue = bun[7].split(";")       
+                        theTagValue = bun[9].split(";")       
                         theTagValue.each { eTag ->
                             if(searchtags.contains("${eTag}")) {
                                 matchedCount += 1
@@ -436,7 +434,7 @@ def findBundles() {
                     }
                     if(bunSearch || bunSearchNOT) {
                         theName           = bun[2]
-                        theDescription    = bun[5]
+                        theDescription    = bun[6]
                         searchCount = 0  
                         if(bunSearchType == "description") {
                             if(bunSearch) {
@@ -491,20 +489,23 @@ def findBundles() {
                 if(matchedCount == countToReach) {
                     hubitatName       = bun[0]
                     authorName        = bun[1]
-                    theName           = bun[2]
-                    theVersion        = bun[3]
-                    theUpdated        = bun[4]
-                    theDescription    = bun[5]
-                    theSpecialInfo    = bun[6]
-                    theTags           = bun[7].replace(";"," - ")
-                    bundleURL         = bun[8]
-                    forumURL          = bun[9]
-
+                    paypalURL         = bun[2]
+                    theName           = bun[3]
+                    theVersion        = bun[4]
+                    theUpdated        = bun[5]
+                    theChanges        = bun[6]
+                    theDescription    = bun[7]
+                    theSpecialInfo    = bun[8]
+                    theRequiredLib    = bun[9]
+                    theTags           = bun[10].replace(";"," - ")
+                    bundleURL         = bun[11]
+                    forumURL          = bun[12]
+                    
                     iBundles.put(bundleURL, theName)
-                    iMatches << "${theName};${authorName};${hubitatName};${theVersion};${theUpdated};${theDescription};${theSpecialInfo};${theTags};${bundleURL};${forumURL}"          
+                    iMatches << "${hubitatName};${authorName};${paypalURL};${theName};${theVersion};${theUpdated};${theChanges};${theDescription};${theSpecialInfo};${theRequiredLib};${theTags};${bundleURL};${forumURL}"          
                 }
             } catch(e) {
-                theName = bun[2]
+                theName = bun[3]
                 if(logEnable) log.debug "In findBundles - Something went wrong, skipping ${theName}"
                 log.error(getExceptionMessageWithLine(e))
             }
@@ -518,19 +519,22 @@ def findBundles() {
             state.skip = false
             details = mat.split(";")
             try{
-                theName          = details[0]
+                hubitatName      = details[0]
                 authorName       = details[1]
-                hubitatName      = details[2]
-                theVersion       = details[3]
-                theUpdated       = details[4]
-                theDescription   = details[5]
-                theSpecialInfo   = details[6]
-                theTags          = details[7]
-                bundleURL        = details[8]
-                forumURL         = details[9]
+                paypalURL        = details[2]
+                theName          = details[3] 
+                theVersion       = details[4]
+                theUpdated       = details[5]
+                theChanges       = details[6]
+                theDescription   = details[7]
+                theSpecialInfo   = details[8]
+                theRequiredLib   = details[9]
+                theTags          = details[10]
+                bundleURL        = details[11]
+                forumURL         = details[12]                
             } catch(e) {
-                theName          = details[0]
-                hubitatName      = details[2]
+                theName          = details[3]
+                hubitatName      = details[0]
                 if(logEnable) log.debug "In findBundles - Something went wrong, skipping ${theName} by ${hubitatName}"
                 //log.error(getExceptionMessageWithLine(e))
                 state.skip = true
@@ -543,25 +547,47 @@ def findBundles() {
                 state.installedBundles.each { ib ->
                     if(theName == ib) isInstalled = true
                 }
+// solid grey
+                appsList += "<div style='background-color: white;width: 90%;border: 2px solid green;border-radius: 10px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${theName}</b>"
+                if(isInstalled) appsList += " ${getImage("checkMarkGreen2")}"
+                appsList += " - ${authorName} (${hubitatName})<br>Version: ${theVersion} - Updated: ${theUpdated} "
+                if(theChanges) {
+                    appsList += " <abbr title='${theChanges}'><b>-Change Info- </b></abbr>"
+                }
+                
+                appsList += "<br>${theDescription}"
+                
+                libInstalled = false
+                state.installedBundles.each { lib ->
+                    if(theRequiredLib == lib) libInstalled = true
+                }
+                if(libInstalled) {
+                    appsList += getFormat("line")
+                } else {
+                    if(theSpecialInfo == "na" || theSpecialInfo == "NA") {
+                        appsList += getFormat("line")
+                    } else {
+                        appsList += "<br><br><i>${theSpecialInfo}</i><br><br>"
+                    }
+                }
+                appsList += "Tags: ${theTags}<br>"
                 if(forumURL) {
                     if(forumURL == "na" || forumURL == "NA") {
-                        theLinks = ""
+                        theLinks = "Community Thread"
                     } else {
                         theLinks = "<a href='${forumURL}' target='_blank'>Community Thread</a>"
                     }
-                } else {
-                    theLinks = ""
                 }
-
-                appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${theName}</b>"
-                if(isInstalled) appsList += " ${getImage("checkMarkGreen2")}"
-                appsList += " - ${authorName} (${hubitatName})<br>Updated: ${theUpdated}<br>${theDescription}"
-                if(theSpecialInfo == "na" || theSpecialInfo == "NA") {
-                    appsList += "<hr>"
-                } else {
-                    appsList += "<br><br><i>${theSpecialInfo}</i><br><br>"
+                if(paypalURL) {
+                    if(paypalURL == "na" || paypalURL == "NA") {
+                        theLinks += " | Paypal"
+                    } else {
+                        theLinks += " | <a href='${paypalURL}' target='_blank'><img height='20' src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a>"
+                    }
                 }
-                appsList += "Tags: ${theTags}<br>${theLinks}</div>"
+                
+                
+                appsList += "${theLinks}</div>"
             }
         }
     }
@@ -575,7 +601,7 @@ def getMasterBundleList() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In getMasterBundleList (${state.version})"
-        state.masterBundleList = [:]    
+        state.masterBundleList = []    
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Bundles/masterBundles.json",
             requestContentType: "application/json",
@@ -588,15 +614,14 @@ def getMasterBundleList() {
                 def json = resp.data
                 for(rec in json.masterBundles) {
                     hName = rec.hubitatName
-                    aName = rec.authorName
                     theLoc = rec.location
-                    stuff = "${aName};${theLoc}"
-                    if(logEnable) log.debug "In getMasterBundleList - hName: ${hName} - aName: ${aName} - theLoc: ${theLoc}"
-                    state.masterBundleList.put(hName,stuff)
+                    if(logEnable) log.debug "In getMasterBundleList - hName: ${hName} - theLoc: ${theLoc}"
+                    state.masterBundleList << theLoc
                 }
             }
+            log.trace "masterBundleList: ${state.masterBundleList}"
         } catch(e) {
-            log.warn "There was a problem retrieving bundles from hName: ${hName} - aName: ${aName} - theLoc: ${theLoc}"
+            log.warn "There was a problem retrieving bundles from hName: ${hName} - theLoc: ${theLoc}"
             log.error(getExceptionMessageWithLine(e))
         }
         getAllBundlesHandler()
@@ -612,41 +637,46 @@ def getAllBundlesHandler() {
         allBundles = []
         allTags = []
         allDevNames = []
-        state.masterBundleList.each { it ->
-            hName = it.key
-            theValue = it.value
-            (aName, mainURL) = theValue.toString().split(";")
-            if(logEnable) log.debug "In getAllBundlesHandler - hName: ${hName} - aName: ${aName} - mainURL: ${mainURL}"   
-
+        state.masterBundleList.each { it ->  
+            if(logEnable) log.debug "In getAllBundlesHandler - mainURL: ${it}"
             def params = [
-                uri: mainURL,
+                uri: it,
                 requestContentType: "application/json",
                 contentType: "application/json",
                 timeout: 10
             ]
 
             try {
-                if(showUpdates) log.info "--------------- Getting All Bundles for ${hName} ---------------"
+                if(showUpdates) log.info "--------------- Getting All Bundles from ${it} ---------------"
                 httpGet(params) { resp ->
+                    def info    = resp.data.info
                     def bundles = resp.data.bundles
+                    for(rec in info) {
+                        state.combinedInfo = [
+                            hubitatName       = rec.hubitatName,
+                            authorName        = rec.authorName,
+                            paypalURL         = rec.paypal
+                        ]
+                    }
                     for(rec in bundles) {
-                        def combinedRec = [
-                            hubitatName       = hName,
-                            authorName        = aName,
+                        def combinedBundle = [
                             theName           = rec.name,
                             theVersion        = rec.version,
                             theUpdated        = rec.updated,
+                            theChanges        = rec.changes,
                             theDescription    = rec.description,
                             specialInfo       = rec.specialInfo,
+                            requiredLib       = rec.requiredLib,
                             theTags           = rec.tags,
                             bundleURL         = rec.bundleURL,
                             forumURL          = rec.forumURL
                         ]
-                        if(logEnable) log.debug "In getAllBundlesHandler - combinedRec: ${combinedRec}"
 
                         if(theName.toLowerCase() != "test" && theName.toLowerCase() != "blank") {
-                            allBundles << combinedRec
-                            allDevNames << hName
+                            combinedRecords = state.combinedInfo + combinedBundle
+                            log.debug "In getAllBundlesHandler - combinedRecords: ${combinedRecords}"
+                            allBundles << combinedRecords
+                            allDevNames << hubitatName
 
                             if(theTags) {
                                 def cats = theTags.replace("[","").replace("]","").split(";")
@@ -663,7 +693,7 @@ def getAllBundlesHandler() {
                 state.allDevNames = allDevNames.unique().sort()
                 state.allTags = allTags.unique().sort()
             } catch(e) {
-                log.warn "There was a problem retrieving bundle from hName: ${hName} - aName: ${aName} - theName: ${theName}"
+                log.warn "There was a problem retrieving bundle from ${it}"
                 log.error(getExceptionMessageWithLine(e))
             }
         }
@@ -699,16 +729,12 @@ def checkBundleHandler() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        setVersion()
         if(logEnable) log.debug "---------- In checkBundleHandler (${state.version}) ----------"
         state.masterBundleList.each { it ->
-            hName = it.key
-            theValue = it.value
-            (aName, mainURL) = theValue.toString().split(";")
-            if(logEnable) log.debug "In getAllBundlesHandler - hName: ${hName} - aName: ${aName} - mainURL: ${mainURL}"
+            if(logEnable) log.debug "In getAllBundlesHandler - mainURL: ${it}"
 
             def params = [
-                uri: mainURL,
+                uri: it,
                 requestContentType: "application/json",
                 contentType: "application/json",
                 timeout: 10
@@ -858,13 +884,13 @@ def installBundleHandler(bundle) {
 
 def getBundleList() {        // Code by gavincampbell, modified to work with bundles
     if(logEnable) log.debug "In getBundleList - Getting installed Bundles list"
-	def params = [
-		uri: "http://127.0.0.1:8080/bundle/list",
-		textParser: true,
-		headers: [
-			Cookie: state.cookie
-		]
-	  ]
+    def params = [
+        uri: "http://127.0.0.1:8080/bundle/list",
+        textParser: true,
+        headers: [
+            Cookie: state.cookie
+        ]
+    ]
 	
 	state.installedBundles = []
 	try {
@@ -883,11 +909,14 @@ def getBundleList() {        // Code by gavincampbell, modified to work with bun
 
 def pushHandler(msg){
     if(logEnable) log.debug "In pushHandler (${state.version}) - Sending a push - msg: ${msg}"
+    theMessage = ""
     if(pushICN) {
-        theMessage = "Bundle Manager - ${msg}"
-    } else {
-        theMessage = "${msg}"
+        theMessage += "Bundle Manager - "
     }
+    if(pushHN) {
+        theMessage += "${location.name} - "
+    }
+    theMessage += "${msg}"
     if(logEnable) log.debug "In pushHandler - Sending message: ${theMessage}"
     sendPushMessage.deviceNotification(theMessage)
 }
@@ -899,6 +928,7 @@ def logsOff() {
 }
 
 def checkEnableHandler() {
+    setVersion()
     state.eSwitch = false
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
