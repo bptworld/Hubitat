@@ -6,6 +6,7 @@
          "changes": "Fixed timeBetween",
          "description": "Average just about anything. Get notifications based on Setpoints.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/AveragingPlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
@@ -16,6 +17,7 @@
          "changes": "Minor chnanges",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
+         "requiredLib": "na",
          "tags": "Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/BundleManager.zip",
          "forumURL": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567/3"
@@ -26,6 +28,7 @@
          "changes": "Fixed again",
          "description": "Check selected devices, then warn you what's not in the right state.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Notifications;Security;Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceCheckPlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454"
@@ -36,6 +39,7 @@
          "changes": "Bundle Manager",
          "description": "Transform a device into a virtual multi-sensor device.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceTransformer.zip",
          "forumURL": "https://community.hubitat.com/t/release-device-transformer-transform-a-device-into-a-virtual-multi-sensor-device/73846"
@@ -46,6 +50,7 @@
          "changes": "Bundle Manager",
          "description": "Keep an eye on your devices and see how long it's been since they checked in.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Notifications;Security;Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceWatchdog.zip",
          "forumURL": "https://community.hubitat.com/t/release-device-watchdog/7692"
@@ -56,6 +61,7 @@
          "changes": "App-Minor cosmetic changes, Driver-Adjustment to sendDup and goodKeywords now checks Name and Message",
          "description": "Keep an eye out for errors that may pop up in the log.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Notifications;Security;Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceWatchdog.zip",
          "forumURL": "https://community.hubitat.com/t/release-device-watchdog/7692"
@@ -66,6 +72,7 @@
          "changes": "Adjustments",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library, be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
          "tags": "Automation;Lighting;Monitoring;Notifications;Security;Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip",
          "forumURL": "https://community.hubitat.com/t/release-event-engine-automate-your-world-with-easy-to-use-cogs-rev-up-complex-automations-with-just-a-few-clicks/49727"
@@ -76,6 +83,7 @@
          "changes": "na",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "na",
+         "requiredLib": "na",
          "tags": "Library",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/NormalStuffLibrary.zip",
          "forumURL": "na"
