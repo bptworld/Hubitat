@@ -1,4 +1,5 @@
 {
+   "paypal": "https://paypal.me/bptworld",
    "bundles": [
       {  "name": "Averaging Plus",
          "version": "1.3.1",
