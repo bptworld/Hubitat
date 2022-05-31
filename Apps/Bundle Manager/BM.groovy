@@ -31,7 +31,7 @@
  *
  *  Changes:
  *
- *  1.0.5 - 05/31/22 - Added Launch App Config option
+ *  1.0.5 - 05/31/22 - Added Launch New App Config option
  *  1.0.4 - 05/30/22 - Rearranged some things
  *  1.0.3 - 05/29/22 - More options - changes and enhancements
  *  1.0.2 - 05/29/22 - Minor changes
@@ -328,14 +328,28 @@ def searchOptions() {
         findBundles()
         if(state.iBundles) {
             section() {
+                doConfig = false
                 input "inputBundle", "enum", title: "Choose Bundle to Install", options: state.iBundles, required:false, submitOnChange:true, width:6
                 if(inputBundle) {
                     input "inputBundle2", "bool", title: "<b>Install Bundle</b><br>Switch will turn off when finished", defaultValue:false, submitOnChange:true, width:6
                     if(inputBundle2) {
                         theURL = inputBundle
-                        if(logEnable) log.debug "In tagsOption - Sending to installBundleHandler: ${theURL}"
+                        if(logEnable) log.debug "In searchOptions - Sending to installBundleHandler: ${theURL}"
                         installBundleHandler(theURL)
+                        doConfig = true
                         app.updateSetting("inputBundle2",[value:"false",type:"bool"])
+                    }
+                    if(doConfig) {
+                        state.iBundles.each { ib ->
+                            if(ib.key == theURL) bValue = ib.value
+                        }
+                        if(bValue) getAppsList()
+                        if(state.allAppsList) {
+                            state.allAppsList.each { al ->
+                                if(al.title == bValue) theID = al.id
+                            }
+                            paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
+                        }
                     }
                 }
             }
@@ -883,6 +897,7 @@ def installBundleHandler(bundle) {
 
 
 def getBundleList() {        // Code by gavincampbell, modified to work with bundles
+    if(hubSecurity) { login() }
     if(logEnable) log.debug "In getBundleList - Getting installed Bundles list"
     def params = [
         uri: "http://127.0.0.1:8080/bundle/list",
@@ -905,6 +920,36 @@ def getBundleList() {        // Code by gavincampbell, modified to work with bun
 	} catch (e) {
 		log.error "Error retrieving installed apps: ${e}"
 	}
+}
+
+// Thanks to gavincampbell for the code below!
+def getAppsList() {
+    if(hubSecurity) { login() }
+    if(logEnable) log.debug "In getAppsList - Getting installed Apps list"
+	def params = [
+		uri: "http://127.0.0.1:8080/app/list",
+		textParser: true,
+		headers: [
+			Cookie: state.cookie
+		]
+	  ]
+	
+	def result = []
+	try {
+		httpGet(params) { resp ->     
+			def matcherText = resp.data.text.replace("\n","").replace("\r","")
+			def matcher = matcherText.findAll(/(<tr class="app-row" data-app-id="[^<>]+">.*?<\/tr>)/).each {
+				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
+				def id = it.find(/data-app-id="([^"]+)"/) { match,i -> return i.trim() }
+				def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
+				def namespace = allFields[1].find(/>([^"]+)</) { match,ns -> return ns.trim() }
+				result += [id:id,title:title,namespace:namespace]
+			}
+		}
+	} catch (e) {
+		log.error "Error retrieving installed apps: ${e}"
+	}
+	state.allAppsList = result
 }
 
 def pushHandler(msg){
