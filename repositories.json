@@ -25,13 +25,6 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
-   		"name": "Chromecast Helper",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
-   		"description": "Simple way to help keep your Goolge/Nest devices alive.",
-         "tags": [ "LAN", "Multimedia", "Tools & Utilities", "Voice Assistants" ]
-   	},
-      {
    		"name": "Directional Alerter",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/packageManifest.json",
