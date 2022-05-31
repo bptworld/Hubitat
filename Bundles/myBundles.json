@@ -28,6 +28,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/BundleManager.zip",
          "forumURL": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567/3"
       },
+      {  "name": "Chromecast Helper",
+         "version": "2.0.3",
+         "updated": "2022-05-31",
+         "changes": "Moved to Bundle Manager",
+         "description": "Simple way to help keep your Goolge/Nest devices alive.",
+         "specialInfo": "na",
+         "requiredLib": "na",
+         "tags": "Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/ChromecastHelper.zip",
+         "forumURL": "https://community.hubitat.com/t/release-chromecast-helper-simple-way-to-help-keep-your-google-nest-devices-alive/19237"
+      },
       {  "name": "Device Check Plus",
          "version": "1.2.7",
          "updated": "2021-11-19",
