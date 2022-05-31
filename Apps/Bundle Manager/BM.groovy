@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 05/31/22 - Added Launch App Config option
  *  1.0.4 - 05/30/22 - Rearranged some things
  *  1.0.3 - 05/29/22 - More options - changes and enhancements
  *  1.0.2 - 05/29/22 - Minor changes
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -674,7 +675,6 @@ def getAllBundlesHandler() {
 
                         if(theName.toLowerCase() != "test" && theName.toLowerCase() != "blank") {
                             combinedRecords = state.combinedInfo + combinedBundle
-                            log.debug "In getAllBundlesHandler - combinedRecords: ${combinedRecords}"
                             allBundles << combinedRecords
                             allDevNames << hubitatName
 
