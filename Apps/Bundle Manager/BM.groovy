@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 05/31/22 - adjustments
  *  1.0.5 - 05/31/22 - Added Launch New App Config option
  *  1.0.4 - 05/30/22 - Rearranged some things
  *  1.0.3 - 05/29/22 - More options - changes and enhancements
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -329,26 +330,38 @@ def searchOptions() {
         if(state.iBundles) {
             section() {
                 doConfig = false
+                prevInstalled = false
                 input "inputBundle", "enum", title: "Choose Bundle to Install", options: state.iBundles, required:false, submitOnChange:true, width:6
                 if(inputBundle) {
                     input "inputBundle2", "bool", title: "<b>Install Bundle</b><br>Switch will turn off when finished", defaultValue:false, submitOnChange:true, width:6
                     if(inputBundle2) {
                         theURL = inputBundle
                         if(logEnable) log.debug "In searchOptions - Sending to installBundleHandler: ${theURL}"
-                        installBundleHandler(theURL)
-                        doConfig = true
-                        app.updateSetting("inputBundle2",[value:"false",type:"bool"])
-                    }
-                    if(doConfig) {
                         state.iBundles.each { ib ->
                             if(ib.key == theURL) bValue = ib.value
                         }
+                        state.installedBundles.each { ib ->
+                            if(bValue == ib) prevInstalled = true
+                        }
+                        
+                        installBundleHandler(theURL)
+                        if(!prevInstalled) doConfig = true
+                        app.updateSetting("inputBundle2",[value:"false",type:"bool"])
+                    }
+                    if(logEnable) log.debug "In searchOptions - prevInstalled: ${prevInstalled}"
+                    if(prevInstalled) paragraph "<small>(* Bundle was previously installed, no need to launch Config)</small>"
+                    if(doConfig) {
                         if(bValue) getAppsList()
                         if(state.allAppsList) {
                             state.allAppsList.each { al ->
                                 if(al.title == bValue) theID = al.id
                             }
-                            paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
+                            if(logEnable) log.debug "In searchOptions - Getting app ID: ${theID}"
+                            if(theID) {
+                                paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
+                            } else {
+                                paragraph "There was an issue getting the app ID"
+                            }
                         }
                     }
                 }
@@ -408,7 +421,6 @@ def findBundles() {
                 if(showAllBundles) {
                     matchedCount += 1
                 } else if(showNewBundles) {
-                    log.debug "I'm IN showNewBundles"
                     try {
                         theUpdated = bun[4]
                         theDate = "${theUpdated} 01:00:00"
@@ -634,7 +646,6 @@ def getMasterBundleList() {
                     state.masterBundleList << theLoc
                 }
             }
-            log.trace "masterBundleList: ${state.masterBundleList}"
         } catch(e) {
             log.warn "There was a problem retrieving bundles from hName: ${hName} - theLoc: ${theLoc}"
             log.error(getExceptionMessageWithLine(e))
