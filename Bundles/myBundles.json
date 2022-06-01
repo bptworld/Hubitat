@@ -80,8 +80,8 @@
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Notifications;Security;Utilities",        
-         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/DeviceWatchdog.zip",
-         "forumURL": "https://community.hubitat.com/t/release-device-watchdog/7692"
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/ErrorMonitor.zip",
+         "forumURL": "https://community.hubitat.com/t/release-error-monitor-keep-an-eye-out-for-errors-that-may-pop-up-in-the-log/91317"
       },
       {  "name": "Event Engine",
          "version": "3.7.6",
