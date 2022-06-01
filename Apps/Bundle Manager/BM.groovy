@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 05/31/22 - going in circles
  *  1.0.6 - 05/31/22 - adjustments
  *  1.0.5 - 05/31/22 - Added Launch New App Config option
  *  1.0.4 - 05/30/22 - Rearranged some things
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -336,7 +337,7 @@ def searchOptions() {
                     input "inputBundle2", "bool", title: "<b>Install Bundle</b><br>Switch will turn off when finished", defaultValue:false, submitOnChange:true, width:6
                     if(inputBundle2) {
                         theURL = inputBundle
-                        if(logEnable) log.debug "In searchOptions - Sending to installBundleHandler: ${theURL}"
+                        if(logEnable) log.debug "In searchOptions (${state.version}) - Sending to installBundleHandler: ${theURL}"
                         state.iBundles.each { ib ->
                             if(ib.key == theURL) bValue = ib.value
                         }
@@ -356,11 +357,12 @@ def searchOptions() {
                             state.allAppsList.each { al ->
                                 if(al.title == bValue) theID = al.id
                             }
-                            if(logEnable) log.debug "In searchOptions - Getting app ID: ${theID}"
+                            if(logEnable) log.debug "In searchOptions (${state.version}) - App ID: ${theID}"
                             if(theID) {
+                                if(logEnable) log.debug "In searchOptions - Creating config link for ${bValue} (${theID})"
                                 paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
                             } else {
-                                paragraph "There was an issue getting the app ID"
+                                paragraph "There was an issue getting the app ID (${theID})"
                             }
                         }
                     }
@@ -412,9 +414,10 @@ def findBundles() {
     iBundles = [:]
     iMatches = []
     
+    if(logEnable) log.debug "In findBundles - (${state.version})"
     if(countToReach) {
         for (bun in allBundles) {
-            theName = bun[2]
+            theName = bun[3]
             if(logEnable) log.debug "*************** Start - ${theName} ***************"
             matchedCount = 0
             try{
@@ -903,7 +906,7 @@ def installBundleHandler(bundle) {
    } catch (e) {
         log.error(getExceptionMessageWithLine(e))
    }
-    if(logEnable) log.debug "In installBundleHandler - Finished"
+    if(logEnable) log.debug "In installBundleHandler (${state.version}) - Finished"
 }
 
 
@@ -936,7 +939,7 @@ def getBundleList() {        // Code by gavincampbell, modified to work with bun
 // Thanks to gavincampbell for the code below!
 def getAppsList() {
     if(hubSecurity) { login() }
-    if(logEnable) log.debug "In getAppsList - Getting installed Apps list"
+    //if(logEnable) log.debug "In getAppsList (${state.version}) - Getting installed Apps list"
 	def params = [
 		uri: "http://127.0.0.1:8080/app/list",
 		textParser: true,
@@ -953,8 +956,7 @@ def getAppsList() {
 				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
 				def id = it.find(/data-app-id="([^"]+)"/) { match,i -> return i.trim() }
 				def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
-				def namespace = allFields[1].find(/>([^"]+)</) { match,ns -> return ns.trim() }
-				result += [id:id,title:title,namespace:namespace]
+				result += [id:id,title:title]
 			}
 		}
 	} catch (e) {
