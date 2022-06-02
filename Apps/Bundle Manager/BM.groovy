@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 06/02/22 - Many changes
  *  1.0.7 - 05/31/22 - going in circles
  *  1.0.6 - 05/31/22 - adjustments
  *  1.0.5 - 05/31/22 - Added Launch New App Config option
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -253,14 +254,6 @@ def pageConfig() {
     }
 }
 
-def checkRequirements() {
-    if(location.hub.firmwareVersionString > "2.3.2.117") {
-        state.firmwarePassed = true
-    } else {
-        state.firmwarePassed = false
-    }
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -284,7 +277,6 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        checkRequirements()
         subscribe(location, "updateVersionInfo", updateVersionHandler)
         if(updateBundleListAt) { schedule(timeUpdate, "getMasterBundleList") }
         if(checkBundlesAt) { schedule(timeCheck, "checkBundleHandler") }
@@ -331,6 +323,7 @@ def searchOptions() {
         if(state.iBundles) {
             section() {
                 doConfig = false
+                reqInstalled = false
                 prevInstalled = false
                 input "inputBundle", "enum", title: "Choose Bundle to Install", options: state.iBundles, required:false, submitOnChange:true, width:6
                 if(inputBundle) {
@@ -340,35 +333,52 @@ def searchOptions() {
                         if(logEnable) log.debug "In searchOptions (${state.version}) - Sending to installBundleHandler: ${theURL}"
                         state.iBundles.each { ib ->
                             if(ib.key == theURL) bValue = ib.value
-                        }
+                        }                       
                         state.installedBundles.each { ib ->
                             if(bValue == ib) prevInstalled = true
                         }
-                        
-                        installBundleHandler(theURL)
-                        if(!prevInstalled) doConfig = true
+                        state.bundleWithReq.each { bwr ->
+                            if(bValue == bwr.key) {
+                                theReq = bwr.value
+                                if(logEnable) log.debug "In searchOptions - ${bwr.key} requires: ${theReq}"
+                                state.installedBundles.each { sib ->
+                                    if(theReq == sib || theReq == "na" || theReq == "NA") reqInstalled = true
+                                }
+                            }
+                        }                        
+                        if(logEnable) log.debug "In searchOptions - reqInstalled: ${reqInstalled}"
+                        if(reqInstalled) {
+                            installBundleHandler(theURL)
+                        } else {
+                            paragraph "${bValue} requires <b>${theReq}</b> be installed BEFORE ${bValue} can be installed. Please choose '${theReq}' from the dropdown above to install."
+                        }
+                        if(!prevInstalled && reqInstalled) doConfig = true
                         app.updateSetting("inputBundle2",[value:"false",type:"bool"])
                     }
                     if(logEnable) log.debug "In searchOptions - prevInstalled: ${prevInstalled}"
                     if(prevInstalled) paragraph "<small>(* Bundle was previously installed, no need to launch Config)</small>"
                     if(doConfig) {
-                        if(bValue) getAppsList()
-                        if(state.allAppsList) {
-                            state.allAppsList.each { al ->
-                                if(al.title == bValue) theID = al.id
-                            }
-                            if(logEnable) log.debug "In searchOptions (${state.version}) - App ID: ${theID}"
-                            if(theID) {
-                                if(logEnable) log.debug "In searchOptions - Creating config link for ${bValue} (${theID})"
-                                paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
-                            } else {
-                                paragraph "There was an issue getting the app ID (${theID})"
+                        if(bValue.contains("Library") || bValue.contains("library")) {
+                            paragraph "<small>* Library install, no config needed</small>"
+                        } else {
+                            if(bValue) getAppsList()
+                            if(state.allAppsList) {
+                                state.allAppsList.each { al ->
+                                    if(al.title == bValue) theID = al.id
+                                }
+                                if(logEnable) log.debug "In searchOptions (${state.version}) - App ID: ${theID}"
+                                if(theID) {
+                                    if(logEnable) log.debug "In searchOptions - Creating config link for ${bValue} (${theID})"
+                                    paragraph "<a href='/installedapp/create/${theID}' target='_blank'>CLICK HERE</a> to configure ${bValue}"
+                                } else {
+                                    paragraph "There was an issue getting the app ID (${theID})"
+                                }
                             }
                         }
                     }
                 }
             }
-            section(getFormat("header-green", "${getImage("Blank")} ${state.resultsTitle}  (${getImage("checkMarkGreen2")} means Bundle is already installed.)")) {
+            section(getFormat("header-green", "${getImage("Blank")} ${state.resultsTitle}  (${getImage("checkMarkGreen2")} means the Bundle is already installed.)")) {
                 paragraph appsList
             }
         } else {
@@ -413,6 +423,7 @@ def findBundles() {
     appsList = ""
     iBundles = [:]
     iMatches = []
+    state.bundleWithReq = [:]
     
     if(logEnable) log.debug "In findBundles - (${state.version})"
     if(countToReach) {
@@ -531,17 +542,24 @@ def findBundles() {
                     bundleURL         = bun[11]
                     forumURL          = bun[12]
                     
+                    log.trace "adding ${theName} to iBundles"
                     iBundles.put(bundleURL, theName)
+                    state.bundleWithReq.put(theName,theRequiredLib)
                     iMatches << "${hubitatName};${authorName};${paypalURL};${theName};${theVersion};${theUpdated};${theChanges};${theDescription};${theSpecialInfo};${theRequiredLib};${theTags};${bundleURL};${forumURL}"          
                 }
             } catch(e) {
                 theName = bun[3]
-                if(logEnable) log.debug "In findBundles - Something went wrong, skipping ${theName}"
+                if(logEnable) {
+                    log.debug "----------------------------------------------------------"
+                    log.debug "In findBundles - Something went wrong, skipping ${theName}"
+                    log.debug "----------------------------------------------------------"
+                }
                 log.error(getExceptionMessageWithLine(e))
             }
             if(logEnable) log.debug "------------------------------ End - ${theName} ------------------------------"
         }
     }
+    log.trace "${iBundles}"
     state.iBundles = iBundles.sort()
     if(iMatches) {
         theMat = iMatches.sort()
@@ -570,7 +588,7 @@ def findBundles() {
                 state.skip = true
             }  
             if(state.skip) {
-                if(logEnable) log.debug ""
+                if(logEnable) log.debug "----"
             } else {
                 // Check if installed
                 isInstalled = false
@@ -615,8 +633,6 @@ def findBundles() {
                         theLinks += " | <a href='${paypalURL}' target='_blank'><img height='20' src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a>"
                     }
                 }
-                
-                
                 appsList += "${theLinks}</div>"
             }
         }
@@ -853,39 +869,42 @@ def checkBundleHandler() {
 
 def login() {        // code modified from @dman2306
     if(logEnable) log.debug "In installBundleHandler - Checking Hub Security"
-    try{
-        httpPost(
-            [
-                uri: "http://127.0.0.1:8080",
-                path: "/login",
-                query: 
+    state.cookie = ""
+    if(hubSecurity) {
+        try{
+            httpPost(
                 [
-                    loginRedirect: "/"
-                ],
-                body:
-                [
-                    username: hubUsername,
-                    password: hubPassword,
-                    submit: "Login"
-                ],
-                textParser: true,
-                ignoreSSLIssues: true
-            ]
-        )
-        { resp ->
-            if (resp.data?.text?.contains("The login information you supplied was incorrect.")) {
-                log.warn "Bundle Manager - username/password is incorrect."
-            } else {
-                state.cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+                    uri: "http://127.0.0.1:8080",
+                    path: "/login",
+                    query: 
+                    [
+                        loginRedirect: "/"
+                    ],
+                    body:
+                    [
+                        username: hubUsername,
+                        password: hubPassword,
+                        submit: "Login"
+                    ],
+                    textParser: true,
+                    ignoreSSLIssues: true
+                ]
+            )
+            { resp ->
+                if (resp.data?.text?.contains("The login information you supplied was incorrect.")) {
+                    log.warn "Bundle Manager - username/password is incorrect."
+                } else {
+                    state.cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+                }
             }
+        } catch (e) {
+            log.error(getExceptionMessageWithLine(e))
         }
-    } catch (e) {
-        og.error(getExceptionMessageWithLine(e))
     }
 }
 
 def installBundleHandler(bundle) {
-    if(hubSecurity) { login() }
+    login() 
     def jsonData =  JsonOutput.toJson([url:"$bundle",installer:FALSE, pwd:''])
     try {
         def params = [
@@ -896,22 +915,21 @@ def installBundleHandler(bundle) {
                 "Cookie": state.cookie
             ],
             body: "$jsonData",
-            timeout: 90,
+            timeout: 120,
             ignoreSSLIssues: true
         ]
         if(logEnable) log.debug "In installBundleHandler - Getting data ($params)"
         httpPost(params) { resp ->
              if(logEnable) log.debug "In installBundleHandler - Receiving file: ${bundle}"
         }
+        if(logEnable) log.debug "In installBundleHandler (${state.version}) - Finished"
    } catch (e) {
         log.error(getExceptionMessageWithLine(e))
    }
-    if(logEnable) log.debug "In installBundleHandler (${state.version}) - Finished"
 }
 
-
-def getBundleList() {        // Code by gavincampbell, modified to work with bundles
-    if(hubSecurity) { login() }
+def getBundleList() {        // Modified code from gavincampbell
+    login()
     if(logEnable) log.debug "In getBundleList - Getting installed Bundles list"
     def params = [
         uri: "http://127.0.0.1:8080/bundle/list",
@@ -936,9 +954,8 @@ def getBundleList() {        // Code by gavincampbell, modified to work with bun
 	}
 }
 
-// Thanks to gavincampbell for the code below!
-def getAppsList() {
-    if(hubSecurity) { login() }
+def getAppsList() {        // Modified code from gavincampbell
+    login() 
     //if(logEnable) log.debug "In getAppsList (${state.version}) - Getting installed Apps list"
 	def params = [
 		uri: "http://127.0.0.1:8080/app/list",
