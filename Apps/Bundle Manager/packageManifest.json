@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/BM.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.7",
+			"version": "1.0.8",
 			"primary": true
 		}
 	],
