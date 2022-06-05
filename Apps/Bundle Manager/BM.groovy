@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 06/05/22 - More streamlining, Added delete options
  *  1.0.8 - 06/02/22 - Many changes
  *  1.0.7 - 05/31/22 - going in circles
  *  1.0.6 - 05/31/22 - adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -67,6 +68,7 @@ definition(
     iconX2Url: "",
     iconX3Url: "",
 	importUrl: "",
+    singleInstance: true
 )
 
 preferences {
@@ -77,6 +79,7 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
         display()
+        checkTimeMBL()
         section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
             app.removeSetting("searchtags")
             app.removeSetting("bunSearch")
@@ -85,12 +88,6 @@ def pageConfig() {
             app.removeSetting("bunAuthor")
             app.removeSetting("showAllBundles")
             app.removeSetting("showNewBundles")
-            input "checkMasterBundles", "bool", title: "Update Master Bundle List <small><abbr title='Remember, it sometimes takes a minute or two for GitHub to reflect any changes made by a developer.'><b>- INFO -</b></abbr></small><br><small>* Switch will turn back off when finished</small>", defaultValue:false, submitOnChange:true, width:6
-            paragraph "<center><i>This can take a minute to run!<br>Please be patient.</i></center>", width:6
-            if(checkMasterBundles) {
-                getMasterBundleList()    
-                app.updateSetting("checkMasterBundles",[value:"false",type:"bool"])
-            }
             href "searchOptions", title:"Search Options", description:"Click here to search for Bundles!"
             paragraph "<center>${state.theStats}<br><small>Bundles Last Updated: $state.lastUpdated</small></center>"
         }
@@ -129,7 +126,7 @@ def pageConfig() {
                             theKey = il.key
                             tbundles << theKey
                         }
-                        input "toUpdate", "enum", title: "Select Bundles to Update", options: tbundles, multiple:true, submitOnChange:true
+                        input "toUpdate", "enum", title: "Select Bundles to Update", offerAll:true, options: tbundles, multiple:true, submitOnChange:true
                         if(toUpdate) {
                             input "doUpdates", "bool", title: "Update Bundles", defaultValue:false, submitOnChange:true
                             paragraph "<small>* Switch will turn back off when finished<br><i>Please be patient.</i></small>"
@@ -180,6 +177,93 @@ def pageConfig() {
             }
         }
 
+        showStuff = true
+        if(showStuff) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Delete Options")) {
+            input "deleteApp", "bool", title: "Delete Installed App", defaultValue:false, submitOnChange:true,width:4
+            input "deleteDriver", "bool", title: "Delete Installed Driver", defaultValue:false, submitOnChange:true,width:4
+            input "deleteBundle", "bool", title: "Delete Installed Bundle", defaultValue:false, submitOnChange:true,width:4
+            if(deleteApp) {
+                getAppsList()
+                input "appToDelete", "enum", title: "Choose App to Delete", options: state.allAppNames, multiple:true, submitOnChange:true
+                if(appToDelete) {
+                    appToDelete.each { atd ->
+                        state.allAppsList.each { al ->
+                            if(al.title == atd) {
+                                appCodeID = al.id
+                                if(appCodeID) {
+                                    input "appSure", "bool", title: "Are you sure", defaultValue:false, submitOnChange:true
+                                    if(appSure) {
+                                        uninstallApp(appCodeID)
+                                        app.removeSetting("appToDelete")
+                                        app.updateSetting("appSure",[value:"false",type:"bool"])
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(logEnable) paragraph "App Code - appCodeID: $appCodeID"
+                }
+                paragraph "Please make sure that the app is no longer in use. To be sure, go to your Apps page and make sure that the app isn't listed."
+            } else {
+                app.removeSetting("appToDelete")
+            }
+                        
+            if(deleteDriver) {
+                getDriversList()
+                input "driverToDelete", "enum", title: "Choose Driver to Delete", options: state.allDriverNames, multiple:true, submitOnChange:true
+                if(driverToDelete) {
+                    driverToDelete.each { dtd ->
+                        state.allDriversList.each { ad ->
+                            if(ad.title == dtd) {
+                                driverCodeID = ad.id
+                                if(driverCodeID) {
+                                    input "driverSure", "bool", title: "Are you sure", defaultValue:false, submitOnChange:true
+                                    if(driverSure) {
+                                        uninstallDriver(driverCodeID)
+                                        app.removeSetting("driverToDelete")
+                                        app.updateSetting("driverSure",[value:"false",type:"bool"])
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(logEnable) paragraph "Driver Code - driverCodeID: $driverCodeID"
+                }
+                paragraph "Please make sure that the driver is no longer in use. To be sure, go to your Device page and make sure that the driver isn't listed."
+            } else {
+                app.removeSetting("driverToDelete")
+            }
+            
+            if(deleteBundle) {
+                getBundleList()
+                input "bundleToDelete", "enum", title: "Choose Bundle to Delete", options: state.allBundleNames, multiple:true, submitOnChange:true
+                if(bundleToDelete) {
+                    bundleToDelete.each { btd ->
+                        state.allBundlesList.each { ab ->
+                            if(ab.title == btd) {
+                                bundleCodeID = ab.id
+                                if(bundleCodeID) {
+                                    input "bundleSure", "bool", title: "Are you sure", defaultValue:false, submitOnChange:true
+                                    if(bundleSure) {
+                                        uninstallBundle(bundleCodeID)
+                                        app.removeSetting("bundleToDelete")
+                                        app.updateSetting("bundleSure",[value:"false",type:"bool"])
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(logEnable) paragraph "Bundle Code - bundleCodeID: $bundleCodeID"
+                }
+                paragraph "Removing a bundle does not remove the app/driver associated with it. Please use the app/driver options to uninstall each."
+            } else {
+                app.removeSetting("bundleToDelete")
+            }
+            
+        }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
@@ -254,35 +338,6 @@ def pageConfig() {
     }
 }
 
-def installed() {
-    log.debug "Installed with settings: ${settings}"
-	initialize()
-}
-
-def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings}"
-	unschedule()
-    unsubscribe()
-    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
-    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
-    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
-	initialize()
-}
-
-def initialize() {
-    checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
-    } else {
-        subscribe(location, "updateVersionInfo", updateVersionHandler)
-        if(updateBundleListAt) { schedule(timeUpdate, "getMasterBundleList") }
-        if(checkBundlesAt) { schedule(timeCheck, "checkBundleHandler") }
-    }
-}
-
 def searchOptions() {
     dynamicPage(name: "searchOptions", title: "", install: false, uninstall:false){
         getBundleList()
@@ -334,14 +389,14 @@ def searchOptions() {
                         state.iBundles.each { ib ->
                             if(ib.key == theURL) bValue = ib.value
                         }                       
-                        state.installedBundles.each { ib ->
+                        state.allBundleNames.each { ib ->
                             if(bValue == ib) prevInstalled = true
                         }
                         state.bundleWithReq.each { bwr ->
                             if(bValue == bwr.key) {
                                 theReq = bwr.value
                                 if(logEnable) log.debug "In searchOptions - ${bwr.key} requires: ${theReq}"
-                                state.installedBundles.each { sib ->
+                                state.allBundleNames.each { sib ->
                                     if(theReq == sib || theReq == "na" || theReq == "NA") reqInstalled = true
                                 }
                             }
@@ -388,6 +443,35 @@ def searchOptions() {
             app.removeSetting("inputBundle")
         }
         display2()
+    }
+}
+
+def installed() {
+    log.debug "Installed with settings: ${settings}"
+	initialize()
+}
+
+def updated() {	
+    if(logEnable) log.debug "Updated with settings: ${settings}"
+	unschedule()
+    unsubscribe()
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
+	initialize()
+}
+
+def initialize() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        subscribe(location, "updateVersionInfo", updateVersionHandler)
+        if(updateBundleListAt) { schedule(timeUpdate, "getMasterBundleList") }
+        if(checkBundlesAt) { schedule(timeCheck, "checkBundleHandler") }
     }
 }
 
@@ -592,7 +676,7 @@ def findBundles() {
             } else {
                 // Check if installed
                 isInstalled = false
-                state.installedBundles.each { ib ->
+                state.allBundleNames.each { ib ->
                     if(theName == ib) isInstalled = true
                 }
 // solid grey
@@ -606,7 +690,7 @@ def findBundles() {
                 appsList += "<br>${theDescription}"
                 
                 libInstalled = false
-                state.installedBundles.each { lib ->
+                state.allBundleNames.each { lib ->
                     if(theRequiredLib == lib) libInstalled = true
                 }
                 if(libInstalled) {
@@ -717,7 +801,7 @@ def getAllBundlesHandler() {
                             forumURL          = rec.forumURL
                         ]
 
-                        if(theName.toLowerCase() != "test" && theName.toLowerCase() != "blank") {
+                        if(logEnable) {
                             combinedRecords = state.combinedInfo + combinedBundle
                             allBundles << combinedRecords
                             allDevNames << hubitatName
@@ -727,6 +811,21 @@ def getAllBundlesHandler() {
                                 cats.each{ cat ->
                                     if(!allTags.contains(cat)) {
                                         allTags << cat
+                                    }
+                                }
+                            }
+                        } else {
+                            if(theName.toLowerCase() != "test" && theName.toLowerCase() != "blank") {
+                                combinedRecords = state.combinedInfo + combinedBundle
+                                allBundles << combinedRecords
+                                allDevNames << hubitatName
+
+                                if(theTags) {
+                                    def cats = theTags.replace("[","").replace("]","").split(";")
+                                    cats.each{ cat ->
+                                        if(!allTags.contains(cat)) {
+                                            allTags << cat
+                                        }
                                     }
                                 }
                             }
@@ -744,6 +843,7 @@ def getAllBundlesHandler() {
     }
     theDate = new Date()
     state.lastUpdated = theDate.format("MM-dd-yyyy - h:mm:ss a")
+    state.gotMBL = true
     if(state.allBundles) {
         allBundlesCount = state.allBundles.size()
     } else {
@@ -867,7 +967,7 @@ def checkBundleHandler() {
     }
 }
 
-def login() {        // code modified from @dman2306
+def login() {        // Modified from code by @dman2306
     if(logEnable) log.debug "In installBundleHandler - Checking Hub Security"
     state.cookie = ""
     if(hubSecurity) {
@@ -915,7 +1015,7 @@ def installBundleHandler(bundle) {
                 "Cookie": state.cookie
             ],
             body: "$jsonData",
-            timeout: 120,
+            timeout: 180,
             ignoreSSLIssues: true
         ]
         if(logEnable) log.debug "In installBundleHandler - Getting data ($params)"
@@ -928,7 +1028,91 @@ def installBundleHandler(bundle) {
    }
 }
 
-def getBundleList() {        // Modified code from gavincampbell
+def uninstallApp(id) {        // Modified from code by @dman2306
+    login()
+    if(logEnable) log.debug "In uninstallApp - Uninstalling App - ${id}"
+	try {
+		def params = [
+			uri: "http://127.0.0.1:8080",
+			path: "/app/edit/update",
+			requestContentType: "application/x-www-form-urlencoded",
+			headers: [
+				"Cookie": state.cookie
+			],
+			body: [
+				id: id,
+				"_action_delete": "Delete"
+			],
+			timeout: 300,
+			textParser: true,
+			ignoreSSLIssues: true
+		]
+
+		httpPost(params) { resp ->
+            if (resp.data == null) {
+				paragraph "Success!"
+			}
+		}
+	}
+	catch (e) {
+        paragraph "Failed!"
+        log.error(getExceptionMessageWithLine(e))
+	}
+}
+
+def uninstallDriver(id) {        // Modified from code by @dman2306
+    login()
+    if(logEnable) log.debug "In uninstallDriver - Uninstalling Driver - ${id}"
+	try{
+		def params = [
+			uri: "http://127.0.0.1:8080",
+			path: "/driver/editor/update",
+			requestContentType: "application/x-www-form-urlencoded",
+			headers: [
+				"Cookie": state.cookie
+			],
+			body: [
+				id: id,
+				"_action_delete": "Delete"
+			],
+			timeout: 300,
+			textParser: true,
+			ignoreSSLIssues: true
+		]
+
+		httpPost(params) { resp ->
+            if (resp.data == null) {
+				paragraph "Success!"
+			}
+		}
+	}
+	catch (e) {
+        paragraph "Failed!"
+        log.error(getExceptionMessageWithLine(e))
+	}
+}
+
+def uninstallBundle(id) {
+    login()
+    if(logEnable) log.debug "In uninstallBundle - Uninstalling Bundle - ${id}"
+	try{
+		def params = [
+            uri: "http://127.0.0.1:8080/bundle/delete/${id}",
+			headers: [ "Cookie": state.cookie ],
+			timeout: 300,
+		]
+
+		httpGet(params) { resp ->
+            paragraph "Success!"
+		}
+	}
+	catch (e) {
+        paragraph "Failed!"
+        log.error(getExceptionMessageWithLine(e))
+	}
+}
+
+def getBundleList() {        // Modified from code by gavincampbell
     login()
     if(logEnable) log.debug "In getBundleList - Getting installed Bundles list"
     def params = [
@@ -939,22 +1123,28 @@ def getBundleList() {        // Modified code from gavincampbell
         ]
     ]
 	
-	state.installedBundles = []
+	def allBundlesList = []
+    def allBundleNames = []
 	try {
 		httpGet(params) { resp ->     
 			def matcherText = resp.data.text.replace("\n","").replace("\r","")
 			def matcher = matcherText.findAll(/(<tr class="bundle-row" data-bundle-id="[^<>]+">.*?<\/tr>)/).each {
-				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
+				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f }
+                def id = it.find(/data-bundle-id="([^"]+)"/) { match,i -> return i.trim() }
 				def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
-				state.installedBundles << title
+				allBundlesList += [id:id,title:title]
+                allBundleNames << title
 			}
 		}
 	} catch (e) {
 		log.error "Error retrieving installed apps: ${e}"
-	}
+        log.error(getExceptionMessageWithLine(e))
+	} 
+    state.allBundlesList = allBundlesList
+    state.allBundleNames = allBundleNames.sort { a, b -> a.toLowerCase() <=> b.toLowerCase() }
 }
 
-def getAppsList() {        // Modified code from gavincampbell
+def getAppsList() {        // Modified from code by gavincampbell
     login() 
     //if(logEnable) log.debug "In getAppsList (${state.version}) - Getting installed Apps list"
 	def params = [
@@ -965,7 +1155,8 @@ def getAppsList() {        // Modified code from gavincampbell
 		]
 	  ]
 	
-	def result = []
+	def allAppsList = []
+    def allAppNames = []
 	try {
 		httpGet(params) { resp ->     
 			def matcherText = resp.data.text.replace("\n","").replace("\r","")
@@ -973,13 +1164,48 @@ def getAppsList() {        // Modified code from gavincampbell
 				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
 				def id = it.find(/data-app-id="([^"]+)"/) { match,i -> return i.trim() }
 				def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
-				result += [id:id,title:title]
+				allAppsList += [id:id,title:title]
+                allAppNames << title
 			}
 		}
 	} catch (e) {
 		log.error "Error retrieving installed apps: ${e}"
+        log.error(getExceptionMessageWithLine(e))
 	}
-	state.allAppsList = result
+    state.allAppsList = allAppsList
+    state.allAppNames = allAppNames.sort { a, b -> a.toLowerCase() <=> b.toLowerCase() }
+}
+
+def getDriversList() {        // Modified from code by gavincampbell
+    login() 
+    if(logEnable) log.debug "In getDriversList (${state.version}) - Getting installed Drivers list"
+	def params = [
+		uri: "http://127.0.0.1:8080/driver/list",
+		textParser: true,
+		headers: [
+			Cookie: state.cookie
+		]
+	  ]
+	
+	def allDriversList = []
+    def allDriverNames = []
+	try {
+		httpGet(params) { resp ->     
+			def matcherText = resp.data.text.replace("\n","").replace("\r","")
+			def matcher = matcherText.findAll(/(<tr class="driver-row" data-app-id="[^<>]+">.*?<\/tr>)/).each {
+				def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
+				def id = it.find(/data-app-id="([^"]+)"/) { match,i -> return i.trim() }
+				def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
+                allDriversList += [id:id,title:title]
+                allDriverNames << title
+			}
+		}
+	} catch (e) {
+		log.error "Error retrieving installed drivers: ${e}"
+        log.error(getExceptionMessageWithLine(e))
+	}
+    state.allDriversList = allDriversList
+    state.allDriverNames = allDriverNames.sort { a, b -> a.toLowerCase() <=> b.toLowerCase() }
 }
 
 def pushHandler(msg){
@@ -994,6 +1220,30 @@ def pushHandler(msg){
     theMessage += "${msg}"
     if(logEnable) log.debug "In pushHandler - Sending message: ${theMessage}"
     sendPushMessage.deviceNotification(theMessage)
+}
+
+def checkTimeMBL() {
+    //if(logEnable) log.debug "In checkTimeMBL (${state.version})"
+    use(TimeCategory) {
+        Date now = new Date()
+        if(state.lastChecked == null) {
+            getMasterBundleList()
+            state.lastChecked = now
+        } else {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+            date2 = dateFormat.parse("${state.lastChecked}".replace("+00:00","+0000"))
+            def duration = now - date2
+            //if(logEnable) log.debug "In checkTimeMBL - Minutes: ${duration.minutes} since last check"
+            dur = duration.minutes
+            if(duration.minutes > 240) {
+                //if(logEnable) log.debug "In checkTimeMBL - Automatically checking for new Bundles"
+                getMasterBundleList()
+                state.lastChecked = now
+            } else {
+                //if(logEnable) log.debug "In checkTimeMBL - No automatic check needed"
+            }
+        }
+    }
 }
 
 // *************************************************
