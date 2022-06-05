@@ -5,7 +5,7 @@
 	"dateReleased": "2020-06-05",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
-	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
+	"releaseNotes": "Cosmetic changes, fixed 7 day",
 	"apps" : [
 		{
 			"id" : "0f7bfb11-e171-4719-ba65-0a3ed36e15f9",
