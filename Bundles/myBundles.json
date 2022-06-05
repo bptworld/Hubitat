@@ -18,9 +18,9 @@
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
       },
       {  "name": "Bundle Manager",
-         "version": "1.0.9",
+         "version": "1.1.0",
          "updated": "2022-06-05",
-         "changes": "More streamlining, Added delete options",
+         "changes": "Cosmetic changes, fixed 7 day",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
