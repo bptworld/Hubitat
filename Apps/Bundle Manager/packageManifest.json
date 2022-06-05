@@ -2,7 +2,7 @@
 	"packageName": "Bundle Manager",
 	"minimumHEVersion": "1.0.0",
 	"author": "BPTWorld",
-	"dateReleased": "2020-05-31",
+	"dateReleased": "2020-06-05",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/BM.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.9",
+			"version": "1.1.0",
 			"primary": true
 		}
 	],
