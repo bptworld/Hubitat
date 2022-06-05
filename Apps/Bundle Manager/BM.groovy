@@ -31,15 +31,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 06/05/22 - More streamlining, Added delete options
- *  1.0.8 - 06/02/22 - Many changes
- *  1.0.7 - 05/31/22 - going in circles
- *  1.0.6 - 05/31/22 - adjustments
- *  1.0.5 - 05/31/22 - Added Launch New App Config option
- *  1.0.4 - 05/30/22 - Rearranged some things
- *  1.0.3 - 05/29/22 - More options - changes and enhancements
- *  1.0.2 - 05/29/22 - Minor changes
- *  1.0.1 - 05/29/22 - Minor changes
+ *  1.1.0 - 06/05/22 - Cosmetic changes, fixed 7 day
+ *  ---
  *  1.0.0 - 05/28/22 - Initial release.
  */
 
@@ -53,7 +46,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -177,12 +170,21 @@ def pageConfig() {
             }
         }
 
-        showStuff = true
-        if(showStuff) {
         section(getFormat("header-green", "${getImage("Blank")}"+" Delete Options")) {
             input "deleteApp", "bool", title: "Delete Installed App", defaultValue:false, submitOnChange:true,width:4
             input "deleteDriver", "bool", title: "Delete Installed Driver", defaultValue:false, submitOnChange:true,width:4
             input "deleteBundle", "bool", title: "Delete Installed Bundle", defaultValue:false, submitOnChange:true,width:4
+            input "clearMap", "bool", title: "Clear Version Map <small><abbr title='After removing app/drivers/bundles, use this to clear the version map. It will slowly rebuild itself as apps are opened or execute.'><b>- INFO -</b></abbr></small>", defaultValue:false, submitOnChange:true
+            if(clearMap) {
+                input "clearMap2", "bool", title: "<b>Are you sure</b>", defaultValue:false, submitOnChange:true, width:3
+                if(clearMap2) {
+                    state.versionMap = [:]
+                    app.updateSetting("clearMap2",[value:"false",type:"bool"])
+                    app.updateSetting("clearMap",[value:"false",type:"bool"])
+                }
+            } else {
+                app.updateSetting("clearMap2",[value:"false",type:"bool"])
+            }
             if(deleteApp) {
                 getAppsList()
                 input "appToDelete", "enum", title: "Choose App to Delete", options: state.allAppNames, multiple:true, submitOnChange:true
@@ -259,9 +261,7 @@ def pageConfig() {
                 paragraph "Removing a bundle does not remove the app/driver associated with it. Please use the app/driver options to uninstall each."
             } else {
                 app.removeSetting("bundleToDelete")
-            }
-            
-        }
+            }   
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -286,10 +286,12 @@ def pageConfig() {
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            input "hubSecurity", "bool", title: "Hub Security", submitOnChange:true
+            input "hubSecurity", "bool", title: "Hub Security", submitOnChange:true, width:4
             if(hubSecurity) {
-                input "hubUsername", "string", title: "Hub Username", required:true, submitOnChange:true, width:6
-                input "hubPassword", "password", title: "Hub Password", required:true, submitOnChange:true, width:6
+                input "hubUsername", "string", title: "Hub Username", required:true, submitOnChange:true, width:4
+                input "hubPassword", "password", title: "Hub Password", required:true, submitOnChange:true, width:4
+            } else {
+                paragraph " ", width:8
             }
             input "updateBundleListAt", "bool", title: "Automatically Check for New Bundles each day", defaultValue:false, submitOnChange:true, width:7
             if(updateBundleListAt) {
@@ -321,17 +323,6 @@ def pageConfig() {
             input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
-                input "clearMap", "bool", title: "Clear Map", defaultValue:false, submitOnChange:true, width:3
-                if(clearMap) {
-                    input "clearMap2", "bool", title: "<b>Are you sure</b>", defaultValue:false, submitOnChange:true, width:3
-                    if(clearMap2) {
-                        state.versionMap = [:]
-                        app.updateSetting("clearMap2",[value:"false",type:"bool"])
-                        app.updateSetting("clearMap",[value:"false",type:"bool"])
-                    }
-                } else {
-                    app.updateSetting("clearMap2",[value:"false",type:"bool"])
-                }
             }
         }
         display2()
@@ -343,12 +334,20 @@ def searchOptions() {
         getBundleList()
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
+            input "manCheck", "bool", title: "Manually update Master Bundle List", defaultValue:false, submitOnChange:true
+            if(manCheck) {
+                getMasterBundleList()
+                app.updateSetting("showAllBundles",[value:"false",type:"bool"])
+                app.updateSetting("showNewBundles",[value:"false",type:"bool"])
+                app.updateSetting("manCheck",[value:"false",type:"bool"])
+            }
             input "showAllBundles", "bool", title: "Show ALL bundles", defaultValue:false, submitOnChange:true, width:5
             paragraph "<b>OR</b> ", width:2
             input "showNewBundles", "bool", title: "Show New Bundles (last 7 days)", defaultValue:false, submitOnChange:true, width:5
             if(showAllBundles && showNewBundles) {
                 paragraph "<b>Please only select ONE option at a time.</b>"
             }
+            
             if(showAllBundles || showNewBundles) {
                 app.removeSetting("searchtags")
                 app.removeSetting("bunAuthor")
@@ -520,7 +519,7 @@ def findBundles() {
                     matchedCount += 1
                 } else if(showNewBundles) {
                     try {
-                        theUpdated = bun[4]
+                        theUpdated = bun[5]
                         theDate = "${theUpdated} 01:00:00"
                         def prev = Date.parse("yyy-MM-dd HH:mm:ss","${theDate}".replace("+00:00","+0000"))
                         def now = new Date()
