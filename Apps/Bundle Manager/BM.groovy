@@ -31,6 +31,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 06/05/22 - Added more logging for 'na' issue
  *  1.1.0 - 06/05/22 - Cosmetic changes, fixed 7 day
  *  ---
  *  1.0.0 - 05/28/22 - Initial release.
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 // Start Required Section
 def setVersion(){
     state.name = "Bundle Manager"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
     sendLocationEvent(name: "updateVersionInfo", value: "${state.name}:${state.version}")
 }
 // End Required Section
@@ -146,7 +147,7 @@ def pageConfig() {
                 if(state.versionMap) {
                     sortedMap = state.versionMap.sort()
                     smHalf = (smSize / 2).toInteger()
-                    count = 0
+                    count = 1
                     col1 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
                     col2 = "<table><tr><td><b><u>App Name</u></b><td><td><b><u>Version</u></b>"
                     sortedMap.each { stuff ->
@@ -198,6 +199,7 @@ def pageConfig() {
                                     if(appSure) {
                                         uninstallApp(appCodeID)
                                         app.removeSetting("appToDelete")
+                                        app.updateSetting("deleteApp",[value:"false",type:"bool"])
                                         app.updateSetting("appSure",[value:"false",type:"bool"])
                                     }
                                 }
@@ -224,6 +226,7 @@ def pageConfig() {
                                     if(driverSure) {
                                         uninstallDriver(driverCodeID)
                                         app.removeSetting("driverToDelete")
+                                        app.updateSetting("deleteDriver",[value:"false",type:"bool"])
                                         app.updateSetting("driverSure",[value:"false",type:"bool"])
                                     }
                                 }
@@ -250,6 +253,7 @@ def pageConfig() {
                                     if(bundleSure) {
                                         uninstallBundle(bundleCodeID)
                                         app.removeSetting("bundleToDelete")
+                                        app.updateSetting("deleteBundle",[value:"false",type:"bool"])
                                         app.updateSetting("bundleSure",[value:"false",type:"bool"])
                                     }
                                 }
@@ -297,7 +301,7 @@ def pageConfig() {
             if(updateBundleListAt) {
                 input "timeUpdate", "time", title: "Time to update bundle list", submitOnChange:true, width:5
             }
-            input "checkBundlesAt", "bool", title: "Automatically Check Bundles each day", defaultValue:false, submitOnChange:true, width:7
+            input "checkBundlesAt", "bool", title: "Automatically Check Installed Bundles each day", defaultValue:false, submitOnChange:true, width:7
             if(checkBundlesAt) {
                 input "timeCheck", "time", title: "Time to check bundles for updates", submitOnChange:true, width:5
                 input "pushUpdates", "bool", title: "Receive push when updates are available", defaultValue:false, submitOnChange:true
@@ -394,9 +398,17 @@ def searchOptions() {
                         state.bundleWithReq.each { bwr ->
                             if(bValue == bwr.key) {
                                 theReq = bwr.value
-                                if(logEnable) log.debug "In searchOptions - ${bwr.key} requires: ${theReq}"
-                                state.allBundleNames.each { sib ->
-                                    if(theReq == sib || theReq == "na" || theReq == "NA") reqInstalled = true
+                                if(theReq == "na" || theReq == "NA") {
+                                    if(logEnable) log.debug "In searchOptions - ${bwr.key} does NOT have any requirements"
+                                    reqInstalled = true
+                                } else {
+                                    if(logEnable) log.debug "In searchOptions - ${bwr.key} requires: ${theReq}"
+                                    state.allBundleNames.each { sib ->
+                                        if(theReq == sib) {
+                                            if(logEnable) log.debug "In searchOptions - ${theReq} has been found"
+                                            reqInstalled = true
+                                        }
+                                    }
                                 }
                             }
                         }                        
@@ -474,10 +486,18 @@ def initialize() {
     }
 }
 
+def installHelper(theName) {
+    log.debug "-----------------------------------------------------------------------"
+    if(logEnable) log.trace "In installHelper (${state.version}) - ${theName}"
+    app.updateSetting("inputBundle",[value:"${theName}",type:"enum"])
+    log.debug "-----------------------------------------------------------------------"
+    
+}
+
 def findBundles() {
     if(logEnable) log.debug "In findBundles (${state.version})"
-    if(logEnable) log.debug "*"
-    if(logEnable) log.debug "*************** Start findBundles ***************"
+    //if(logEnable) log.debug "*"
+    //if(logEnable) log.debug "*************** Start findBundles ***************"
     allBundles = state.allBundles.sort()
     countToReach = 0
     state.resultsTitle = "<b>Search Results"
@@ -508,11 +528,10 @@ def findBundles() {
     iMatches = []
     state.bundleWithReq = [:]
     
-    if(logEnable) log.debug "In findBundles - (${state.version})"
     if(countToReach) {
         for (bun in allBundles) {
             theName = bun[3]
-            if(logEnable) log.debug "*************** Start - ${theName} ***************"
+            //if(logEnable) log.debug "*************** Start - ${theName} ***************"
             matchedCount = 0
             try{
                 if(showAllBundles) {
@@ -609,7 +628,7 @@ def findBundles() {
                     }
                 }
 
-                if(logEnable) log.debug "In findBundles - matchedCount: ${matchedCount} - VS - countToReach: ${countToReach}"
+                //if(logEnable) log.debug "In findBundles - matchedCount: ${matchedCount} - VS - countToReach: ${countToReach}"
                 if(matchedCount == countToReach) {
                     hubitatName       = bun[0]
                     authorName        = bun[1]
@@ -639,10 +658,10 @@ def findBundles() {
                 }
                 log.error(getExceptionMessageWithLine(e))
             }
-            if(logEnable) log.debug "------------------------------ End - ${theName} ------------------------------"
+            //if(logEnable) log.debug "------------------------------ End - ${theName} ------------------------------"
         }
     }
-    log.trace "${iBundles}"
+
     state.iBundles = iBundles.sort()
     if(iMatches) {
         theMat = iMatches.sort()
@@ -678,8 +697,13 @@ def findBundles() {
                 state.allBundleNames.each { ib ->
                     if(theName == ib) isInstalled = true
                 }
-// solid grey
-                appsList += "<div style='background-color: white;width: 90%;border: 2px solid green;border-radius: 10px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${theName}</b>"
+// make appsList
+                
+                appsList += "<div style='background-color: white;width: 90%;border: 2px solid green;border-radius: 10px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>"
+                //appsList += section() { input 'installButton', 'button', title: '<b>${theName}</b>', textColor: 'white', backgroundColor: 'green' }
+                //appsList += "<button type='button' onclick='installHelper(theName)'><b>${theName}</b></button>"
+                //appsList += "<a href onclick='installHelper(theName)'><b>${theName}</b></a>"
+                appsList += "<b>${theName}</b>"
                 if(isInstalled) appsList += " ${getImage("checkMarkGreen2")}"
                 appsList += " - ${authorName} (${hubitatName})<br>Version: ${theVersion} - Updated: ${theUpdated} "
                 if(theChanges) {
