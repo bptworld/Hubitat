@@ -5,7 +5,7 @@
 	"dateReleased": "2020-06-05",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
-	"releaseNotes": "Cosmetic changes, fixed 7 day",
+	"releaseNotes": "Added more logging for 'na' issue",
 	"apps" : [
 		{
 			"id" : "0f7bfb11-e171-4719-ba65-0a3ed36e15f9",
@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/BM.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.1.0",
+			"version": "1.1.1",
 			"primary": true
 		}
 	],
