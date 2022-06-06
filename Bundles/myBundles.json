@@ -6,6 +6,17 @@
       }
    ],
    "bundles": [
+      {  "name": "Blank",
+         "version": "1.0.0",
+         "updated": "2022-06-06",
+         "changes": "stuff",
+         "description": "Test bundle.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip",
+         "forumURL": "na"
+      },
       {  "name": "Averaging Plus",
          "version": "1.3.2",
          "updated": "2022-05-31",
