@@ -105,6 +105,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/EventEngine.zip",
          "forumURL": "https://community.hubitat.com/t/release-event-engine-automate-your-world-with-easy-to-use-cogs-rev-up-complex-automations-with-just-a-few-clicks/49727"
       },
+      {  "name": "Follow Me",
+         "version": "2.4.4",
+         "updated": "2022-06-06",
+         "changes": "stuff",
+         "description": "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Notifications",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/FollowMe.zip",
+         "forumURL": "https://community.hubitat.com/t/release-follow-me/12139"
+      },
       {  "name": "Normal Stuff Library",
          "version": "1.0.2",
          "updated": "2022-05-29",
