@@ -116,6 +116,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/FollowMe.zip",
          "forumURL": "https://community.hubitat.com/t/release-follow-me/12139"
       },
+      {  "name": "Life Event Calendar",
+         "version": "1.0.5",
+         "updated": "2022-06-06",
+         "changes": "stuff",
+         "description": "Never miss an important Life Event again! Schedule reminders easily and locally.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Dashboards;Notifications;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/LifeEventCalendar.zip",
+         "forumURL": "https://community.hubitat.com/t/release-life-event-calendar-never-miss-an-important-life-event-again-schedule-reminders-easily-and-locally/91413"
+      },
       {  "name": "Normal Stuff Library",
          "version": "1.0.2",
          "updated": "2022-05-29",
