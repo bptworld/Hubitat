@@ -46,13 +46,6 @@
          "tags": [ "Dashboards", "Misc. Devices", "Tools & Utilities" ]
    	},
       {
-   		"name": "Home Tracker",
-   		"category": "Notifications",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/packageManifest.json",
-   		"description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Hub Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/packageManifest.json",
