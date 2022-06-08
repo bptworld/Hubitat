@@ -17,6 +17,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Blank.zip",
          "forumURL": "na"
       },
+      {  "name": "At Home Simulator",
+         "version": "2.0.5",
+         "updated": "2022-06-08",
+         "changes": "Bundle Manager",
+         "description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Automation;Lighting;Security;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/AtHomeSimulator.zip",
+         "forumURL": "https://community.hubitat.com/t/release-at-home-simulator/8697"
+      },
       {  "name": "Averaging Plus",
          "version": "1.3.2",
          "updated": "2022-05-31",
