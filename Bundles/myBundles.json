@@ -31,7 +31,7 @@
       {  "name": "Bundle Manager",
          "version": "1.1.4",
          "updated": "2022-06-08",
-         "changes": "Change to the way it see s installed bundles",
+         "changes": "Changes to the way BM finds installed bundles",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
