@@ -53,13 +53,6 @@
          "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
-   		"name": "Life360 Tracker",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/packageManifest.json",
-   		"description": "Track your Life360 users. Works with the Life360 with States app.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Life360 with States",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
