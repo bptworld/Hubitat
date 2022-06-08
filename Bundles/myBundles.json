@@ -127,6 +127,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/HomeTracker.zip",
          "forumURL": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709"
       },
+      {  "name": "Life360 Tracker",
+         "version": "2.1.5",
+         "updated": "2022-06-06",
+         "changes": "stuff",
+         "description": "Track your Life360 users. Works with the Life360 with States app.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Dashboards;Notifications;Security;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Life360Tracker.zip",
+         "forumURL": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276"
+      },
       {  "name": "Life Event Calendar",
          "version": "1.0.5",
          "updated": "2022-06-06",
