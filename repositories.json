@@ -39,13 +39,6 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
-   		"name": "Follow Me",
-   		"category": "Notifications",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/packageManifest.json",
-   		"description": "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!",
-         "tags": [ "Dashboards", "Monitoring", "Multimedia", "Notifications", "Speakers", "Tools & Utilities" ]
-   	},
-      {
    		"name": "GCalendar Driver",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/packageManifest.json",
@@ -79,13 +72,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
    		"description": "Connect Life360 to Hubitat including ALL states.",
          "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Life Event Calendar",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Live%20Event%20Reminders/packageManifest.json",
-   		"description": "Never miss an important Life Event again! Schedule reminders easily and locally.",
-         "tags": [ "Dashboards", "Notifications", "Timers", "Tools & Utilities" ]
    	},
       {
    		"name": "One at a Time",
