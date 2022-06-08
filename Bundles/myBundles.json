@@ -116,6 +116,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/FollowMe.zip",
          "forumURL": "https://community.hubitat.com/t/release-follow-me/12139"
       },
+      {  "name": "Home Tracker",
+         "version": "2.4.6",
+         "updated": "2022-06-06",
+         "changes": "stuff",
+         "description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Dashboards;Notifications;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/HomeTracker.zip",
+         "forumURL": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709"
+      },
       {  "name": "Life Event Calendar",
          "version": "1.0.5",
          "updated": "2022-06-06",
