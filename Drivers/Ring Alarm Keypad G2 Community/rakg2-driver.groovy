@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.2.2 - 06/09/22 - @dkilgore90 add "validCode" attribute and "validateCheck" preference
     1.2.1 - 04/14/22 - Bug hunting
     1.2.0 - 04/04/22 - Fixed Tones
     ---
@@ -14,7 +15,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.1"
+    return "1.2.2"
 }
 
 metadata {
@@ -53,6 +54,7 @@ metadata {
         attribute "lastCodeTime", "STRING"
         attribute "lastCodeEpochms", "NUMBER"
         attribute "motion", "STRING"
+        attribute "validCode", "ENUM", ["true", "false"]
         attribute "volAnnouncement", "NUMBER"
         attribute "volKeytone", "NUMBER"
         attribute "volSiren", "NUMBER"
@@ -74,6 +76,7 @@ metadata {
             ["Tone_9":"(Tone_9) Invalid Code Sound"],
         ], defaultValue: "Tone_1", description: ""
         input name: "instantArming", type: "bool", title: "Enable set alarm without code", defaultValue: false, description: "" 
+        input name: "validateCheck", type: "bool", title: "Validate codes submitted with checkmark", defaultValue: false, description: ""
         input name: "proximitySensor", type: "bool", title: "Disable the Proximity Sensor", defaultValue: false, description: ""
         input name: "optEncrypt", type: "bool", title: "Enable lockCode encryption", defaultValue: false, description: ""
         input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
@@ -485,9 +488,18 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 Date now = new Date()
                 long ems = now.getTime()
                 if(!code) code = "check mark"
-                sendEvent(name:"lastCodeName", value: "${code}", isStateChange:true)
-                sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
-                sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
+                if (validateCheck) {
+                    if (validatePin(code)) {
+                        if (logEnable) log.debug "In case 2 (check mark) - Code Passed"
+                    } else {
+                        if (logEnable) log.debug "In case 2 (check mark) - Code Failed - Invalid PIN - currentStatus: ${currentStatus}"
+                        sendToDevice(zwave.indicatorV3.indicatorSet(indicatorCount:1, value: 0, indicatorValues:[[indicatorId:0x09, propertyId:2, value:0xFF]]).format())
+                    }
+                } else {
+                    sendEvent(name:"lastCodeName", value: "${code}", isStateChange:true)
+                    sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
+                    sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
+                }
                 break
             case 17:    // Police Button
                 state.type="physical"
@@ -657,6 +669,7 @@ private Boolean validatePin(String pincode) {
                 Date now = new Date()
                 long ems = now.getTime()
                 //log.debug "found code: ${pincode} user: ${it.value['name']}"
+                sendEvent(name:"validCode", value: "true", isStateChange: true)
                 sendEvent(name:"lastCodeName", value: "${it.value['name']}", isStateChange:true)
                 sendEvent(name:"lastCodeTime", value: "${now}", isStateChange:true)
                 sendEvent(name:"lastCodeEpochms", value: "${ems}", isStateChange:true)
@@ -669,6 +682,9 @@ private Boolean validatePin(String pincode) {
                 }
             }
         }
+    }
+    if (!retVal) {
+        sendEvent(name:"validCode", value: "false", isStateChange: true)
     }
     return retVal
 }
