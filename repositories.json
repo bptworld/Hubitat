@@ -67,13 +67,6 @@
          "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
       {
-   		"name": "Package Explorer",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Package%20Explorer/packageManifest.json",
-   		"description": "Conveniently explore the apps and drivers available within the Hubitat Package Manager.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
    		"name": "Patterns Plus",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/packageManifest.json",
