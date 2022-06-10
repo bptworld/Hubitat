@@ -40,9 +40,9 @@
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
       },
       {  "name": "Bundle Manager",
-         "version": "1.1.4",
-         "updated": "2022-06-08",
-         "changes": "Changes to the way BM finds installed bundles",
+         "version": "1.1.5",
+         "updated": "2022-06-10",
+         "changes": "Fixed a mistake with Display updates, BM now recognizes when an app is updated right away, no need to wait for it to be opened or executed!",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
