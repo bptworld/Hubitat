@@ -6,7 +6,7 @@
       {
    		"name": "Bundle Manager HPM",
    		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/packageManifest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/BundleManagerHPM/packageManifest.json",
    		"description": "The ONLY place to find BPTWorld Bundles! Find, install and update bundles quickly and easily.",
          "tags": [ "Tools & Utilities" ]
    	}
