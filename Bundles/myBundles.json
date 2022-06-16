@@ -29,9 +29,9 @@
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
       },
       {  "name": "Bundle Manager",
-         "version": "1.1.6",
-         "updated": "2022-06-14",
-         "changes": "Streamlining code, new update landing page",
+         "version": "1.1.7",
+         "updated": "2022-06-15",
+         "changes": "Bug hunt",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
@@ -150,8 +150,8 @@
          "forumURL": "https://community.hubitat.com/t/release-life-event-calendar-never-miss-an-important-life-event-again-schedule-reminders-easily-and-locally/91413"
       },
       {  "name": "Normal Stuff Library",
-         "version": "1.0.5",
-         "updated": "2022-06-14",
+         "version": "1.0.6",
+         "updated": "2022-06-15",
          "changes": "Minor Changes",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "na",
