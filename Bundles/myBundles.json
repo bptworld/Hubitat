@@ -139,9 +139,9 @@
          "forumURL": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276"
       },
       {  "name": "Life Event Calendar",
-         "version": "1.0.5",
-         "updated": "2022-06-06",
-         "changes": "stuff",
+         "version": "1.0.6",
+         "updated": "2022-06-17",
+         "changes": "Bundle Manager",
          "description": "Never miss an important Life Event again! Schedule reminders easily and locally.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
