@@ -4,27 +4,6 @@
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
       {
-   		"name": "Abacus Time Traveler",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json",
-   		"description": "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!",
-         "tags": [ "Dashboards", "Monitoring", "Timers" ]
-   	},
-      {
-   		"name": "Abacus Counting Machine",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
-   		"description": "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
-         "tags": [ "Dashboards", "Monitoring", "Timers" ]
-   	},
-      {
-   		"name": "Bundle Manager HPM",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Bundle%20Manager/packageManifest.json",
-   		"description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
    		"name": "Directional Alerter",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/packageManifest.json",
@@ -44,13 +23,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/packageManifest.json",
    		"description": "Retrieves a Google Calendar to be used with HE Dashboards.",
          "tags": [ "Dashboards", "Misc. Devices", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Hub Watchdog",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/packageManifest.json",
-   		"description": "Simple way to monitor if your hub is slowing down or not.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Life360 with States",
@@ -73,20 +45,7 @@
    		"description": "Create any pattern you want using the zones associated with the Lifx Light Strip.",
          "tags": [ "Lights & Switches", "Safety & Security", "Tools & Utilities" ]
    	},
-      {
-   		"name": "Periodic Expressions",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Periodic%20Expressions/packageManifest.json",
-   		"description": "Create Periodic Cron Expression to be used with Event Engine.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Presence Plus",
-   		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/packageManifest.json",
-   		"description": "Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!",
-         "tags": [ "Dashboards", "Monitoring", "Presence & Location",  "Safety & Security", "Tools & Utilities" ]
-   	},
+      
       {
    		"name": "Remote Wellness Check",
    		"category": "Security",
@@ -150,13 +109,7 @@
    		"description": "Create a simple kitchen timer with controls for use with Dashboards",
          "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
-      {
-   		"name": "Simple Multi Tile",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Multi%20Tile/packageManifest.json",
-   		"description": "Create a simple multi device tile with just a few clicks",
-         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
-   	},
+      
       {
    		"name": "Snapshot",
    		"category": "Utility",
@@ -164,12 +117,6 @@
    		"description": "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.",
          "tags": [ "Dashboards", "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	},
-      {
-   		"name": "Tile Master",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
-   		"description": "Create a tile with multiple devices with control.",
-         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
-   	}
+      
    ]
 }
