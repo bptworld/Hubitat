@@ -149,6 +149,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/HomeTracker.zip",
          "forumURL": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709"
       },
+      {  "name": "Hub Watchdog",
+         "version": "1.1.7",
+         "updated": "2022-06-18",
+         "changes": "Bundle Manager",
+         "description": "Simple way to monitor if your hub is slowing down or not.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Notifications;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/HubWatchdog.zip",
+         "forumURL": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371"
+      },
       {  "name": "Life360 Tracker",
          "version": "2.1.5",
          "updated": "2022-06-06",
@@ -192,6 +203,17 @@
          "tags": "Lighting;Security;Utilities",
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/TheFlasher.zip",
          "forumURL": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843"
+      },
+      {  "name": "Tile Master",
+         "version": "2.6.2",
+         "updated": "2022-06-18",
+         "changes": "Bundle Manager",
+         "description": "Create a tile with multiple devices with control.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Dashboards;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/TileMaster.zip",
+         "forumURL": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140"
       }
    ]
 }
