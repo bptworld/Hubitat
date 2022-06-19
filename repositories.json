@@ -11,6 +11,13 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
+   		"name": "Life360 with States",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
+   		"description": "Connect Life360 to Hubitat including ALL states.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Ring Alarm Keypad G2 Community Driver",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Ring%20Alarm%20Keypad%20G2%20Community/packageManifest.json",
