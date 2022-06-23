@@ -183,8 +183,8 @@
          "forumURL": "https://community.hubitat.com/t/release-life-event-calendar-never-miss-an-important-life-event-again-schedule-reminders-easily-and-locally/91413"
       },
       {  "name": "Normal Stuff Library",
-         "version": "1.0.6",
-         "updated": "2022-06-15",
+         "version": "1.0.7",
+         "updated": "2022-06-23",
          "changes": "Minor Changes",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "na",
