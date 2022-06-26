@@ -106,9 +106,9 @@
          "forumURL": "https://community.hubitat.com/t/release-device-watchdog/7692"
       },
       {  "name": "Error Monitor",
-         "version": "1.0.8",
-         "updated": "2022-05-15",
-         "changes": "App-Minor cosmetic changes, Driver-Adjustment to sendDup and goodKeywords now checks Name and Message",
+         "version": "1.0.9",
+         "updated": "2022-06-26",
+         "changes": "Fixed Name not showing up in push messages",
          "description": "Keep an eye out for errors that may pop up in the log.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
