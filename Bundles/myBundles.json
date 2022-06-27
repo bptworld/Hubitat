@@ -51,9 +51,9 @@
          "forumURL": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388"
       },
       {  "name": "Bundle Manager",
-         "version": "1.2.6",
-         "updated": "2022-06-26",
-         "changes": "Only pushes notifications when doing an auto update check",
+         "version": "1.2.7",
+         "updated": "2022-06-27",
+         "changes": "Minor changes",
          "description": "The place to explore Bundles. Find, install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
