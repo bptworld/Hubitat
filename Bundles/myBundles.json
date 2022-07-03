@@ -182,7 +182,7 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/LifeEventCalendar.zip",
          "forumURL": "https://community.hubitat.com/t/release-life-event-calendar-never-miss-an-important-life-event-again-schedule-reminders-easily-and-locally/91413"
       },
-      {  "name": "My Radar",
+      {  "name": "MyRadar",
          "version": "0.0.1",
          "updated": "2022-07-03",
          "changes": "Initial beta",
