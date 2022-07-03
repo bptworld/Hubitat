@@ -182,6 +182,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/LifeEventCalendar.zip",
          "forumURL": "https://community.hubitat.com/t/release-life-event-calendar-never-miss-an-important-life-event-again-schedule-reminders-easily-and-locally/91413"
       },
+      {  "name": "My Radar",
+         "version": "0.0.1",
+         "updated": "2022-07-03",
+         "changes": "Initial beta",
+         "description": "Get the current conditions and weather forecast for the next week from MyRadar",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Weather;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/MyRadar.zip",
+         "forumURL": "https://community.hubitat.com/t/myradar-api/96595"
+      },
       {  "name": "Normal Stuff Library",
          "version": "1.0.9",
          "updated": "2022-06-27",
