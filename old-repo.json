@@ -96,13 +96,6 @@
          "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
       {
-   		"name": "Simple Irrigation",
-   		"category": "Control",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/packageManifest.json",
-   		"description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.",
-         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Simple Kitchen Timer",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/packageManifest.json",
