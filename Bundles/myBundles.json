@@ -226,6 +226,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/PresencePlus.zip",
          "forumURL": "https://community.hubitat.com/t/release-presence-plus-creates-a-combined-presence-device/26071"
       },
+      {  "name": "Simple Irrigation",
+         "version": "2.1.0",
+         "updated": "2022-02-03",
+         "changes": "Bundle Manager",
+         "description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Automation;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SimpleIrrigation.zip",
+         "forumURL": "https://community.hubitat.com/t/release-simple-irrigation/14420"
+      },
       {  "name": "Simple Multi Tile",
          "version": "1.0.5",
          "updated": "2022-06-18",
