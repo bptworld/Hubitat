@@ -235,7 +235,7 @@
          "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/QuickChart.zip",
-         "forumURL": "na"
+         "forumURL": "https://community.hubitat.com/t/beta-quick-chart/97240"
       },
       {  "name": "Scene Control",
          "version": "1.0.0",
