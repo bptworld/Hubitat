@@ -227,9 +227,9 @@
          "forumURL": "https://community.hubitat.com/t/release-presence-plus-creates-a-combined-presence-device/26071"
       },
       {  "name": "Quick Chart",
-         "version": "0.0.5",
-         "updated": "2022-07-16",
-         "changes": "Data collection! New child app 'Quick Chart Data Collector'",
+         "version": "0.0.6",
+         "updated": "2022-07-17",
+         "changes": "Bug hunting",
          "description": "Chart your data, quickly and easily. Display your charts in any dashboard.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
