@@ -248,6 +248,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SceneControl.zip",
          "forumURL": "na"
       },
+      {  "name": "Send IP2IR",
+         "version": "2.0.5",
+         "updated": "01/24/21",
+         "changes": "Added to Bundle Manager",
+         "description": "This app is designed to send commands to an iTach IP2IR device.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Automation;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SendIP2IR.zip",
+         "forumURL": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667"
+      },
       {  "name": "Simple Irrigation",
          "version": "2.1.0",
          "updated": "2022-02-03",
