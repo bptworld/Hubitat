@@ -1,1 +1,0 @@
-1:zone1:zone8,2:zone2:zone7,3:zone3:zone6,4:zone4:zone5,5:null,6:null,7:null,8:null,g1:c:green:25:1,g2:c:green:50:1,g3:c:green:75:1,g4:c:red:100:100,g4:off:n:n:100,g4:c:red:100:100,g4:off:n:n:100,g4:c:red:100:100,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null
