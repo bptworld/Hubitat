@@ -25,13 +25,6 @@
          "tags": [ "Dashboards", "Misc. Devices", "Tools & Utilities" ]
    	},
       {
-   		"name": "Life360 with States",
-   		"category": "Integrations",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
-   		"description": "Connect Life360 to Hubitat including ALL states.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
    		"name": "One at a Time",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/packageManifest.json",
@@ -81,14 +74,6 @@
    		"description": "Group just about anything. Motion, Contact, Water Sensors and other devices. Even group the groups!",
          "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
-      {
-   		"name": "Simple Kitchen Timer",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/packageManifest.json",
-   		"description": "Create a simple kitchen timer with controls for use with Dashboards",
-         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
-   	},
-      
       {
    		"name": "Snapshot",
    		"category": "Utility",
