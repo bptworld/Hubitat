@@ -270,6 +270,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SimpleIrrigation.zip",
          "forumURL": "https://community.hubitat.com/t/release-simple-irrigation/14420"
       },
+      {  "name": "Simple Kitchen Timer",
+         "version": "1.0.9",
+         "updated": "2022-07-21",
+         "changes": "Bundle Manager",
+         "description": "Create a simple kitchen timer with controls for use with Dashboards",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Dashboards;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SimpleKitchenTimer.zip",
+         "forumURL": "https://community.hubitat.com/t/release-simple-kitchen-timer-with-controls-for-use-with-dashboards/37021"
+      },
       {  "name": "Simple Multi Tile",
          "version": "1.0.5",
          "updated": "2022-06-18",
