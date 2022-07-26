@@ -32,14 +32,6 @@
          "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
       {
-   		"name": "Patterns Plus",
-   		"category": "Control",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Pattern%20Controller/packageManifest.json",
-   		"description": "Create any pattern you want using the zones associated with the Lifx Light Strip.",
-         "tags": [ "Lights & Switches", "Safety & Security", "Tools & Utilities" ]
-   	},
-      
-      {
    		"name": "Remote Wellness Check",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/packageManifest.json",
