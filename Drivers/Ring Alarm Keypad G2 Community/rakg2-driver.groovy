@@ -4,7 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-    1.2.3 - 07/31/22 - remove Redundent calls causing multiple events in HSM. Added Additional Logging.
+    1.2.3 - 07/31/22 - remove Redundent calls causing multiple events in HSM. Added Additional Logging. @mavrrick58
     1.2.2 - 06/09/22 - @dkilgore90 add "validCode" attribute and "validateCheck" preference
     1.2.1 - 04/14/22 - Bug hunting
     1.2.0 - 04/04/22 - Fixed Tones
@@ -16,7 +16,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.2"
+    return "1.2.3"
 }
 
 metadata {
