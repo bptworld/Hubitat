@@ -2,7 +2,7 @@
 	"packageName": "Ring Alarm Keypad G2 Community Driver",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"dateReleased": "2022-06-09",
+	"dateReleased": "2022-07-31",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
@@ -15,7 +15,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Ring%20Alarm%20Keypad%20G2%20Community/rakg2-driver.groovy",
 			"required": true,
-			"version": "1.2.2"
+			"version": "1.2.3"
 		}
 	]
 }
