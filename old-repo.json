@@ -4,20 +4,6 @@
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
       {
-   		"name": "Directional Alerter",
-   		"category": "Notifications",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/packageManifest.json",
-   		"description": "Get notified on the direction something is moving in. Great for a Driveway Alert with direction.",
-         "tags": [ "Notifications", "Safety & Security", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Device Sequencer",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
-   		"description": "Turn on/off several devices in a row, with a user defined pause in between each.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
    		"name": "GCalendar Driver",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/gCalendar/packageManifest.json",
@@ -65,14 +51,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/packageManifest.json",
    		"description": "Group just about anything. Motion, Contact, Water Sensors and other devices. Even group the groups!",
          "tags": [ "Automations & Groups", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Snapshot",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/packageManifest.json",
-   		"description": "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.",
-         "tags": [ "Dashboards", "Monitoring", "Safety & Security", "Tools & Utilities" ]
-   	},
-      
+   	}
    ]
 }
