@@ -200,7 +200,6 @@ void armNightEnd() {
     if (!state.code) { state.code = "" }
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
-    def al = device.currentValue("alarm")
     if(sk != "armed night") {
         //keypadUpdateStatus(0x00, state.type, state.code)
         Date now = new Date()
@@ -274,6 +273,7 @@ void armAwayEnd() {
 void armHome(delay=state.keypadConfig.armHomeDelay) {
     if (logEnable) log.debug "In armHome (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
+    def al = device.currentValue("alarm")
     if(sk != "armed home") {
         if (delay > 0) {
             state.armingIn = state.keypadConfig.armAwayDelay
