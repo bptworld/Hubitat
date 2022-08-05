@@ -4,7 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-    1.2.6 - 08/05/22 - Adjusted for use with HSM. To sync keypads without using HPM, a seperate app will be available in Bundle Manager (Ring Keyapad Sync).
+    1.2.6 - 08/05/22 - Adjusted for use with HSM. To sync keypads without using HPM, a separate app will be available in Bundle Manager (Ring Keypad Sync).
     1.2.4 - 07/01/22 - Rollback to working version
     1.2.2 - 06/09/22 - @dkilgore90 add "validCode" attribute and "validateCheck" preference
     1.2.1 - 04/14/22 - Bug hunting
