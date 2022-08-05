@@ -257,7 +257,7 @@
          "requiredLib": "Normal Stuff Library",
          "tags": "Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/RingKeypadSync.zip",
-         "forumURL": ""
+         "forumURL": "https://community.hubitat.com/t/release-ring-keypad-sync-keep-multiple-ring-alarm-keypads-in-sync-only-for-when-hsm-is-not-being-used/98726"
       },
       {  "name": "Scene Control",
          "version": "1.0.0",
