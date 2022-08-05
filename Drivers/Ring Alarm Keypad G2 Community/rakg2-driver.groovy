@@ -4,7 +4,8 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
-    1.2.4 - 08/01/22 - Rollback to working version
+    1.2.6 - 08/05/22 - Adjusted for use with HSM. To sync keypads without using HPM, a seperate app will be available in Bundle Manager (Ring Keyapad Sync).
+    1.2.4 - 07/01/22 - Rollback to working version
     1.2.2 - 06/09/22 - @dkilgore90 add "validCode" attribute and "validateCheck" preference
     1.2.1 - 04/14/22 - Bug hunting
     1.2.0 - 04/04/22 - Fixed Tones
@@ -16,7 +17,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.4"
+    return "1.2.6"
 }
 
 metadata {
@@ -34,6 +35,7 @@ metadata {
         capability "HoldableButton"
 
         command "entry"
+        command "keypadUpdateStatus", ["string"]
         command "setArmNightDelay", ["number"]
         command "setArmAwayDelay", ["number"]
         command "setArmHomeDelay", ["number"]
@@ -43,14 +45,12 @@ metadata {
         command "volAnnouncement", [[name:"Announcement Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         command "volKeytone", [[name:"Keytone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
         command "volSiren", [[name:"Chime Tone Volume", type:"NUMBER", description: "Volume level (1-10)"]]
-        //command "keyBacklightBrightness", [[name:"Key Backlight Brightness", type:"NUMBER", description: "Level (1-100)"]]
-
+        
         attribute "alarmStatusChangeTime", "STRING"
         attribute "alarmStatusChangeEpochms", "NUMBER"
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
-        //attribute "keyBacklightBrightness", "NUMBER"
         attribute "lastCodeName", "STRING"
         attribute "lastCodeTime", "STRING"
         attribute "lastCodeEpochms", "NUMBER"
@@ -137,7 +137,6 @@ void initializeVars() {
     sendEvent(name:"lockCodes", value: "")
     sendEvent(name:"armHomeDelay", value: 5)
     sendEvent(name:"armAwayDelay", value: 5)
-    //sendEvent(name:"keyBacklightBrightness", value: 90)
     sendEvent(name:"volAnnouncement", value: 7)
     sendEvent(name:"volKeytone", value: 5)
     sendEvent(name:"volSiren", value: 75)
@@ -181,7 +180,7 @@ void keypadUpdateStatus(Integer status,String type="digital", String code) {
     state.type = "digital"
 }
 
-void armNight(delay=0) {
+void armNight(delay) {
     if (logEnable) log.debug "In armNight (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed night") {
@@ -203,14 +202,13 @@ void armNightEnd() {
     if(sk != "armed night") {
         //keypadUpdateStatus(0x00, state.type, state.code)
         Date now = new Date()
-        sendLocationEvent (name: "hsmSetArm", value: "armNight")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
     }
 }
 
-void armAway(delay=0) {
+void armAway(delay) {
     if (logEnable) log.debug "In armAway (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed away") {
@@ -232,7 +230,6 @@ void armAwayEnd() {
     if(sk != "armed away") {
         Date now = new Date()
         keypadUpdateStatus(0x0B, state.type, state.code)
-        sendLocationEvent (name: "hsmSetArm", value: "armAway")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
@@ -240,7 +237,7 @@ void armAwayEnd() {
     }
 }
 
-void armHome(delay=0) {
+void armHome(delay) {
     if (logEnable) log.debug "In armHome (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed home") {
@@ -262,7 +259,6 @@ void armHomeEnd() {
     if(sk != "armed home") {
         Date now = new Date()
         keypadUpdateStatus(0x0A, state.type, state.code)
-        sendLocationEvent (name: "hsmSetArm", value: "armHome")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
@@ -270,7 +266,7 @@ void armHomeEnd() {
     }
 }
 
-void disarm(delay=0) {
+void disarm(delay) {
     if (logEnable) log.debug "In disarm (${version()}) - delay: ${delay}"
     def sk = device.currentValue("securityKeypad")
     if(sk != "disarmed") {
@@ -292,7 +288,6 @@ void disarmEnd() {
     if(sk != "disarmed") { 
         Date now = new Date()
         keypadUpdateStatus(0x02, state.type, state.code)
-        sendLocationEvent (name: "hsmSetArm", value: "disarm")
         sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
@@ -928,23 +923,6 @@ void proximitySensorHandler() {
     }
 }
 
-/*
-def keyBacklightBrightness(newVol=null) {
-    if(newVol) {
-        def currentVol = device.currentValue('keyBacklightBrightness')
-        if(newVol.toString() == currentVol.toString()) {
-            if (logEnable) log.debug "Key Backlight Brightness hasn't changed, so skipping"
-        } else {
-            if (logEnable) log.debug "Setting the Key Backlight Brightness to $newVol"
-            nVol = newVol.toInteger()           
-            sendToDevice(new hubitat.zwave.commands.configurationv1.ConfigurationSet(parameterNumber: 13, size: 1, scaledConfigurationValue: nVol).format())
-            sendEvent(name:"keyBacklightBrightness", value: newVol, isStateChange:true)
-        }
-    } else {
-        if (logEnable) log.debug "Key Backlight Brightness value not specified, so skipping"
-    }
-}
-*/
 def volAnnouncement(newVol=null) {
     if (logEnable) log.debug "In volAnnouncement (${version()}) - newVol: ${newVol}"
     if(newVol) {
