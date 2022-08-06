@@ -249,15 +249,15 @@
          "forumURL": "https://community.hubitat.com/t/beta-quick-chart/97240"
       },
       {  "name": "Ring Keypad Sync",
-         "version": "1.0.0",
+         "version": "1.0.1",
          "updated": "2022-08-05",
-         "changes": "Initial Relase",
-         "description": "Keep multiple Ring Alarm Keypads in Sync - Only for when HSM is not being used.",
+         "changes": "Added other syncing options",
+         "description": "Keep multiple Ring Alarm Keypads in Sync.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
          "tags": "Utilities",        
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/RingKeypadSync.zip",
-         "forumURL": "https://community.hubitat.com/t/release-ring-keypad-sync-keep-multiple-ring-alarm-keypads-in-sync-only-for-when-hsm-is-not-being-used/98726"
+         "forumURL": "https://community.hubitat.com/t/release-ring-keypad-sync-keep-multiple-ring-alarm-keypads-in-sync/98726"
       },
       {  "name": "Scene Control",
          "version": "1.0.0",
