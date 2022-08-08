@@ -204,6 +204,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/NormalStuffLibrary.zip",
          "forumURL": "na"
       },
+      {  "name": "One at a Time",
+         "version": "1.0.0",
+         "updated": "2022-08-08",
+         "changes": "Initial Release",
+         "description": "Designed to allow only one switch, in a group of switches, to be on at a time.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Lighting;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/OneataTime.zip",
+         "forumURL": "https://community.hubitat.com/t/release-one-at-a-time/7063"
+      },
       {  "name": "Patterns Plus",
          "version": "1.1.1",
          "updated": "2022-07-26",
