@@ -215,6 +215,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/OneataTime.zip",
          "forumURL": "https://community.hubitat.com/t/release-one-at-a-time/7063"
       },
+      {  "name": "Package Explorer",
+         "version": "1.1.1",
+         "updated": "2022-08-13",
+         "changes": "Bundle Manager",
+         "description": "Conveniently explore the apps and drivers available within the Hubitat Package Manager.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/PackageExplorer.zip",
+         "forumURL": "https://community.hubitat.com/t/release-package-explorer-for-use-with-hubitat-package-manager/39214"
+      },
       {  "name": "Patterns Plus",
          "version": "1.1.1",
          "updated": "2022-07-26",
