@@ -348,9 +348,9 @@
          "forumURL": "https://community.hubitat.com/t/release-snapshot-monitor-devices-and-sensors-see-status-on-dashboard-by-notifications-and-speech/12042"
       },
       {  "name": "The Flasher",
-         "version": "1.2.8",
-         "updated": "2022-06-08",
-         "changes": "Bundle Manager",
+         "version": "1.2.9",
+         "updated": "2022-08-15",
+         "changes": "Cosmetic changes",
          "description": "Flash your lights based on several triggers!",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
