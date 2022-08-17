@@ -1,4 +1,4 @@
 {
-   "headerMessage": "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a> - All BPTWorld app will be moving over to Bundle Manager!<br>Please be sure to install Bundle Manager soon, so you don't miss out on important updates.</div>",
+   "headerMessage": "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a> - BIG update to Bundle Manager and how apps report their versions.<br>Please see the <a href='https://community.hubitat.com/t/release-bundle-manager-the-only-place-to-find-bptworld-bundles-find-install-and-update-bundles-quickly-and-easily/94567/295' target=_blank>Bundle Manager thread</a> for more.</div>",
    "footerMessage": "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br>No walled gardens, No crazy requirements!<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>",
 }
