@@ -260,9 +260,9 @@
          "forumURL": "https://community.hubitat.com/t/release-presence-plus-creates-a-combined-presence-device/26071"
       },
       {  "name": "Quick Chart",
-         "version": "0.2.8",
+         "version": "0.2.9",
          "updated": "2022-08-28",
-         "changes": "Fixed issue with isNumber, added timestamp options",
+         "changes": "Y-axis min value can now be defined",
          "description": "Chart your data, quickly and easily. Display your charts in any dashboard.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
