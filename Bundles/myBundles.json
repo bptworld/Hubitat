@@ -227,9 +227,9 @@
          "forumURL": "https://community.hubitat.com/t/release-package-explorer-for-use-with-hubitat-package-manager/39214"
       },
       {  "name": "Patterns Plus",
-         "version": "1.1.2",
-         "updated": "2022-07-26",
-         "changes": "Bundle Manager changes",
+         "version": "1.1.3",
+         "updated": "2022-09-03",
+         "changes": "Added custom color option",
          "description": "Create any pattern you want using the zones associated with the Lifx Light Strip (or any color bulb).",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
