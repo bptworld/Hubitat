@@ -175,7 +175,7 @@
          "version": "2.6.4",
          "updated": "2022-09-06",
          "changes": "Added option to export all life360 Places to file",
-         "description": "Life360 with States - Hubitat Port",
+         "description": "Life360 with States Driver - Hubitat Port",
          "specialInfo": "na",
          "requiredLib": "na",
          "tags": "Security;Utilities",
