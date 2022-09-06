@@ -171,6 +171,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Life360Tracker.zip",
          "forumURL": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276"
       },
+      {  "name": "Life360 with States",
+         "version": "2.6.4",
+         "updated": "2022-09-06",
+         "changes": "Added option to export all life360 Places to file",
+         "description": "Life360 with States - Hubitat Port",
+         "specialInfo": "na",
+         "requiredLib": "na",
+         "tags": "Security;Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/Life360withStates.zip",
+         "forumURL": "https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274"
+      },
       {  "name": "Life Event Calendar",
          "version": "1.0.7",
          "updated": "2022-06-17",
