@@ -62,9 +62,9 @@
          "forumURL": "https://community.hubitat.com/t/code-freeze-bi-control-local-blue-iris-control/5454"
       },
       {  "name": "Bundle Manager",
-         "version": "1.3.6",
-         "updated": "2022-09-02",
-         "changes": "No changes",
+         "version": "1.3.8",
+         "updated": "2022-09-19",
+         "changes": "Minor changes",
          "description": "The place to explore Bundles. Find install and update bundles quickly and easily.",
          "specialInfo": "na",
          "requiredLib": "na",
