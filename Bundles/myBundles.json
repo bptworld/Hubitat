@@ -296,7 +296,7 @@
          "version": "0.3.6",
          "updated": "2022-09-03",
          "changes": "Added Static and Average lines to chart - JustinL",
-         "description": "Chart your data, quickly and easily. Display your charts in any dashboard.",
+         "description": "Chart your data - quickly and easily. Display your charts in any dashboard.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
          "tags": "Dashboards;Monitoring;Utilities",        
