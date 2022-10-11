@@ -260,9 +260,9 @@
          "forumURL": "https://community.hubitat.com/t/release-package-explorer-for-use-with-hubitat-package-manager/39214"
       },
       {  "name": "Patterns Plus",
-         "version": "1.1.4",
-         "updated": "2022-09-04",
-         "changes": "Custom color attempt two",
+         "version": "1.1.5",
+         "updated": "2022-10-11",
+         "changes": "Test button now hidden until form is filled in - parent app",
          "description": "Create any pattern you want using the zones associated with the Lifx Light Strip (or any color bulb).",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
