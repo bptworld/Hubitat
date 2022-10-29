@@ -172,9 +172,9 @@
          "forumURL": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371"
       },
       {  "name": "Life360 Tracker",
-         "version": "2.1.8",
-         "updated": "2022-07-24",
-         "changes": "Bundle Manager changes",
+         "version": "2.1.9",
+         "updated": "2022-10-29",
+         "changes": "Fixed typo",
          "description": "Track your Life360 users. Works with the Life360 with States app.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
