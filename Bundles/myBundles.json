@@ -128,9 +128,9 @@
          "forumURL": "https://community.hubitat.com/t/release-error-monitor-keep-an-eye-out-for-errors-that-may-pop-up-in-the-log/91317"
       },
       {  "name": "Event Engine",
-         "version": "3.8.9",
-         "updated": "2022-10-22",
-         "changes": "Cosmetic changes",
+         "version": "3.9.0",
+         "updated": "2022-11-17",
+         "changes": "Added lock code add/delete actions",
          "description": "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
