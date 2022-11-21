@@ -392,9 +392,9 @@
          "forumURL": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843"
       },
       {  "name": "Tile Master",
-         "version": "2.6.3",
-         "updated": "2022-06-18",
-         "changes": "Bundle Manager changes",
+         "version": "2.6.4",
+         "updated": "2022-11-20",
+         "changes": "Added a refresh rate",
          "description": "Create a tile with multiple devices with control.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
