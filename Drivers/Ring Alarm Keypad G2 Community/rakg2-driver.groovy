@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.2.7 - 12/01/22 - Fix Arm Night on device page
     1.2.6 - 08/05/22 - Adjusted for use with HSM. To sync keypads without using HPM, a separate app will be available in Bundle Manager (Ring Keypad Sync).
     1.2.4 - 07/01/22 - Rollback to working version
     1.2.2 - 06/09/22 - @dkilgore90 add "validCode" attribute and "validateCheck" preference
@@ -17,7 +18,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.6"
+    return "1.2.7"
 }
 
 metadata {
@@ -39,6 +40,7 @@ metadata {
         command "setArmNightDelay", ["number"]
         command "setArmAwayDelay", ["number"]
         command "setArmHomeDelay", ["number"]
+        command "setArmNightDelay", ["number"]
         command "setPartialFunction"
         command "resetKeypad"
         command "playTone", [[name: "Play Tone", type: "STRING", description: "Tone_1, Tone_2, etc."]]
@@ -51,6 +53,7 @@ metadata {
         attribute "armingIn", "NUMBER"
         attribute "armAwayDelay", "NUMBER"
         attribute "armHomeDelay", "NUMBER"
+        attribute "armNightDelay", "NUMBER"
         attribute "lastCodeName", "STRING"
         attribute "lastCodeTime", "STRING"
         attribute "lastCodeEpochms", "NUMBER"
@@ -137,6 +140,7 @@ void initializeVars() {
     sendEvent(name:"lockCodes", value: "")
     sendEvent(name:"armHomeDelay", value: 5)
     sendEvent(name:"armAwayDelay", value: 5)
+    sendEvent(name:"armNightDelay", value: 5)
     sendEvent(name:"volAnnouncement", value: 7)
     sendEvent(name:"volKeytone", value: 5)
     sendEvent(name:"volSiren", value: 75)
@@ -188,7 +192,7 @@ void armNight(delay) {
             exitDelay(delay)
             runIn(delay, armNightEnd)
         } else {
-            runIn(delay, armNightEnd)
+            armNightEnd()
         }
     } else {
         if (logEnable) log.debug "In armNight - securityKeypad already set to 'armed night', so skipping."
@@ -294,6 +298,7 @@ void disarmEnd() {
         changeStatus("off")
         unschedule(armHomeEnd)
         unschedule(armAwayEnd)
+        unschedule(armNightEnd)
         unschedule(changeStatus)
     }
 }
@@ -334,6 +339,7 @@ void setExitDelay(delay){
 
 void setArmNightDelay(delay){
     if (logEnable) log.debug "In setArmNightDelay (${version()}) - delay: ${delay}"
+    sendEvent(name:"armNightDelay", value: delay)
     state.keypadConfig.armNightDelay = delay != null ? delay.toInteger() : 0
 }
 
