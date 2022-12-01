@@ -4,6 +4,7 @@
     Copyright 2020 -> 2021 Hubitat Inc.  All Rights Reserved
     Special Thanks to Bryan Copeland (@bcopeland) for writing and releasing this code to the community!
 
+    1.2.8 - 12/01/22 - Fix device page buttons by sending armingIn event in the arm/disarm subs
     1.2.7 - 12/01/22 - Fix Arm Night on device page
     1.2.6 - 08/05/22 - Adjusted for use with HSM. To sync keypads without using HPM, a separate app will be available in Bundle Manager (Ring Keypad Sync).
     1.2.4 - 07/01/22 - Rollback to working version
@@ -18,7 +19,7 @@ import groovy.transform.Field
 import groovy.json.JsonOutput
 
 def version() {
-    return "1.2.7"
+    return "1.2.8"
 }
 
 metadata {
@@ -205,9 +206,11 @@ void armNightEnd() {
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed night") {
         //keypadUpdateStatus(0x00, state.type, state.code)
+
         Date now = new Date()
-        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         long ems = now.getTime()
+        sendEvent(name:"armingIn", value: state.keypadConfig.armNightDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
     }
 }
@@ -232,10 +235,12 @@ void armAwayEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed away") {
-        Date now = new Date()
         keypadUpdateStatus(0x0B, state.type, state.code)
-        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
+
+        Date now = new Date()
         long ems = now.getTime()
+        sendEvent(name:"armingIn", value: state.keypadConfig.armAwayDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
         changeStatus("set")
     }
@@ -261,10 +266,12 @@ void armHomeEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "armed home") {
-        Date now = new Date()
         keypadUpdateStatus(0x0A, state.type, state.code)
-        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
+
+        Date now = new Date()
         long ems = now.getTime()
+        sendEvent(name:"armingIn", value: state.keypadConfig.armHomeDelay, data:[armMode: armingStates[0x0A].securityKeypadState, armCmd: armingStates[0x0A].hsmCmd], isStateChange:true)
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
         changeStatus("set")
     }
@@ -290,11 +297,14 @@ void disarmEnd() {
     if (!state.type) { state.type = "physical" }
     def sk = device.currentValue("securityKeypad")
     if(sk != "disarmed") { 
-        Date now = new Date()
         keypadUpdateStatus(0x02, state.type, state.code)
-        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
+
+        Date now = new Date()
         long ems = now.getTime()
+        sendEvent(name:"armingIn", value: 0, data:[armMode: armingStates[0x02].securityKeypadState, armCmd: armingStates[0x02].hsmCmd], isStateChange:true)
+        sendEvent(name:"alarmStatusChangeTime", value: "${now}", isStateChange:true)
         sendEvent(name:"alarmStatusChangeEpochms", value: "${ems}", isStateChange:true)
+
         changeStatus("off")
         unschedule(armHomeEnd)
         unschedule(armAwayEnd)
@@ -435,7 +445,6 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                         if (logEnable) log.debug "In case 5 - Passed - currentStatus: ${currentStatus}"
                         state.type="physical"
                         if (!state.keypadConfig.armAwayDelay) { state.keypadConfig.armAwayDelay = 0 }
-                        sendEvent(name:"armingIn", value: state.keypadConfig.armAwayDelay, data:[armMode: armingStates[0x0B].securityKeypadState, armCmd: armingStates[0x0B].hsmCmd], isStateChange:true)
                         armAway(state.keypadConfig.armAwayDelay)
                     } else {
                         if (logEnable) log.debug "In case 5 - Failed - Please Disarm Alarm before changing alarm type - currentStatus: ${currentStatus}"
@@ -455,7 +464,6 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                         if (state.keypadConfig.partialFunction == "armHome") {
                             if (logEnable) log.debug "In case 6 - Partial Passed"
                             if (!state.keypadConfig.armHomeDelay) { state.keypadConfig.armHomeDelay = 0 }
-                            sendEvent(name:"armingIn", value: state.keypadConfig.armHomeDelay, data:[armMode: armingStates[0x0A].securityKeypadState, armCmd: armingStates[0x0A].hsmCmd], isStateChange:true)
                             armHome(state.keypadConfig.armHomeDelay)
                         }
                     } else {
@@ -477,7 +485,6 @@ void parseEntryControl(Short command, List<Short> commandBytes) {
                 if (validatePin(code)) {
                     if (logEnable) log.debug "In case 3 - Code Passed"
                     state.type="physical"
-                    sendEvent(name:"armingIn", value: 0, data:[armMode: armingStates[0x02].securityKeypadState, armCmd: armingStates[0x02].hsmCmd], isStateChange:true)
                     disarm()
                 } else {
                     if (logEnable) log.debug "In case 3 - Disarm Failed - Invalid PIN - currentStatus: ${currentStatus}"
