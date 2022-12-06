@@ -9,13 +9,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/BundleManagerHPM/packageManifest.json",
    		"description": "Looking for BPTWorld Apps?? Bundle Manager is the ONLY place to find/install/update BPTWorld apps/drivers. Over 30 bundles available!",
          "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Ring Alarm Keypad G2 Community Driver",
-   		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Ring%20Alarm%20Keypad%20G2%20Community/packageManifest.json",
-   		"description": "Make the Ring Keypad Gen2 do more!",
-         "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	}
    ]
 }
