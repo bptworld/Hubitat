@@ -216,9 +216,9 @@
          "forumURL": "https://community.hubitat.com/t/myradar-api/96595"
       },
       {  "name": "Normal Stuff Library",
-         "version": "1.2.1",
-         "updated": "2022-11-10",
-         "changes": "Costmetic changes",
+         "version": "1.2.2",
+         "updated": "2022-12-31",
+         "changes": "New Announcement",
          "description": "For use with all BPTWorld apps.",
          "specialInfo": "na",
          "requiredLib": "na",
