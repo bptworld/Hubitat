@@ -347,6 +347,17 @@
          "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SendIP2IR.zip",
          "forumURL": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667"
       },
+      {  "name": "Simple Device Timer",
+         "version": "2.0.2",
+         "updated": "2023-01-09",
+         "changes": "Bundle Manager changes",
+         "description": "Simple Device Timer with safety checks, multiple timers, notifications and restrictions.",
+         "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
+         "requiredLib": "Normal Stuff Library",
+         "tags": "Utilities",
+         "bundleURL": "https://github.com/bptworld/Hubitat/raw/master/Bundles/SimpleDeviceTimer.zip",
+         "forumURL": "https://community.hubitat.com/t/release-simple-device-timer/16917"
+      },
       {  "name": "Simple Irrigation",
          "version": "2.1.1",
          "updated": "2022-02-03",
