@@ -6,7 +6,7 @@
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
 	"releaseNotes": "Placeholder for Bundle Manager",
-	"apps" : [
+	"apps": [
 		{
 			"id" : "0f7bfb11-e171-4719-ba65-0a3ed36e15f9",
 			"name": "Bundle Manager HPM",
@@ -18,6 +18,6 @@
 			"primary": true
 		}
 	],
-	"drivers" : [	
+	"drivers": [	
 	]
 }
