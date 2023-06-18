@@ -1,3 +1,5 @@
+*** BPTWorld apps are no longer being developed or maintained. Thanks ***
+
 # Apps/Drivers for Hubitat Elevation
 Apps for use with the Hubitat Elevation Hub.<br>
 Offiical Website: www.hubitat.com<br>
