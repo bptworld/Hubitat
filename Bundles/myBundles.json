@@ -172,7 +172,7 @@
          "forumURL": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371"
       },
       {  "name": "Life360 Tracker",
-         "version": "2.2.4",
+         "version": "2.2.5",
          "updated": "2023-09-07",
          "changes": "bug hunting",
          "description": "Track your Life360 users. Works with the Life360+ app.",
