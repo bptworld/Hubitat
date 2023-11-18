@@ -52,7 +52,7 @@
       },
       {  "name": "BI Control",
          "version": "2.1.4",
-         "updated": "2023-28-07",
+         "updated": "2023-07-28",
          "changes": "Added more presets",
          "description": "Designed to work locally with Blue Iris security software.",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
