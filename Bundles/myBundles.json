@@ -271,9 +271,9 @@
          "forumURL": "na"
       },
       {  "name": "Presence Plus",
-         "version": "1.1.9",
-         "updated": "2022-08-30",
-         "changes": "Working on stopping two instances running at the same time",
+         "version": "1.2.0",
+         "updated": "2023-11-18",
+         "changes": "Trying to fix it from getting stuck on already running",
          "description": "Creates a combined presence device that can be used with Life360 Tracker - Google Assistant - Rule Machine and More!",
          "specialInfo": "All BPTWorld apps use the library Normal Stuff Library - be sure to download this bundle before ANY BPTWorld app.",
          "requiredLib": "Normal Stuff Library",
