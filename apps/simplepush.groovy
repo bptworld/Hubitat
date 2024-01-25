@@ -11,7 +11,7 @@
  */
 
 definition(
-    name: "Simplepush",
+    name: "Simplepush Barebones",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Barebones app to test the Simplepush API",
@@ -112,7 +112,7 @@ def sendAsynchttpPost() {
         uri: "https://simplepu.sh",
         requestContentType: 'application/json',
         contentType: 'application/json',
-        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "event": eventType, "actions": [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]]
+        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "event": eventType, "attachments": attach, "actions": [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]]
     ]
     if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
 	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
