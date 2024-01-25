@@ -1,6 +1,9 @@
 /**
  *  **************** Simplepush App ****************
  * Barebones app to test the Simplepush API
+ *
+ *  As always, You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. Have FUN!
  */
 
 definition(
@@ -9,7 +12,6 @@ definition(
     author: "Bryan Turcotte",
     description: "Barebones app to test the Simplepush API",
     category: "Convenience",
-	//parent: "BPTWorld:Simplepush",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -92,17 +94,16 @@ def myCallbackMethod(response, data) {
     }
     if(logEnable) log.debug "In myCallbackMethod - Status: ${response.status} - Data: ${response.data}"
     
-    // {"status":"OK","feedbackId":"123456789"}
+    // {"status":"OK","feedbackId":"123456789"}                    
     (theStatus,theId) = response.data.split(",")
     (theTitle,fbId) = theId.split(":")
     state.lastId = fbId.replaceAll("\"","").replaceAll("}","")
     if(logEnable) log.debug "In myCallbackMethod - lastId: ${state.lastId}"
-
 }      
 
 def actionHandler() {
     if(logEnable) log.debug "-----------------------------------------------"
-    if(logEnable) log.debug "In actionHandler (${state.version})"
+    if(logEnable) log.debug "In actionHandler"
 
     def apiUrl = "https://simplepu.sh/1/feedback/${state.lastId}"
     if(logEnable) log.debug "actionHandler - uri: ${apiUrl}"
@@ -125,7 +126,7 @@ def actionHandler() {
 }
 
 def appButtonHandler(buttonPressed) {
-    if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${buttonPressed}"
+    if(logEnable) log.debug "In appButtonHandler - Button Pressed: ${buttonPressed}"
     if(buttonPressed == "sendMsg") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
         sendAsynchttpPost()
