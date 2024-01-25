@@ -27,10 +27,10 @@ preferences {
 }
 
 def pageConfig() {
-    
-    log.debug "The accessToken is: {$state.accessToken}"
+    // Do not share your accessToken or OAuth Url when posting screenshots on Hubitat forums or anywhere else
+    if(logEnable) log.debug "The accessToken is: {$state.accessToken}"
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
-    log.debug "The OAUTH Url is {$extUri}"
+    if(logEnable) log.debug "The OAUTH Url is {$extUri}"
     
 
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
