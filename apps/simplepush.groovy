@@ -35,6 +35,7 @@ def pageConfig() {
             input "simpleMsg", "text", title: "Message", required:true, submitOnChange:true
             
             input "sendMsg", "button", title: "Send Test Msg", width: 3
+            input "checkMsg", "button", title: "Check for Respnse", width: 3
             
         }
 
@@ -73,37 +74,63 @@ def initialize() {
         // Nothing
     }
 }
+  
+def sendAsynchttpPost() {
+    def postParams = [
+		uri: "https://simplepu.sh",
+		requestContentType: 'application/json',
+		contentType: 'application/json',
+        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "actions": ["yes","no"]]
+        ]
+    if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
+	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
+}
 
-def simplePushHandler() {
-    if(logEnable) log.debug "In simplePush (${state.version})"
+def myCallbackMethod(response, data) {
+    if(data["dataitem1"] == "datavalue1") {
+    	if(logEnable) log.debug "In myCallbackMethod - Data was passed successfully"
+    }
+    if(logEnable) log.debug "In myCallbackMethod - Status: ${response.status} - Data: ${response.data}"
+    
+    // {"status":"OK","feedbackId":"123456789"}
+    (theStatus,theId) = response.data.split(",")
+    (theTitle,fbId) = theId.split(":")
+    state.lastId = fbId.replaceAll("\"","").replaceAll("}","")
+    if(logEnable) log.debug "In myCallbackMethod - lastId: ${state.lastId}"
 
-    def apiUrl = "https://api.simplepush.io/send"
-    //def apiUrl = "https://simplepu.sh"
+}      
 
-    def params = [
-        'key': simpleKey,
-        'title': 'Hubitat Notification',
-        'msg': simpleMsg,
-        'actions': ["yes", "no"]
-    ]
+def actionHandler() {
+    if(logEnable) log.debug "-----------------------------------------------"
+    if(logEnable) log.debug "In actionHandler (${state.version})"
 
-    log.info "Simplepush - uri: ${apiUrl} - body: ${params}"
+    def apiUrl = "https://simplepu.sh/1/feedback/${state.lastId}"
+    if(logEnable) log.debug "actionHandler - uri: ${apiUrl}"
     try {
-        httpPost(
-            uri: apiUrl,
-            body: params
+        httpGet(
+            uri: apiUrl
         ) { response ->
-            if(logEnable) log.debug "Simplepush - Received Status code: ${response.status}"
+            // [action_delivered_at:1706187255, action_selected:yes, action_selected_at:1706187256, success:true]
+            if(logEnable) log.debug "actionHandler - Received: ${response.data}"
+            if(response.data.action_selected) {
+                if(logEnable) log.debug "actionHandler - Action Selected: ${response.data.action_selected}"
+            } else {
+                if(logEnable) log.debug "actionHandler - Action Selected: No Action has been selected"
+            }
         }
     } catch (e) {
         log.error(getExceptionMessageWithLine(e))
     }
+    if(logEnable) log.debug "-----------------------------------------------"
 }
 
 def appButtonHandler(buttonPressed) {
     if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${buttonPressed}"
     if(buttonPressed == "sendMsg") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        simplePushHandler()
+        sendAsynchttpPost()
+    } else if(buttonPressed == "checkMsg") {
+        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
+        actionHandler()
     }
 }
