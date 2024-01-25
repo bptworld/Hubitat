@@ -4,6 +4,10 @@
  *
  *  As always, You are free to change, ripout, copy, modify or
  *  otherwise use the code in anyway you want. Have FUN!
+ *
+ * Be sure to enable OAuth
+ *
+ * Thanks to the great work/additions from @TMLeafs
  */
 
 definition(
@@ -23,6 +27,12 @@ preferences {
 }
 
 def pageConfig() {
+    
+    log.debug "The accessToken is: {$state.accessToken}"
+    def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
+    log.debug "The OAUTH Url is {$extUri}"
+    
+
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
         section() {
             paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Simplepush Test</h2>"
@@ -69,69 +79,56 @@ def updated() {
 }
 
 def initialize() {
-    checkEnableHandler()
+    def oauthStatus = ""
+    //enable OAuth in the app settings or this call will fail
+    try{
+        if (!state.accessToken) {
+            createAccessToken()
+        }
+    }
+    catch (e) {
+        oauthStatus = "Edit Apps Code -> Simplepush.  Select 'oAUTH' in the top right and use defaults to enable oAUTH to continue."
+        logError(oauthStatus)
+    }
+        
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         // Nothing
     }
 }
-  
+
+mappings { 
+    path("/webhook") { action: [ GET: "webhook"] }
+}
+
+def webhook() { 
+    if(logEnable) log.info "${app.getLabel()} executing 'webhook()'"
+    if(logEnable) log.info "params: $params"   
+    return render(contentType: "text/html", data: "webhook params:<br>$params <br><br>webhook request:<br>$request", status: 200)
+}
+ 
 def sendAsynchttpPost() {
+    def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
     def postParams = [
-		uri: "https://simplepu.sh",
-		requestContentType: 'application/json',
-		contentType: 'application/json',
-        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "actions": ["yes","no"]]
-        ]
+        uri: "https://simplepu.sh",
+        requestContentType: 'application/json',
+        contentType: 'application/json',
+        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "actions": [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]]
+    ]
     if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
 	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
 }
 
 def myCallbackMethod(response, data) {
-    if(data["dataitem1"] == "datavalue1") {
-    	if(logEnable) log.debug "In myCallbackMethod - Data was passed successfully"
-    }
-    if(logEnable) log.debug "In myCallbackMethod - Status: ${response.status} - Data: ${response.data}"
-    
-    // {"status":"OK","feedbackId":"123456789"}                    
-    (theStatus,theId) = response.data.split(",")
-    (theTitle,fbId) = theId.split(":")
-    state.lastId = fbId.replaceAll("\"","").replaceAll("}","")
-    if(logEnable) log.debug "In myCallbackMethod - lastId: ${state.lastId}"
+    if(data["dataitem1"] == "datavalue1")
+    	if(logEnable) log.debug "Data was passed successfully"
+    if(logEnable) log.debug "status of post call is: ${response.status}"
 }      
 
-def actionHandler() {
-    if(logEnable) log.debug "-----------------------------------------------"
-    if(logEnable) log.debug "In actionHandler"
-
-    def apiUrl = "https://simplepu.sh/1/feedback/${state.lastId}"
-    if(logEnable) log.debug "actionHandler - uri: ${apiUrl}"
-    try {
-        httpGet(
-            uri: apiUrl
-        ) { response ->
-            // [action_delivered_at:1706187255, action_selected:yes, action_selected_at:1706187256, success:true]
-            if(logEnable) log.debug "actionHandler - Received: ${response.data}"
-            if(response.data.action_selected) {
-                if(logEnable) log.debug "actionHandler - Action Selected: ${response.data.action_selected}"
-            } else {
-                if(logEnable) log.debug "actionHandler - Action Selected: No Action has been selected"
-            }
-        }
-    } catch (e) {
-        log.error(getExceptionMessageWithLine(e))
-    }
-    if(logEnable) log.debug "-----------------------------------------------"
-}
-
 def appButtonHandler(buttonPressed) {
-    if(logEnable) log.debug "In appButtonHandler - Button Pressed: ${buttonPressed}"
+    if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${buttonPressed}"
     if(buttonPressed == "sendMsg") {
         if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        sendAsynchttpPost()
-    } else if(buttonPressed == "checkMsg") {
-        if(logEnable) log.debug "In appButtonHandler - Working on: ${buttonPressed}"
-        actionHandler()
-    }
+    sendAsynchttpPost()}
 }
