@@ -47,8 +47,6 @@ def pageConfig() {
             input "simpleMsg", "text", title: "Message", required:true, submitOnChange:true
             
             input "sendMsg", "button", title: "Send Test Msg", width: 3
-            input "checkMsg", "button", title: "Check for Respnse", width: 3
-            
         }
 
         section(" General") {
