@@ -45,7 +45,7 @@ def pageConfig() {
         section(" Options") {
             input "simpleKey", "text", title: "Simplepush Key", required:true, submitOnChange:true
             input "simpleMsg", "text", title: "Message", required:true, submitOnChange:true
-            
+            input "eventType", "text", title: "Event (Optional) - Set up in the phone app first.", sumbitOnChange:true
             input "sendMsg", "button", title: "Send Test Msg", width: 3
         }
 
@@ -112,7 +112,7 @@ def sendAsynchttpPost() {
         uri: "https://simplepu.sh",
         requestContentType: 'application/json',
         contentType: 'application/json',
-        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "actions": [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]]
+        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "event": eventType, "actions": [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]]
     ]
     if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
 	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
