@@ -64,13 +64,31 @@ preferences {
 }
 
 def pageConfig() {
-    // Do not share your accessToken or OAuth Url when posting screenshots on Hubitat forums or anywhere else
-    //if(logEnable) log.debug "The accessToken is: {$state.accessToken}"
-    def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
-    //if(logEnable) log.debug "The OAUTH Url is {$extUri}"
     
+     def oauthStatus = ""
+    //enable OAuth in the app settings or this call will fail
+    try{
+        if (!state.accessToken) {
+            createAccessToken()
+        }
+    }
+    catch (e) {
+        oauthStatus = "Edit Apps Code -> Simplepush Noitications.  Select 'oAUTH' in the top right and use defaults to enable oAUTH to continue."
+        if(logEnable) log.debug "{$oauthStatus}"
+    }
 
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
+        // if we didn't get a token, display the error and stop
+        if (oauthStatus != "") {
+            section("<h2>${oauthStatus}</h2>") {}
+        } else if (state.installed != true) {
+            section("<h3>Select '<b>Done</b>' to finsh the initial app installation and then re-select the Simplepush Noitications app to finish configuration.</h3>") {}
+        } else {
+        // Do not share your accessToken or OAuth Url when posting screenshots on Hubitat forums or anywhere else
+        //if(logEnable) log.debug "The accessToken is: {$state.accessToken}"
+        def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
+        //if(logEnable) log.debug "The OAUTH Url is {$extUri}"
+    
         display()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             paragraph "Be sure to enable OAuth!"
@@ -149,6 +167,7 @@ def pageConfig() {
         display2()
     }
 }
+}
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
@@ -166,22 +185,11 @@ def updated() {
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
     if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
+    state.installed = true
 }
 
 def initialize() {
-    def oauthStatus = ""
-    //enable OAuth in the app settings or this call will fail
-    try{
-        if (!state.accessToken) {
-            createAccessToken()
-        }
-    }
-    catch (e) {
-        oauthStatus = "Edit Apps Code -> Simplepush.  Select 'oAUTH' in the top right and use defaults to enable oAUTH to continue."
-        logError(oauthStatus)
-    }
-        
-    if(pauseApp || state.eSwitch) {
+   if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         // Nothing
@@ -217,8 +225,8 @@ def webhook() {
     return render(contentType: "text/html", data: "webhook params:<br>$params <br><br>webhook request:<br>$request", status: 200)
 }
  
-def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, eventType=null, actions=null) {
-    if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${simpleMsg} - ${eventType} - ${actions}"
+def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, title, eventType=null, actions=null) {
+    if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${eventType} - ${actions}"
     state.theDevice = theDevice
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
     if(actions) {
@@ -227,11 +235,18 @@ def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, eventType=null, actions=n
     } else {
         theActions = null
     }
+    if(title) {
+        theTitle = title
+    } 
+    else {
+        theTitle = "Hubitat Notifcation"
+    }
+
     def postParams = [
         uri: "https://simplepu.sh",
         requestContentType: 'application/json',
         contentType: 'application/json',
-        body : ["key": simpleKey, "title": "Hubitat Notification", "msg": simpleMsg, "event": eventType, "attachments": attach, "actions": theActions]
+        body : ["key": simpleKey, "title": theTitle, "msg": simpleMsg, "event": eventType, "attachments": attach, "actions": theActions]
     ]
     if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
 	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
