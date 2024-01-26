@@ -34,12 +34,12 @@
  *  Thanks to the great work/additions by @TMLeafs
  *
  *  Changes:
- *  0.0.1 - 01/25/24 - Initial release
+ *  0.0.2 - 01/26/24 - Initial release
  */
 
 def setVersion(){
     state.name = "Simplepush Notifications"
-    state.version = "0.0.1"
+    state.version = "0.0.2"
 }
 
 def syncVersion(evt){
