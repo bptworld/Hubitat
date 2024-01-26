@@ -44,11 +44,13 @@ metadata {
         capability "Actuator"
         capability "Switch"
 
-        command "sendSimplepush", 	[[name:"theMessage*", type:"STRING", description:"Message to send"], 
+        command "sendSimplepush", 	[[name:"theMessage*", type:"STRING", description:"Message to send"],
+                                     [name:"title", type:"STRING", description: "Optional Title"], 
                                      [name:"theEvent", type:"STRING", description: "Optional Event"],
                                      [name:"actions", type:"STRING", description: "Optional - enter YES or NO (for now)"]]
 
         attribute "lastMessage", "string"
+        attribute "lastAction", "string"
         attribute "sentAt", "string"
         attribute "switch", "string"
 	}
@@ -62,16 +64,17 @@ metadata {
     }
 }
 
-def sendSimplepush(theMessage, theEvent=null, actions=null) {
+def sendSimplepush(theMessage, title=null, theEvent=null, actions=null) {
     if(simpleKey) {
         if(logEnable) log.info "In sendSimplepush - ${theMessage} - Event: ${theEvent}"
         def data = new Date()
         sendEvent(name: "sentAt", value: data, displayed: true)
         sendEvent(name: "lastMessage", value: theMessage, displayed: true)
+        if(title == null) title = ""
         if(theEvent == null) theEvent = ""
         if(actions == null) actions = ""
         theDevice = device.id
-        parent.sendAsynchttpPost(theDevice, simpleKey, theMessage, theEvent, actions)
+        parent.sendAsynchttpPost(theDevice, simpleKey, theMessage, title, theEvent, actions)
     } else {
         log.warn "Simplepush Driver - Be sure to enter your Simplepush Key in to the driver."
     }
@@ -84,6 +87,7 @@ def actionHandler(theAction) {
     } else {
         off()
     }
+    sendEvent(name: "lastAction", value: theAction, displayed: true)
 }
 
 def on() {
