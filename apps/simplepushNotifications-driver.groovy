@@ -44,10 +44,10 @@ metadata {
         capability "Actuator"
         capability "Switch"
 
-        command "sendSimplepush", 	[[name:"theMessage*", type:"STRING", description:"Message to send"],
-                                     [name:"title", type:"STRING", description: "Optional Title"], 
-                                     [name:"theEvent", type:"STRING", description: "Optional Event"],
-                                     [name:"actions", type:"STRING", description: "Optional - 'option1;option2' - Seperated by a semi-colon"]]
+        command "sendSimplepush", 	[[name:"title", type:"STRING", description: "Optional Title"],
+                                     [name:"theMessage*", type:"STRING", description:"Message to send"],
+                                     [name:"actions", type:"STRING", description: "Optional - 'option1-option2' - Seperated by a -"],
+                                     [name:"theEvent", type:"STRING", description: "Optional Event"]]
 
         attribute "lastMessage", "string"
         attribute "lastAction", "string"
@@ -56,23 +56,27 @@ metadata {
 	}
 	preferences() {    	
         section(){
-            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simplepush Notification</b>", description: "This device was created by Simplepush Notification<br><br><b>Actions:</b> option1;option2<br>ie. on;off, off;on, yes;no, light;dark, whatever you want!<br><br>Selecting Option1 will turn this device ON, Option2 with turn this device OFF."
-            input name: "simpleKey", type: "text", title: "Simplepush Key", description: "Each 'User/Phone' will have one Key that can be used across as many virtual devices as you need.<br>"
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simplepush Notification</b>", description: "This device was created by Simplepush Notification<br><br><b>Actions:</b> option1-option2<br>ie. on-off, off-on, yes-no, light-dark, whatever you want!<br><br>Selecting Option1 will turn this device ON, Option2 with turn this device OFF."
+            
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Use with RM</b>", description: "In the Message box use syntax 'Title:Message:Actions:Event'.<br><br>ie. 'My Title:This is a Test:yes-no:silent'.<br><br>If a field isn't needed use 'na', do not leave a field blank or missing."
+            
+            input name: "simpleKey", type: "text", title: "Simplepush Key", description: "Each 'User/Phone' will have one Key that can be used across as many virtual devices as you need."
+            input name: "simpleTitle", type: "text", title: "Push Title", description: "Default Title to be used if no custom title is specified."
             
             input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
 }
 
-def sendSimplepush(theMessage, title=null, theEvent=null, actions=null) {
+def sendSimplepush(title=null, theMessage, actions=null, theEvent=null) {
     if(simpleKey) {
-        if(logEnable) log.info "In sendSimplepush - ${theMessage} - Event: ${theEvent} - Actions: ${actions}"
+        if(logEnable) log.info "In sendSimplepush - ${title} - ${theMessage} - Actions: ${actions} - Event: ${theEvent}"
         def data = new Date()
         sendEvent(name: "sentAt", value: data, displayed: true)
         sendEvent(name: "lastMessage", value: theMessage, displayed: true)
-        if(title == null) title = ""
-        if(theEvent == null) theEvent = ""
-        if(actions == null) actions = ""
+        if(title == "na" || title == null) title = simpleTitle ?: ""
+        if(theEvent == "na" || theEvent == null) theEvent = ""
+        if(actions == "na" || actions == null) actions = ""
         theDevice = device.id
         parent.sendAsynchttpPost(theDevice, simpleKey, theMessage, title, theEvent, actions)
     } else {
@@ -99,5 +103,12 @@ def off() {
 }
 
 def deviceNotification(data) {
-    log.info "Simplepush Driver - Pushing Device Notification doesn't do anything ;)"
+    try{
+        if(logEnable) log.info "In deviceNotification - ${data}"
+        theData = data.split(":")       
+        sendSimplepush(theData[0], theData[1], theData[2], theData[3])
+    } catch(e) {
+        log.info "Simplepush - Please check your notification syntax. Must be 'Title:Your Message:option1-option2:Event'"
+        log.error(getExceptionMessageWithLine(e))
+    }
 }
