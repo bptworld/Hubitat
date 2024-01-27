@@ -34,12 +34,12 @@
  *  Thanks to the great work/additions by @TMLeafs
  *
  *  Changes:
- *  0.0.3 - 01/26/24 - Initial release
+ *  0.0.4 - 01/26/24 - Initial release
  */
 
 def setVersion(){
     state.name = "Simplepush Notifications"
-    state.version = "0.0.3"
+    state.version = "0.0.4"
 }
 
 def syncVersion(evt){
@@ -228,7 +228,7 @@ def webhook() {
 def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, title, eventType=null, actions=null) {
     if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${eventType} - ${actions}"
     state.theDevice = theDevice
-    (action1, action2) = actions.split(";")
+    (action1, action2) = actions.split("-")
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
     if(actions) {
         theActions = [["name": "${action1}", "url": "${extUri}&action=on"],["name": "${action2}", "url": "${extUri}&action=off"]]
