@@ -98,6 +98,6 @@ def off() {
     sendEvent(name: "switch", value: "off", displayed: true)
 }
 
-def deviceNotification() {
+def deviceNotification(data) {
     log.info "Simplepush Driver - Pushing Device Notification doesn't do anything ;)"
 }
