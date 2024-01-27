@@ -47,7 +47,7 @@ metadata {
         command "sendSimplepush", 	[[name:"theMessage*", type:"STRING", description:"Message to send"],
                                      [name:"title", type:"STRING", description: "Optional Title"], 
                                      [name:"theEvent", type:"STRING", description: "Optional Event"],
-                                     [name:"actions", type:"STRING", description: "Optional - enter YES or NO (for now)"]]
+                                     [name:"actions", type:"STRING", description: "Optional - 'option1;option2' - Seperated by a semi-colon"]]
 
         attribute "lastMessage", "string"
         attribute "lastAction", "string"
@@ -56,8 +56,8 @@ metadata {
 	}
 	preferences() {    	
         section(){
-            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simplepush Notification</b>", description: "This device was created by Simplepush Notification<br><br>Each 'User/Phone' will have one Key that can be used across as many virtual devices as you need."
-            input name: "simpleKey", type: "text", title: "Simplepush Key"
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simplepush Notification</b>", description: "This device was created by Simplepush Notification<br><br><b>Actions:</b> option1;option2<br>ie. on;off, off;on, yes;no, light;dark, whatever you want!<br><br>Selecting Option1 will turn this device ON, Option2 with turn this device OFF."
+            input name: "simpleKey", type: "text", title: "Simplepush Key", description: "Each 'User/Phone' will have one Key that can be used across as many virtual devices as you need.<br>"
             
             input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
@@ -66,7 +66,7 @@ metadata {
 
 def sendSimplepush(theMessage, title=null, theEvent=null, actions=null) {
     if(simpleKey) {
-        if(logEnable) log.info "In sendSimplepush - ${theMessage} - Event: ${theEvent}"
+        if(logEnable) log.info "In sendSimplepush - ${theMessage} - Event: ${theEvent} - Actions: ${actions}"
         def data = new Date()
         sendEvent(name: "sentAt", value: data, displayed: true)
         sendEvent(name: "lastMessage", value: theMessage, displayed: true)
@@ -82,7 +82,7 @@ def sendSimplepush(theMessage, title=null, theEvent=null, actions=null) {
 
 def actionHandler(theAction) {
     if(logEnable) log.info "In actionHandler - ${theAction}"
-    if(theAction.toLowerCase() == "yes") {
+    if(theAction.toLowerCase() == "on") {
         on()
     } else {
         off()
@@ -96,4 +96,8 @@ def on() {
 
 def off() {
     sendEvent(name: "switch", value: "off", displayed: true)
+}
+
+def deviceNotification() {
+    log.info "Simplepush Driver - Pushing Device Notification doesn't do anything ;)"
 }
