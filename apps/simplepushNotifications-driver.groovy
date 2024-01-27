@@ -74,11 +74,9 @@ def sendSimplepush(title=null, theMessage, actions=null, theEvent=null) {
         def data = new Date()
         sendEvent(name: "sentAt", value: data, displayed: true)
         sendEvent(name: "lastMessage", value: theMessage, displayed: true)
-        if(title == "na" || title == null) title = simpleTitle ?: ""
-        if(theEvent == "na" || theEvent == null) theEvent = ""
-        if(actions == "na" || actions == null) actions = ""
+        if(title == "na" || title == null) title = simpleTitle ?: ""  
         theDevice = device.id
-        parent.sendAsynchttpPost(theDevice, simpleKey, theMessage, title, theEvent, actions)
+        parent.sendAsynchttpPost(theDevice, simpleKey, title, theMessage, actions, theEvent)
     } else {
         log.warn "Simplepush Driver - Be sure to enter your Simplepush Key in to the driver."
     }
@@ -86,11 +84,12 @@ def sendSimplepush(title=null, theMessage, actions=null, theEvent=null) {
 
 def actionHandler(theAction) {
     if(logEnable) log.info "In actionHandler - ${theAction}"
-    if(theAction.toLowerCase() == "on") {
-        on()
-    } else {
-        off()
-    }
+    if(theAction == "act0") { on() }
+    if(theAction == "act1") { off() }
+    if(theAction == "act2") { }
+    if(theAction == "act3") { }
+    if(theAction == "act4") { }
+    
     sendEvent(name: "lastAction", value: theAction, displayed: true)
 }
 
@@ -108,7 +107,7 @@ def deviceNotification(data) {
         theData = data.split(":")       
         sendSimplepush(theData[0], theData[1], theData[2], theData[3])
     } catch(e) {
-        log.info "Simplepush - Please check your notification syntax. Must be 'Title:Your Message:option1-option2:Event'"
+        log.info "Simplepush - Please check your notification syntax. Must be 'Title:Your Message:Actions:Event'"
         log.error(getExceptionMessageWithLine(e))
     }
 }
