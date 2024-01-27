@@ -34,12 +34,12 @@
  *  Thanks to the great work/additions by @TMLeafs
  *
  *  Changes:
- *  0.0.2 - 01/26/24 - Initial release
+ *  0.0.3 - 01/26/24 - Initial release
  */
 
 def setVersion(){
     state.name = "Simplepush Notifications"
-    state.version = "0.0.2"
+    state.version = "0.0.3"
 }
 
 def syncVersion(evt){
@@ -91,7 +91,7 @@ def pageConfig() {
     
         display()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-            paragraph "Be sure to enable OAuth!"
+            paragraph "If you are not getting notifications on your phone, go to app preferences, and 'allow' notifications."
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -228,10 +228,10 @@ def webhook() {
 def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, title, eventType=null, actions=null) {
     if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${eventType} - ${actions}"
     state.theDevice = theDevice
+    (action1, action2) = actions.split(";")
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
     if(actions) {
-        if(actions.toLowerCase() == "no") theActions = null
-        if(actions.toLowerCase() == "yes") theActions = [["name": "yes", "url": "${extUri}&action=yes"],["name": "no", "url": "${extUri}&action=no"]]
+        theActions = [["name": "${action1}", "url": "${extUri}&action=on"],["name": "${action2}", "url": "${extUri}&action=off"]]
     } else {
         theActions = null
     }
