@@ -34,12 +34,12 @@
  *  Thanks to the great work/additions by @TMLeafs
  *
  *  Changes:
- *  0.0.4 - 01/26/24 - Initial release
+ *  0.0.5 - 01/27/24 - Initial release
  */
 
 def setVersion(){
     state.name = "Simplepush Notifications"
-    state.version = "0.0.4"
+    state.version = "0.0.5"
 }
 
 def syncVersion(evt){
@@ -91,7 +91,7 @@ def pageConfig() {
     
         display()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-            paragraph "If you are not getting notifications on your phone, go to app preferences, and 'allow' notifications."
+            paragraph "If you are not getting notifications on your phone, go to app preferences and 'allow' notifications."
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -220,18 +220,23 @@ def webhook() {
         if(theD.id == state.theDevice) {
             theD.actionHandler(selectedAction)
         }
-    }
-        
+    }       
     return render(contentType: "text/html", data: "webhook params:<br>$params <br><br>webhook request:<br>$request", status: 200)
 }
  
-def sendAsynchttpPost(theDevice, simpleKey, simpleMsg, title, eventType=null, actions=null) {
-    if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${eventType} - ${actions}"
+def sendAsynchttpPost(theDevice, simpleKey, title=null, simpleMsg, actions=null, eventType=null) {
+    if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${actions} - ${eventType}"
     state.theDevice = theDevice
-    (action1, action2) = actions.split("-")
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
-    if(actions) {
-        theActions = [["name": "${action1}", "url": "${extUri}&action=on"],["name": "${action2}", "url": "${extUri}&action=off"]]
+    if(actions != "na" || actions != null) {
+        theAct = actions.split("-")
+        actSize = theAct.size()
+        if(logEnable) log.debug "In sendAsynchttpPost - theAct: (${actSize}) - ${theAct}"
+        theActions = [["name": "${theAct[0]}", "url": "${extUri}&action=act0"]]
+        for(x=1;x<actSize;x++) {
+            theActions += ["name": "${theAct[x]}", "url": "${extUri}&action=act${x}"]
+        }
+        log.debug "theActions: ${theActions}"
     } else {
         theActions = null
     }
