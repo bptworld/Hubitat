@@ -34,12 +34,12 @@
  *  Thanks to the great work/additions by @TMLeafs
  *
  *  Changes:
- *  0.0.5 - 01/27/24 - Initial release
+ *  0.0.6 - 01/27/24 - Initial release
  */
 
 def setVersion(){
     state.name = "Simplepush Notifications"
-    state.version = "0.0.5"
+    state.version = "0.0.6"
 }
 
 def syncVersion(evt){
@@ -225,7 +225,7 @@ def webhook() {
 }
  
 def sendAsynchttpPost(theDevice, simpleKey, title=null, simpleMsg, actions=null, eventType=null) {
-    if(logEnable) log.debug "In sendAsync - ${theDevice} - ${simpleKey} - ${title} - ${simpleMsg} - ${actions} - ${eventType}"
+    if(logEnable) log.debug "In sendAsync - Device ID: ${theDevice} - Simple Key: ${simpleKey} - Title: ${title} - Message: ${simpleMsg} - Actions: ${actions} - Event: ${eventType}"
     state.theDevice = theDevice
     def extUri = fullApiServerUrl().replaceAll("null","webhook?access_token=${state.accessToken}")
     if(actions != "na" || actions != null) {
@@ -239,13 +239,13 @@ def sendAsynchttpPost(theDevice, simpleKey, title=null, simpleMsg, actions=null,
         log.debug "theActions: ${theActions}"
     } else {
         theActions = null
-    }
+    }              
     if(title) {
         theTitle = title
     } 
     else {
         theTitle = "Hubitat Notifcation"
-    }
+    }   
 
     def postParams = [
         uri: "https://simplepu.sh",
@@ -254,6 +254,30 @@ def sendAsynchttpPost(theDevice, simpleKey, title=null, simpleMsg, actions=null,
         body : ["key": simpleKey, "title": theTitle, "msg": simpleMsg, "event": eventType, "attachments": attach, "actions": theActions]
     ]
     if(logEnable) log.debug "In sendAsynchttpPost - ${postParams}"
+	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
+}
+
+def sendAsynchttpPostwebCore(theDevice, simpleKey, title=null, simpleMsg, webCoreURL=null, eventType=null) {
+    if(logEnable) log.debug "In sendAsync Webcore - Device ID: ${theDevice} - Simple Key: ${simpleKey} - Title: ${title} - Message: ${simpleMsg} - Event: ${eventType} - WebCore URL: ${webCoreURL}"
+    state.theDevice = theDevice
+    def extUri = webCoreURL    
+    theActions = [["name": "Yes", "url": "${extUri}&action=Yes"],["name": "No", "url": "${extUri}&action=No"]]
+    log.debug "theActions: ${theActions}"     
+        
+    if(title) {
+        theTitle = title
+    } 
+    else {
+        theTitle = "Hubitat Notifcation"
+    }   
+
+    def postParams = [
+        uri: "https://simplepu.sh",
+        requestContentType: 'application/json',
+        contentType: 'application/json',
+        body : ["key": simpleKey, "title": theTitle, "msg": simpleMsg, "event": eventType, "attachments": attach, "actions": theActions]
+    ]
+    if(logEnable) log.debug "In sendAsynchttpPostwebCore- ${postParams}"
 	asynchttpPost('myCallbackMethod', postParams, [dataitem1: "datavalue1"])
 }
 
