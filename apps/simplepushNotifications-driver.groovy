@@ -45,8 +45,13 @@ metadata {
         capability "Switch"
 
         command "sendSimplepush", 	[[name:"title", type:"STRING", description: "Optional Title"],
-                                     [name:"theMessage*", type:"STRING", description:"Message to send"],
+                                     [name:"theMessage", type:"STRING", description:"Message to send"],
                                      [name:"actions", type:"STRING", description: "Optional - 'option1-option2' - Seperated by a -"],
+                                     [name:"theEvent", type:"STRING", description: "Optional Event"]]
+
+        command "sendSimplepushwebCore",[[name:"title", type:"STRING", description: "Optional Title"],
+                                     [name:"theMessage", type:"STRING", description:"Message to send"],
+                                     [name:"WebCoreURL", type:"STRING", description:"WebCoRE External URL"],
                                      [name:"theEvent", type:"STRING", description: "Optional Event"]]
 
         attribute "lastMessage", "string"
@@ -78,6 +83,26 @@ def sendSimplepush(title=null, theMessage, actions=null, theEvent=null) {
         theDevice = device.id
         parent.sendAsynchttpPost(theDevice, simpleKey, title, theMessage, actions, theEvent)
     } else {
+        log.warn "Simplepush Driver - Be sure to enter your Simplepush Key in to the driver."
+    }
+}
+
+def sendSimplepushwebCore(title=null, theMessage, webCoreURL=null,theEvent=null) {
+    if(simpleKey) {
+        if(webCoreURL){
+        if(logEnable) log.info "In sendSimplepushwebCore - ${title} - ${theMessage} - Event: ${theEvent} - WebCoRE ${webCoreURL}" 
+        def data = new Date()
+        sendEvent(name: "sentAt", value: data, displayed: true)
+        sendEvent(name: "lastMessage", value: theMessage, displayed: true)
+        if(title == "na" || title == null) title = simpleTitle ?: ""  
+        theDevice = device.id
+        parent.sendAsynchttpPostwebCore(theDevice, simpleKey, title, theMessage,  webCoreURL, theEvent)
+        }
+        else{
+            log.warn "Simplepush Driver - Be sure to enter your WebCoRE External Piston URL when using the Send SimplePush WebCore Command."
+        }
+    }    
+    else {
         log.warn "Simplepush Driver - Be sure to enter your Simplepush Key in to the driver."
     }
 }
