@@ -3,12 +3,5 @@
    "gitHubUrl": "https://github.com/bptworld/Hubitat",
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
-      {
-   		"name": "Bundle Manager HPM",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/BundleManagerHPM/packageManifest.json",
-   		"description": "Looking for BPTWorld Apps?? Bundle Manager is the ONLY place to find/install/update BPTWorld apps/drivers. Over 30 bundles available!",
-         "tags": [ "Tools & Utilities" ]
-   	}
    ]
 }
