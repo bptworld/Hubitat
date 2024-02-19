@@ -9,7 +9,7 @@
 	"apps": [
 		{
 			"id" : "44131a76-320b-4b13-baea-9d2cc161ceb7",
-			"name": "The Flasher",
+			"name": "The Flasher Parent",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/theflasher-parent.groovy",
 			"required": true,
@@ -19,7 +19,7 @@
 		},
     		{
 			"id" : "b06563f2-984f-49ec-a2de-22135006f848",
-			"name": "The Flasher",
+			"name": "The Flasher Child",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/theflasher-child.groovy",
 			"required": true,
