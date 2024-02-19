@@ -3,5 +3,12 @@
    "gitHubUrl": "https://github.com/bptworld/Hubitat",
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
+      {
+   		"name": "The Flasher",
+   		"category": "Utilities",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/packageManifest.json",
+   		"description": "Flash your lights based on several triggers!",
+         "tags": [ "Tools & Utilities" ]
+   	}
    ]
 }
