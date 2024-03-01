@@ -26,7 +26,7 @@
  *  for the specific language governing permissions and limitations under the License.
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
+ *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! - @BPTWorld
  *
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/
  *
@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.3.4 - 03/01/24 - Added abibility to use devices buit in Flash option
  *  1.3.3 - 02/19/24 - Updated
  *  1.3.2 - 08/27/23 - Added a delay between Flash sets
  *  1.3.1 - 07/28/23 - A few updates
@@ -47,12 +48,7 @@
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.3.3"
-}
-
-def syncVersion(evt){
-    setVersion()
-    sendLocationEvent(name: "updateVersionsInfo", value: "${state.name}:${state.version}")
+    state.version = "1.3.4"
 }
 
 definition(
@@ -130,24 +126,55 @@ def pageConfig() {
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
-            input "theSwitch", "capability.switch", title: "Select Lights to Flash", multiple:true, submitOnChange:true
-            paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
-            input "numFlashes", "number", title: "Number of times to flash in this set<br>(0 = indefinite)", defaultValue:2, required: false, submitOnChange:true, width: 6
-            input "delay", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', defaultValue:2, required: false, width: 6
-            input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true, width:6
-            theSwitch.each { hmm ->
-                if(hmm.hasCommand('setColor')) {
-                    hasSetColor = true   
+            input "theDevice", "capability.switch", title: "Select the Device to Flash", multiple:true, submitOnChange:true
+            if(theDevice) {
+                numOfDevices = theDevice.size()
+                hasFlash = 0
+                theDevice.each { hflash ->
+                    if(hflash.hasCommand('flash')) {
+                        if(logEnable) log.debug "Checking theDevice: $hflash CAN FLASH"
+                        hasFlash = hasFlash + 1
+                    } else {
+                        if(logEnable) log.debug "Checking theDevice: $hflash CAN NOT FLASH"
+                    }
                 }
-            }
-            if(hasSetColor) {
-                input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
-                    ["Soft White":"Soft White - Default"],
-                    ["White":"White - Concentrate"],
-                    ["Daylight":"Daylight - Energize"],
-                    ["Warm White":"Warm White - Relax"],
-                    "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                ], width:6
+                if(hasFlash >= 1) {
+                    if(hasFlash == numOfDevices) {
+                        paragraph "<b>All devices have the ability to Flash on it's own!</b>"
+                        input "useFlash", "bool", defaultValue: false, title: "Do you want to use the devices built in Flash function? (recommended)", description: "Options", submitOnChange:true
+                    } else {
+                        app.removeSetting("useFlash")
+                        paragraph "<b>Only some of your devices have the ability to Flash on it's own.</b><br>Only manual configuration is available."
+                    }
+                }
+                if(useFlash) {
+                    paragraph "<b>Built in Flash Use</b>"
+                    input "numSeconds", "number", title: "Number of seconds to flash in this set<br>(0 = indefinite)", defaultValue:4, required: false, submitOnChange:true, width: 6
+                    paragraph "<hr>"
+                }
+                if(hasFlash != numOfDevices || !useFlash) {
+                    paragraph "<b>Manual Flash Option</b>"
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state or the light doesn't seem to flash, raise the seconds between on/off."
+                    input "numFlashes", "number", title: "Number of times to flash in this set<br>(0 = indefinite)", defaultValue:2, required: false, submitOnChange:true, width: 6
+                    input "delay", "number", title: "Seconds for lights to be on/off<br>(range: 1 to 10)", range:'1..10', defaultValue:2, required: false, width:6
+                }
+                paragraph "<hr>"
+                paragraph "<b>All Flashing Options</b> - Custom Level and/or Color options for devices that have those abilities."
+                input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true, width:6
+                theDevice.each { hmm ->
+                    if(hmm.hasCommand('setColor')) {
+                        hasSetColor = true
+                    }
+                }
+                if(hasSetColor) {
+                    input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                    ], width:6
+                }
             }
 
             paragraph "<hr>"
@@ -463,7 +490,7 @@ def flashLights() {
         if(state.timeBetween) {
             if(state.modeMatch) {
                 if(state.daysMatch) {
-                    theSwitch.each { tSwitch ->
+                    theDevice.each { tSwitch ->
                         preValues = state.oldSwitchValues.get(tSwitch)                      
                         if(!preValues) {
                             oldSwitchState = tSwitch.currentValue("switch")
@@ -489,13 +516,22 @@ def flashLights() {
                             if(logEnable) log.info "In flashLights - ${tSwitch} - switch was already saved: $preValues"
                         }
                     }
-                    def delay = delay ?: 1
-                    def numFlashes = numFlashes ?: 2
                     
-                    setLevelandColorHandler(fColor, level)
-                    state.levelValue = level
-                    
-                    runIn(1, doLoopHandler, [data:[delay,numFlashes]])
+                    if(useFlash) {
+                        theDevice.each { fCheck ->
+                            if(fCheck.hasCommand('setColor')) {
+                                setLevelandColorHandler(fColor, level)
+                                fCheck.setLevel(level)
+                                fCheck.setColor(state.colorValue)
+                                if(fCheck.hasCommand('flash')) {
+                                    fCheck.flash()
+                                }
+                            }
+                        }
+                        runIn(numSeconds, flashOff)
+                    } else {
+                        manualFlash()
+                    }
                 } else {
                     if(logEnable) log.debug "In flashLights - Days does not match, can't flash lights."
                 }
@@ -508,6 +544,25 @@ def flashLights() {
     }
 }
 
+def manualFlash() {
+    def delay = delay ?: 1
+    def numFlashes = numFlashes ?: 2
+
+    setLevelandColorHandler(fColor, level)
+    state.levelValue = level
+
+    runIn(1, doLoopHandler, [data:[delay,numFlashes]])
+}
+
+def flashOff(fCheck) {
+    theDevice.each { dOff ->
+        if(dOff.hasCommand('flash')) {
+            dOff.off()
+        }
+    }
+    runIn(1, setInitialState)
+}
+
 def doLoopHandler(delay, numFlashes) {
     if(state.count == null) {
         state.count = 0
@@ -516,7 +571,7 @@ def doLoopHandler(delay, numFlashes) {
     }
     if(logEnable) log.debug "In doLoopHandler - runLoop: ${atomicState.runLoop} - count: $state.count"
     if(atomicState.runLoop) {
-        theSwitch.each { s ->
+        theDevice.each { s ->
             if(s.currentValue('switch') == "off" || state.count == 0) {
                 if(logEnable) log.debug "In doLoopHandler - Switching $s.displayName, on (count: $state.count)"
                 if(s.hasCommand('setColor')) {
@@ -573,7 +628,7 @@ def doLoopHandler(delay, numFlashes) {
 
 def setInitialState() {
     if(logEnable) log.debug "In setInitialState (${state.version})"    
-    theSwitch.each { ts ->
+    theDevice.each { ts ->
         def oldValues = state.oldSwitchValues.get(ts.toString())
         if(oldValues) {
             if(logEnable) log.debug "In setInitialState - (${ts} - oldValues: ${oldValues}"
