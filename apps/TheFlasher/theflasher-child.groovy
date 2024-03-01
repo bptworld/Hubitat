@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  1.3.4 - 03/01/24 - Added abibility to use devices buit in Flash option
+ *  1.3.4 - 03/01/24 - Added abibility to use devices built in Flash option
  *  1.3.3 - 02/19/24 - Updated
  *  1.3.2 - 08/27/23 - Added a delay between Flash sets
  *  1.3.1 - 07/28/23 - A few updates
