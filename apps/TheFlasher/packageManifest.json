@@ -2,10 +2,10 @@
 	"packageName": "The Flasher",
 	"minimumHEVersion": "1.0.0",
 	"author": "BPTWorld",
-	"dateReleased": "2024-02-19",
+	"dateReleased": "2024-03-01",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
-	"releaseNotes": "Changes",
+	"releaseNotes": "Added abibility to use devices built in Flash option",
 	"apps": [
 		{
 			"id" : "44131a76-320b-4b13-baea-9d2cc161ceb7",
@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/theflasher-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.3.3",
+			"version": "1.3.4",
 			"primary": true
 		},
     		{
@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/theflasher-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.3.3",
+			"version": "1.3.4",
 			"primary": true
 		}
 	],
