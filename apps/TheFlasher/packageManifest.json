@@ -5,7 +5,7 @@
 	"dateReleased": "2024-03-01",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/placeholder-bundle-manager-find-install-and-update-bundles-quickly-and-easily/94567",
-	"releaseNotes": "Added abibility to use devices built in Flash option",
+	"releaseNotes": "Added ability to use devices built in Flash option",
 	"apps": [
 		{
 			"id" : "44131a76-320b-4b13-baea-9d2cc161ceb7",
