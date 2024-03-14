@@ -532,7 +532,7 @@ def flashLights() {
                     }
                     for(x=0;x < numSeconds;x++) {
                         pauseExecution(1000)
-                        log.debug "x = ${x} vs ${numSeconds}"
+                        if(logEnable) log.debug "x = ${x} vs ${numSeconds}"
                         if(atomicState.runLoop) {
                             if(x==15) {
                                 if(useFlash) {
