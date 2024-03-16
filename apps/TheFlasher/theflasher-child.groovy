@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  1.3.6 - 03/16/24 - Flip between two different colors when using built in Flash option
  *  1.3.5 - 03/14/24 - Built in Flash now works better
  *  1.3.4 - 03/01/24 - Added ability to use devices built in Flash option
  *  1.3.3 - 02/19/24 - Updated
@@ -49,7 +50,7 @@
 
 def setVersion(){
     state.name = "The Flasher"
-    state.version = "1.3.5"
+    state.version = "1.3.6"
 }
 
 definition(
@@ -150,8 +151,27 @@ def pageConfig() {
                 }
                 if(useFlash) {
                     paragraph "<b>Built in Flash Use</b>"
-                    input "numSeconds", "number", title: "Number of seconds to flash in this set", defaultValue:4, required: false, submitOnChange:true, width: 6
-                    paragraph "<hr>"
+                    input "numSeconds", "number", title: "Number of seconds to flash in this set", defaultValue:4, required: false, submitOnChange:true
+                    input "colorChange", "bool", defaultValue: false, title: "Flash between two colors (only if bulb has the ability)", description: "Options", submitOnChange:true
+                    if(colorChange) {
+                        input "altColor1", "enum", title: "Color 1", required: false, submitOnChange:true, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                        ], width:6
+                        input "altColor2", "enum", title: "Color 2", required: false, submitOnChange:true, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                        ], width:6
+                    } else {
+                        app.removeSetting("altColor1")
+                        app.removeSetting("altColor2")
+                    }
                 }
                 if(hasFlash != numOfDevices || !useFlash) {
                     paragraph "<b>Manual Flash Option</b>"
@@ -167,7 +187,7 @@ def pageConfig() {
                         hasSetColor = true
                     }
                 }
-                if(hasSetColor) {
+                if(hasSetColor && !colorChange) {
                     input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
                         ["Soft White":"Soft White - Default"],
                         ["White":"White - Concentrate"],
@@ -175,6 +195,8 @@ def pageConfig() {
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"
                     ], width:6
+                } else {
+                    app.removeSetting("fColor")
                 }
             }
 
@@ -516,7 +538,11 @@ def flashLights() {
                     if(useFlash) {
                         theDevice.each { workingDev ->
                             if(workingDev.hasCommand('setColor')) {
-                                setLevelandColorHandler(fColor, level)
+                                if(colorChange) {
+                                    setLevelandColorHandler(altColor2, level)
+                                } else {
+                                    setLevelandColorHandler(fColor, level)
+                                }
                                 workingDev.setColor(state.colorValue)
                                 pauseExecution(250)
                                 workingDev.off()
@@ -531,11 +557,27 @@ def flashLights() {
                         manualFlash()
                     }
                     for(x=0;x < numSeconds;x++) {
-                        pauseExecution(1000)
-                        if(logEnable) log.debug "x = ${x} vs ${numSeconds}"
+                        if(logEnable) log.debug "x = ${x} - of - ${numSeconds}"
                         if(atomicState.runLoop) {
-                            if(x==15) {
+                            if(colorChange) {    // Change Flash Color During Flash
                                 if(useFlash) {
+                                    theDevice.each { flashToColor ->
+                                        if(flashToColor.hasCommand('setColor')) {
+                                            if(x % 2 == 0) {
+                                                if(logEnable) log.debug "Changing ${flashToColor} to ${altColor1}"
+                                                setLevelandColorHandler(altColor1, level)
+                                            } else {
+                                                if(logEnable) log.debug "Changing ${flashToColor} to ${altColor2}"
+                                                setLevelandColorHandler(altColor2, level)
+                                            }
+                                            flashToColor.setColor(state.colorValue)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if(x==15) {
+                                if(useFlash) {    // Keep Flash Going
                                     theDevice.each { flashDev ->
                                         if(flashDev.hasCommand('flash')) {
                                             doFlash(flashDev)
@@ -546,6 +588,7 @@ def flashLights() {
                         } else {
                             x = numSeconds
                         }
+                        pauseExecution(1000)
                     }
                     flashOff()
                 } else {
