@@ -10,28 +10,28 @@
 	],
 	"drivers": [
     {
-			"id" : "21ccc2b5-3b71-4445-8d08-20fa42e3d3bd",
+			"id" : "a5bb0aa4-f484-4382-a2c8-e2eded421429",
 			"name": "Basic Canopy Driver",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Canopy-Driver.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/VZM36-Canopy-Driver.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0"
 		},
     		{
-			"id" : "3005870e-eff8-4881-b926-68ff1ffa45e8",
+			"id" : "be5e8579-48c5-4f33-9945-d1e8d1074ae7",
 			"name": "Basic Light Driver",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Light-Driver.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/VZM36-Light-Driver.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0"
     },
     		{
-			"id" : "557fd852-43ca-448f-802a-595313772857",
+			"id" : "c3a04760-af26-435b-aef3-bfc12c7ab02a",
 			"name": "Basic Fan Driver",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Fan-Driver.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/VZM36-Fan-Driver.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0"
