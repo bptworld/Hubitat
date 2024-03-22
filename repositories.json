@@ -9,6 +9,13 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/packageManifest.json",
    		"description": "Flash your lights based on several triggers!",
          "tags": [ "Tools & Utilities" ]
+   	},
+      {
+   		"name": "BASIC Inovelli VZM36 Driver Package",
+   		"category": "Utilities",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/packageManifest.json",
+   		"description": "Flash your lights based on several triggers!",
+         "tags": [ "Tools & Utilities" ]
    	}
    ]
 }
