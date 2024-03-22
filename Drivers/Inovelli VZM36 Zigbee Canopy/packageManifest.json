@@ -1,0 +1,42 @@
+{
+	"packageName": "BASIC Inovelli VZM36 Driver Package",
+	"minimumHEVersion": "1.0.0",
+	"author": "BPTWorld",
+	"dateReleased": "2024-03-21",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "",
+	"releaseNotes": "Initial release",
+	"apps": [
+	],
+	"drivers": [
+    {
+			"id" : "44131a76-320b-4b13-baea-9d2cc161ceb7",
+			"name": "Basic Canopy Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Canopy-Driver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		},
+    		{
+			"id" : "b06563f2-984f-49ec-a2de-22135006f848",
+			"name": "Basic Light Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Light-Driver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+    },
+    		{
+			"id" : "b06563f2-984f-49ec-a2de-22135006f848",
+			"name": "Basic Fan Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/Inovelli_VZM36_Zigbee_Canopy/VZM36-Fan-Driver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+    }
+	],
+	"libraries": [	
+	]
+}
