@@ -2,10 +2,10 @@
 	"packageName": "BASIC Inovelli VZM36 Driver Package",
 	"minimumHEVersion": "1.0.0",
 	"author": "BPTWorld",
-	"dateReleased": "2024-03-21",
+	"dateReleased": "2024-03-27",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "",
-	"releaseNotes": "Initial release",
+	"releaseNotes": "Updated fingerprints",
 	"apps": [
 	],
 	"drivers": [
@@ -16,7 +16,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/VZM36-Canopy-Driver.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		},
     		{
 			"id" : "be5e8579-48c5-4f33-9945-d1e8d1074ae7",
@@ -25,7 +25,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Inovelli_VZM36_Zigbee_Canopy/VZM36-Light-Driver.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
     },
     		{
 			"id" : "c3a04760-af26-435b-aef3-bfc12c7ab02a",
