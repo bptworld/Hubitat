@@ -1,4 +1,4 @@
-def getDriverDate() { return "2024-03-21" + " (Basic)" }	// **** DATE OF THE DEVICE DRIVER
+def getDriverDate() { return "2024-03-27" + " (Basic)" }	// **** DATE OF THE DEVICE DRIVER
 /*
 *  Replacement stripped down driver for the Inovelli VZM36 Zigbee Canopy Fan. Features on/off, setSpeed, cycleSpeedUp/cycleSpeedDown and Breeze.
 *  
@@ -60,9 +60,6 @@ metadata {
 
 		attribute "speed", "String"
         attribute "switch", "String"
-        
-		fingerprint profileId:"0104", endpointId:"01", inClusters:"0000,0003,0004,0005,0006,0008,0702,0B04,0B05,FC57,FC31", outClusters:"0003,0019",           model:"VZM31-SN", manufacturer:"Inovelli"
-		fingerprint profileId:"0104", endpointId:"02", inClusters:"0000,0003",                                              outClusters:"0003,0019,0006,0008", model:"VZM31-SN", manufacturer:"Inovelli"
     }
 
     preferences {
