@@ -4,6 +4,13 @@
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
       {
+   		"name": "Device Watchdog",
+   		"category": "Utilities",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/packageManifest.json",
+   		"description": "Keep an eye on your devices and see how long it's been since they checked in.",
+         "tags": [ "Tools & Utilities" ]
+   	},
+      {
    		"name": "The Flasher",
    		"category": "Utilities",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/packageManifest.json",
