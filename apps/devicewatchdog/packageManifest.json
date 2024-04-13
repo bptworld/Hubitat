@@ -5,7 +5,7 @@
 	"dateReleased": "2024-04-13",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "",
-	"releaseNotes": "Many changes",
+	"releaseNotes": "More color",
 	"apps": [
 		{
 			"id" : "8ac392c0-e2e1-4dd9-88e6-97253787ac72",
@@ -14,7 +14,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.4.9",
+			"version": "2.5.0",
 			"primary": true
 		},
     		{
@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.4.9",
+			"version": "2.5.0",
 			"primary": true
 		}
 	],
@@ -36,7 +36,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-tiledriver.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.4.9",
+			"version": "2.5.0",
 			"primary": true
 		}
 	],
