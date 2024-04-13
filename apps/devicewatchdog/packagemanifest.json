@@ -28,7 +28,17 @@
 			"primary": true
 		}
 	],
-	"drivers": [	
+	"drivers": [
+		{
+			"id" : "4e84796d-be50-4871-a810-b2e947991df4",
+			"name": "Device Watchdog Tile Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-tiledriver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.4.9",
+			"primary": true
+		}
 	],
 	"libraries": [	
 	]
