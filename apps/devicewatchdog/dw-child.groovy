@@ -34,18 +34,7 @@
  *
  *  Changes:
  *
- *  2.4.9 - 04/13/24 - Many changes
- *  2.4.8 - 08/15/22 - Bundle Manager Changes
- *  2.4.7 - 05/06/22 - Bundle Manager
- *  2.4.6 - 03/01/22 - Added ability to use 'Custom notes' from the Data section of any device
- *  2.4.5 - 02/28/22 - Added switch to not call 'config' due to a bug in some drivers
- *  2.4.4 - 11/22/21 - Added option to remove report titles
- *  2.4.3 - 11/14/21 - Bumped up version to check an issue with HPM (non found)
- *  2.4.2 - 11/14/21 - Added a data switch to each type of reporting
- *                   - Added Attribute to store how many devices are reporting in each section
- *                   - Fixed multiple typos/missing stuff while adding these options.
- *  2.4.1 - 06/23/21 - Added a pause to refresh
- *  2.4.0 - 05/24/21 - Added second switch option to Run Reports on Demand, fixed typo with Activity push
+ *  2.5.0 - 04/13/24 - More color
  *  ---
  *  1.0.0 - 12/21/18 - Initial release.
  *
@@ -55,7 +44,7 @@
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.4.9"
+	state.version = "2.5.0"
 }
 
 def syncVersion(evt){
@@ -1475,12 +1464,70 @@ def myActivityAttHandler() {
                         if(att1Value == "off") { att1Value = "<div style='color:${parent.colorOff}'>${att1Value}</div>" }
                         if(att1Value == "online") { att1Value = "<div style='color:${parent.colorOnline}'>${att1Value}</div>" }
                         if(att1Value == "offline") { att1Value = "<div style='color:${parent.colorOffline}'>${att1Value}</div>" }
+ 
+                        if(att2Value == "inactive") { att2Value = "<div style='color:${parent.colorInactive}'>${att2Value}</div>" }
+                        if(att2Value == "active") { att2Value = "<div style='color:${parent.colorActive}'>${att2Value}</div>" }
+                        if(att2Value == "off") { att2Value = "<div style='color:${parent.colorOff}'>${att2Value}</div>" }
+                        if(att2Value == "siren") { att2Value = "<div style='color:${parent.colorSiren}'>${att2Value}</div>" }
+                        if(att2Value == "strobe") { att2Value = "<div style='color:${parent.colorStrobe}'>${att2Value}</div>" }
+                        if(att2Value == "both") { att2Value = "<div style='color:${parent.colorBoth}'>${att2Value}</div>" }
+                        if(att2Value == "locked") { att2Value = "<div style='color:${parent.colorLocked}'>${att2Value}</div>" }
+                        if(att2Value == "unlocked") { att2Value = "<div style='color:${parent.colorUnlocked}'>${att2Value}</div>" }
+                        if(att2Value == "present") { att2Value = "<div style='color:${parent.colorPresent}'>${att2Value}</div>" }
+                        if(att2Value == "not present") { att2Value = "<div style='color:${parent.colorNotPresent}'>${att2Value}</div>" }
+                        if(att2Value == "clear") { att2Value = "<div style='color:${parent.colorClear}'>${att2Value}</div>" }
+                        if(att2Value == "detected") { att2Value = "<div style='color:${parent.colorDetected}'>${att2Value}</div>" }
+                        if(att2Value == "open") { att2Value = "<div style='color:${parent.colorOpen}'>${att2Value}</div>" }
+                        if(att2Value == "closed") { att2Value = "<div style='color:${parent.colorClosed}'>${att2Value}</div>" }
+                        if(att2Value == "wet") { att2Value = "<div style='color:${parent.colorWet}'>${att2Value}</div>" }
+                        if(att2Value == "dry") { att2Value = "<div style='color:${parent.colorDry}'>${att2Value}</div>" }
+                        if(att2Value == "on") { att2Value = "<div style='color:${parent.colorOn}'>${att2Value}</div>" }
+                        if(att2Value == "off") { att2Value = "<div style='color:${parent.colorOff}'>${att2Value}</div>" }
+                        if(att2Value == "online") { att2Value = "<div style='color:${parent.colorOnline}'>${att2Value}</div>" }
+                        if(att2Value == "offline") { att2Value = "<div style='color:${parent.colorOffline}'>${att2Value}</div>" }
+
+                        if(att3Value == "inactive") { att3Value = "<div style='color:${parent.colorInactive}'>${att3Value}</div>" }
+                        if(att3Value == "active") { att3Value = "<div style='color:${parent.colorActive}'>${att3Value}</div>" }
+                        if(att3Value == "off") { att3Value = "<div style='color:${parent.colorOff}'>${att3Value}</div>" }
+                        if(att3Value == "siren") { att3Value = "<div style='color:${parent.colorSiren}'>${att3Value}</div>" }
+                        if(att3Value == "strobe") { att3Value = "<div style='color:${parent.colorStrobe}'>${att3Value}</div>" }
+                        if(att3Value == "both") { att3Value = "<div style='color:${parent.colorBoth}'>${att3Value}</div>" }
+                        if(att3Value == "locked") { att3Value = "<div style='color:${parent.colorLocked}'>${att3Value}</div>" }
+                        if(att3Value == "unlocked") { att3Value = "<div style='color:${parent.colorUnlocked}'>${att3Value}</div>" }
+                        if(att3Value == "present") { att3Value = "<div style='color:${parent.colorPresent}'>${att3Value}</div>" }
+                        if(att3Value == "not present") { att3Value = "<div style='color:${parent.colorNotPresent}'>${att3Value}</div>" }
+                        if(att3Value == "clear") { att3Value = "<div style='color:${parent.colorClear}'>${att3Value}</div>" }
+                        if(att3Value == "detected") { att3Value = "<div style='color:${parent.colorDetected}'>${att3Value}</div>" }
+                        if(att3Value == "open") { att3Value = "<div style='color:${parent.colorOpen}'>${att3Value}</div>" }
+                        if(att3Value == "closed") { att3Value = "<div style='color:${parent.colorClosed}'>${att3Value}</div>" }
+                        if(att3Value == "wet") { att3Value = "<div style='color:${parent.colorWet}'>${att3Value}</div>" }
+                        if(att3Value == "dry") { att3Value = "<div style='color:${parent.colorDry}'>${att3Value}</div>" }
+                        if(att3Value == "on") { att3Value = "<div style='color:${parent.colorOn}'>${att3Value}</div>" }
+                        if(att3Value == "off") { att3Value = "<div style='color:${parent.colorOff}'>${att3Value}</div>" }
+                        if(att3Value == "online") { att3Value = "<div style='color:${parent.colorOnline}'>${att3Value}</div>" }
+                        if(att3Value == "offline") { att3Value = "<div style='color:${parent.colorOffline}'>${att3Value}</div>" }
+                        
+                        if(att4Value == "inactive") { att4Value = "<div style='color:${parent.colorInactive}'>${att4Value}</div>" }
+                        if(att4Value == "active") { att4Value = "<div style='color:${parent.colorActive}'>${att4Value}</div>" }
+                        if(att4Value == "off") { att4Value = "<div style='color:${parent.colorOff}'>${att4Value}</div>" }
+                        if(att4Value == "siren") { att4Value = "<div style='color:${parent.colorSiren}'>${att4Value}</div>" }
+                        if(att4Value == "strobe") { att4Value = "<div style='color:${parent.colorStrobe}'>${att4Value}</div>" }
+                        if(att4Value == "both") { att4Value = "<div style='color:${parent.colorBoth}'>${att4Value}</div>" }
+                        if(att4Value == "locked") { att4Value = "<div style='color:${parent.colorLocked}'>${att4Value}</div>" }
+                        if(att4Value == "unlocked") { att4Value = "<div style='color:${parent.colorUnlocked}'>${att4Value}</div>" }
+                        if(att4Value == "present") { att4Value = "<div style='color:${parent.colorPresent}'>${att4Value}</div>" }
+                        if(att4Value == "not present") { att4Value = "<div style='color:${parent.colorNotPresent}'>${att4Value}</div>" }
+                        if(att4Value == "clear") { att4Value = "<div style='color:${parent.colorClear}'>${att4Value}</div>" }
+                        if(att4Value == "detected") { att4Value = "<div style='color:${parent.colorDetected}'>${att4Value}</div>" }
+                        if(att4Value == "open") { att4Value = "<div style='color:${parent.colorOpen}'>${att4Value}</div>" }
+                        if(att4Value == "closed") { att4Value = "<div style='color:${parent.colorClosed}'>${att4Value}</div>" }
+                        if(att4Value == "wet") { att4Value = "<div style='color:${parent.colorWet}'>${att4Value}</div>" }
+                        if(att4Value == "dry") { att4Value = "<div style='color:${parent.colorDry}'>${att4Value}</div>" }
+                        if(att4Value == "on") { att4Value = "<div style='color:${parent.colorOn}'>${att4Value}</div>" }
+                        if(att4Value == "off") { att4Value = "<div style='color:${parent.colorOff}'>${att4Value}</div>" }
+                        if(att4Value == "online") { att4Value = "<div style='color:${parent.colorOnline}'>${att4Value}</div>" }
+                        if(att4Value == "offline") { att4Value = "<div style='color:${parent.colorOffline}'>${att4Value}</div>" }
                     }
-                    
-                    
-                    
-                    
-                    
 
                     theName = it.displayName              
                     if(filter1) { theName = theName.replace("${filter1}", "") }
