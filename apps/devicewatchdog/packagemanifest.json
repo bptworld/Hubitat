@@ -1,0 +1,35 @@
+{
+	"packageName": "Device Watchdog",
+	"minimumHEVersion": "1.0.0",
+	"author": "BPTWorld",
+	"dateReleased": "2024-04-13",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "",
+	"releaseNotes": "Many changes",
+	"apps": [
+		{
+			"id" : "8ac392c0-e2e1-4dd9-88e6-97253787ac72",
+			"name": "Device Watchdog Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.4.9",
+			"primary": true
+		},
+    		{
+			"id" : "55afbc78-d4d0-4477-9768-4dc8567b6e37",
+			"name": "Device Watchdog Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/dw-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.4.9",
+			"primary": true
+		}
+	],
+	"drivers": [	
+	],
+	"libraries": [	
+	]
+}
