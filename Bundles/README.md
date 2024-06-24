@@ -1,4 +1,4 @@
-<u><b>To Install a Bundle:</b></u>
+<b>To Install a Bundle:</b>
 
 In Github:
 - Click on the Bundle you want to install in Hubitat.
