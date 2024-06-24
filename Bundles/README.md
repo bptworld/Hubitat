@@ -1,7 +1,7 @@
 <b>To Install a Bundle:</b>
 
 In Github:
-- Click on the Bundle you want to install in Hubitat.
+- Click on the Bundle you want to install (Hubitat/Bundles/xxxx.zip)
 - Right-Click on the 'Raw' button and select 'Copy Link Address'
 
 Back in Hubitat:
