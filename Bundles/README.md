@@ -1,1 +1,3 @@
-Bundles to be used with Bundle Manager
+To Install a Bundle:
+
+
