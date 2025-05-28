@@ -1,7 +1,7 @@
 {
     "packageName": "Flow Engine",
     "version": "1.0.0",
-    "releaseNotes": "v1.0.0\n - Initial Beta Release",
+    "releaseNotes": "Initial Beta Release",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
     "dateReleased": "2025-05-28",
