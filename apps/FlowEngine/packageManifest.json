@@ -15,40 +15,40 @@
         {
             "id": "11ba8718-86f0-4461-ae21-8627001d3e8e",
             "name": "zigbee-neighbors.html",
-            "namespace": "dandanache",
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/dist/zigbee-neighbors.html",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
             "description": "Visualize the topology and connectivity of your Zigbee network.",
             "required": true
         },
         {
             "id": "19fa08267-4996-4b28-a89b-06a33158ecc0",
             "name": "zigbee-neighbors.js",
-            "namespace": "dandanache",
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/dist/zigbee-neighbors.js",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
             "description": "Visualize the topology and connectivity of your Zigbee network.",
             "required": true
         },
         {
             "id": "585dd5c6-b406-4600-913a-04de0815f5cd",
             "name": "zigbee-routes.html",
-            "namespace": "dandanache",
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/dist/zigbee-routes.html",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
             "description": "Visualize the topology and connectivity of your Zigbee network.",
             "required": true
         },
         {
             "id": "78204ea3-c337-4251-aeb6-113acf2e80ab",
             "name": "zigbee-routes.js",
-            "namespace": "dandanache",
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/dist/zigbee-routes.js",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
             "description": "Visualize the topology and connectivity of your Zigbee network.",
             "required": true
         },
         {
             "id": "3068da27-d333-4439-a496-88d98a45c206",
             "name": "mem-cpu-history.html",
-            "namespace": "dandanache",
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/dist/mem-cpu-history.html",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
             "description": "Visualize hub memory and processor usage history.",
             "required": true
         }
@@ -57,16 +57,9 @@
         {
             "id": "c2e67d9b-d56f-4865-9419-14a93cbe94d0",
             "name": "Zigbee Map",
-            "namespace": "dandanache",
-            "alternateNames": [
-                {"name": "Zigbee Map 2.2.2", "namespace": "dandanache"},
-                {"name": "Zigbee Map 2.2.1", "namespace": "dandanache"},
-                {"name": "Zigbee Map 2.2.0", "namespace": "dandanache"},
-                {"name": "Zigbee Map 2.1.0", "namespace": "dandanache"},
-                {"name": "Zigbee Map 1.5.0", "namespace": "dandanache"}
-            ],
-            "location": "https://codeberg.org/dan-danache/hubitat/raw/tag/zigbee-map_3.0.0/zigbee-map-app/zigbee-map.groovy",
-            "description": "Visualize the topology and connectivity of your Zigbee network.",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/theflasher-parent.groovy",
+            "description": "Feel the Flow",
             "oauth": true,
             "required": true
         }
