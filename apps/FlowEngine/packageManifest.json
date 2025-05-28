@@ -13,7 +13,7 @@
     "tags": ["Flow", "Tools & Utilities"],
     "files": [
         {
-            "id": "11ba8718-86f0-4461-ae21-8627001d3e8e",
+            "id": "f069a335-86f1-43c8-b2d9-7bd086517134",
             "name": "pickr.es5.min.js",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/pickr.es5.min.js",
@@ -21,7 +21,7 @@
             "required": true
         },
         {
-            "id": "19fa08267-4996-4b28-a89b-06a33158ecc0",
+            "id": "f188ce7b-bd8d-4791-a9d3-dc84a7ccf7cb",
             "name": "pickr.min.css",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/pickr.min.css",
@@ -29,7 +29,7 @@
             "required": true
         },
         {
-            "id": "585dd5c6-b406-4600-913a-04de0815f5cd",
+            "id": "c3726581-e8fa-42ba-9164-52b45dcbe42d",
             "name": "drawflow-js.min.js",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-js.min.js",
@@ -37,7 +37,7 @@
             "required": true
         },
         {
-            "id": "78204ea3-c337-4251-aeb6-113acf2e80ab",
+            "id": "d8eead19-7efd-467e-9004-4f9ec66cb7ba",
             "name": "drawflow-extra.css",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-extra.css",
@@ -45,7 +45,7 @@
             "required": true
         },
         {
-            "id": "3068da27-d333-4439-a496-88d98a45c206",
+            "id": "0a04c142-7b90-45d5-b8fd-9073ec8bec99",
             "name": "drawflow-css.min.css",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-css.min.css",
@@ -55,7 +55,7 @@
     ],
     "apps": [
         {
-            "id": "c2e67d9b-d56f-4865-9419-14a93cbe94d0",
+            "id": "7f9f927d-bc2a-4fe6-b12a-fd7d8bee3e46",
             "name": "Flow Engine Parent",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowengine-parent.groovy",
@@ -64,7 +64,7 @@
             "required": true
         },
         {
-            "id": "c2e67d9b-d56f-4865-9419-14a93cbe94d0",
+            "id": "414e5892-81f2-4f76-a0c7-914163276fc9",
             "name": "Flow Engine Child",
             "namespace": "BPTWorld",
             "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowengine-child.groovy",
