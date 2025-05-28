@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flow Engine Editor</title>
+  <link rel="stylesheet" href="drawflow-css.min.css">
+  <link rel="stylesheet" href="drawflow-extra.css">
+  <!-- Pickr (nano) Color Picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
+  <style>
+    body { background: #191919; color: #e6e6e6; }
+    #controls { padding: 16px; background: #222; border-bottom: 1px solid #333; }
+    #main { display: flex; }
+    #drawflow {
+      flex: 3; height: 700px;
+      background: #222 url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="1" height="40" fill="%23333"/><rect y="39" width="40" height="1" fill="%23333"/></svg>');
+      border-right: 1px solid #333;
+    }
+    #editor { flex: 1; min-width: 340px; padding: 18px 16px 16px 16px; background: #181818; }
+    #nodeEditor label { margin-top: 6px; margin-right: 6px; display:inline-block; }
+    #nodeEditor input, #nodeEditor select { margin-bottom: 7px; margin-right:8px;}
+    .log-info { color: #b7ffac; }
+    .log-error { color: #ffb6b6; }
+    button {
+      background: #353535; color: #f3f3f3;
+      border: none; padding: 6px 14px; border-radius: 7px;
+      margin-right: 4px; cursor:pointer;
+    }
+    button:hover { background: #444; }
+    .logic-node {
+      min-width: 65px !important;
+      max-width: 65px !important;
+      width: 65px !important;
+      min-height: 32px !important;
+      max-height: 32px !important;
+      height: 32px !important;
+      font-size: 13px !important;
+      padding: 2px 0px !important;
+      text-align: center !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto !important;
+    }
+    .current-value {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 2px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      background: transparent !important; /* Remove black background */
+    }
+
+    .cv-on    { color: #0c0; }
+    .cv-off   { color: #e34c4c; }
+    .cv-num   { color: #3af; }
+    .cv-other { color: #eec150; }
+
+    .drawflow-node {
+      border-radius: 18px !important;
+      box-shadow: 0 2px 14px 0 #00000022;
+      overflow: hidden;
+      border: 1.5px solid #29475e;
+      background: #232a2d;
+    }
+    .drawflow-node .drawflow-content {
+      border-radius: 0 0 16px 16px;
+      padding: 9px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div style="margin-bottom:5px;">
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.0</small><br>
+      <input id="makerApiUrl" placeholder="Maker API URL - All Devices" style="flex:1; min-width:100px;">
+      <input id="hubitatToken" placeholder="Token" style="width:100px; margin-left:6px;">
+      <input id="hubitatAppId" placeholder="Flow File API App ID" style="width:100px; margin-left:6px;">
+      <button id="loadDevices">Load Devices</button>
+      <button id="loadFlowFromHubitatDropdown">Load Flow</button>
+      <select id="hubitatFileDropdown" style="width:260px;display:none;"></select>
+      <button id="sendFlow">Send Flow</button>
+      <button id="newFlow" style="background:#d40; color:#fff; margin-left:12px;">Start New Flow</button>
+      <button id="refreshAllTiles" style="background:#4bb543; color:#fff;">Refresh Tiles</button>
+    </div>
+    <div>
+      <input id="flowName" placeholder="Flow Name" style="width:250px; font-weight:bold; font-size:16px;">
+      <button id="addTrigger">Add Event Trigger</button>
+      <button id="addDevice">Add Device</button>
+      <button id="addCondition">Add Condition</button>
+      <button id="addLogicAND">Add AND</button>
+      <button id="addLogicOR">Add OR</button>
+      <button id="addLogicNOT">Add NOT</button>
+      <button id="addDelay">Add Delay ms</button>
+      <button id="addDelayMin">Add Delay min</button>
+      <button id="addDoNothing">Add Do Nothing</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="drawflow"></div>
+    <div id="editor">
+      <div id="header" style="font-size:25px;"><b>Node Editor</b> - <button id="testTile" style="background:#1985d0; color:#fff;">Test Node</button></div>
+      <div id="nodeEditor">Click a node to edit</div>
+      <div id="logBox"
+           style="margin-top:20px;max-height:200px;overflow:auto;border-top:1px solid #333;padding-top:10px;font-family:monospace;font-size:12px;">
+        Logs:<br>
+      </div>
+      <button id="toggleWsLog" style="margin-top:10px;">Show WebSocket Log ▼</button>
+      <label style="font-size: 12px; margin-left: 10px;">
+        <input type="checkbox" id="wsLoggingCheckbox" checked>
+        WebSocket detailed logging
+      </label>
+      <div id="wsLogBox" style="display:none; margin-top:5px; overflow:auto; background:#111; color:#B7FFAC; font-family:monospace; font-size:12px; border:1px solid #444; padding:6px; border-radius:5px;">
+        WebSocket Log:<br>
+      </div>
+    </div>
+  </div>
+
+  <script src="drawflow-js.min.js"></script>
+  <script>
+    // ---- Time device for time/day-of-week conditions
+    const TIME_DEVICE = {
+      id: "__time__",
+      label: "Time",
+      name: "Time",
+      attributes: {
+        currentTime: "", // "HH:mm"
+        timeOfDay: ["sunrise", "sunset"],
+        dayOfWeek: [
+          "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+        ]
+      },
+      commands: []
+    };
+
+    const MODE_DEVICE = {
+      id: "__mode__",
+      label: "Location Mode",
+      name: "Mode",
+      attributes: { mode: ["Home", "Away", "Night", "Day"] }, // Edit to your real Hubitat modes
+      commands: ["setMode"]
+    };
+
+    function isValidFlowName(flowName) {
+      return /^[a-zA-Z0-9_-]+$/.test(flowName);
+    }
+
+    function nodeTileHtml(type, data) {
+      // Helper to look up the current value from your loaded devices
+      function getCurrentValue(deviceId, attr) {
+        const devs = window.devices || [];
+        const dev = devs.find(d => d.id == deviceId);
+        if (dev && dev.attributes && attr && dev.attributes[attr] !== undefined) {
+          return dev.attributes[attr];
+        }
+        return "";
+      }
+
+      const t = (type || "").toLowerCase();
+
+      if (t === "donothing") {
+        return `<div class="logic-node">Do Nothing</div>`;
+      }
+      if (t === "and") {
+        return `<div class="logic-node">AND</div>`;
+      }
+      if (t === "or") {
+        return `<div class="logic-node">OR</div>`;
+      }
+      if (t === "not") {
+        return `<div class="logic-node">NOT</div>`;
+      }
+      if (t === "delay") {
+        let label = data && data.ms ? `Delay ${data.ms} ms` : "Delay";
+        if (data && data.minutes) label = `Delay ${data.minutes} min`;
+        return `<div class="logic-node">${label}</div>`;
+      }
+      if (t === "delaymin") {
+        let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
+        return `<div class="logic-node">${label}</div>`;
+      }
+
+      // ---- Custom rendering for Time Virtual Device Nodes (for "condition" or "eventTrigger") ----
+      if ((type === "eventTrigger" || type === "condition") && data.deviceId === "__time__") {
+        let label = "Time";
+        let attr = data.attribute || '';
+        let cmp = data.comparator || '';
+        let val = data.value || '';
+        let offsetText = "";
+        if (attr === "timeOfDay" && (val === "sunrise" || val === "sunset")) {
+          let offset = parseInt(data.offsetMin) || 0;
+          offsetText = ` (${offset >= 0 ? "+" : ""}${offset} min)`;
+        }
+        let daysText = "";
+        if (data.selectedDays && data.selectedDays.length > 0) {
+          daysText = `<br><span style="font-size:11px">Days: ${data.selectedDays.join(", ")}</span>`;
+        }
+        return `<div>
+          ${type === "eventTrigger" ? "Event Trigger" : "Condition"}<br>
+          <span style="font-size:11px">
+            ${label} ${attr} ${cmp} ${val}${offsetText}<br><hr>
+          </span>
+          ${daysText}
+        </div>`;
+      }
+
+      // --- MULTI DEVICE TILE PATCH ---
+      if (type === "device") {
+        if (data.deviceId === "__mode__") {
+          let value = "";
+          if (Array.isArray(data.value)) value = data.value.join(", ");
+          else value = data.value || "";
+          return `<div>
+            <b>Location Mode</b><br>
+            <span style="font-size:11px">${data.command || ""} (${value})<br><hr></span>
+          </div>`;
+        }
+        // Show labels for multiple devices
+        let label = data.deviceLabel ||
+          (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId);
+        if (!label) label = "<i>Pick device(s)…</i>";
+        let cmd = data.command || "";
+        let val = data.value ? `(${data.value})` : "";
+
+        // Show current attribute values for all selected devices
+        const devs = window.devices || [];
+        let allAttrVals = "";
+        if (Array.isArray(data.deviceIds)) {
+          allAttrVals = data.deviceIds.map(id => {
+            const dev = devs.find(d => d.id == id);
+            if (!dev || !dev.attributes) return "";
+            return Object.entries(dev.attributes)
+              .map(([attr, value]) =>
+                `<div class="current-value">${dev.label || dev.name || id}: ${attr}: ${value}</div>`
+              ).join("");
+          }).join("");
+        } else {
+          const dev = devs.find(d => d.id == data.deviceId);
+          if (dev && dev.attributes) {
+            allAttrVals = Object.entries(dev.attributes)
+              .map(([attr, value]) =>
+                `<div class="current-value">Current ${attr}: ${value}</div>`
+              ).join("");
+          }
+        }
+
+        // --- Color preview for setColor command ---
+        let colorPreview = "";
+        if (cmd === "setColor" && data.color) {
+          colorPreview = `<div style="margin-top:4px;width:30px;height:14px;border-radius:5px;background:${data.color};border:1px solid #555;display:inline-block;"></div>`;
+        }
+
+        return `<div>Device<br>
+          <span style="font-size:11px">${label} ${cmd} ${val}<br><hr></span>
+          ${(data.showStatus !== false) ? allAttrVals : ""}
+          ${colorPreview}
+        </div>`;
+      }
+
+      // Fallback for normal eventTrigger or condition (non-Time)
+      if (type === "eventTrigger" || type === "condition") {
+        let label = (data.deviceLabel || data.deviceId || '');
+        let attribute = data.attribute || '';
+        let comparator = data.comparator || '';
+        let value = data.value ? '(' + data.value + ')' : '';
+
+        // Show current value for the selected attribute, with "current [attribute]: [value]" style
+        const devs = window.devices || [];
+        const dev = devs.find(d => d.id == data.deviceId);
+        let currentStr = "";
+        if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
+          currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
+        }
+        // For (minutes) display if set
+        let forMinutesStr = '';
+        if (
+            type === "eventTrigger" &&
+            data.sustainedMin &&
+            Number(data.sustainedMin) > 0
+        ) {
+            forMinutesStr = `<div class="current-value" style="color:#eec150">For ${data.sustainedMin} min</div>`;
+        }
+
+        return `<div>
+            ${type === "eventTrigger" ? "Event Trigger" : "Condition"}<br>
+            <span style="font-size:11px">
+            ${label} ${attribute} ${comparator} ${value}<br><hr>
+            </span>
+            ${forMinutesStr}
+            ${currentStr}
+        </div>`;
+      }
+    }
+
+    function updateTileHtml(node) {
+      if (editor && typeof editor.updateNodeHtmlFromId === "function") {
+        editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      function rememberInput(inputId, storageKey) {
+        const el = document.getElementById(inputId);
+        if (localStorage.getItem(storageKey)) {
+          el.value = localStorage.getItem(storageKey);
+        }
+        el.addEventListener("input", function() {
+          localStorage.setItem(storageKey, el.value.trim());
+        });
+      }
+
+      rememberInput("hubitatAppId", "hubitatAppId");
+      rememberInput("hubitatToken", "hubitatToken");
+      rememberInput("makerApiUrl", "makerApiUrl");
+
+      document.getElementById("flowName").value = "";
+
+      function wsLog(msg, type = "info") {
+        const wsLogBox = document.getElementById("wsLogBox");
+        if (wsLogBox) {
+          let color = "#B7FFAC";
+          if (type === "error") color = "#ffb6b6";
+          wsLogBox.innerHTML += `<span style="color:${color}">${msg}</span><br>`;
+          wsLogBox.scrollTop = wsLogBox.scrollHeight;
+        }
+      }
+
+      document.getElementById("toggleWsLog").onclick = function() {
+        const box = document.getElementById("wsLogBox");
+        if (box.style.display === "none") {
+          box.style.display = "";
+          this.innerHTML = "Hide WebSocket Log ▲";
+        } else {
+          box.style.display = "none";
+          this.innerHTML = "Show WebSocket Log ▼";
+        }
+      };
+
+      function logAction(msg, type = "info") {
+        const logBox = document.getElementById("logBox");
+        if (logBox) {
+          logBox.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
+          logBox.scrollTop = logBox.scrollHeight;
+        }
+      }
+
+      let devices = [];
+      let ws;
+
+      function patchFlowWithDeviceLabels(flow, devices) {
+        if (
+          !flow ||
+          !flow.drawflow ||
+          !flow.drawflow.drawflow ||
+          !flow.drawflow.drawflow.Home ||
+          !flow.drawflow.drawflow.Home.data
+        ) return;
+        Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
+          if (
+            ["device", "condition", "eventTrigger"].includes(node.name) &&
+            node.data &&
+            node.data.deviceId
+          ) {
+            let dev = devices.find(d => d.id == node.data.deviceId);
+            if (dev) {
+              node.data.deviceLabel = dev.label || dev.name || node.data.deviceId;
+            } else {
+              node.data.deviceLabel = node.data.deviceId;
+            }
+          }
+        });
+      }
+
+      const ATTRIBUTE_KNOWN_VALUES = {
+        "contact":        ["open", "closed"],
+        "switch":         ["on", "off"],
+        "door":           ["open", "closed", "unknown"],
+        "lock":           ["locked", "unlocked", "unknown"],
+        "motion":         ["active", "inactive"],
+        "presence":       ["present", "not present"],
+        "water":          ["wet", "dry"],
+        "smoke":          ["clear", "detected", "tested"],
+        "carbonMonoxide": ["clear", "detected", "tested"],
+        "acceleration":   ["active", "inactive"],
+        "tamper":         ["clear", "detected"],
+        "shade":          ["open", "closed", "partially open", "unknown"],
+        "windowShade":    ["open", "closed", "partially open", "unknown"],
+        "thermostatMode": [
+          "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
+        ],
+        "thermostatOperatingState": [
+          "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
+        ],
+        "thermostatFanMode": [
+          "auto", "on", "circulate"
+        ],
+        "alarm":          ["off", "strobe", "siren", "both"],
+        "valve":          ["open", "closed"],
+        "button":         ["pushed", "held", "doubleTapped", "released"],
+        "temperature":    [],
+        "humidity":       [],
+        "illuminance":    [],
+        "energy":         [],
+        "power":          [],
+        "level":          []
+      };
+
+      function getSortedDevicesWithSpecials(devices) {
+        const timeDevice = devices.find(d => d.id === "__time__");
+        const modeDevice = devices.find(d => d.id === "__mode__");
+        const realDevices = devices
+          .filter(d => d.id !== "__time__" && d.id !== "__mode__")
+          .slice()
+          .sort((a, b) => {
+            const aLabel = (a.label || a.name || a.id || "").toLowerCase();
+            const bLabel = (b.label || b.name || b.id || "").toLowerCase();
+            if (aLabel < bLabel) return -1;
+            if (aLabel > bLabel) return 1;
+            return 0;
+          });
+        const arr = [];
+        if (timeDevice) arr.push(timeDevice);
+        if (modeDevice) arr.push(modeDevice);
+        arr.push(...realDevices);
+        return arr;
+      }
+
+      function renderEditor(node) {
+        if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
+        const el = document.getElementById("nodeEditor");
+        el.innerHTML = "";
+
+        // DEVICE NODE (Action)
+        if (node.name === "device") {
+          if (!devices || devices.length === 0) {
+            el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
+            return;
+          }
+
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device(s)";
+          el.appendChild(devLabel);
+
+          const devSelect = document.createElement("select");
+          devSelect.multiple = true;
+          devSelect.size = Math.min(10, devices.length);
+          devSelect.style.width = "98%";
+
+          // **THIS FIXES IT:**
+          const selectedIds = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds
+            : node.data.deviceId
+              ? [node.data.deviceId]
+              : [];
+
+          // ...now populate the dropdown as before...
+          getSortedDevicesWithSpecials(devices).forEach((d, i) => {
+            if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
+              // Divider line
+              const divider = document.createElement("option");
+              divider.disabled = true;
+              divider.textContent = "───────────────";
+              divider.style.background = "#444";
+              devSelect.appendChild(divider);
+            }
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.label;
+            if (selectedIds.includes(d.id)) opt.selected = true;
+            devSelect.appendChild(opt);
+          });
+
+          devSelect.onchange = () => { /* ... */ };
+          el.appendChild(devSelect);
+
+          devSelect.onchange = () => {
+            const selected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = selected;
+            node.data.deviceId = selected.length === 1 ? selected[0] : ""; // For compatibility
+            // Set deviceLabel for display on tile
+            const labels = selected.map(id => {
+              const dev = devices.find(d => d.id == id);
+              return dev ? (dev.label || dev.name || id) : id;
+            });
+            node.data.deviceLabel = labels.join(", ");
+            // Clear attribute/command/value if selection changed (to prevent stale data)
+            node.data.attribute = "";
+            node.data.command = "";
+            node.data.value = "";
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            renderEditor(node);
+          };
+
+          // Find all selected devices (for multi-select)
+          const selectedDevices = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+            : node.data.deviceId
+              ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+              : [];
+
+          // Handle Time and Mode special devices separately
+          if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
+            el.appendChild(document.createElement("br"));
+            el.appendChild(document.createTextNode("This is a time trigger/action node."));
+            return;
+          }
+          if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
+            const cmdLabel = document.createElement("label");
+            cmdLabel.textContent = "Command";
+            el.appendChild(cmdLabel);
+            const cmd = document.createElement("select");
+            ["setMode"].forEach(cmdName => {
+              const opt = document.createElement("option");
+              opt.value = cmdName;
+              opt.textContent = cmdName;
+              if (node.data.command === cmdName) opt.selected = true;
+              cmd.appendChild(opt);
+            });
+            cmd.value = node.data.command || "";
+            cmd.onchange = () => {
+              node.data.command = cmd.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+              renderEditor(node);
+            };
+            el.appendChild(cmd);
+
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Mode";
+            el.appendChild(valueLabel);
+
+            const modes = MODE_DEVICE.attributes.mode;
+            const valInput = document.createElement("select");
+            valInput.innerHTML = `<option value="">Pick a mode…</option>` +
+              modes.map(mode => `<option value="${mode}" ${node.data.value === mode ? "selected" : ""}>${mode}</option>`).join('');
+            valInput.value = node.data.value || "";
+            valInput.onchange = () => {
+              node.data.value = valInput.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            };
+            el.appendChild(valInput);
+
+            return;
+          }
+
+          // --- STANDARD DEVICE NODE LOGIC (MULTI-DEVICE: only common attributes/commands) ---
+          // Find shared attributes/commands
+          let sharedAttributes = [];
+          let sharedCommands = [];
+          if (selectedDevices.length > 0) {
+            sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+            sharedCommands = Array.isArray(selectedDevices[0].commands)
+              ? selectedDevices[0].commands.slice()
+              : [];
+            for (let i = 1; i < selectedDevices.length; i++) {
+              // Attributes: intersection
+              sharedAttributes = sharedAttributes.filter(attr =>
+                Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+              );
+              // Commands: intersection
+              if (Array.isArray(selectedDevices[i].commands)) {
+                sharedCommands = sharedCommands.filter(cmd =>
+                  selectedDevices[i].commands.includes(cmd)
+                );
+              } else {
+                sharedCommands = [];
+              }
+            }
+          }
+
+          // --- Attribute picker ---
+          const attrLabel = document.createElement("label");
+          attrLabel.textContent = "Attribute";
+          el.appendChild(attrLabel);
+
+          const attrSelect = document.createElement("select");
+          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+            sharedAttributes.map(attr =>
+              `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+            ).join('');
+          attrSelect.value = node.data.attribute || "";
+          attrSelect.onchange = () => {
+            node.data.attribute = attrSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            renderEditor(node);
+          };
+          el.appendChild(attrSelect);
+
+          // --- Command picker ---
+          const cmdLabel = document.createElement("label");
+          cmdLabel.textContent = "Command";
+          el.appendChild(cmdLabel);
+
+          const cmdSelect = document.createElement("select");
+          cmdSelect.innerHTML = `<option value="">Pick a command…</option>` +
+            sharedCommands.map(cmd =>
+              `<option value="${cmd}" ${node.data.command == cmd ? "selected" : ""}>${cmd}</option>`
+            ).join('');
+          cmdSelect.value = node.data.command || "";
+          cmdSelect.onchange = () => {
+            node.data.command = cmdSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            renderEditor(node);
+          };
+          el.appendChild(cmdSelect);
+
+          // --- Value picker ---
+          const valLabel = document.createElement("label");
+          valLabel.textContent = "Value";
+          el.appendChild(valLabel);
+
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value (optional)";
+          valInput.value = node.data.value || "";
+          valInput.oninput = () => {
+            node.data.value = valInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          };
+          el.appendChild(valInput);
+
+          // --- Color picker for setColor ---
+          if (sharedCommands.includes("setColor") && node.data.command === "setColor") {
+            const colorLabel = document.createElement("label");
+            colorLabel.textContent = "Pick Color:";
+            colorLabel.style.display = "block";
+            colorLabel.style.marginTop = "8px";
+            el.appendChild(colorLabel);
+
+            const colorPreview = document.createElement("div");
+            colorPreview.style.width = "36px";
+            colorPreview.style.height = "20px";
+            colorPreview.style.border = "1px solid #555";
+            colorPreview.style.borderRadius = "7px";
+            colorPreview.style.marginBottom = "8px";
+            colorPreview.style.background = node.data.color || "#ff0000";
+            el.appendChild(colorPreview);
+
+            const pickrDiv = document.createElement("div");
+            pickrDiv.id = "pickr_" + node.id;
+            el.appendChild(pickrDiv);
+
+            setTimeout(() => {
+              if (window.pickrs && window.pickrs[node.id]) {
+                window.pickrs[node.id].destroyAndRemove();
+                delete window.pickrs[node.id];
+              }
+              if (!window.pickrs) window.pickrs = {};
+              window.pickrs[node.id] = Pickr.create({
+                el: pickrDiv,
+                theme: 'nano',
+                default: node.data.color || "#ff0000",
+                components: {
+                  preview: true,
+                  opacity: false,
+                  hue: true,
+                  interaction: {
+                    hex: true,
+                    input: true,
+                    save: true
+                  }
+                }
+              });
+              window.pickrs[node.id].on('save', (color, instance) => {
+                const hex = color.toHEXA().toString();
+                node.data.color = hex;
+                colorPreview.style.background = hex;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+              });
+              window.pickrs[node.id].on('change', (color, instance) => {
+                const hex = color.toHEXA().toString();
+                colorPreview.style.background = hex;
+              });
+            }, 100);
+          }
+          // --- Show/hide status tick box (for device nodes only!) ---
+          const showStatusWrap = document.createElement("div");
+          showStatusWrap.style.margin = "7px 0";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.id = "showStatus_" + node.id;
+          showStatusCheckbox.checked = node.data.showStatus !== false; // default true
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          };
+          const showStatusLabel = document.createElement("label");
+          showStatusLabel.setAttribute("for", "showStatus_" + node.id);
+          showStatusLabel.textContent = " Show device status on tile";
+          showStatusWrap.appendChild(showStatusCheckbox);
+          showStatusWrap.appendChild(showStatusLabel);
+          el.appendChild(showStatusWrap);
+          return;
+        }
+
+        // TRIGGER/CONDITION NODE (Location Mode is MULTI-SELECT here!)
+        if (node.name === "condition" || node.name === "eventTrigger") {
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device";
+          el.appendChild(devLabel);
+          const devSelect = document.createElement("select");
+          devSelect.innerHTML = `<option value="">Pick a device…</option>` +
+            getSortedDevicesWithSpecials(devices).map((d, i) => {
+              let line = "";
+              if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
+                line = `<option disabled style="background:#444;height:2px;border-bottom:1.5px solid #666;">───────────────</option>`;
+              }
+              return (
+                line +
+                `<option value="${d.id}" ${node.data.deviceId == d.id ? "selected" : ""}>${d.label}</option>`
+              );
+            }).join('');
+          devSelect.value = node.data.deviceId || "";
+          devSelect.onchange = () => {
+            node.data.deviceId = devSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            renderEditor(node);
+          };
+          el.appendChild(devSelect);
+
+          const selectedDevice = devices.find(d => d.id == node.data.deviceId);
+
+          // MODE SPECIAL CASE (MULTI-SELECT for triggers/conditions)
+          if (selectedDevice && selectedDevice.id === "__mode__") {
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            el.appendChild(attrLabel);
+            const attr = document.createElement("select");
+            ["mode"].forEach(attrName => {
+              const opt = document.createElement("option");
+              opt.value = attrName;
+              opt.textContent = attrName;
+              if (node.data.attribute === attrName) opt.selected = true;
+              attr.appendChild(opt);
+            });
+            attr.value = node.data.attribute || "mode";
+            attr.onchange = () => {
+              node.data.attribute = attr.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+              renderEditor(node);
+            };
+            el.appendChild(attr);
+
+            const cmpLabel = document.createElement("label");
+            cmpLabel.textContent = "Comparator";
+            el.appendChild(cmpLabel);
+            const cmp = document.createElement("select");
+            const cmps = [
+              { val: "==", label: "equals (==)" },
+              { val: "!=", label: "not equals (!=)" }
+            ];
+            cmps.forEach(optdata => {
+              const opt = document.createElement("option");
+              opt.value = optdata.val;
+              opt.textContent = optdata.label;
+              if (node.data.comparator === optdata.val) opt.selected = true;
+              cmp.appendChild(opt);
+            });
+            if (!node.data.comparator) node.data.comparator = "==";
+            cmp.onchange = () => {
+              node.data.comparator = cmp.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            };
+            el.appendChild(cmp);
+
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Mode";
+            el.appendChild(valueLabel);
+
+            const modes = MODE_DEVICE.attributes.mode;
+            const valInput = document.createElement("select");
+            valInput.multiple = true;
+            valInput.size = Math.min(6, modes.length);
+
+            const selectedModes = Array.isArray(node.data.value)
+              ? node.data.value
+              : node.data.value
+                ? [node.data.value]
+                : [];
+
+            valInput.innerHTML = modes.map(mode =>
+              `<option value="${mode}" ${selectedModes.includes(mode) ? "selected" : ""}>${mode}</option>`
+            ).join('');
+
+            valInput.onchange = () => {
+              const selected = Array.from(valInput.selectedOptions).map(opt => opt.value);
+              node.data.value = selected;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            };
+            el.appendChild(valInput);
+            return;
+          }
+
+          // STANDARD TRIGGER/CONDITION NODE LOGIC
+          const attrLabel = document.createElement("label");
+          attrLabel.textContent = "Attribute";
+          el.appendChild(attrLabel);
+          const attrSelect = document.createElement("select");
+          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+            (selectedDevice && selectedDevice.attributes
+              ? Object.keys(selectedDevice.attributes).map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`).join('')
+              : '');
+          attrSelect.value = node.data.attribute || "";
+          attrSelect.onchange = () => {
+            node.data.attribute = attrSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+            renderEditor(node);
+          };
+          el.appendChild(attrSelect);
+
+          const cmpLabel = document.createElement("label");
+          cmpLabel.textContent = "Comparator";
+          el.appendChild(cmpLabel);
+          const cmp = document.createElement("select");
+          const cmps = [
+            { val: "==", label: "equals (==)" },
+            { val: "!=", label: "not equals (!=)" },
+            { val: "<", label: "less than (<)" },
+            { val: "<=", label: "less than or equal (<=)" },
+            { val: ">", label: "greater than (>)" },
+            { val: ">=", label: "greater than or equal (>=)" },
+            { val: "contains", label: "contains" },
+            { val: "!contains", label: "not contains" }
+          ];
+          cmps.forEach(optdata => {
+            const opt = document.createElement("option");
+            opt.value = optdata.val;
+            opt.textContent = optdata.label;
+            if (node.data.comparator === optdata.val) opt.selected = true;
+            cmp.appendChild(opt);
+          });
+          if (!node.data.comparator) node.data.comparator = "==";
+          cmp.onchange = () => {
+            node.data.comparator = cmp.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          };
+          el.appendChild(cmp);
+
+          const valLabel = document.createElement("label");
+          valLabel.textContent = "Value";
+          el.appendChild(valLabel);
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value";
+          valInput.value = node.data.value || "";
+          valInput.oninput = () => {
+            node.data.value = valInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          };
+          el.appendChild(valInput);
+
+          // --- Show/hide status tick box ---
+          const showStatusWrap = document.createElement("div");
+          showStatusWrap.style.margin = "7px 0";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.id = "showStatus_" + node.id;
+          showStatusCheckbox.checked = node.data.showStatus !== false; // default true
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          };
+          const showStatusLabel = document.createElement("label");
+          showStatusLabel.setAttribute("for", "showStatus_" + node.id);
+          showStatusLabel.textContent = " Show device status on tile";
+          showStatusWrap.appendChild(showStatusCheckbox);
+          showStatusWrap.appendChild(showStatusLabel);
+          el.appendChild(showStatusWrap);
+          return;
+        }
+      }
+
+      const editor = new Drawflow(document.getElementById("drawflow"));
+      editor.reroute = true;
+      editor.start();
+
+      if (typeof Drawflow !== "undefined" && !Drawflow.prototype.updateNodeHtmlFromId) {
+        Drawflow.prototype.updateNodeHtmlFromId = function(id, html) {
+          let selector = "#node-" + id;
+          if (typeof id === "string" && id.startsWith("node-")) {
+           selector = "#" + id;
+          }
+          const nodeDiv = this.container.querySelector(selector + " .drawflow_content_node");
+          if (nodeDiv) nodeDiv.innerHTML = html;
+        }
+      }
+
+      editor.on("nodeSelected", function (id) {
+        editor.selected_id = id;
+        renderEditor(editor.getNodeFromId(id));
+      });
+
+      document.getElementById("drawflow").addEventListener("click", function(e) {
+        if (!e.target.closest(".drawflow-node")) {
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          editor.selected_id = null;
+        }
+      });
+
+      document.getElementById("addDevice").onclick = () => {
+        logAction("addDevice button clicked.");
+        editor.addNode("device", 1, 1, 100, 100, "device", {
+          deviceId: "", attribute: "", command: "", value: ""
+        }, nodeTileHtml("device", { deviceId: "", command: "", value: "" }));
+        logAction("addDevice finished.");
+      };
+
+      document.getElementById("addCondition").onclick = () => {
+        logAction("addCondition button clicked.");
+        editor.addNode("condition", 1, 2, 200, 200, "condition", {
+          deviceId: "", attribute: "", value: "", comparator: "=="
+        }, nodeTileHtml("condition", { deviceId: "", attribute: "", comparator: "==", value: "" }), undefined, { outputs: ["true", "false"] });
+        logAction("addCondition finished.");
+      };
+
+      document.getElementById("addTrigger").onclick = () => {
+        logAction("addTrigger button clicked.");
+        editor.addNode("eventTrigger", 0, 1, 50, 50, "eventTrigger", {
+          deviceId: "", attribute: "", value: "", comparator: "=="
+        }, nodeTileHtml("eventTrigger", { deviceId: "", attribute: "", comparator: "==", value: "" }));
+        logAction("addTrigger finished.");
+      };
+
+      document.getElementById("addLogicAND").onclick = () => {
+        editor.addNode("AND", 2, 2, 300, 100, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
+      };
+      document.getElementById("addLogicOR").onclick = () => {
+        editor.addNode("OR", 2, 2, 350, 100, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
+      };
+      document.getElementById("addLogicNOT").onclick = () => {
+        editor.addNode("NOT", 1, 2, 400, 100, "NOT", {}, nodeTileHtml("NOT", {}), undefined, { outputs: ["true", "false"] });
+      };
+
+      document.getElementById("addDoNothing").onclick = () => {
+        editor.addNode(
+          "doNothing", 
+          1, 1, 600, 100, 
+          "doNothing", 
+          {}, 
+          '<div class="logic-node">Do Nothing</div>'
+        );
+      };
+
+      document.getElementById("addDelay").onclick = () => {
+        editor.addNode("delay", 1, 1, 500, 100, "delay", {
+          delayMs: 1000
+        }, nodeTileHtml("delay", { delayMs: 1000 }));
+      };
+      document.getElementById("addDelayMin").onclick = () => {
+        editor.addNode("delayMin", 1, 1, 550, 100, "delayMin", {
+          delayMin: 1
+        }, nodeTileHtml("delayMin", { delayMin: 1 }));
+      };
+
+      document.getElementById("newFlow").onclick = () => {
+        if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
+          editor.clear();
+          document.getElementById("flowName").value = "";
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          logAction("Started a new flow (all nodes cleared).");
+        }
+      };
+
+      async function fetchHubitatFiles() {
+        try {
+          const url = document.getElementById("makerApiUrl").value.trim();
+          const token = document.getElementById("hubitatToken").value.trim();
+          const appId = document.getElementById("hubitatAppId").value.trim();
+
+          const base = url.split("/apps/api")[0];
+          const listFileUrl = `${base}/apps/api/${appId}/listFiles?access_token=${token}`;
+          const res = await fetch(listFileUrl);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          return data.files || [];
+        } catch (e) {
+          logAction("Failed to fetch file list: " + e.message, "error");
+          return [];
+        }
+      }
+
+      async function fetchHubitatFileContent(fileName) {
+        const url = document.getElementById("makerApiUrl").value.trim();
+        const base = url.split("/apps/api")[0];
+        const fileUrl = base + "/local/" + encodeURIComponent(fileName);
+        try {
+          const response = await fetch(fileUrl);
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return await response.json();
+        } catch (e) {
+          logAction("Failed to fetch file content: " + e.message, "error");
+          throw e;
+        }
+      }
+
+      // ---- REFRESH ALL TILES BUTTON ----
+      document.getElementById("refreshAllTiles").onclick = function() {
+        const data = editor.drawflow.drawflow.Home?.data;
+        console.log("Drawflow nodes data:", data);
+
+        if (!data || Object.keys(data).length === 0) {
+          logAction("No flow loaded. Nothing to refresh.", "error");
+          return;
+        }
+
+        Object.values(data).forEach(node => {
+          if (["device", "condition", "eventTrigger"].includes(node.name) && node.data && node.data.deviceId) {
+            let dev = devices.find(d => d.id == node.data.deviceId);
+            node.data.deviceLabel = dev ? (dev.label || dev.name || node.data.deviceId) : node.data.deviceId;
+          }
+          if (editor && typeof editor.updateNodeHtmlFromId === "function") {
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data));
+          }
+        });
+        logAction("All node tiles refreshed.");
+      };
+
+      // ---- After Importing a Flow, Refresh All Tiles ----
+      document.getElementById("loadFlowFromHubitatDropdown").onclick = async function() {
+        const button = this;
+        const dropdown = document.getElementById("hubitatFileDropdown");
+
+        button.style.display = "none";
+        dropdown.style.display = "inline-block";
+        dropdown.innerHTML = "<option>Loading...</option>";
+
+        const files = await fetchHubitatFiles();
+        dropdown.innerHTML = "";
+        if (files.length === 0) {
+          dropdown.innerHTML = "<option>No .json files found</option>";
+          return;
+        }
+        dropdown.innerHTML = "<option value=''>Pick a flow file…</option>";
+        files.forEach(f => {
+          const opt = document.createElement("option");
+          opt.value = f;
+          opt.textContent = f;
+          dropdown.appendChild(opt);
+        });
+
+        dropdown.onchange = async function() {
+          const fileName = dropdown.value;
+          if (!fileName) return;
+          logAction("Loading from Hubitat File Manager: " + fileName + " ...");
+          try {
+            const data = await fetchHubitatFileContent(fileName);
+            editor.import(data);
+            if (data.flowName) document.getElementById("flowName").value = data.flowName;
+            // ---- Auto-refresh tiles after import
+            document.getElementById("refreshAllTiles").click();
+            logAction("Loaded flow from Hubitat File Manager: " + fileName);
+          } catch (e) {
+            logAction("Error loading from Hubitat File Manager: " + e.message, "error");
+          }
+          dropdown.style.display = "none";
+          button.style.display = "inline-block";
+          dropdown.value = "";
+        };
+
+        dropdown.onblur = function() {
+          setTimeout(() => {
+            dropdown.style.display = "none";
+            button.style.display = "inline-block";
+            dropdown.value = "";
+          }, 200);
+        };
+      };
+
+      document.getElementById("loadDevices").onclick = () => {
+        logAction("loadDevices button clicked.");
+        const url = document.getElementById("makerApiUrl").value.trim();
+        fetch(url)
+          .then(r => {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+          })
+          .then(data => {
+            const promises = data.map(d =>
+              fetch(url.replace("/devices", "/devices/" + d.id))
+                .then(r => {
+                  if (!r.ok) throw new Error("Device fetch HTTP " + r.status);
+                  return r.json();
+                })
+            );
+            Promise.all(promises)
+              .then(fullDevices => {
+                fullDevices.forEach(d => {
+                  fullDevices.forEach(d => {
+                    if (Array.isArray(d.attributes)) {
+                      const attrMap = {};
+                      d.attributes.forEach(a => attrMap[a.name] = a.currentValue);
+                      d.attributes = attrMap;
+                    }
+                  });
+                  if (Array.isArray(d.attributes)) {
+                    const attrMap = {};
+                    d.attributes.forEach(a => attrMap[a.name] = a.currentValue);
+                    d.attributes = attrMap;
+                  }
+                });
+                devices = fullDevices;
+                window.devices = devices;
+                devices.push(TIME_DEVICE);
+                devices.push(MODE_DEVICE);
+                if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+                  Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
+                  if (editor.selected_id) {
+                    renderEditor(editor.getNodeFromId(editor.selected_id));
+                  } 
+                }
+                logAction("Devices loaded: " + devices.length);
+              })
+              .catch(err => {
+                logAction("Device detail load error: " + err.message, "error");
+              });
+          })
+          .catch(err => {
+            logAction("Failed to load device list: " + err.message, "error");
+          });
+        logAction("loadDevices finished.");
+        setTimeout(setupWS, 1200);
+      };
+
+      document.getElementById("sendFlow").onclick = async () => {
+        logAction("sendFlow button clicked.");
+
+        const flowName = document.getElementById("flowName").value.trim();
+        if (!flowName) {
+          logAction("Enter the Flow Name!", "error");
+          return;
+        }
+        if (!isValidFlowName(flowName)) {
+          logAction("Flow Name can only use letters, numbers, dash (-), or underscore (_). No spaces or special characters allowed.", "error");
+          return;
+        }
+
+        const flowExport = editor.export();
+        patchFlowWithDeviceLabels(flowExport, devices);
+        flowExport.flowName = flowName;
+
+        const url = document.getElementById("makerApiUrl").value.trim();
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        if (!url || !token || !appId) {
+          logAction("Enter the Maker API URL, Token, and App ID!", "error");
+          return;
+        }
+
+        let base = url.replace(/\/devices.*$/i, "").replace(/\/apps\/api.*$/i, "");
+        const endpoint = `${base}/apps/api/${appId}/runFlow?access_token=${token}`;
+
+        try {
+          logAction("Sending flow to Hubitat app...");
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(flowExport)
+          });
+          if (response.ok) {
+            const respText = await response.text();
+            logAction("Flow sent to Hubitat successfully: " + respText);
+          } else {
+            logAction("Hubitat error: " + await response.text(), "error");
+          }
+        } catch (err) {
+          logAction("Error sending flow to Hubitat: " + err.message, "error");
+        }
+      };
+
+      function setupWS() {
+        const url = document.getElementById("makerApiUrl").value.trim();
+        if (!url) return;
+        const hubIP = url.split("/")[2];
+        wsLogBox.innerHTML += `<span style="color:#aaa">Attempting WebSocket connection to ws://${hubIP}/eventsocket</span><br>`;
+        if (ws) ws.close();
+
+        ws = new WebSocket("ws://" + hubIP + "/eventsocket");
+
+        ws.onopen = () => {
+          logAction("WebSocket connected!");
+          wsLog("WebSocket connected!");
+        };
+
+        ws.onmessage = (msg) => {
+          const wsDetailed = document.getElementById("wsLoggingCheckbox").checked;
+          if (wsDetailed) wsLog("Message: " + msg.data);
+        };
+
+        ws.onerror = (err) => {
+          logAction("WebSocket error: " + err.message, "error");
+          wsLog("WebSocket error: " + err.message, "error");
+        };
+        ws.onclose = () => {
+          logAction("WebSocket closed. Reload devices to reconnect.", "error");
+          wsLog("WebSocket closed.", "error");
+        };
+      }
+
+      const testBtn = document.getElementById("testTile");
+
+      testBtn.onclick = async function() {
+        // --- VISUAL CLICK EFFECT ---
+        testBtn.style.background = "#155ea9";
+        testBtn.style.boxShadow = "0 0 10px #27a0f7";
+        testBtn.style.transform = "scale(0.96)";
+        testBtn.disabled = true;
+
+        setTimeout(() => {
+          testBtn.style.background = "#1985d0";
+          testBtn.style.boxShadow = "";
+          testBtn.style.transform = "";
+          testBtn.disabled = false;
+        }, 350); // keep the "pressed" look for 350ms
+
+        // ---- EXISTING LOGIC ----
+        const selectedId = editor.selected_id;
+        if (!selectedId) {
+          alert("No node selected! Click a tile to select it first.");
+          return;
+        }
+        const node = editor.getNodeFromId(selectedId);
+        if (!node) {
+          alert("Selected node not found.");
+          return;
+        }
+
+        // Build test payload
+        const testData = {
+          node: node,
+          devices: window.devices || []
+        };
+
+        // Get Hubitat info
+        const urlBase = document.getElementById("makerApiUrl").value.trim().replace(/\/devices.*$/i, "").replace(/\/apps\/api.*$/i, "");
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+
+        if (!urlBase || !token || !appId) {
+          alert("Fill in Maker API URL, Token, and App ID first!");
+          return;
+        }
+
+        const testUrl = `${urlBase}/apps/api/${appId}/testTile?access_token=${token}`;
+
+        try {
+          const resp = await fetch(testUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(testData)
+          });
+          const text = await resp.text();
+          document.getElementById("logBox").innerHTML += `<div style="color:#19b;">TestTile: ${text}</div>`;
+        } catch (err) {
+          document.getElementById("logBox").innerHTML += `<div style="color:#f66;">TestTile error: ${err}</div>`;
+        }
+      };
+    });
+  </script>
+</body>
+</html>
