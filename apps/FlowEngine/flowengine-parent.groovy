@@ -124,6 +124,7 @@ mappings {
 	path("/listFiles") 	 { action: [GET: "apiListFiles"] }
     path("/getFile")  	 { action: [GET: "apiGetFile"] }
 	path("/testTile") 	 { action: [POST: "testTileHandler"] }
+	path("/devices")     { action: [GET: "apiGetDevices"] }
 }
 
 def handleFlow() {
@@ -141,6 +142,30 @@ def handleFlow() {
     }
 }
 
+def apiGetDevices() {
+    // Only allow with token
+    if (!state.accessToken || params.access_token != state.accessToken) {
+        render status: 401, text: "Unauthorized"
+        return
+    }
+    def output = []
+    masterDeviceList?.each { dev ->
+        output << [
+            id: dev.id,
+            label: dev.displayName ?: dev.label ?: dev.name,
+            name: dev.name,
+            attributes: dev.supportedAttributes?.collect { attr ->
+                [
+                    name: attr.name,
+                    currentValue: dev.currentValue(attr.name)
+                ]
+            } ?: [],
+            commands: dev.supportedCommands?.collect { it.name } ?: []
+        ]
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(output)
+}
+
 void saveFlow(fName, fData) {
     if(logEnable) log.debug "Saving to file - ${fName}"
 	String listJson = JsonOutput.toJson(fData) as String
@@ -148,44 +173,39 @@ void saveFlow(fName, fData) {
 }
 
 def apiGetFile() {
-	log.debug "In apiGetFile"
+    log.debug "In apiGetFile"
     def name = params.name
     if (!name) {
-		log.debug "In apiGetFile - Missing file name"
+        log.debug "In apiGetFile - Missing file name"
         render status: 400, text: "Missing file name"
         return
     }
     def fileData = null
     try {
-        // Try with slash
-        try {
-			log.debug "In apiGetFile - with slash"
-            fileData = location.hub.fileGet("/" + name)
-        } catch (e) {
-            // Try without slash
-			log.debug "In apiGetFile - without slash"
-            fileData = location.hub.fileGet(name)
+        def url = "http://${location.hub.localIP}:8080/local/${name}"
+        log.debug "Fetching file via httpGet: ${url}"
+        httpGet([uri: url, contentType: 'text/plain']) { resp ->
+            fileData = resp.data?.text
         }
         if (!fileData) {
-			log.debug "In apiGetFile - File not found"
-            render status: 404, text: "File not found"
+            log.debug "In apiGetFile - File not found or empty"
+            render status: 404, text: "File not found or empty"
             return
         }
-        // Try to parse as JSON and return as JSON if possible
         try {
-			log.debug "In apiGetFile - trying to read file"
             def obj = new groovy.json.JsonSlurper().parseText(fileData)
             render contentType: "application/json", data: groovy.json.JsonOutput.toJson(obj)
         } catch (ex) {
-            // Not valid JSON? Just return as text
-			log.debug "In apiGetFile - returning as text"
+            log.debug "In apiGetFile - returning as text"
             render contentType: "text/plain", text: fileData
         }
     } catch (e) {
-		log.debug "In apiGetFile - 500 error: ${e}"
+        log.debug "In apiGetFile - 500 error: ${e}"
         render status: 500, text: "Error: ${e}"
     }
 }
+
+
 
 def apiListFiles() {
     if(logEnable) log.debug "Getting list of files"
