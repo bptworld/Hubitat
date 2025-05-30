@@ -890,6 +890,35 @@
       }
 
       const editor = new Drawflow(document.getElementById("drawflow"));
+      // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
+      if (!editor.moveNodeTo) {
+        editor.moveNodeTo = function(nodeId, x, y) {
+          // Robustly find the Home flow data
+          let home = this.drawflow && this.drawflow.Home
+            ? this.drawflow.Home
+            : this.drawflow && this.drawflow.drawflow && this.drawflow.drawflow.Home
+              ? this.drawflow.drawflow.Home
+              : null;
+          if (!home || !home.data) return;
+
+          const node = home.data[nodeId];
+          if (!node) return;
+          node.pos_x = x;
+          node.pos_y = y;
+
+          // Move the actual HTML node in the DOM
+          const htmlNode = document.getElementById("node-" + nodeId);
+          if (htmlNode) {
+            htmlNode.style.left = x + "px";
+            htmlNode.style.top = y + "px";
+          }
+
+          // Also rerender lines
+          if (typeof this.updateConnectionNodes === "function") {
+            this.updateConnectionNodes(`node-${nodeId}`);
+          }
+        }
+      }
       editor.reroute = true;
       editor.start();
 
@@ -1032,6 +1061,19 @@
           }
         });
         logAction("All node tiles refreshed.");
+
+        // Nudge all nodes right by 1px
+        Object.values(data).forEach(node => {
+          editor.moveNodeTo(node.id, node.pos_x + 1, node.pos_y);
+        });
+
+        // Nudge all nodes back after a short delay
+        setTimeout(() => {
+          Object.values(data).forEach(node => {
+            editor.moveNodeTo(node.id, node.pos_x - 1, node.pos_y);
+          });
+          logAction("All connection lines redrawn (nudge).");
+        }, 30);
       };
 
       // ---- After Importing a Flow, Refresh All Tiles ----
