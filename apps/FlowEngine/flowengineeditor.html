@@ -1305,6 +1305,15 @@
       document.getElementById("loadDevices").onclick = async () => {
         logAction("loadDevices button clicked.");
         devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
         window.devices = devices;
         // (add specials)
         devices.push(TIME_DEVICE);
