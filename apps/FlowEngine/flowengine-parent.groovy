@@ -329,6 +329,21 @@ def testTileHandler() {
             case "eventTrigger":
                 render contentType: "text/plain", data: "Test not implemented for eventTrigger (needs event context)."
                 return
+			case "notification":
+				def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [node.data.targetDeviceId]
+				def msg = node.data.message ?: "Test Notification"
+				ids.each { devId ->
+					def dev = masterDeviceList?.find { it.id == devId }
+					if (dev && node.data.notificationType == "push" && dev.hasCommand("deviceNotification")) {
+						dev.deviceNotification(msg)
+					}
+					if (dev && node.data.notificationType == "speech" && dev.hasCommand("speak")) {
+						dev.speak(msg)
+					}
+				}
+				render contentType: "text/plain", data: "Notification sent to device(s)"
+				return
+
             // Add other node types if you want
             default:
                 render contentType: "text/plain", data: "Node type ${node?.name} not supported for test."
