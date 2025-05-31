@@ -497,85 +497,85 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             return result
 
         case "device":
-                def devIds = []
-                if (node.data.deviceIds instanceof List) {
-                    devIds = node.data.deviceIds
-                } else if (node.data.deviceIds) {
-                    devIds = [node.data.deviceIds]
-                } else if (node.data.deviceId) {
-                    devIds = [node.data.deviceId]
-                }
-                def cmd = node.data.command
-                def val = node.data.value
-                def output = []
-		
-				// Handle Location Mode as action
-				if (devIds.size() == 1 && devIds[0] == "__mode__" && cmd == "setMode" && val) {
-					def modeObj = location.modes.find { it.name == val }
-					if (modeObj) {
-						setLocationMode(val)
-						render contentType: "text/plain", data: "Set location mode to ${val}"
-						return
-					} else {
-						render contentType: "text/plain", data: "Mode '${val}' not found"
-						return
-					}
+			def devIds = []
+			if (node.data.deviceIds instanceof List) {
+				devIds = node.data.deviceIds
+			} else if (node.data.deviceIds) {
+				devIds = [node.data.deviceIds]
+			} else if (node.data.deviceId) {
+				devIds = [node.data.deviceId]
+			}
+			def cmd = node.data.command
+			def val = node.data.value
+			def output = []
+
+			// Handle Location Mode as action
+			if (devIds.size() == 1 && devIds[0] == "__mode__" && cmd == "setMode" && val) {
+				def modeObj = location.modes.find { it.name == val }
+				if (modeObj) {
+					setLocationMode(val)
+					render contentType: "text/plain", data: "Set location mode to ${val}"
+					return
+				} else {
+					render contentType: "text/plain", data: "Mode '${val}' not found"
+					return
 				}
+			}
 
-                devIds.each { devId ->
-                    def device = parent.getDeviceById(devId)
-					if (device && cmd) {
-						if (cmd == "setColor" && node.data.color) {
-							// Convert hex to HSV or at least something the driver can use
-							def color = node.data.color
-							def rgb = color?.startsWith("#") ? color.substring(1) : color
-							if (rgb.size() == 6) {
-								def r = Integer.parseInt(rgb.substring(0,2),16) / 255.0
-								def g = Integer.parseInt(rgb.substring(2,4),16) / 255.0
-								def b = Integer.parseInt(rgb.substring(4,6),16) / 255.0
+			devIds.each { devId ->
+				def device = parent.getDeviceById(devId)
+				if (device && cmd) {
+					if (cmd == "setColor" && node.data.color) {
+						// Convert hex to HSV or at least something the driver can use
+						def color = node.data.color
+						def rgb = color?.startsWith("#") ? color.substring(1) : color
+						if (rgb.size() == 6) {
+							def r = Integer.parseInt(rgb.substring(0,2),16) / 255.0
+							def g = Integer.parseInt(rgb.substring(2,4),16) / 255.0
+							def b = Integer.parseInt(rgb.substring(4,6),16) / 255.0
 
-								def max = [r, g, b].max()
-								def min = [r, g, b].min()
-								def h, s, v
-								v = max
-								def d = max - min
-								s = max == 0 ? 0 : d / max
-								if (max == min) {
-									h = 0 // achromatic
-								} else if (max == r) {
-									h = (g - b) / d + (g < b ? 6 : 0)
-								} else if (max == g) {
-									h = (b - r) / d + 2
-								} else if (max == b) {
-									h = (r - g) / d + 4
-								}
-								h = h / 6
-
-								def hue = (h * 100).toInteger()
-								def sat = (s * 100).toInteger()
-								def lev = (v * 100).toInteger()
-								def colorMap = [hue: hue, saturation: sat, level: lev]
-								device.setColor(colorMap)
-								output << "Executed setColor on ${device.displayName} with ${colorMap}"
-							} else {
-								output << "Invalid color format: ${color}"
+							def max = [r, g, b].max()
+							def min = [r, g, b].min()
+							def h, s, v
+							v = max
+							def d = max - min
+							s = max == 0 ? 0 : d / max
+							if (max == min) {
+								h = 0 // achromatic
+							} else if (max == r) {
+								h = (g - b) / d + (g < b ? 6 : 0)
+							} else if (max == g) {
+								h = (b - r) / d + 2
+							} else if (max == b) {
+								h = (r - g) / d + 4
 							}
-						} else if (val != null && val != "") {
-							def arg = val
-							if (val.isInteger()) arg = val.toInteger()
-							else if (val.isDouble()) arg = val.toDouble()
-							device."${cmd}"(arg)
+							h = h / 6
+
+							def hue = (h * 100).toInteger()
+							def sat = (s * 100).toInteger()
+							def lev = (v * 100).toInteger()
+							def colorMap = [hue: hue, saturation: sat, level: lev]
+							device.setColor(colorMap)
+							output << "Executed setColor on ${device.displayName} with ${colorMap}"
 						} else {
-							device."${cmd}"()
+							output << "Invalid color format: ${color}"
 						}
-						output << "Executed ${cmd} on ${device.displayName} ${val ? "with value $val" : ""}"
-						if (logEnable) log.info "Device Action: ${device.displayName} (${device.id}) -- Command: ${cmd}${val ? ", Value: $val" : ""}"
+					} else if (val != null && val != "") {
+						def arg = val
+						if (val.isInteger()) arg = val.toInteger()
+						else if (val.isDouble()) arg = val.toDouble()
+						device."${cmd}"(arg)
+					} else {
+						device."${cmd}"()
 					}
-                }
-                node.outputs?.output_1?.connections?.each { conn ->
-        			evaluateNode(conn.node, evt, null, visited)
-   				}
-                return
+					output << "Executed ${cmd} on ${device.displayName} ${val ? "with value $val" : ""}"
+					if (logEnable) log.info "Device Action: ${device.displayName} (${device.id}) -- Command: ${cmd}${val ? ", Value: $val" : ""}"
+				}
+			}
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(conn.node, evt, null, visited)
+			}
+			return
 
         case "doNothing":
             if(logEnable) log.debug "----- In Do Nothing, node reached: $nodeId - doing nothing."
@@ -603,6 +603,21 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 				evaluateNode(conn.node, evt, null, visited)
 			}
             break
+		
+		case "notification":
+			def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [node.data.targetDeviceId]
+			def msg = node.data.message ?: "Test Notification"
+			ids.each { devId ->
+				def dev = masterDeviceList?.find { it.id == devId }
+				if (dev && node.data.notificationType == "push" && dev.hasCommand("deviceNotification")) {
+					dev.deviceNotification(msg)
+				}
+				if (dev && node.data.notificationType == "speech" && dev.hasCommand("speak")) {
+					dev.speak(msg)
+				}
+			}
+			render contentType: "text/plain", data: "Notification sent to device(s)"
+			return
 
         default:
             log.warn "Unknown node type: ${node.name}"
