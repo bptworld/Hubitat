@@ -143,6 +143,7 @@
       <button id="addLogicNOT">Add NOT</button>
       <button id="addDelay">Add Delay ms</button>
       <button id="addDelayMin">Add Delay min</button>
+      <button id="addNotification">Add Notification</button>
       <button id="addDoNothing">Add Do Nothing</button>
     </div>
   </div>
@@ -223,6 +224,27 @@
         return `<div class="logic-node">${label}</div>`;
       }
 
+      if (t === "notification") {
+        // Find the device label(s) from the device list
+        let devLabels = [];
+        let ids = Array.isArray(data.targetDeviceId) ? data.targetDeviceId : [data.targetDeviceId];
+        (ids || []).forEach(id => {
+          let dev = (window.devices || []).find(d => d.id == id);
+          if (dev) devLabels.push(dev.label || dev.name || dev.id);
+        });
+        let devLabelStr = devLabels.length ? devLabels.join(", ") : "<i>No device</i>";
+
+        let type = (data.notificationType === "speech") ? "Speech" : "Push";
+        let msg = data.message || "";
+        return `<div class="device-tile">
+          <b>${type} Notification</b><br>
+          <span style="font-size:11px">
+            Device: ${devLabelStr}<br>
+            ${msg ? `Message: "${msg}"<br>` : ""}
+          </span>
+        </div>`;
+      } 
+
       // ---- Custom rendering for Time Virtual Device Nodes (for "condition" or "eventTrigger") ----
       if (type === "eventTrigger" || type === "condition") {
         let isSelected = false;
@@ -231,18 +253,20 @@
         }
         let tileClass = (type === "condition" ? "condition-tile" : "trigger-tile") + (isSelected ? " selected" : "");
 
-        let label = (data.deviceLabel || data.deviceId || '');
+        // Always look up the device label from loaded devices:
+        const devs = window.devices || [];
+        const dev = devs.find(d => d.id == data.deviceId);
+        let label = dev ? (dev.label || dev.name || data.deviceId) : (data.deviceLabel || data.deviceId || '');
         let attribute = data.attribute || '';
         let comparator = data.comparator || '';
         let value = data.value ? '(' + data.value + ')' : '';
 
         // Show current value for the selected attribute, with "current [attribute]: [value]" style
-        const devs = window.devices || [];
-        const dev = devs.find(d => d.id == data.deviceId);
         let currentStr = "";
         if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
           currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
         }
+
         // For (minutes) display if set
         let forMinutesStr = '';
         if (
@@ -937,6 +961,149 @@
           el.appendChild(showStatusWrap);
           return;
         }
+
+        if (node.name === "delay") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<b>Delay (Milliseconds)</b><br><br>";
+
+          const msLabel = document.createElement("label");
+          msLabel.textContent = "Delay (ms): ";
+          el.appendChild(msLabel);
+
+          const msInput = document.createElement("input");
+          msInput.type = "number";
+          msInput.min = 1;
+          msInput.value = node.data.delayMs || 1000;
+          msInput.style.width = "80px";
+          msInput.oninput = () => {
+            node.data.delayMs = Number(msInput.value) || 1;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          el.appendChild(msInput);
+
+          return;
+        }
+
+        if (node.name === "delayMin") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<b>Delay (Minutes)</b><br><br>";
+
+          const minLabel = document.createElement("label");
+          minLabel.textContent = "Delay (minutes): ";
+          el.appendChild(minLabel);
+
+          const minInput = document.createElement("input");
+          minInput.type = "number";
+          minInput.min = 1;
+          minInput.value = node.data.delayMin || 1;
+          minInput.style.width = "60px";
+          minInput.oninput = () => {
+            node.data.delayMin = Number(minInput.value) || 1;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          el.appendChild(minInput);
+
+          return;
+        }
+
+        if (node.name === "notification") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<b>Notification Node</b><br><br>";
+
+          // Type selector
+          const typeLabel = document.createElement("label");
+          typeLabel.textContent = "Type";
+          el.appendChild(typeLabel);
+
+          const typeSelect = document.createElement("select");
+          ["push", "speech"].forEach(type => {
+            const opt = document.createElement("option");
+            opt.value = type;
+            opt.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            if (node.data.notificationType === type) opt.selected = true;
+            typeSelect.appendChild(opt);
+          });
+          typeSelect.value = node.data.notificationType || "push";
+          typeSelect.onchange = () => {
+            node.data.notificationType = typeSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            renderEditor(node); // rerender to update device dropdown label
+          };
+          el.appendChild(typeSelect);
+
+          // --- Device dropdown (filtered by capability) ---
+          const type = typeSelect.value || node.data.notificationType || "push";
+          const deviceLabel = document.createElement("label");
+          deviceLabel.textContent = (type === "speech") ? "Speaker Device" : "Notification Device";
+          el.appendChild(deviceLabel);
+
+          // Filter device list for Notification (push) or Speech
+          let filteredDevices = [];
+          if (type === "speech") {
+            // Find devices with Speech capability
+            filteredDevices = devices.filter(d =>
+              (d.commands && d.commands.includes("speak")) ||
+              (d.capabilities && d.capabilities.includes("SpeechSynthesis"))
+            );
+          } else {
+            // Find devices with Notification capability
+            filteredDevices = devices.filter(d =>
+              (d.commands && d.commands.includes("deviceNotification")) ||
+              (d.capabilities && d.capabilities.includes("Notification"))
+            );
+          }
+          // fallback: if none found, show all devices as an option (prevents blank dropdown)
+          if (filteredDevices.length === 0) filteredDevices = devices;
+          filteredDevices.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+          const devSelect = document.createElement("select");
+            devSelect.multiple = true;
+            devSelect.size = Math.min(8, filteredDevices.length); // Show up to 8
+
+            // Support both array and legacy string for selected devices
+            const selectedIds = Array.isArray(node.data.targetDeviceId)
+              ? node.data.targetDeviceId
+              : node.data.targetDeviceId
+                ? [node.data.targetDeviceId]
+                : [];
+
+            filteredDevices.forEach(d => {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
+            });
+
+            devSelect.onchange = () => {
+              // Save as array (supports multiple)
+              node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            };
+            el.appendChild(devSelect);
+
+          // --- Message input ---
+          const msgLabel = document.createElement("label");
+          msgLabel.textContent = "Message";
+          el.appendChild(msgLabel);
+
+          const msgInput = document.createElement("input");
+          msgInput.type = "text";
+          msgInput.placeholder = "Enter message";
+          msgInput.value = node.data.message || "";
+          msgInput.style.width = "98%";
+          msgInput.oninput = () => {
+            node.data.message = msgInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          el.appendChild(msgInput);
+
+          return;
+        }
       }
 
       const editor = new Drawflow(document.getElementById("drawflow"));
@@ -1072,6 +1239,16 @@
           });
         }, 100);
         logAction("addTrigger finished.");
+      };
+
+      document.getElementById("addNotification").onclick = () => {
+        logAction("addNotification button clicked.");
+        editor.addNode("notification", 1, 1, 160, 120, "notification", {
+          notificationType: "push", // default
+          targetDeviceId: "",
+          message: ""
+        }, nodeTileHtml("notification", { notificationType: "push", message: "" }));
+        logAction("addNotification finished.");
       };
 
       document.getElementById("addLogicAND").onclick = () => {
