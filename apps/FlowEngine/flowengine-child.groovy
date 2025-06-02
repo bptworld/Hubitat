@@ -78,24 +78,6 @@ def resolveNodeFields(data) {
     return result
 }
 
-def saveFlowVarsToFile() {
-    try {
-        def json = groovy.json.JsonOutput.toJson(state.flowVars)
-        def fileName = "vars.json"
-        def url = "http://${location.hub.localIP}:8080/uploadFile?name=${fileName}"
-        httpPost([
-            uri: url,
-            body: json,
-            requestContentType: "application/json"
-        ]) { resp ->
-            if (logEnable) log.info "Vars file updated: ${resp.status}"
-        }
-    } catch(e) {
-        log.error "Failed to save vars.json: $e"
-    }
-}
-// --- END VARIABLE SUPPORT ---
-
 preferences {
     page(name: "mainPage")
 }
@@ -189,27 +171,54 @@ def readAndParseVars() {
 }
 
 def setVariable(varName, varValue) {
-    // 1. Update state.flowVars (local vars only, not global)
-    def updated = false
+    def updatedGlobal = false
+    def updatedLocal = false
     state.flowVars = state.flowVars ?: []
+    state.globalVars = state.globalVars ?: []
+
+    // Check for global var, update if exists
+    state.globalVars.each { v ->
+        if (v.name == varName) {
+            v.value = varValue
+            updatedGlobal = true
+        }
+    }
+    // Check for local var, update if exists
     state.flowVars.each { v ->
         if (v.name == varName) {
             v.value = varValue
-            updated = true
+            updatedLocal = true
         }
     }
-    if (!updated) {
+    // Add new var if not found anywhere, default to local
+    if (!updatedGlobal && !updatedLocal) {
         state.flowVars << [name: varName, value: varValue]
+        updatedLocal = true
     }
 
-    // 2. Save to vars.json
-    saveFlowVarsToFile()
+    // Save files as needed
+    if (updatedLocal) saveFlowVarsToFile()
+    if (updatedGlobal) saveGlobalVarsToFile()
 
-    // 3. Update var context
+    // Update in-memory context for both
     state.vars = state.vars ?: [:]
     state.vars[varName] = varValue
     state.varCtx = state.varCtx ?: [:]
     state.varCtx[varName] = varValue
+}
+
+def saveFlowVarsToFile() {
+	if(logEnable) log.debug "In saveFlowVarsToFile - Saving vars.json"
+	def fName = "vars"
+	def fData = groovy.json.JsonOutput.toJson(state.flowVars)
+	parent.saveFlow(fName, fData)
+}
+
+def saveGlobalVarsToFile() {
+	if(logEnable) log.debug "In saveGlobalVarsToFile - Saving global_vars.json"
+	def fName = "global_vars"
+	def fData = groovy.json.JsonOutput.toJson(state.globalVars)
+	parent.saveFlow(fName, fData)
 }
 
 def readAndParseFlow() {
@@ -250,7 +259,7 @@ def subscribeToTriggers() {
                 scheduleTimeTrigger(id, node)
             } else if (node.data.deviceId == "__mode__") {
                 if (logEnable) log.debug "Subscribing to location mode changes"
-                subscribe(location, "mode", "handleEvent")
+                getRealDeviceData(devId, "subscribeToTriggers: nodeId=${id}, attr=${attr}")
             } else {
                 def devIds = []
                 if (node.data.deviceIds instanceof List && node.data.deviceIds) {
@@ -261,7 +270,7 @@ def subscribeToTriggers() {
                 def attr = node.data.attribute
                 devIds.each { devId ->
                     if (devId && attr) {
-                        getRealDeviceData(devId)
+                        getRealDeviceData(devId, "subscribeToTriggers: nodeId=${id}, attr=${attr}")
                         if (state.device) {
                             if (logEnable) log.debug "Subscribing to ${state.device.displayName} - ${attr}"
                             subscribe(state.device, attr, "handleEvent")
@@ -382,17 +391,25 @@ def handleScheduledTrigger(data) {
 }
 
 def handleEvent(evt) {
-    if(logEnable) log.info "------------------------ In handleEvent ------------------------"
-    if(logEnable) log.info "Triggered by ${evt.device.displayName} ${evt.name}=${evt.value}"
+    if(logEnable) {
+		def triggerDevName = evt?.device?.displayName ?: "Unknown Device"
+		log.info "------------------------ In handleEvent ------------------------"
+		log.info "Triggered by ${triggerDevName} ${evt?.name}=${evt?.value}"
+	}
     def triggerNodes = getTriggerNodes(evt)
     if (!triggerNodes) {
         log.warn "No trigger node found for this event."
         return
     }
     triggerNodes.each { triggerId, triggerNode ->
-        getRealDeviceData(triggerNode.data.deviceId)
+		def eventDeviceId = evt.device?.id?.toString()
+		getRealDeviceData(eventDeviceId, "handleEvent: triggerId=${triggerId}")
+        if (!state.device) {
+            if (logEnable) log.warn "Skipping trigger for missing device ID: ${triggerNode.data.deviceId}"
+            return // Skip this trigger node only
+        }
         def devName = state.device?.displayName ?: "Unknown Device"
-        if (logEnable) log.info "Trigger node matched: Node $triggerId (${devName} - ${evt.name}=${evt.value})"
+        if (logEnable) log.info "Trigger node matched: Node $triggerId (${devName} - ${evt?.name}=${evt?.value})"
         def forMin = (triggerNode.data.sustainedMin ?: 0) as Integer
         def expectedValue = triggerNode.data.value
         def comparator = triggerNode.data.comparator ?: "=="
@@ -400,7 +417,7 @@ def handleEvent(evt) {
         if (forMin > 0) {
             if (evaluateComparator(evt.value, expectedValue, comparator)) {
                 if (logEnable) log.info "Scheduling sustainedTriggerHandler for node ${triggerId} (${devName}) in ${forMin} min"
-                runIn(forMin * 60, "sustainedTriggerHandler", [data:[triggerId: triggerId, deviceId: evt.device.id, attribute: evt.name, value: evt.value]])
+                runIn(forMin * 60, "sustainedTriggerHandler", [data: [triggerId: triggerId, deviceId: evt?.device?.id, attribute: evt?.name, value: evt?.value]])
                 state.sustainedTimers = state.sustainedTimers ?: [:]
                 state.sustainedTimers[triggerId] = [startValue: evt.value, start: now()]
             } else {
@@ -613,10 +630,20 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 
             // Regular device/attribute condition
             if(logEnable) log.debug "----- In condition Regular device/attribute -----"
-            getRealDeviceData(node.data.deviceId)
-            def attrVal = state.device?.currentValue(node.data.attribute)
-            def passes = evaluateComparator(attrVal, resolveVars(node.data.value), node.data.comparator)
-            if (logEnable) log.debug "Condition node: device=${state.device.displayName}, CurrentVal=${attrVal}, ExpectedVal=${node.data.value}, comparator=${node.data.comparator}, passes=$passes"
+            def devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds
+			} else if (node.data.deviceId) {
+				devIds = [node.data.deviceId]
+			}
+			def attr = node.data.attribute
+			def passes = false
+			def debugDeviceName = devIds ? devIds.collect { did ->
+				getRealDeviceData(did)
+				state.device?.displayName ?: did
+			}.join(", ") : "none"
+
+			if (logEnable) log.debug "Condition node: device(s)=${debugDeviceName}, ExpectedVal=${node.data.value}, comparator=${node.data.comparator}, passes=$passes"
             node.outputs?.output_1?.connections?.each { conn ->
                 if (passes) evaluateNode(conn.node, evt, null, visited)
             }
@@ -907,21 +934,27 @@ Boolean getFileList(){
     }
 }
 
-def getRealDeviceData(devId) {
-	if(logEnable) log.debug "----- In getRealDeviceData -----"
-	state.device = null
-	if(devId != "__time__") {
-		allDevices = parent.masterDeviceList						
-		allDevices.each { it ->
-			if(it.deviceId.toString() == devId.toString()) {
-				state.device = it
-			}
-		}
-		if(logEnable) log.debug "In getRealDeviceData - Found: ${state.device.displayName} - ${state.device.deviceId}"
-	} else {
-		if(logEnable) log.debug "In getRealDeviceData - Skipping for ${devId}"
-	}
-	if (!state.device && logEnable) log.warn "Device with ID ${devId} not found in masterDeviceList"
+def getRealDeviceData(devId, context = null) {
+	if(logEnable) log.debug "----- In getRealDeviceData - Looking for ${devId} -----"
+    state.device = null
+    if(devId != "__time__") {
+        allDevices = parent.masterDeviceList
+        allDevices.each { it ->
+            if(it.deviceId.toString() == devId.toString()) {
+                state.device = it
+            }
+        }
+        if (logEnable) {
+            if (state.device) {
+                log.debug "In getRealDeviceData - Found: ${state.device.displayName} - ${state.device.deviceId}"
+            } else {
+                def ctxStr = context ? " [Context: ${context}]" : ""
+                log.warn "Device with ID '${devId}' not found in masterDeviceList${ctxStr}"
+            }
+        }
+    } else {
+        if(logEnable) log.debug "In getRealDeviceData - Skipping for ${devId}"
+    }
 }
 
 mappings {
