@@ -1194,9 +1194,8 @@ if (allVars.length === 1) {
           return;
         }
 
-// flowengineeditor.multi-trigger.html (lines 1001–1200)
 
-        // CONDITION NODE (single device, time, mode)
+        // CONDITION NODE (multi-device support, like eventTrigger)
         if (node.name === "condition") {
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
@@ -1204,16 +1203,23 @@ if (allVars.length === 1) {
           }
 
           const devLabel = document.createElement("label");
-          devLabel.textContent = "Device";
+          devLabel.textContent = "Device(s)";
           el.appendChild(devLabel);
 
+          // Multi-select for devices
           const devSelect = document.createElement("select");
+          devSelect.multiple = true;
           devSelect.size = Math.min(10, devices.length);
           devSelect.style.width = "98%";
 
-          // Only allow single select for conditions
-          const selectedId = node.data.deviceId || "";
+          // Support array of deviceIds (for new), or string (legacy)
+          const selectedIds = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds
+            : node.data.deviceId
+              ? [node.data.deviceId]
+              : [];
 
+          // Fill device dropdown
           getSortedDevicesWithSpecials(devices).forEach((d, i) => {
             if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
               // Divider line
@@ -1226,14 +1232,21 @@ if (allVars.length === 1) {
             const opt = document.createElement("option");
             opt.value = d.id;
             opt.textContent = d.label;
-            if (selectedId == d.id) opt.selected = true;
+            if (selectedIds.includes(d.id)) opt.selected = true;
             devSelect.appendChild(opt);
           });
 
           devSelect.onchange = () => {
-            node.data.deviceId = devSelect.value;
-            const dev = devices.find(d => d.id == devSelect.value);
-            node.data.deviceLabel = dev ? (dev.label || dev.name || dev.id) : devSelect.value;
+            const selected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = selected;
+            node.data.deviceId = selected.length === 1 ? selected[0] : ""; // For compatibility
+            // Set deviceLabel for display on tile
+            const labels = selected.map(id => {
+              const dev = devices.find(d => d.id == id);
+              return dev ? (dev.label || dev.name || id) : id;
+            });
+            node.data.deviceLabel = labels.join(", ");
+            // Clear attribute/comparator/value if selection changed (to prevent stale data)
             node.data.attribute = "";
             node.data.comparator = "";
             node.data.value = "";
@@ -1243,9 +1256,15 @@ if (allVars.length === 1) {
           };
           el.appendChild(devSelect);
 
-          // Handle Time (time range) condition
-          if (selectedId === "__time__") {
-            // Time range
+          // Find all selected devices (for multi-select)
+          const selectedDevices = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+            : node.data.deviceId
+              ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+              : [];
+
+          // Special handling for Time and Mode (single-select)
+          if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
             el.appendChild(document.createElement("br"));
             el.appendChild(document.createTextNode("Condition on Time of Day (between):"));
             el.appendChild(document.createElement("br"));
@@ -1299,12 +1318,10 @@ if (allVars.length === 1) {
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             };
             el.appendChild(daySelect);
-
             return;
           }
 
-          // Mode device
-          if (selectedId === "__mode__") {
+          if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
             const attrLabel = document.createElement("label");
             attrLabel.textContent = "Attribute";
             el.appendChild(attrLabel);
@@ -1347,20 +1364,28 @@ if (allVars.length === 1) {
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             };
             el.appendChild(valInput);
-
             return;
           }
 
-          // Normal device condition (single)
-          const dev = devices.find(d => d.id == selectedId);
-          const attributes = dev ? Object.keys(dev.attributes || {}) : [];
+          // --- STANDARD CONDITION LOGIC (MULTI-DEVICE: only common attributes) ---
+          // Find shared attributes for all selected devices
+          let sharedAttributes = [];
+          if (selectedDevices.length > 0) {
+            sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+            for (let i = 1; i < selectedDevices.length; i++) {
+              sharedAttributes = sharedAttributes.filter(attr =>
+                Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+              );
+            }
+          }
+
           const attrLabel = document.createElement("label");
           attrLabel.textContent = "Attribute";
           el.appendChild(attrLabel);
 
           const attrSelect = document.createElement("select");
           attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
-            attributes.map(attr =>
+            sharedAttributes.map(attr =>
               `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
             ).join('');
           attrSelect.value = node.data.attribute || "";
@@ -1374,21 +1399,29 @@ if (allVars.length === 1) {
           };
           el.appendChild(attrSelect);
 
-          // Comparator picker
+          // Comparator picker (use all eventTrigger comparators for consistency)
           const cmpLabel = document.createElement("label");
           cmpLabel.textContent = "Comparator";
           el.appendChild(cmpLabel);
 
           const cmpSelect = document.createElement("select");
-          const attribute = node.data.attribute;
-          let comparators = ["=", "!="];
-          // Use numeric comparators for numeric types
-          if (attribute && ["temperature", "humidity", "illuminance", "energy", "power", "level"].includes(attribute)) {
-            comparators = ["=", "!=", "<", "<=", ">", ">="];
-          }
+          const allComparators = [
+            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
+          ];
+          const comparatorLabels = {
+            "==": "equals (==)",
+            "!=": "not equals (!=)",
+            "<": "less than (<)",
+            "<=": "less than or equal (<=)",
+            ">": "greater than (>)",
+            ">=": "greater than or equal (>=)",
+            "contains": "contains",
+            "not contains": "not contains",
+            "changes": "changes"
+          };
           cmpSelect.innerHTML = `<option value="">Pick…</option>` +
-            comparators.map(cmp =>
-              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${cmp}</option>`
+            allComparators.map(cmp =>
+              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
             ).join('');
           cmpSelect.value = node.data.comparator || "";
           cmpSelect.onchange = () => {
@@ -1414,6 +1447,7 @@ if (allVars.length === 1) {
           };
           el.appendChild(valInput);
         }
+
           if (node.name === "delay") {
           const el = document.getElementById("nodeEditor");
           el.innerHTML = "<b>Delay (Milliseconds)</b><br><br>";
