@@ -529,7 +529,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			break
 
-        case "condition":
+                case "condition":
             // Handle time/day conditions
             if(node.data.deviceId == "__time__") {
                 if(logEnable) log.debug "----- In __time__ -----"
@@ -628,7 +628,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 				return passes
 			}
 
-            // Regular device/attribute condition
+            // Regular device/attribute condition -- PATCHED
             if(logEnable) log.debug "----- In condition Regular device/attribute -----"
             def devIds = []
 			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
@@ -638,12 +638,27 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			def attr = node.data.attribute
 			def passes = false
+            def currentValue
+
+            // --- PATCH: Use event value if attribute matches ---
+            if (evt && evt.name == attr && evt.value != null) {
+                currentValue = evt.value
+            } else if (devIds && devIds[0]) {
+                getRealDeviceData(devIds[0])
+                currentValue = state.device?.currentValue(attr)
+            } else {
+                currentValue = null
+            }
+            // --- END PATCH ---
+
 			def debugDeviceName = devIds ? devIds.collect { did ->
 				getRealDeviceData(did)
 				state.device?.displayName ?: did
 			}.join(", ") : "none"
 
-			if (logEnable) log.debug "Condition node: device(s)=${debugDeviceName}, ExpectedVal=${node.data.value}, comparator=${node.data.comparator}, passes=$passes"
+			passes = evaluateComparator(currentValue, resolveVars(node.data.value), node.data.comparator)
+
+			if (logEnable) log.debug "Condition node: device(s)=${debugDeviceName}, ExpectedVal=${node.data.value}, comparator=${node.data.comparator}, actual=${currentValue}, passes=$passes"
             node.outputs?.output_1?.connections?.each { conn ->
                 if (passes) evaluateNode(conn.node, evt, null, visited)
             }
