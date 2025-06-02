@@ -248,20 +248,26 @@ def subscribeToTriggers() {
         if (node.name == "eventTrigger") {
             if (node.data.deviceId == "__time__") {
                 scheduleTimeTrigger(id, node)
-			} else if (node.data.deviceId == "__mode__") {
-				if (logEnable) log.debug "Subscribing to location mode changes"
-				subscribe(location, "mode", "handleEvent")
+            } else if (node.data.deviceId == "__mode__") {
+                if (logEnable) log.debug "Subscribing to location mode changes"
+                subscribe(location, "mode", "handleEvent")
             } else {
-                // Regular device/attribute trigger
-                def devId = node.data.deviceId
+                def devIds = []
+                if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+                    devIds = node.data.deviceIds
+                } else if (node.data.deviceId) {
+                    devIds = [node.data.deviceId]
+                }
                 def attr = node.data.attribute
-                if (devId && attr) {
-                    getRealDeviceData(devId)
-                    if (state.device) {
-                        if (logEnable) log.debug "Subscribing to ${state.device.displayName} - ${attr}"
-                        subscribe(state.device, attr, "handleEvent")
-                    } else {
-                        log.warn "Device ID ${devId} not found in Hubitat"
+                devIds.each { devId ->
+                    if (devId && attr) {
+                        getRealDeviceData(devId)
+                        if (state.device) {
+                            if (logEnable) log.debug "Subscribing to ${state.device.displayName} - ${attr}"
+                            subscribe(state.device, attr, "handleEvent")
+                        } else {
+                            log.warn "Device ID ${devId} not found in Hubitat"
+                        }
                     }
                 }
             }
@@ -438,11 +444,17 @@ def getTriggerNodes(evt) {
             node.data.attribute == "mode"
         }
     } else {
-        // Regular device triggers
+        // Multi-device triggers
         return flowNodes().findAll { id, node ->
-            node.name == "eventTrigger" &&
-            node.data.deviceId == evt.device.id.toString() &&
-            node.data.attribute == evt.name
+            if (node.name != "eventTrigger") return false
+            def devIds = []
+            if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+                devIds = node.data.deviceIds
+            } else if (node.data.deviceId) {
+                devIds = [node.data.deviceId]
+            }
+            return devIds.contains(evt.device.id.toString()) &&
+                   node.data.attribute == evt.name
         }
     }
 }
