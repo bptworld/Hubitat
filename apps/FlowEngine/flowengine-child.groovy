@@ -14,6 +14,88 @@ import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 state.nodeDebounce = state.nodeDebounce ?: [:]
 
+// --- VARIABLE SUPPORT ---
+state.flowVars = state.flowVars ?: []
+state.globalVars = state.globalVars ?: []
+state.varCtx = state.varCtx ?: [:]
+
+def loadVariables() {
+    state.flowVars = []
+    state.globalVars = []
+    state.varCtx = [:]
+    // Load global vars
+    try {
+        def globalUri = "http://${location.hub.localIP}:8080/local/global_vars.json"
+        httpGet([uri: globalUri, contentType: "application/json"]) { resp ->
+            state.globalVars = parseJson(resp.data.toString())
+        }
+    } catch (e) { log.warn "No global_vars.json found: $e" }
+    // Load per-flow vars (vars.json) if present
+    try {
+        def flowUri = "http://${location.hub.localIP}:8080/local/vars.json"
+        httpGet([uri: flowUri, contentType: "application/json"]) { resp ->
+            state.flowVars = parseJson(resp.data.toString())
+        }
+    } catch (e) { log.info "No vars.json found for this flow: $e" }
+    // Compose context for evaluation
+    (state.globalVars + state.flowVars).each { v ->
+        state.varCtx[v.name] = resolveVarValue(v)
+    }
+}
+
+def resolveVarValue(v, _visited = []) {
+    if (!v || !v.name) return ""
+    if (_visited.contains(v.name)) return "ERR:Circular"
+    _visited += v.name
+    def val = v.value
+    if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
+        return evalExpression(val, _visited)
+    }
+    if (val ==~ /^-?\d+(\.\d+)?$/) return val.contains(".") ? val.toDouble() : val.toInteger()
+    if (val.toLowerCase() == "true" || val.toLowerCase() == "false") return val.toLowerCase() == "true"
+    return val
+}
+
+def evalExpression(expr, _visited = []) {
+    // Variable substitution only (no Eval)
+    expr = expr.replaceAll(/\$\((\w+)\)/) { full, vname ->
+        def v = (state.flowVars + state.globalVars).find { it.name == vname }
+        return v ? resolveVarValue(v, _visited) : "null"
+    }
+    return expr
+}
+
+
+def resolveNodeFields(data) {
+    def result = [:]
+    data.each { k, v ->
+        if (v instanceof String && v.contains('$(')) {
+            result[k] = evalExpression(v)
+        } else {
+            result[k] = v
+        }
+    }
+    return result
+}
+
+def saveFlowVarsToFile() {
+    try {
+        def json = groovy.json.JsonOutput.toJson(state.flowVars)
+        def fileName = "vars.json"
+        def url = "http://${location.hub.localIP}:8080/uploadFile?name=${fileName}"
+        httpPost([
+            uri: url,
+            body: json,
+            requestContentType: "application/json"
+        ]) { resp ->
+            if (logEnable) log.info "Vars file updated: ${resp.status}"
+        }
+    } catch(e) {
+        log.error "Failed to save vars.json: $e"
+    }
+}
+// --- END VARIABLE SUPPORT ---
+
 preferences {
     page(name: "mainPage")
 }
@@ -70,12 +152,69 @@ def initialize() {
     if(logEnable) log.info "Initializing, reading flow: ${settings.flowFile}"
 	if(flowFile) {
     	readAndParseFlow()
+		readAndParseVars()
 	}
 }
 
+String resolveVars(str) {
+    if (!str || !(str instanceof String)) return str
+    def pattern = /\$\((\w+)\)/
+    def out = str.replaceAll(pattern) { all, var ->
+        state.vars?.get(var)?.toString() ?: ""
+    }
+    return out
+}
+
+def readAndParseVars() {
+    try {
+        // Try both "vars.json" (flow-local) and "global_vars.json" (global)
+        def files = ["vars.json", "global_vars.json"]
+        state.vars = [:]
+        files.each { fname ->
+            def uri = "http://${location.hub.localIP}:8080/local/${fname}"
+            httpGet([uri: uri, contentType: "application/json"]) { resp ->
+                def arr = resp.getData().toString()
+                if (arr) {
+                    def vars = parseJson(arr)
+                    if (vars instanceof List) {
+                        vars.each { v -> if(v?.name) state.vars[v.name] = v.value }
+                    }
+                }
+            }
+        }
+        if (logEnable) log.debug "Loaded variables: ${state.vars}"
+    } catch (e) {
+        log.warn "Could not load variables: $e"
+    }
+}
+
+def setVariable(varName, varValue) {
+    // 1. Update state.flowVars (local vars only, not global)
+    def updated = false
+    state.flowVars = state.flowVars ?: []
+    state.flowVars.each { v ->
+        if (v.name == varName) {
+            v.value = varValue
+            updated = true
+        }
+    }
+    if (!updated) {
+        state.flowVars << [name: varName, value: varValue]
+    }
+
+    // 2. Save to vars.json
+    saveFlowVarsToFile()
+
+    // 3. Update var context
+    state.vars = state.vars ?: [:]
+    state.vars[varName] = varValue
+    state.varCtx = state.varCtx ?: [:]
+    state.varCtx[varName] = varValue
+}
+
 def readAndParseFlow() {
-	if(logEnable) log.debug "In readAndParseFlow"
-	uri = "http://${location.hub.localIP}:8080/local/${flowFile}"
+    if(logEnable) log.debug "In readAndParseFlow"
+    uri = "http://${location.hub.localIP}:8080/local/${flowFile}"
     def params = [
         uri: uri,
         contentType: "text/html; charset=UTF-8",
@@ -83,17 +222,18 @@ def readAndParseFlow() {
             "Cookie": cookie
         ]
     ]
-	try {
+    try {
         httpGet(params) { resp ->
             def jsonStr = resp.getData().toString()
-			if (!jsonStr) {
-            	log.error "No file content found for ${settings.flowFile}"
-            	return
-        	}
-        	state.flow = parseJson(jsonStr)
-        	if(logEnable) log.debug "Flow loaded. Subscribing to triggers."
-        	subscribeToTriggers()
-		}
+            if (!jsonStr) {
+                log.error "No file content found for ${settings.flowFile}"
+                return
+            }
+            state.flow = parseJson(jsonStr)
+            loadVariables()  // <--- Load variables after loading flow
+            if(logEnable) log.debug "Flow loaded. Subscribing to triggers."
+            subscribeToTriggers()
+        }
     } catch (e) {
         log.error "Failed to load or parse flow: ${e}"
     }
@@ -132,8 +272,8 @@ def subscribeToTriggers() {
 def scheduleTimeTrigger(nodeId, node) {
     def attr = node.data.attribute
     def cmp = node.data.comparator
-    def value = node.data.value
-    def value2 = node.data.value2
+    def value = resolveVars(node.data.value)
+	def value2 = resolveVars(node.data.value2)
     def offsetMin = (node.data.offsetMin ?: 0) as Integer
     def days = node.data.selectedDays ?: []
     def allowDays = node.data.allowDayOfWeek
@@ -230,6 +370,7 @@ def handleScheduledTrigger(data) {
     def nodeId = data?.nodeId ?: data
     if (logEnable) log.info "Scheduled time trigger fired for nodeId=$nodeId"
     def node = flowNodes()[nodeId]
+	def rdata = resolveNodeFields(node.data)
     def timeValue = node?.data?.value ?: "scheduled"
     evaluateNode(nodeId, [name: "time", value: timeValue], null, null)
 }
@@ -272,7 +413,7 @@ def sustainedTriggerHandler(data) {
     if (!node) return
     def devId = node.data.deviceId
     def attr = node.data.attribute
-    def expectedValue = node.data.value
+    def expectedValue = resolveVars(node.data.value)
     def comparator = node.data.comparator ?: "=="
     getRealDeviceData(devId)
     def currentValue = state.device?.currentValue(attr)
@@ -335,7 +476,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			if (node.data.deviceId == "__time__") {
 				passes = true   // Schedules always fire at the correct time!
 			} else if (node.data.deviceId == "__mode__") {
-				def expected = node.data.value
+				def expected = resolveVars(node.data.value)
 				if (expected instanceof List) {
 					if (node.data.comparator == "==") {
 						passes = expected.contains(evt.value)
@@ -348,7 +489,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 					passes = evaluateComparator(evt.value, expected, node.data.comparator)
 				}
 			} else {
-				passes = evaluateComparator(evt.value, node.data.value, node.data.comparator)
+				passes = evaluateComparator(evt.value, resolveVars(node.data.value), node.data.comparator)
 			}
 			if(logEnable) log.debug "Trigger node: device=${state.device?.displayName ?: node.data.deviceId}, event value=${evt.value}, expected value=${node.data.value}, comparator=${node.data.comparator}, passes=$passes"
 			node.outputs?.each { outName, outObj ->
@@ -365,8 +506,8 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
                 if(logEnable) log.debug "----- In __time__ -----"
                 def attr = node.data.attribute
                 def cmp = node.data.comparator
-                def value = node.data.value
-                def value2 = node.data.value2
+                def value = resolveVars(node.data.value)
+				def value2 = resolveVars(node.data.value2)
                 def days = node.data.selectedDays ?: []
                 def allowDays = node.data.allowDayOfWeek
                 def passes = false
@@ -437,7 +578,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             }
 			if (node.data.deviceId == "__mode__" && node.data.attribute == "mode") {
 				def currentMode = location.mode
-				def expected = node.data.value
+				def expected = resolveVars(node.data.value)
 				def passes = false
 				if (expected instanceof List) {
 					if (node.data.comparator == "==") {
@@ -462,7 +603,7 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             if(logEnable) log.debug "----- In condition Regular device/attribute -----"
             getRealDeviceData(node.data.deviceId)
             def attrVal = state.device?.currentValue(node.data.attribute)
-            def passes = evaluateComparator(attrVal, node.data.value, node.data.comparator)
+            def passes = evaluateComparator(attrVal, resolveVars(node.data.value), node.data.comparator)
             if (logEnable) log.debug "Condition node: device=${state.device.displayName}, CurrentVal=${attrVal}, ExpectedVal=${node.data.value}, comparator=${node.data.comparator}, passes=$passes"
             node.outputs?.output_1?.connections?.each { conn ->
                 if (passes) evaluateNode(conn.node, evt, null, visited)
@@ -505,8 +646,8 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			} else if (node.data.deviceId) {
 				devIds = [node.data.deviceId]
 			}
-			def cmd = node.data.command
-			def val = node.data.value
+			def cmd = resolveVars(node.data.command)
+            def val = resolveVars(node.data.value)
 			def output = []
 
 			// Handle Location Mode as action
@@ -605,8 +746,9 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             break
 		
 		case "notification":
-			def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [node.data.targetDeviceId]
-			def msg = node.data.message ?: "Test Notification"
+			def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [resolveVars(node.data.targetDeviceId)]
+            def msg = resolveVars(node.data.message) ?: "Test Notification"
+
 			ids.each { devId ->
 				def dev = masterDeviceList?.find { it.id == devId }
 				if (dev && node.data.notificationType == "push" && dev.hasCommand("deviceNotification")) {
@@ -618,6 +760,15 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			render contentType: "text/plain", data: "Notification sent to device(s)"
 			return
+		
+		case "setVariable":
+			def varName = resolveVars(node.data.varName)
+			def varValue = resolveVars(node.data.varValue)
+			setVariable(varName, varValue)
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(conn.node, evt, null, visited)
+			}
+			break
 
         default:
             log.warn "Unknown node type: ${node.name}"
@@ -703,7 +854,7 @@ def sustainedTriggerHandler(triggerId, data) {
     if (!node) return
     def devId = node.data.deviceId
     def attr = node.data.attribute
-    def expectedValue = node.data.value
+    def expectedValue = resolveVars(node.data.value)
     def comparator = node.data.comparator ?: "=="
     getRealDeviceData(devId)
     def currentValue = state.device?.currentValue(attr)
@@ -762,10 +913,19 @@ def getRealDeviceData(devId) {
 }
 
 mappings {
-    path("/runFlow") {
-        action: [
-            POST: "apiRunFlow"
-        ]
+    path("/runFlow") 	{ action: [ POST: "apiRunFlow" ] }
+	path("/setVar") 	{ action: [ POST: "apiSetVar" ] }
+}
+
+def apiSetVar() {
+    def json = request.JSON
+    def name = json?.name
+    def value = json?.value
+    if (name) {
+        setVariable(name, value)
+        render contentType: "application/json", data: [result: "ok", name: name, value: value] as groovy.json.JsonBuilder
+    } else {
+        render status: 400, contentType: "application/json", data: [error: "Missing variable name"] as groovy.json.JsonBuilder
     }
 }
 
@@ -797,3 +957,4 @@ def display2() {
 		paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
     }
 }
+	
