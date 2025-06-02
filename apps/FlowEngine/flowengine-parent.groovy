@@ -125,6 +125,7 @@ mappings {
     path("/getFile")  	 { action: [GET: "apiGetFile"] }
 	path("/testTile") 	 { action: [POST: "testTileHandler"] }
 	path("/devices")     { action: [GET: "apiGetDevices"] }
+	path("/uploadFile")  { action: [POST: "apiUploadFile"] }
 }
 
 def handleFlow() {
@@ -351,6 +352,33 @@ def testTileHandler() {
     } catch (ex) {
         log.error "TestTileHandler error: $ex"
         render contentType: "text/plain", data: "TestTileHandler error: $ex"
+    }
+}
+
+def apiUploadFile() {
+    // Require token
+    if (!state.accessToken || params.access_token != state.accessToken) {
+        render status: 401, text: "Unauthorized"
+        return
+    }
+    def name = params.name
+    if (!name) {
+        render status: 400, text: "Missing file name"
+        return
+    }
+    def body = request?.body ?: request?.JSON
+    if (!body) {
+        render status: 400, text: "Missing file data"
+        return
+    }
+    try {
+        // Handle both raw body and JSON (most browsers send JSON)
+        def fileText = (body instanceof String) ? body : groovy.json.JsonOutput.toJson(body)
+        uploadHubFile(name, fileText.getBytes("UTF-8"))
+        render contentType: "application/json", data: groovy.json.JsonOutput.toJson([ok: true])
+    } catch (e) {
+        log.error "apiUploadFile error: $e"
+        render status: 500, text: "Error: $e"
     }
 }
 
