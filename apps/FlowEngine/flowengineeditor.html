@@ -1148,7 +1148,7 @@ if (allVars.length === 1) {
 
           const cmpSelect = document.createElement("select");
           const allComparators = [
-            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains"
+            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
           ];
           const comparatorLabels = {
             "==": "equals (==)",
@@ -1158,7 +1158,8 @@ if (allVars.length === 1) {
             ">": "greater than (>)",
             ">=": "greater than or equal (>=)",
             "contains": "contains",
-            "not contains": "not contains"
+            "not contains": "not contains",
+            "changes": "changes"
           };
           cmpSelect.innerHTML = `<option value="">Pick…</option>` +
             allComparators.map(cmp =>
