@@ -1146,21 +1146,23 @@ if (allVars.length === 1) {
           };
           el.appendChild(attrSelect);
 
-          // --- Comparator picker ---
-          const cmpLabel = document.createElement("label");
-          cmpLabel.textContent = "Comparator";
-          el.appendChild(cmpLabel);
-
           const cmpSelect = document.createElement("select");
-          const attribute = node.data.attribute;
-          let comparators = ["=", "!="];
-          // Use numeric comparators for numeric types
-          if (attribute && ["temperature", "humidity", "illuminance", "energy", "power", "level"].includes(attribute)) {
-            comparators = ["=", "!=", "<", "<=", ">", ">="];
-          }
+          const allComparators = [
+            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains"
+          ];
+          const comparatorLabels = {
+            "==": "equals (==)",
+            "!=": "not equals (!=)",
+            "<": "less than (<)",
+            "<=": "less than or equal (<=)",
+            ">": "greater than (>)",
+            ">=": "greater than or equal (>=)",
+            "contains": "contains",
+            "not contains": "not contains"
+          };
           cmpSelect.innerHTML = `<option value="">Pick…</option>` +
-            comparators.map(cmp =>
-              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${cmp}</option>`
+            allComparators.map(cmp =>
+              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
             ).join('');
           cmpSelect.value = node.data.comparator || "";
           cmpSelect.onchange = () => {
@@ -1170,39 +1172,6 @@ if (allVars.length === 1) {
           };
           el.appendChild(cmpSelect);
 
-          // --- Value picker ---
-          const valueLabel = document.createElement("label");
-          valueLabel.textContent = "Value";
-          el.appendChild(valueLabel);
-
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value";
-          valInput.value = node.data.value || "";
-          valInput.oninput = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(valInput);
-
-          // If attribute has known values, make value a dropdown
-          let valuePickerReplaced = false;
-          if (attribute && ATTRIBUTE_KNOWN_VALUES[attribute] && ATTRIBUTE_KNOWN_VALUES[attribute].length) {
-            const valSelect = document.createElement("select");
-            valSelect.innerHTML = `<option value="">Pick a value…</option>` +
-              ATTRIBUTE_KNOWN_VALUES[attribute].map(val =>
-                `<option value="${val}" ${node.data.value == val ? "selected" : ""}>${val}</option>`
-              ).join('');
-            valSelect.value = node.data.value || "";
-            valSelect.onchange = () => {
-              node.data.value = valSelect.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.replaceChild(valSelect, valInput);
-            valuePickerReplaced = true;
-          }
 
           // For (minutes) sustained trigger option
           const sustainedLabel = document.createElement("label");
