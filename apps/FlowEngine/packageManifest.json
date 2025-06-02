@@ -54,9 +54,9 @@
         },
         {
             "id": "d9974ef6-a02e-41c2-9984-add8fef04a29",
-            "name": "flowvar.js",
+            "name": "flowvars.js",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowvar.js",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowvars.js",
             "description": "UI File",
             "required": true
         },
