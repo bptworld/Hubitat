@@ -62,9 +62,9 @@
         },
         {
             "id": "6e6c4cbc-2e9f-40f1-8bfc-efb84fc0bfbd",
-            "name": "global_vars.js",
+            "name": "global_vars.json",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/global_vars.js",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/global_vars.json",
             "description": "UI File",
             "required": true
         },
