@@ -144,13 +144,14 @@
       <button id="addDelayMin" title="Add a Delay (minutes) node">Add Delay min</button>
       <button id="addNotification" title="Add a Notification node">Add Notification</button>
       <button id="addSetVariable" title="Add a Set Variable node">Add Set Variable</button>
+      <button id="addNotMatchingVar" title="Add a Devices Not Matching variable node">Add Not Var</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Add Do Nothing</button>
     </div>
   </div>
   <div id="main">
     <div id="drawflow"></div>
     <div id="editor">
-      <div id="header" style="font-size:25px;" title="Test this node (simulate execution)">
+      <div id="header" style="font-size:25px;" title="Test this node (Simulate execution of this Node)">
         <b>Node Editor</b> - <button id="testTile" style="background:#1985d0; color:#fff;">Test Node</button>
       </div>
       <div id="nodeEditor">Click a node to edit</div>
@@ -163,7 +164,6 @@
   </div>
   <script src="drawflow-js.min.js"></script>
   <script>
-// flowengineeditor.multi-trigger.html (lines 201–400)
     function logAction(msg, type = "info") {
       const logBox = document.getElementById("logBox");
       if (logBox) {
@@ -173,7 +173,7 @@
     }
 
     // --- Auto-load global_vars.json ---
-    async function autoLoadGlobalVarsFromHubitat() {
+    async function autoLoadGlobalVarsFromHubitat(retries = 8) {
       try {
         if (typeof fetchHubitatVarFileContent === "function") {
           const txt = await fetchHubitatVarFileContent("global_vars.json");
@@ -181,17 +181,51 @@
             if (window.flowVars && window.flowVars.setGlobalVars) {
               window.flowVars.setGlobalVars(JSON.parse(txt));
             }
-            if (document.getElementById("variableManager")) {
-              window.flowVars.renderManager(document.getElementById("variableManager"), { globalVars: false });
-            }
             logAction("Auto-loaded global_vars.json", "info");
           } else {
-            console.warn("global_vars.json is empty or not found.");
+            // --- CREATE EMPTY GLOBAL VARS FILE IF MISSING ---
+            const emptyGlobals = "[]";
+            if (typeof uploadToHubitatFile === "function") {
+              await uploadToHubitatFile("global_vars.json", emptyGlobals, { mimeType: "application/json" });
+              if (window.flowVars && window.flowVars.setGlobalVars) {
+                window.flowVars.setGlobalVars([]);
+              }
+              logAction("global_vars.json not found: Created new empty global_vars.json", "warn");
+            } else if (retries > 0) {
+              setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+              logAction("Waiting for uploadToHubitatFile to become available...", "info");
+            } else {
+              // FINAL NON-BLOCKING WARNING, CONTINUE WITHOUT ERROR
+              if (window.flowVars && window.flowVars.setGlobalVars) {
+                window.flowVars.setGlobalVars([]);
+              }
+              logAction("No global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
+            }
           }
         }
       } catch (e) {
-        if (typeof logAction === "function") logAction("No global_vars.json found to auto-load", "error");
-        console.error("Error loading global_vars.json:", e);
+        try {
+          const emptyGlobals = "[]";
+          if (typeof uploadToHubitatFile === "function") {
+            await uploadToHubitatFile("global_vars.json", emptyGlobals, { mimeType: "application/json" });
+            if (window.flowVars && window.flowVars.setGlobalVars) {
+              window.flowVars.setGlobalVars([]);
+            }
+            logAction("global_vars.json missing: Created new empty global_vars.json", "warn");
+          } else if (retries > 0) {
+            setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+            logAction("Waiting for uploadToHubitatFile to become available (error path)...", "info");
+          } else {
+            // FINAL NON-BLOCKING WARNING, CONTINUE WITHOUT ERROR
+            if (window.flowVars && window.flowVars.setGlobalVars) {
+              window.flowVars.setGlobalVars([]);
+            }
+            logAction("No global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
+          }
+        } catch (e2) {
+          logAction("Error creating empty global_vars.json: " + e2, "error");
+        }
+        console.warn("Error loading global_vars.json (continuing):", e);
       }
     }
     // --- END Auto-load global_vars.json ---
@@ -265,6 +299,40 @@
           Set Variable<br>
           <span style="font-size:11px">
             ${vName} = ${vValue}
+          </span>
+        </div>`;
+      }
+
+      if (t === "notmatchingvar") {
+        let devLabel = "";
+        try {
+          if (data && data.deviceIds && Array.isArray(data.deviceIds) && data.deviceIds.length) {
+            const devs = window.devices || [];
+            devLabel = data.deviceIds.map(id => {
+              const dev = devs.find(d => d.id == id);
+              return dev ? (dev.label || dev.name || id) : id;
+            }).join(", ");
+          }
+        } catch (e) { devLabel = ""; }
+        let attribute = (data && typeof data.attribute === "string" && data.attribute !== "undefined") ? data.attribute : "";
+        let value = (data && typeof data.value === "string" && data.value !== "undefined") ? data.value : "";
+
+        // MAIN FIX: Never show outputVar as undefined or blank
+        let outputVar = (
+          data && typeof data.outputVar === "string" &&
+          data.outputVar.trim() &&
+          data.outputVar.trim().toLowerCase() !== "undefined"
+        ) ? data.outputVar : "Devices Not Matching";
+
+        let scope = (data && data.varScope === "global") ? "Global" : "Flow";
+        return `<div class="setVariable-tile">
+          <b>Devices Not Matching</b><br>
+          <span style="font-size:11px">
+            ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
+            ${attribute ? "Attr: " + attribute + "<br>" : ""}
+            ${value ? "Not: " + value + "<br>" : ""}
+            <hr>
+            <b>Attr:</b> ${outputVar}<br><b>Attr Type:</b> ${scope}
           </span>
         </div>`;
       }
@@ -354,22 +422,16 @@
 
         const devs = window.devices || [];
         let allAttrVals = "";
-        if (Array.isArray(data.deviceIds)) {
+        if (Array.isArray(data.deviceIds) && data.attribute) {
           allAttrVals = data.deviceIds.map(id => {
             const dev = devs.find(d => d.id == id);
-            if (!dev || !dev.attributes) return "";
-            return Object.entries(dev.attributes)
-              .map(([attr, value]) =>
-                `<div class="current-value">${dev.label || dev.name || id}: ${attr}: ${value}</div>`
-              ).join("");
+            if (!dev || !dev.attributes || dev.attributes[data.attribute] === undefined) return "";
+            return `<div class="current-value">current ${data.attribute}: ${dev.attributes[data.attribute]}</div>`;
           }).join("");
-        } else {
+        } else if (data.deviceId && data.attribute) {
           const dev = devs.find(d => d.id == data.deviceId);
-          if (dev && dev.attributes) {
-            allAttrVals = Object.entries(dev.attributes)
-              .map(([attr, value]) =>
-                `<div class="current-value">Current ${attr}: ${value}</div>`
-              ).join("");
+          if (dev && dev.attributes && dev.attributes[data.attribute] !== undefined) {
+            allAttrVals = `<div class="current-value">current ${data.attribute}: ${dev.attributes[data.attribute]}</div>`;
           }
         }
 
@@ -384,7 +446,7 @@
           ${colorPreview}
         </div>`;
       }
-// flowengineeditor.multi-trigger.html (lines 401–600)
+
       // Fallback for normal eventTrigger or condition (non-Time)
       if (type === "eventTrigger" || type === "condition") {
         let isSelected = false;
@@ -459,9 +521,34 @@
           localStorage.setItem(storageKey, el.value.trim());
         });
       }
-
       rememberInput("hubitatAppId", "hubitatAppId");
       rememberInput("hubitatToken", "hubitatToken");
+
+      // Device loader button event—**direct assignment, no guard**
+      document.getElementById("loadDevices").onclick = async () => {
+        logAction("loadDevices button clicked.");
+        devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
+        window.devices = devices;
+        // (add specials)
+        devices.push(TIME_DEVICE);
+        devices.push(MODE_DEVICE);
+        if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+          Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
+          if (editor.selected_id) {
+            renderEditor(editor.getNodeFromId(editor.selected_id));
+          }
+        }
+        logAction("Devices loaded: " + devices.length);
+      };
 
       // Auto-load devices if credentials are filled (with delayed check for browser autofill)
       setTimeout(() => {
@@ -478,12 +565,22 @@
 
       function patchFlowWithDeviceLabels(flow, devices) {
         if (
-          !flow ||
-          !flow.drawflow ||
-          !flow.drawflow.drawflow ||
-          !flow.drawflow.drawflow.Home ||
-          !flow.drawflow.drawflow.Home.data
-        ) return;
+          flow && flow.drawflow && flow.drawflow.drawflow &&
+          flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data
+        ) {
+          Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
+            if (node.name === "notMatchingVar") {
+              if (!node.data.outputVar || node.data.outputVar === "undefined") {
+                node.data.outputVar = "Devices Not Matching";
+              }
+            }
+          });
+        }
+        if (!flow.drawflow) flow.drawflow = {};
+        if (!flow.drawflow.drawflow) flow.drawflow.drawflow = {};
+        if (!flow.drawflow.drawflow.Home) flow.drawflow.drawflow.Home = { data: {} };
+        if (!flow.drawflow.drawflow.Home.data) flow.drawflow.drawflow.Home.data = {};
+
         Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
           if (
             ["device", "condition", "eventTrigger"].includes(node.name) &&
@@ -567,26 +664,44 @@
             return;
           }
 
+          // --- Show/Hide tick box (showStatus) ---
+          let showStatus = true;
+          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
+          const showStatusDiv = document.createElement("div");
+          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.checked = showStatus;
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          showStatusDiv.appendChild(showStatusCheckbox);
+          const showStatusLbl = document.createElement("label");
+          showStatusLbl.textContent = "Show status";
+          showStatusLbl.style.margin = "0";
+          showStatusDiv.appendChild(showStatusLbl);
+          el.appendChild(showStatusDiv);
+
+          // --- Device Label ---
           const devLabel = document.createElement("label");
           devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
           el.appendChild(devLabel);
 
+          // --- Device Select (multi) ---
           const devSelect = document.createElement("select");
           devSelect.multiple = true;
           devSelect.size = Math.min(10, devices.length);
           devSelect.style.width = "98%";
-
-          // **THIS FIXES IT:**
+          devSelect.style.display = "block";
+          devSelect.style.marginBottom = "12px";
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
-            : node.data.deviceId
-              ? [node.data.deviceId]
-              : [];
-
-          // ...now populate the dropdown as before...
-          getSortedDevicesWithSpecials(devices).forEach((d, i) => {
-            if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
-              // Divider line
+            : node.data.deviceId ? [node.data.deviceId] : [];
+          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
+            if (i === 2 && arr.length > 2) {
               const divider = document.createElement("option");
               divider.disabled = true;
               divider.textContent = "───────────────";
@@ -595,431 +710,264 @@
             }
             const opt = document.createElement("option");
             opt.value = d.id;
-            opt.textContent = d.label;
+            opt.textContent = d.label || d.name || d.id;
             if (selectedIds.includes(d.id)) opt.selected = true;
             devSelect.appendChild(opt);
           });
-
-          devSelect.onchange = () => { /* ... */ };
           el.appendChild(devSelect);
 
+          // --- Picker container ---
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "action-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // --- Picker builder ---
+          function buildPickers() {
+            pickerDiv.innerHTML = "";
+
+            const selectedDevices = Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+              : node.data.deviceId
+                ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+                : [];
+
+            // ---- Handle special devices: Time or Mode ----
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
+              // Time picker
+              const timeLabel = document.createElement("label");
+              timeLabel.textContent = "Time";
+              timeLabel.style.display = "block";
+              pickerDiv.appendChild(timeLabel);
+
+              const timeInput = document.createElement("input");
+              timeInput.type = "time";
+              timeInput.value = node.data.value || "";
+              timeInput.style.display = "block";
+              timeInput.style.marginBottom = "12px";
+              timeInput.onchange = () => {
+                node.data.value = timeInput.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(timeInput);
+              return;
+            }
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
+              // Mode picker
+              const modeLabel = document.createElement("label");
+              modeLabel.textContent = "Mode";
+              modeLabel.style.display = "block";
+              pickerDiv.appendChild(modeLabel);
+
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = 5;
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+              const allModes = window.hubitatModes || [];
+              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
+              allModes.forEach(mode => {
+                const opt = document.createElement("option");
+                opt.value = mode.id;
+                opt.textContent = mode.name;
+                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
+                modeSelect.appendChild(opt);
+              });
+              modeSelect.onchange = () => {
+                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                node.data.value = values;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+              return;
+            }
+
+            // --- Standard device attribute/command pickers ---
+            let sharedAttributes = [];
+            let sharedCommands = [];
+            if (selectedDevices.length > 0) {
+              sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+              sharedCommands = Array.isArray(selectedDevices[0].commands)
+                ? selectedDevices[0].commands.slice()
+                : [];
+              for (let i = 1; i < selectedDevices.length; i++) {
+                sharedAttributes = sharedAttributes.filter(attr =>
+                  Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+                );
+                if (Array.isArray(selectedDevices[i].commands)) {
+                  sharedCommands = sharedCommands.filter(cmd =>
+                    selectedDevices[i].commands.includes(cmd)
+                  );
+                } else {
+                  sharedCommands = [];
+                }
+              }
+            }
+
+            // --- Attribute Picker ---
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            pickerDiv.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              sharedAttributes.map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.command = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(attrSelect);
+
+            // --- Command Picker ---
+            const cmdLabel = document.createElement("label");
+            cmdLabel.textContent = "Command";
+            cmdLabel.style.display = "block";
+            pickerDiv.appendChild(cmdLabel);
+
+            const cmdSelect = document.createElement("select");
+            cmdSelect.style.display = "block";
+            cmdSelect.style.marginBottom = "12px";
+            cmdSelect.innerHTML = `<option value="">Pick a command…</option>` +
+              sharedCommands.map(cmd =>
+                `<option value="${cmd}" ${node.data.command == cmd ? "selected" : ""}>${cmd}</option>`
+              ).join('');
+            cmdSelect.value = node.data.command || "";
+            cmdSelect.onchange = () => {
+              node.data.command = cmdSelect.value;
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(cmdSelect);
+
+            // --- Color Picker (for setColor command only) ---
+            if (node.data.command === "setColor") {
+              const colorLabel = document.createElement("label");
+              colorLabel.textContent = "Color";
+              colorLabel.style.display = "block";
+              pickerDiv.appendChild(colorLabel);
+
+              const colorInput = document.createElement("input");
+              colorInput.type = "color";
+              colorInput.value = node.data.color || "#ffffff";
+              colorInput.style.display = "block";
+              colorInput.style.marginBottom = "12px";
+              colorInput.onchange = () => {
+                node.data.color = colorInput.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(colorInput);
+            }
+
+            // --- Value Picker (basic) ---
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Value";
+            valueLabel.style.display = "block";
+            pickerDiv.appendChild(valueLabel);
+
+            const valueInput = document.createElement("input");
+            valueInput.type = "text";
+            valueInput.value = node.data.value || "";
+            valueInput.style.display = "block";
+            valueInput.style.marginBottom = "12px";
+            valueInput.onchange = () => {
+              node.data.value = valueInput.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            };
+            pickerDiv.appendChild(valueInput);
+          }
+
+          // Initial build
+          buildPickers();
+
+          // Device select onchange
           devSelect.onchange = () => {
-            const selected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = selected;
-            node.data.deviceId = selected.length === 1 ? selected[0] : ""; // For compatibility
-            // Set deviceLabel for display on tile
-            const labels = selected.map(id => {
+            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = newSelected;
+            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
+
+            // Update deviceLabel for tile display
+            const labels = node.data.deviceIds.map(id => {
               const dev = devices.find(d => d.id == id);
               return dev ? (dev.label || dev.name || id) : id;
             });
             node.data.deviceLabel = labels.join(", ");
-            // Clear attribute/command/value if selection changed (to prevent stale data)
+
+            // Always clear dependent fields when devices change
             node.data.attribute = "";
             node.data.command = "";
             node.data.value = "";
+            node.data.color = "";
+
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
+
+            // Just rebuild pickers, no editor jump!
+            buildPickers();
           };
-
-// flowengineeditor.multi-trigger.html (lines 601–800)
-
-          // Find all selected devices (for multi-select)
-          const selectedDevices = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
-            : node.data.deviceId
-              ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
-              : [];
-
-          // Handle Time and Mode special devices separately
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
-            el.appendChild(document.createElement("br"));
-            el.appendChild(document.createTextNode("This is a time trigger/action node."));
-            return;
-          }
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-            const cmdLabel = document.createElement("label");
-            cmdLabel.textContent = "Command";
-            el.appendChild(cmdLabel);
-            const cmd = document.createElement("select");
-            ["setMode"].forEach(cmdName => {
-              const opt = document.createElement("option");
-              opt.value = cmdName;
-              opt.textContent = cmdName;
-              if (node.data.command === cmdName) opt.selected = true;
-              cmd.appendChild(opt);
-            });
-            cmd.value = node.data.command || "";
-            cmd.onchange = () => {
-              node.data.command = cmd.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              renderEditor(node);
-            };
-            el.appendChild(cmd);
-
-            const valueLabel = document.createElement("label");
-            valueLabel.textContent = "Mode";
-            el.appendChild(valueLabel);
-
-            const modes = MODE_DEVICE.attributes.mode;
-            const valInput = document.createElement("select");
-            valInput.innerHTML = `<option value="">Pick a mode…</option>` +
-              modes.map(mode => `<option value="${mode}" ${node.data.value === mode ? "selected" : ""}>${mode}</option>`).join('');
-            valInput.value = node.data.value || "";
-            valInput.onchange = () => {
-              node.data.value = valInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(valInput);
-
-    const plusVarBtn = document.createElement("button");
-    plusVarBtn.type = "button";
-    plusVarBtn.textContent = "+Var";
-    plusVarBtn.title = "Insert a variable into this field";
-    plusVarBtn.style.marginLeft = "6px";
-    plusVarBtn.style.padding = "2px 8px";
-    plusVarBtn.style.fontSize = "13px";
-    plusVarBtn.style.borderRadius = "7px";
-    plusVarBtn.style.background = "#334bff";
-    plusVarBtn.style.color = "#fff";
-    plusVarBtn.onclick = function() {
-      if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-if (!window.flowVars) return alert("flowVars.js not loaded!");
-      const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
-      if (!allVars.length) return alert("No variables defined!");
-
-if (allVars.length === 1) {
-  let insert = `$(${allVars[0].name})`;
-  let start = valInput.selectionStart, end = valInput.selectionEnd;
-  let oldVal = valInput.value;
-  valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-  valInput.focus();
-  valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-  valInput.dispatchEvent(new Event('input'));
-  return;
-}
-      const sel = document.createElement("select");
-      sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
-      sel.onchange = () => {
-        let insert = `$(${sel.value})`;
-        let start = valInput.selectionStart, end = valInput.selectionEnd;
-        let oldVal = valInput.value;
-        valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-        valInput.focus();
-        valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-        valInput.dispatchEvent(new Event('input'));
-        document.body.removeChild(sel);
-      };
-      sel.style.position = "absolute";
-      let r = plusVarBtn.getBoundingClientRect();
-      sel.style.left = r.left + "px";
-      sel.style.top = (r.bottom+2) + "px";
-      sel.style.zIndex = 9999;
-      document.body.appendChild(sel);
-      sel.focus();
-    };
-    el.appendChild(plusVarBtn);
-
-    const previewChip = document.createElement("div");
-    previewChip.className = "current-value";
-    previewChip.style.marginLeft = "2px";
-    previewChip.style.fontSize = "13px";
-    previewChip.style.fontWeight = "bold";
-    previewChip.style.cursor = "pointer";
-    previewChip.title = "Preview of value/expression";
-    el.appendChild(previewChip);
-    function updatePreview() {
-      if (window.flowVars && window.flowVars.evaluate) {
-        try {
-          const v = valInput.value;
-          if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
-          const result = window.flowVars.evaluate(v);
-          let color = "#b7ffac";
-          if (typeof result === "number") color = "#3af";
-          else if (typeof result === "boolean") color = "#0c0";
-          else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-          previewChip.textContent = "= " + result;
-          previewChip.style.color = color;
-          previewChip.title = (typeof result) + ": " + result;
-        } catch(e) {
-          previewChip.textContent = "ERR: " + e.message;
-          previewChip.style.color = "#f33";
-          previewChip.title = e.message;
         }
-      }
-    }
-    valInput.addEventListener("input", updatePreview);
-    updatePreview();
-
-            return;
-          }
-
-          // --- STANDARD DEVICE NODE LOGIC (MULTI-DEVICE: only common attributes/commands) ---
-          // Find shared attributes/commands
-          let sharedAttributes = [];
-          let sharedCommands = [];
-          if (selectedDevices.length > 0) {
-            sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
-            sharedCommands = Array.isArray(selectedDevices[0].commands)
-              ? selectedDevices[0].commands.slice()
-              : [];
-            for (let i = 1; i < selectedDevices.length; i++) {
-              // Attributes: intersection
-              sharedAttributes = sharedAttributes.filter(attr =>
-                Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
-              );
-              // Commands: intersection
-              if (Array.isArray(selectedDevices[i].commands)) {
-                sharedCommands = sharedCommands.filter(cmd =>
-                  selectedDevices[i].commands.includes(cmd)
-                );
-              } else {
-                sharedCommands = [];
-              }
-            }
-          }
-
-          // --- Attribute picker ---
-          const attrLabel = document.createElement("label");
-          attrLabel.textContent = "Attribute";
-          el.appendChild(attrLabel);
-
-          const attrSelect = document.createElement("select");
-          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
-            sharedAttributes.map(attr =>
-              `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
-            ).join('');
-          attrSelect.value = node.data.attribute || "";
-          attrSelect.onchange = () => {
-            node.data.attribute = attrSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
-          };
-          el.appendChild(attrSelect);
-
-          // --- Command picker ---
-          const cmdLabel = document.createElement("label");
-          cmdLabel.textContent = "Command";
-          el.appendChild(cmdLabel);
-
-          const cmdSelect = document.createElement("select");
-          cmdSelect.innerHTML = `<option value="">Pick a command…</option>` +
-            sharedCommands.map(cmd =>
-              `<option value="${cmd}" ${node.data.command == cmd ? "selected" : ""}>${cmd}</option>`
-            ).join('');
-          cmdSelect.value = node.data.command || "";
-          cmdSelect.onchange = () => {
-            node.data.command = cmdSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
-          };
-          el.appendChild(cmdSelect);
-
-          // --- Value picker ---
-          const valLabel = document.createElement("label");
-          valLabel.textContent = "Value";
-          el.appendChild(valLabel);
-
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value (optional)";
-          valInput.value = node.data.value || "";
-          valInput.oninput = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(valInput);
-
-    const plusVarBtn2 = document.createElement("button");
-    plusVarBtn2.type = "button";
-    plusVarBtn2.textContent = "+Var";
-    plusVarBtn2.title = "Insert a variable into this field";
-    plusVarBtn2.style.marginLeft = "6px";
-    plusVarBtn2.style.padding = "2px 8px";
-    plusVarBtn2.style.fontSize = "13px";
-    plusVarBtn2.style.borderRadius = "7px";
-    plusVarBtn2.style.background = "#334bff";
-    plusVarBtn2.style.color = "#fff";
-    plusVarBtn2.onclick = function() {
-      if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-      if (!window.flowVars) return alert("flowVars.js not loaded!");
-      const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
-      if (!allVars.length) return alert("No variables defined!");
-
-      if (allVars.length === 1) {
-        let insert = `$(${allVars[0].name})`;
-        let start = valInput.selectionStart, end = valInput.selectionEnd;
-        let oldVal = valInput.value;
-        valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-        valInput.focus();
-        valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-        valInput.dispatchEvent(new Event('input'));
-        return;
-      }
-      const sel = document.createElement("select");
-      sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
-      sel.onchange = () => {
-        let insert = `$(${sel.value})`;
-        let start = valInput.selectionStart, end = valInput.selectionEnd;
-        let oldVal = valInput.value;
-        valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-        valInput.focus();
-        valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-        valInput.dispatchEvent(new Event('input'));
-        document.body.removeChild(sel);
-      };
-      sel.style.position = "absolute";
-      let r = plusVarBtn2.getBoundingClientRect();
-      sel.style.left = r.left + "px";
-      sel.style.top = (r.bottom+2) + "px";
-      sel.style.zIndex = 9999;
-      document.body.appendChild(sel);
-      sel.focus();
-    };
-    el.appendChild(plusVarBtn2);
-
-          const previewChip2 = document.createElement("div");
-          previewChip2.className = "current-value";
-          previewChip2.style.marginLeft = "2px";
-          previewChip2.style.fontSize = "13px";
-          previewChip2.style.fontWeight = "bold";
-          previewChip2.style.cursor = "pointer";
-          previewChip2.title = "Preview of value/expression";
-          el.appendChild(previewChip2);
-          function updatePreview2() {
-            if (window.flowVars && window.flowVars.evaluate) {
-              try {
-                const v = valInput.value;
-                if (!v.trim()) { previewChip2.textContent = ""; previewChip2.title = ""; return; }
-                const result = window.flowVars.evaluate(v);
-                let color = "#b7ffac";
-                if (typeof result === "number") color = "#3af";
-                else if (typeof result === "boolean") color = "#0c0";
-                else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-                previewChip2.textContent = "= " + result;
-                previewChip2.style.color = color;
-                previewChip2.title = (typeof result) + ": " + result;
-              } catch(e) {
-                previewChip2.textContent = "ERR: " + e.message;
-                previewChip2.style.color = "#f33";
-                previewChip2.title = e.message;
-              }
-            }
-          }
-          valInput.addEventListener("input", updatePreview2);
-          updatePreview2();
-
-          // --- Color picker for setColor command ---
-          if (sharedCommands.includes("setColor") && node.data.command === "setColor") {
-            const colorLabel = document.createElement("label");
-            colorLabel.textContent = "Pick Color:";
-            colorLabel.style.display = "block";
-            colorLabel.style.marginTop = "8px";
-            el.appendChild(colorLabel);
-
-            const colorPreview = document.createElement("div");
-            colorPreview.style.width = "36px";
-            colorPreview.style.height = "20px";
-            colorPreview.style.border = "1px solid #555";
-            colorPreview.style.borderRadius = "7px";
-            colorPreview.style.marginBottom = "8px";
-            colorPreview.style.background = node.data.color || "#ff0000";
-            el.appendChild(colorPreview);
-
-            const pickrDiv = document.createElement("div");
-            pickrDiv.id = "pickr_" + node.id;
-            el.appendChild(pickrDiv);
-
-            setTimeout(() => {
-              if (window.pickrs && window.pickrs[node.id]) {
-                window.pickrs[node.id].destroyAndRemove();
-                delete window.pickrs[node.id];
-              }
-              if (!window.pickrs) window.pickrs = {};
-              window.pickrs[node.id] = Pickr.create({
-                el: pickrDiv,
-                theme: 'nano',
-                default: node.data.color || "#ff0000",
-                components: {
-                  preview: true,
-                  opacity: false,
-                  hue: true,
-                  interaction: {
-                    hex: true,
-                    input: true,
-                    save: true
-                  }
-                }
-              });
-              window.pickrs[node.id].on('save', (color, instance) => {
-                const hex = color.toHEXA().toString();
-                node.data.color = hex;
-                colorPreview.style.background = hex;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              });
-              window.pickrs[node.id].on('change', (color, instance) => {
-                const hex = color.toHEXA().toString();
-                colorPreview.style.background = hex;
-              });
-            }, 100);
-          }
-          // --- Show/hide status tick box (for device nodes only!) ---
-          const showStatusWrap = document.createElement("div");
-          showStatusWrap.style.margin = "7px 0";
-          const showStatusCheckbox = document.createElement("input");
-          showStatusCheckbox.type = "checkbox";
-          showStatusCheckbox.id = "showStatus_" + node.id;
-          showStatusCheckbox.checked = node.data.showStatus !== false; // default true
-          showStatusCheckbox.onchange = () => {
-            node.data.showStatus = showStatusCheckbox.checked;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          const showStatusLabel = document.createElement("label");
-          showStatusLabel.setAttribute("for", "showStatus_" + node.id);
-          showStatusLabel.textContent = " Show device status on tile";
-          showStatusWrap.appendChild(showStatusCheckbox);
-          showStatusWrap.appendChild(showStatusLabel);
-          el.appendChild(showStatusWrap);
-          return;
-        }
-
-// flowengineeditor.multi-trigger.html (lines 801–1000)
 
         // EVENT TRIGGER NODE (with multi-device support)
+        // ---- Event Trigger Node ----
         if (node.name === "eventTrigger") {
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
             return;
           }
 
+          // --- Show/Hide tick box (showStatus) ---
+          let showStatus = true;
+          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
+          const showStatusDiv = document.createElement("div");
+          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.checked = showStatus;
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          showStatusDiv.appendChild(showStatusCheckbox);
+          const showStatusLbl = document.createElement("label");
+          showStatusLbl.textContent = "Show status";
+          showStatusLbl.style.margin = "0";
+          showStatusDiv.appendChild(showStatusLbl);
+          el.appendChild(showStatusDiv);
+
+          // --- Device Label ---
           const devLabel = document.createElement("label");
           devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // Multi-select for devices
+          // --- Device Select (multi) ---
           const devSelect = document.createElement("select");
           devSelect.multiple = true;
           devSelect.size = Math.min(10, devices.length);
           devSelect.style.width = "98%";
-
-          // Support array of deviceIds (for new), or string (legacy)
+          devSelect.style.display = "block";
+          devSelect.style.marginBottom = "12px";
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
-            : node.data.deviceId
-              ? [node.data.deviceId]
-              : [];
-
-          // Fill device dropdown
-          getSortedDevicesWithSpecials(devices).forEach((d, i) => {
-            if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
-              // Divider line
+            : node.data.deviceId ? [node.data.deviceId] : [];
+          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
+            if (i === 2 && arr.length > 2) {
               const divider = document.createElement("option");
               divider.disabled = true;
               divider.textContent = "───────────────";
@@ -1028,201 +976,240 @@ if (allVars.length === 1) {
             }
             const opt = document.createElement("option");
             opt.value = d.id;
-            opt.textContent = d.label;
+            opt.textContent = d.label || d.name || d.id;
             if (selectedIds.includes(d.id)) opt.selected = true;
             devSelect.appendChild(opt);
           });
+          el.appendChild(devSelect);
 
+          // --- Picker container ---
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "eventTrigger-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // --- Picker builder ---
+          function buildPickers() {
+            pickerDiv.innerHTML = "";
+
+            const selectedDevices = Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+              : node.data.deviceId
+                ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+                : [];
+
+            // --- Time special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
+              const timeLabel = document.createElement("label");
+              timeLabel.textContent = "Time";
+              timeLabel.style.display = "block";
+              pickerDiv.appendChild(timeLabel);
+
+              const timeInput = document.createElement("input");
+              timeInput.type = "time";
+              timeInput.value = node.data.value || "";
+              timeInput.style.display = "block";
+              timeInput.style.marginBottom = "12px";
+              timeInput.onchange = () => {
+                node.data.value = timeInput.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(timeInput);
+              return;
+            }
+            // --- Mode special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
+              const modeLabel = document.createElement("label");
+              modeLabel.textContent = "Mode";
+              modeLabel.style.display = "block";
+              pickerDiv.appendChild(modeLabel);
+
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = 5;
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+              const allModes = window.hubitatModes || [];
+              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
+              allModes.forEach(mode => {
+                const opt = document.createElement("option");
+                opt.value = mode.id;
+                opt.textContent = mode.name;
+                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
+                modeSelect.appendChild(opt);
+              });
+              modeSelect.onchange = () => {
+                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                node.data.value = values;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+              return;
+            }
+
+            // --- Standard device attribute pickers ---
+            let sharedAttributes = [];
+            if (selectedDevices.length > 0) {
+              sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+              for (let i = 1; i < selectedDevices.length; i++) {
+                sharedAttributes = sharedAttributes.filter(attr =>
+                  Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+                );
+              }
+            }
+            // --- Attribute Picker ---
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            pickerDiv.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              sharedAttributes.map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(attrSelect);
+
+            // --- Comparator Picker ---
+            const cmpLabel = document.createElement("label");
+            cmpLabel.textContent = "Comparator";
+            cmpLabel.style.display = "block";
+            pickerDiv.appendChild(cmpLabel);
+
+            const cmpSelect = document.createElement("select");
+            cmpSelect.style.display = "block";
+            cmpSelect.style.marginBottom = "12px";
+            const allComparators = [
+              "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
+            ];
+            const comparatorLabels = {
+              "==": "equals (==)",
+              "!=": "not equals (!=)",
+              "<": "less than (<)",
+              "<=": "less than or equal (<=)",
+              ">": "greater than (>)",
+              ">=": "greater than or equal (>=)",
+              "contains": "contains",
+              "not contains": "not contains",
+              "changes": "changes"
+            };
+            cmpSelect.innerHTML = `<option value="">Pick…</option>` +
+              allComparators.map(cmp =>
+                `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+              ).join('');
+            cmpSelect.value = node.data.comparator || "";
+            cmpSelect.onchange = () => {
+              node.data.comparator = cmpSelect.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(cmpSelect);
+
+            // --- Value Picker ---
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Value";
+            valueLabel.style.display = "block";
+            pickerDiv.appendChild(valueLabel);
+
+            let valueField = document.createElement("input");
+            valueField.type = "text";
+            valueField.value = node.data.value || "";
+            valueField.style.display = "block";
+            valueField.style.marginBottom = "12px";
+            valueField.onchange = () => {
+              node.data.value = valueField.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            };
+            pickerDiv.appendChild(valueField);
+          }
+
+          // Initial build
+          buildPickers();
+
+          // Device select onchange
           devSelect.onchange = () => {
-            const selected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = selected;
-            node.data.deviceId = selected.length === 1 ? selected[0] : ""; // For compatibility
-            // Set deviceLabel for display on tile
-            const labels = selected.map(id => {
+            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = newSelected;
+            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
+
+            // Update deviceLabel for tile display
+            const labels = node.data.deviceIds.map(id => {
               const dev = devices.find(d => d.id == id);
               return dev ? (dev.label || dev.name || id) : id;
             });
             node.data.deviceLabel = labels.join(", ");
-            // Clear attribute/comparator/value if selection changed (to prevent stale data)
+
+            // Always clear dependent fields when devices change
             node.data.attribute = "";
             node.data.comparator = "";
             node.data.value = "";
+
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
+            buildPickers();
           };
-          el.appendChild(devSelect);
-
-          // Find all selected devices (for multi-select)
-          const selectedDevices = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
-            : node.data.deviceId
-              ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
-              : [];
-
-          // Special handling for Time and Mode (single-select)
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
-            el.appendChild(document.createElement("br"));
-            el.appendChild(document.createTextNode("This is a time event trigger."));
-            return;
-          }
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-            const attrLabel = document.createElement("label");
-            attrLabel.textContent = "Attribute";
-            el.appendChild(attrLabel);
-            const attrInput = document.createElement("select");
-            attrInput.innerHTML = `<option value="mode" selected>mode</option>`;
-            attrInput.disabled = true;
-            el.appendChild(attrInput);
-
-            const cmpLabel = document.createElement("label");
-            cmpLabel.textContent = "Comparator";
-            el.appendChild(cmpLabel);
-            const cmpInput = document.createElement("select");
-            ["=", "!="].forEach(cmp => {
-              const opt = document.createElement("option");
-              opt.value = cmp;
-              opt.textContent = cmp;
-              if (node.data.comparator == cmp) opt.selected = true;
-              cmpInput.appendChild(opt);
-            });
-            cmpInput.value = node.data.comparator || "";
-            cmpInput.onchange = () => {
-              node.data.comparator = cmpInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              renderEditor(node);
-            };
-            el.appendChild(cmpInput);
-
-            const valueLabel = document.createElement("label");
-            valueLabel.textContent = "Mode";
-            el.appendChild(valueLabel);
-            const modes = MODE_DEVICE.attributes.mode;
-            const valInput = document.createElement("select");
-            valInput.innerHTML = `<option value="">Pick a mode…</option>` +
-              modes.map(mode => `<option value="${mode}" ${node.data.value === mode ? "selected" : ""}>${mode}</option>`).join('');
-            valInput.value = node.data.value || "";
-            valInput.onchange = () => {
-              node.data.value = valInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(valInput);
-
-            return;
-          }
-
-          // --- STANDARD EVENT TRIGGER LOGIC FOR MULTI-DEVICE ---
-
-          // Find shared attributes for all selected devices
-          let sharedAttributes = [];
-          if (selectedDevices.length > 0) {
-            sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
-            for (let i = 1; i < selectedDevices.length; i++) {
-              sharedAttributes = sharedAttributes.filter(attr =>
-                Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
-              );
-            }
-          }
-
-          const attrLabel = document.createElement("label");
-          attrLabel.textContent = "Attribute";
-          el.appendChild(attrLabel);
-
-          const attrSelect = document.createElement("select");
-          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
-            sharedAttributes.map(attr =>
-              `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
-            ).join('');
-          attrSelect.value = node.data.attribute || "";
-          attrSelect.onchange = () => {
-            node.data.attribute = attrSelect.value;
-            node.data.comparator = ""; // reset comparator
-            node.data.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
-          };
-          el.appendChild(attrSelect);
-
-          const cmpSelect = document.createElement("select");
-          const allComparators = [
-            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
-          ];
-          const comparatorLabels = {
-            "==": "equals (==)",
-            "!=": "not equals (!=)",
-            "<": "less than (<)",
-            "<=": "less than or equal (<=)",
-            ">": "greater than (>)",
-            ">=": "greater than or equal (>=)",
-            "contains": "contains",
-            "not contains": "not contains",
-            "changes": "changes"
-          };
-          cmpSelect.innerHTML = `<option value="">Pick…</option>` +
-            allComparators.map(cmp =>
-              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
-            ).join('');
-          cmpSelect.value = node.data.comparator || "";
-          cmpSelect.onchange = () => {
-            node.data.comparator = cmpSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(cmpSelect);
-
-
-          // For (minutes) sustained trigger option
-          const sustainedLabel = document.createElement("label");
-          sustainedLabel.textContent = "For (minutes)";
-          el.appendChild(sustainedLabel);
-          const sustainedInput = document.createElement("input");
-          sustainedInput.type = "number";
-          sustainedInput.min = "0";
-          sustainedInput.step = "1";
-          sustainedInput.value = node.data.sustainedMin || "";
-          sustainedInput.placeholder = "Optional";
-          sustainedInput.oninput = () => {
-            node.data.sustainedMin = sustainedInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(sustainedInput);
-
-          return;
         }
 
-
-        // CONDITION NODE (multi-device support, like eventTrigger)
+          // CONDITION NODE (multi-device support, like eventTrigger)
         if (node.name === "condition") {
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
             return;
           }
 
+          // --- Show/Hide tick box (showStatus) ---
+          let showStatus = true;
+          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
+          const showStatusDiv = document.createElement("div");
+          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.checked = showStatus;
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          showStatusDiv.appendChild(showStatusCheckbox);
+          const showStatusLbl = document.createElement("label");
+          showStatusLbl.textContent = "Show status";
+          showStatusLbl.style.margin = "0";
+          showStatusDiv.appendChild(showStatusLbl);
+          el.appendChild(showStatusDiv);
+
+          // --- Device Label ---
           const devLabel = document.createElement("label");
           devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // Multi-select for devices
+          // --- Device Select (multi) ---
           const devSelect = document.createElement("select");
           devSelect.multiple = true;
           devSelect.size = Math.min(10, devices.length);
           devSelect.style.width = "98%";
-
-          // Support array of deviceIds (for new), or string (legacy)
+          devSelect.style.display = "block";
+          devSelect.style.marginBottom = "12px";
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
-            : node.data.deviceId
-              ? [node.data.deviceId]
-              : [];
-
-          // Fill device dropdown
-          getSortedDevicesWithSpecials(devices).forEach((d, i) => {
-            if (i === 2 && getSortedDevicesWithSpecials(devices).length > 2) {
-              // Divider line
+            : node.data.deviceId ? [node.data.deviceId] : [];
+          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
+            if (i === 2 && arr.length > 2) {
               const divider = document.createElement("option");
               divider.disabled = true;
               divider.textContent = "───────────────";
@@ -1231,224 +1218,196 @@ if (allVars.length === 1) {
             }
             const opt = document.createElement("option");
             opt.value = d.id;
-            opt.textContent = d.label;
+            opt.textContent = d.label || d.name || d.id;
             if (selectedIds.includes(d.id)) opt.selected = true;
             devSelect.appendChild(opt);
           });
+          el.appendChild(devSelect);
 
+          // --- Picker container ---
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "condition-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // --- Picker builder ---
+          function buildPickers() {
+            pickerDiv.innerHTML = "";
+
+            const selectedDevices = Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+              : node.data.deviceId
+                ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+                : [];
+
+            // --- Time special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
+              const timeLabel = document.createElement("label");
+              timeLabel.textContent = "Time";
+              timeLabel.style.display = "block";
+              pickerDiv.appendChild(timeLabel);
+
+              const timeInput = document.createElement("input");
+              timeInput.type = "time";
+              timeInput.value = node.data.value || "";
+              timeInput.style.display = "block";
+              timeInput.style.marginBottom = "12px";
+              timeInput.onchange = () => {
+                node.data.value = timeInput.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(timeInput);
+              return;
+            }
+            // --- Mode special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
+              const modeLabel = document.createElement("label");
+              modeLabel.textContent = "Mode";
+              modeLabel.style.display = "block";
+              pickerDiv.appendChild(modeLabel);
+
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = 5;
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+              const allModes = window.hubitatModes || [];
+              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
+              allModes.forEach(mode => {
+                const opt = document.createElement("option");
+                opt.value = mode.id;
+                opt.textContent = mode.name;
+                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
+                modeSelect.appendChild(opt);
+              });
+              modeSelect.onchange = () => {
+                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                node.data.value = values;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+              return;
+            }
+
+            // --- Standard device attribute pickers ---
+            let sharedAttributes = [];
+            if (selectedDevices.length > 0) {
+              sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+              for (let i = 1; i < selectedDevices.length; i++) {
+                sharedAttributes = sharedAttributes.filter(attr =>
+                  Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+                );
+              }
+            }
+            // --- Attribute Picker ---
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            pickerDiv.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              sharedAttributes.map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(attrSelect);
+
+            // --- Comparator Picker ---
+            const cmpLabel = document.createElement("label");
+            cmpLabel.textContent = "Comparator";
+            cmpLabel.style.display = "block";
+            pickerDiv.appendChild(cmpLabel);
+
+            const cmpSelect = document.createElement("select");
+            cmpSelect.style.display = "block";
+            cmpSelect.style.marginBottom = "12px";
+            const allComparators = [
+              "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
+            ];
+            const comparatorLabels = {
+              "==": "equals (==)",
+              "!=": "not equals (!=)",
+              "<": "less than (<)",
+              "<=": "less than or equal (<=)",
+              ">": "greater than (>)",
+              ">=": "greater than or equal (>=)",
+              "contains": "contains",
+              "not contains": "not contains",
+              "changes": "changes"
+            };
+            cmpSelect.innerHTML = `<option value="">Pick…</option>` +
+              allComparators.map(cmp =>
+                `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+              ).join('');
+            cmpSelect.value = node.data.comparator || "";
+            cmpSelect.onchange = () => {
+              node.data.comparator = cmpSelect.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(cmpSelect);
+
+            // --- Value Picker ---
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Value";
+            valueLabel.style.display = "block";
+            pickerDiv.appendChild(valueLabel);
+
+            let valueField = document.createElement("input");
+            valueField.type = "text";
+            valueField.value = node.data.value || "";
+            valueField.style.display = "block";
+            valueField.style.marginBottom = "12px";
+            valueField.onchange = () => {
+              node.data.value = valueField.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            };
+            pickerDiv.appendChild(valueField);
+          }
+
+          // Initial build
+          buildPickers();
+
+          // Device select onchange
           devSelect.onchange = () => {
-            const selected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = selected;
-            node.data.deviceId = selected.length === 1 ? selected[0] : ""; // For compatibility
-            // Set deviceLabel for display on tile
-            const labels = selected.map(id => {
+            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = newSelected;
+            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
+
+            // Update deviceLabel for tile display
+            const labels = node.data.deviceIds.map(id => {
               const dev = devices.find(d => d.id == id);
               return dev ? (dev.label || dev.name || id) : id;
             });
             node.data.deviceLabel = labels.join(", ");
-            // Clear attribute/comparator/value if selection changed (to prevent stale data)
+
+            // Always clear dependent fields when devices change
             node.data.attribute = "";
             node.data.comparator = "";
             node.data.value = "";
+
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
+            buildPickers();
           };
-          el.appendChild(devSelect);
-
-          // Find all selected devices (for multi-select)
-          const selectedDevices = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
-            : node.data.deviceId
-              ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
-              : [];
-
-          // Special handling for Time and Mode (single-select)
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
-            el.appendChild(document.createElement("br"));
-            el.appendChild(document.createTextNode("Condition on Time of Day (between):"));
-            el.appendChild(document.createElement("br"));
-
-            const startLabel = document.createElement("label");
-            startLabel.textContent = "Start Time";
-            el.appendChild(startLabel);
-            const startTime = document.createElement("input");
-            startTime.type = "time";
-            startTime.value = node.data.startTime || "";
-            startTime.oninput = () => {
-              node.data.startTime = startTime.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(startTime);
-
-            const endLabel = document.createElement("label");
-            endLabel.textContent = "End Time";
-            el.appendChild(endLabel);
-            const endTime = document.createElement("input");
-            endTime.type = "time";
-            endTime.value = node.data.endTime || "";
-            endTime.oninput = () => {
-              node.data.endTime = endTime.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(endTime);
-
-            // Day of week picker
-            const daysLabel = document.createElement("label");
-            daysLabel.textContent = "Days of Week";
-            el.appendChild(daysLabel);
-            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            const daySelect = document.createElement("select");
-            daySelect.multiple = true;
-            daySelect.size = 7;
-            days.forEach(day => {
-              const opt = document.createElement("option");
-              opt.value = day;
-              opt.textContent = day;
-              if (Array.isArray(node.data.daysOfWeek) && node.data.daysOfWeek.includes(day)) {
-                opt.selected = true;
-              }
-              daySelect.appendChild(opt);
-            });
-            daySelect.onchange = () => {
-              node.data.daysOfWeek = Array.from(daySelect.selectedOptions).map(opt => opt.value);
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(daySelect);
-            return;
-          }
-
-          if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-            const attrLabel = document.createElement("label");
-            attrLabel.textContent = "Attribute";
-            el.appendChild(attrLabel);
-            const attrInput = document.createElement("select");
-            attrInput.innerHTML = `<option value="mode" selected>mode</option>`;
-            attrInput.disabled = true;
-            el.appendChild(attrInput);
-
-            const cmpLabel = document.createElement("label");
-            cmpLabel.textContent = "Comparator";
-            el.appendChild(cmpLabel);
-            const cmpInput = document.createElement("select");
-            ["=", "!="].forEach(cmp => {
-              const opt = document.createElement("option");
-              opt.value = cmp;
-              opt.textContent = cmp;
-              if (node.data.comparator == cmp) opt.selected = true;
-              cmpInput.appendChild(opt);
-            });
-            cmpInput.value = node.data.comparator || "";
-            cmpInput.onchange = () => {
-              node.data.comparator = cmpInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              renderEditor(node);
-            };
-            el.appendChild(cmpInput);
-
-            const valueLabel = document.createElement("label");
-            valueLabel.textContent = "Mode";
-            el.appendChild(valueLabel);
-            const modes = MODE_DEVICE.attributes.mode;
-            const valInput = document.createElement("select");
-            valInput.innerHTML = `<option value="">Pick a mode…</option>` +
-              modes.map(mode => `<option value="${mode}" ${node.data.value === mode ? "selected" : ""}>${mode}</option>`).join('');
-            valInput.value = node.data.value || "";
-            valInput.onchange = () => {
-              node.data.value = valInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            el.appendChild(valInput);
-            return;
-          }
-
-          // --- STANDARD CONDITION LOGIC (MULTI-DEVICE: only common attributes) ---
-          // Find shared attributes for all selected devices
-          let sharedAttributes = [];
-          if (selectedDevices.length > 0) {
-            sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
-            for (let i = 1; i < selectedDevices.length; i++) {
-              sharedAttributes = sharedAttributes.filter(attr =>
-                Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
-              );
-            }
-          }
-
-          const attrLabel = document.createElement("label");
-          attrLabel.textContent = "Attribute";
-          el.appendChild(attrLabel);
-
-          const attrSelect = document.createElement("select");
-          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
-            sharedAttributes.map(attr =>
-              `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
-            ).join('');
-          attrSelect.value = node.data.attribute || "";
-          attrSelect.onchange = () => {
-            node.data.attribute = attrSelect.value;
-            node.data.comparator = ""; // reset comparator
-            node.data.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node);
-          };
-          el.appendChild(attrSelect);
-
-          // Comparator picker (use all eventTrigger comparators for consistency)
-          const cmpLabel = document.createElement("label");
-          cmpLabel.textContent = "Comparator";
-          el.appendChild(cmpLabel);
-
-          const cmpSelect = document.createElement("select");
-          const allComparators = [
-            "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
-          ];
-          const comparatorLabels = {
-            "==": "equals (==)",
-            "!=": "not equals (!=)",
-            "<": "less than (<)",
-            "<=": "less than or equal (<=)",
-            ">": "greater than (>)",
-            ">=": "greater than or equal (>=)",
-            "contains": "contains",
-            "not contains": "not contains",
-            "changes": "changes"
-          };
-          cmpSelect.innerHTML = `<option value="">Pick…</option>` +
-            allComparators.map(cmp =>
-              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
-            ).join('');
-          cmpSelect.value = node.data.comparator || "";
-          cmpSelect.onchange = () => {
-            node.data.comparator = cmpSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(cmpSelect);
-
-          // Value input
-          const valueLabel = document.createElement("label");
-          valueLabel.textContent = "Value";
-          el.appendChild(valueLabel);
-
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value";
-          valInput.value = node.data.value || "";
-          valInput.oninput = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(valInput);
         }
 
-          if (node.name === "delay") {
+        if (node.name === "delay") {
           const el = document.getElementById("nodeEditor");
           el.innerHTML = "<b>Delay (Milliseconds)</b><br><br>";
 
@@ -1614,6 +1573,266 @@ if (allVars.length === 1) {
           return;
         }
 
+        if (node.name === "notMatchingVar") {
+          if (!devices || devices.length === 0) {
+            el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
+            return;
+          }
+
+          // --- Output variable name ---
+          const outVarLabel = document.createElement("label");
+          outVarLabel.textContent = "Output variable name";
+          outVarLabel.style.display = "block";
+          el.appendChild(outVarLabel);
+
+          const outVarInput = document.createElement("input");
+          outVarInput.type = "text";
+          outVarInput.value = node.data.outputVar || "";
+          outVarInput.style.display = "block";
+          outVarInput.style.marginBottom = "12px";
+          outVarInput.placeholder = "Result variable";
+          outVarInput.onchange = () => {
+            node.data.outputVar = outVarInput.value.trim();
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          el.appendChild(outVarInput);
+
+          // --- Show/Hide tick box (showStatus) ---
+          let showStatus = true;
+          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
+          const showStatusDiv = document.createElement("div");
+          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
+          const showStatusCheckbox = document.createElement("input");
+          showStatusCheckbox.type = "checkbox";
+          showStatusCheckbox.checked = showStatus;
+          showStatusCheckbox.onchange = () => {
+            node.data.showStatus = showStatusCheckbox.checked;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          };
+          showStatusDiv.appendChild(showStatusCheckbox);
+          const showStatusLbl = document.createElement("label");
+          showStatusLbl.textContent = "Show status";
+          showStatusLbl.style.margin = "0";
+          showStatusDiv.appendChild(showStatusLbl);
+          el.appendChild(showStatusDiv);
+
+          // --- Device Label ---
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+
+          // --- Device Select (multi) ---
+          const devSelect = document.createElement("select");
+          devSelect.multiple = true;
+          devSelect.size = Math.min(10, devices.length);
+          devSelect.style.width = "98%";
+          devSelect.style.display = "block";
+          devSelect.style.marginBottom = "12px";
+          const selectedIds = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds
+            : node.data.deviceId ? [node.data.deviceId] : [];
+          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
+            if (i === 2 && arr.length > 2) {
+              const divider = document.createElement("option");
+              divider.disabled = true;
+              divider.textContent = "───────────────";
+              divider.style.background = "#444";
+              devSelect.appendChild(divider);
+            }
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.label || d.name || d.id;
+            if (selectedIds.includes(d.id)) opt.selected = true;
+            devSelect.appendChild(opt);
+          });
+          el.appendChild(devSelect);
+
+          // --- Picker container ---
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "notmatchingvar-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // --- Picker builder ---
+          function buildPickers() {
+            pickerDiv.innerHTML = "";
+
+            const selectedDevices = Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
+              : node.data.deviceId
+                ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
+                : [];
+
+            // --- Time special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
+              const timeLabel = document.createElement("label");
+              timeLabel.textContent = "Time";
+              timeLabel.style.display = "block";
+              pickerDiv.appendChild(timeLabel);
+
+              const timeInput = document.createElement("input");
+              timeInput.type = "time";
+              timeInput.value = node.data.value || "";
+              timeInput.style.display = "block";
+              timeInput.style.marginBottom = "12px";
+              timeInput.onchange = () => {
+                node.data.value = timeInput.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(timeInput);
+              return;
+            }
+            // --- Mode special device ---
+            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
+              const modeLabel = document.createElement("label");
+              modeLabel.textContent = "Mode";
+              modeLabel.style.display = "block";
+              pickerDiv.appendChild(modeLabel);
+
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = 5;
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+              const allModes = window.hubitatModes || [];
+              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
+              allModes.forEach(mode => {
+                const opt = document.createElement("option");
+                opt.value = mode.id;
+                opt.textContent = mode.name;
+                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
+                modeSelect.appendChild(opt);
+              });
+              modeSelect.onchange = () => {
+                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                node.data.value = values;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+              return;
+            }
+
+            // --- Standard device attribute pickers ---
+            let sharedAttributes = [];
+            if (selectedDevices.length > 0) {
+              sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
+              for (let i = 1; i < selectedDevices.length; i++) {
+                sharedAttributes = sharedAttributes.filter(attr =>
+                  Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
+                );
+              }
+            }
+            // --- Attribute Picker ---
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            pickerDiv.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              sharedAttributes.map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(attrSelect);
+
+            // --- Comparator Picker ---
+            const cmpLabel = document.createElement("label");
+            cmpLabel.textContent = "Comparator";
+            cmpLabel.style.display = "block";
+            pickerDiv.appendChild(cmpLabel);
+
+            const cmpSelect = document.createElement("select");
+            cmpSelect.style.display = "block";
+            cmpSelect.style.marginBottom = "12px";
+            const allComparators = [
+              "==", "!=", "<", "<=", ">", ">=", "contains", "not contains", "changes"
+            ];
+            const comparatorLabels = {
+              "==": "equals (==)",
+              "!=": "not equals (!=)",
+              "<": "less than (<)",
+              "<=": "less than or equal (<=)",
+              ">": "greater than (>)",
+              ">=": "greater than or equal (>=)",
+              "contains": "contains",
+              "not contains": "not contains",
+              "changes": "changes"
+            };
+            cmpSelect.innerHTML = `<option value="">Pick…</option>` +
+              allComparators.map(cmp =>
+                `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+              ).join('');
+            cmpSelect.value = node.data.comparator || "";
+            cmpSelect.onchange = () => {
+              node.data.comparator = cmpSelect.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              buildPickers();
+            };
+            pickerDiv.appendChild(cmpSelect);
+
+            // --- Value Picker ---
+            const valueLabel = document.createElement("label");
+            valueLabel.textContent = "Value";
+            valueLabel.style.display = "block";
+            pickerDiv.appendChild(valueLabel);
+
+            let valueField = document.createElement("input");
+            valueField.type = "text";
+            valueField.value = node.data.value || "";
+            valueField.style.display = "block";
+            valueField.style.marginBottom = "12px";
+            valueField.onchange = () => {
+              node.data.value = valueField.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            };
+            pickerDiv.appendChild(valueField);
+          }
+
+          // Initial build
+          buildPickers();
+
+          // Device select onchange
+          devSelect.onchange = () => {
+            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            node.data.deviceIds = newSelected;
+            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
+
+            // Update deviceLabel for tile display
+            const labels = node.data.deviceIds.map(id => {
+              const dev = devices.find(d => d.id == id);
+              return dev ? (dev.label || dev.name || id) : id;
+            });
+            node.data.deviceLabel = labels.join(", ");
+
+            // Always clear dependent fields when devices change
+            node.data.attribute = "";
+            node.data.comparator = "";
+            node.data.value = "";
+
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            buildPickers();
+          };
+        }
+
         if (node.name === "notification") {
           const el = document.getElementById("nodeEditor");
           el.innerHTML = "<b>Notification Node</b><br><br>";
@@ -1708,32 +1927,32 @@ if (allVars.length === 1) {
           };
           el.appendChild(msgInput);
 
-    const plusVarBtn = document.createElement("button");
-    plusVarBtn.type = "button";
-    plusVarBtn.textContent = "+Var";
-    plusVarBtn.title = "Insert a variable into this field";
-    plusVarBtn.style.marginLeft = "6px";
-    plusVarBtn.style.padding = "2px 8px";
-    plusVarBtn.style.fontSize = "13px";
-    plusVarBtn.style.borderRadius = "7px";
-    plusVarBtn.style.background = "#334bff";
-    plusVarBtn.style.color = "#fff";
-    plusVarBtn.onclick = function() {
-      if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-if (!window.flowVars) return alert("flowVars.js not loaded!");
-      const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
-      if (!allVars.length) return alert("No variables defined!");
+          const plusVarBtn = document.createElement("button");
+          plusVarBtn.type = "button";
+          plusVarBtn.textContent = "+Var";
+          plusVarBtn.title = "Insert a variable into this field";
+          plusVarBtn.style.marginLeft = "6px";
+          plusVarBtn.style.padding = "2px 8px";
+          plusVarBtn.style.fontSize = "13px";
+          plusVarBtn.style.borderRadius = "7px";
+          plusVarBtn.style.background = "#334bff";
+          plusVarBtn.style.color = "#fff";
+          plusVarBtn.onclick = function() {
+            if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
+      if (!window.flowVars) return alert("flowVars.js not loaded!");
+            const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
+            if (!allVars.length) return alert("No variables defined!");
 
-if (allVars.length === 1) {
-  let insert = `$(${allVars[0].name})`;
-  let start = valInput.selectionStart, end = valInput.selectionEnd;
-  let oldVal = valInput.value;
-  valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-  valInput.focus();
-  valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-  valInput.dispatchEvent(new Event('input'));
-  return;
-}
+      if (allVars.length === 1) {
+        let insert = `$(${allVars[0].name})`;
+        let start = valInput.selectionStart, end = valInput.selectionEnd;
+        let oldVal = valInput.value;
+        valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
+        valInput.focus();
+        valInput.selectionStart = valInput.selectionEnd = start + insert.length;
+        valInput.dispatchEvent(new Event('input'));
+        return;
+      }
       const sel = document.createElement("select");
       sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
       sel.onchange = () => {
@@ -1787,7 +2006,6 @@ if (allVars.length === 1) {
     msgInput.addEventListener("input", updatePreview);
     updatePreview();
     
-
           return;
         }
       }
@@ -1847,6 +2065,14 @@ if (allVars.length === 1) {
           editor.selected_id = null;
         }
       });
+
+      document.getElementById("addNotMatchingVar").onclick = function () {
+        logAction("addNotMatchingVar button clicked.");
+        editor.addNode("notMatchingVar", 1, 1, 320, 180, "notMatchingVar", {
+            deviceIds: [], attribute: "", value: "", varScope: "flow"}
+        ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
+        logAction("addNotMatchingVar finished.");
+      };
 
       document.getElementById("addDevice").onclick = () => {
         logAction("addAction button clicked.");
@@ -2174,74 +2400,56 @@ if (allVars.length === 1) {
         }
       }
 
-      // ------------- PATCH: Load Devices button -------------------
-      document.getElementById("loadDevices").onclick = async () => {
-        logAction("loadDevices button clicked.");
-        devices = await fetchDevicesFromApp();
-        devices.forEach(dev => {
-          if (Array.isArray(dev.attributes)) {
-            const attrMap = {};
-            dev.attributes.forEach(a => {
-              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+      var loadBtn = document.getElementById("loadDevices");
+        if (loadBtn) {
+          loadBtn.onclick = async () => {
+            logAction("loadDevices button clicked.");
+            devices = await fetchDevicesFromApp();
+            devices.forEach(dev => {
+              if (Array.isArray(dev.attributes)) {
+                const attrMap = {};
+                dev.attributes.forEach(a => {
+                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+                });
+                dev.attributes = attrMap;
+              }
             });
-            dev.attributes = attrMap;
-          }
-        });
-        window.devices = devices;
-        // (add specials)
-        devices.push(TIME_DEVICE);
-        devices.push(MODE_DEVICE);
-        if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-          Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
-          if (editor.selected_id) {
-            renderEditor(editor.getNodeFromId(editor.selected_id));
-          }
+            window.devices = devices;
+            // (add specials)
+            devices.push(TIME_DEVICE);
+            devices.push(MODE_DEVICE);
+            if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+              Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
+              if (editor.selected_id) {
+                renderEditor(editor.getNodeFromId(editor.selected_id));
+              }
+            }
+            logAction("Devices loaded: " + devices.length);
+          };
         }
-        logAction("Devices loaded: " + devices.length);
-      };
 
-      document.getElementById("sendFlow").onclick = async () => {
-        logAction("sendFlow button clicked.");
-
+      document.getElementById("sendFlow").onclick = async function() {
+        if (!editor) return;
         const flowName = document.getElementById("flowName").value.trim();
         if (!flowName) {
-          logAction("Enter the Flow Name!", "error");
+          alert("Please enter a flow name.");
           return;
         }
-        if (!isValidFlowName(flowName)) {
-          logAction("Flow Name can only use letters, numbers, dash (-), or underscore (_). No spaces or special characters allowed.", "error");
-          return;
+        const data = editor.export();
+
+        // PATCH: Save local variables inside the flow JSON
+        if (window.flowVars && window.flowVars.getLocalVars) {
+          data.variables = window.flowVars.getLocalVars();
         }
 
-        const flowExport = editor.export();
-        patchFlowWithDeviceLabels(flowExport, devices);
-        flowExport.flowName = flowName;
+        // PATCH: Include the flowName at the top level
+        const out = {
+          flowName: flowName,
+          ...data
+        };
 
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          return;
-        }
-
-        const endpoint = `/apps/api/${appId}/runFlow?access_token=${token}`;
-
-        try {
-          logAction("Sending flow to Hubitat app...");
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(flowExport)
-          });
-          if (response.ok) {
-            const respText = await response.text();
-            logAction("Flow sent to Hubitat successfully: " + respText);
-          } else {
-            logAction("Hubitat error: " + await response.text(), "error");
-          }
-        } catch (err) {
-          logAction("Error sending flow to Hubitat: " + err.message, "error");
-        }
+        await uploadToHubitatFile(flowName + ".json", JSON.stringify(out, null, 2));
+        logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
 
       const testBtn = document.getElementById("testTile");
@@ -2308,5 +2516,26 @@ if (allVars.length === 1) {
       }
     });
   </script>
+  <script>
+    async function uploadToHubitatFile(filename, contents, opts = {}) {
+        const appId = document.getElementById("hubitatAppId")?.value.trim();
+        const token = document.getElementById("hubitatToken")?.value.trim();
+        if (!appId || !token) { alert("Missing Hubitat appId/token"); throw new Error("Missing Hubitat appId/token"); }
+        const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(filename)}`;
+        let body = contents;
+        if (typeof contents !== "string") body = JSON.stringify(contents, null, 2);
+
+        const res = await fetch(url, {
+            method: "POST",
+            body: body,
+            headers: { "Content-Type": opts.mimeType || "application/json" }
+        });
+        if (!res.ok) {
+            alert("Failed to upload file to Hubitat: " + (await res.text()));
+            throw new Error("Failed to upload file");
+        }
+        return await res.json().catch(() => true); // works for both JSON and blank responses
+        }
+    </script>
 </body>
 </html>
