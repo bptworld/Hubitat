@@ -15,68 +15,8 @@ import java.text.SimpleDateFormat
 state.nodeDebounce = state.nodeDebounce ?: [:]
 
 // --- VARIABLE SUPPORT ---
-state.flowVars = state.flowVars ?: []
 state.globalVars = state.globalVars ?: []
 state.varCtx = state.varCtx ?: [:]
-
-def loadVariables() {
-    state.flowVars = []
-    state.globalVars = []
-    state.varCtx = [:]
-    // Load global vars
-    try {
-        def globalUri = "http://${location.hub.localIP}:8080/local/global_vars.json"
-        httpGet([uri: globalUri, contentType: "application/json"]) { resp ->
-            state.globalVars = parseJson(resp.data.toString())
-        }
-    } catch (e) { log.warn "No global_vars.json found: $e" }
-    // Load per-flow vars (vars.json) if present
-    try {
-        def flowUri = "http://${location.hub.localIP}:8080/local/vars.json"
-        httpGet([uri: flowUri, contentType: "application/json"]) { resp ->
-            state.flowVars = parseJson(resp.data.toString())
-        }
-    } catch (e) { log.info "No vars.json found for this flow: $e" }
-    // Compose context for evaluation
-    (state.globalVars + state.flowVars).each { v ->
-        state.varCtx[v.name] = resolveVarValue(v)
-    }
-}
-
-def resolveVarValue(v, _visited = []) {
-    if (!v || !v.name) return ""
-    if (_visited.contains(v.name)) return "ERR:Circular"
-    _visited += v.name
-    def val = v.value
-    if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
-        return evalExpression(val, _visited)
-    }
-    if (val ==~ /^-?\d+(\.\d+)?$/) return val.contains(".") ? val.toDouble() : val.toInteger()
-    if (val.toLowerCase() == "true" || val.toLowerCase() == "false") return val.toLowerCase() == "true"
-    return val
-}
-
-def evalExpression(expr, _visited = []) {
-    // Variable substitution only (no Eval)
-    expr = expr.replaceAll(/\$\((\w+)\)/) { full, vname ->
-        def v = (state.flowVars + state.globalVars).find { it.name == vname }
-        return v ? resolveVarValue(v, _visited) : "null"
-    }
-    return expr
-}
-
-
-def resolveNodeFields(data) {
-    def result = [:]
-    data.each { k, v ->
-        if (v instanceof String && v.contains('$(')) {
-            result[k] = evalExpression(v)
-        } else {
-            result[k] = v
-        }
-    }
-    return result
-}
 
 preferences {
     page(name: "mainPage")
@@ -93,7 +33,6 @@ def mainPage() {
 		section(getFormat("header-green", " Select Flow File")) {
 			getFileList()
 			input "flowFile", "enum", title: "Choose a Flow JSON file", required: false, options: state.jsonList, submitOnChange: true
-            //href "reloadPage", title: "Reload Flow from File Manager", description: "Tap to reload and subscribe", params: [p: "reload"]
         }
  	
 		section(getFormat("header-green", " General")) {
@@ -134,8 +73,50 @@ def initialize() {
     if(logEnable) log.info "Initializing, reading flow: ${settings.flowFile}"
 	if(flowFile) {
     	readAndParseFlow()
-		readAndParseVars()
 	}
+}
+
+def loadVariables() {
+    state.varCtx = [:]
+    getGlobalVars()
+    
+    (state.globalVars).each { v ->
+        state.varCtx[v.name] = resolveVarValue(v)
+    }
+}
+
+def resolveVarValue(v, _visited = []) {
+    if (!v || !v.name) return ""
+    if (_visited.contains(v.name)) return "ERR:Circular"
+    _visited += v.name
+    def val = v.value
+    if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
+        return evalExpression(val, _visited)
+    }
+    if (val ==~ /^-?\d+(\.\d+)?$/) return val.contains(".") ? val.toDouble() : val.toInteger()
+    if (val.toLowerCase() == "true" || val.toLowerCase() == "false") return val.toLowerCase() == "true"
+    return val
+}
+
+def evalExpression(expr, _visited = []) {
+    // Variable substitution only (no Eval)
+    expr = expr.replaceAll(/\$\((\w+)\)/) { full, vname ->
+        def v = (state.flowVars + state.globalVars).find { it.name == vname }
+        return v ? resolveVarValue(v, _visited) : "null"
+    }
+    return expr
+}
+
+def resolveNodeFields(data) {
+    def result = [:]
+    data.each { k, v ->
+        if (v instanceof String && v.contains('$(')) {
+            result[k] = evalExpression(v)
+        } else {
+            result[k] = v
+        }
+    }
+    return result
 }
 
 String resolveVars(str) {
@@ -147,57 +128,88 @@ String resolveVars(str) {
     return out
 }
 
-def readAndParseVars() {
+def getGlobalVars() {
+	if(logEnable) log.debug "In getGlobalVars"
+	state.globalVars = []
+	uri = "http://${location.hub.localIP}:8080/local/global_vars.json"
+    def params = [
+        uri: uri,
+        contentType: "text/html; charset=UTF-8",
+        headers: [
+            "Cookie": cookie
+        ]
+    ]
     try {
-        // Try both "vars.json" (flow-local) and "global_vars.json" (global)
-        def files = ["vars.json", "global_vars.json"]
-        state.vars = [:]
-        files.each { fname ->
-            def uri = "http://${location.hub.localIP}:8080/local/${fname}"
-            httpGet([uri: uri, contentType: "application/json"]) { resp ->
-                def arr = resp.getData().toString()
-                if (arr) {
-                    def vars = parseJson(arr)
-                    if (vars instanceof List) {
-                        vars.each { v -> if(v?.name) state.vars[v.name] = v.value }
-                    }
-                }
+        httpGet(params) { resp ->
+            def jsonStr = resp.getData().toString()
+            if (!jsonStr) {
+                log.error "No file content found for ${settings.flowFile}"
+                return
             }
+            state.globalVars = parseJson(jsonStr)
+			if(logEnable) log.debug "In getGlobalVars - Reloaded state.globalVars: ${state.globalVars}"
         }
-        if (logEnable) log.debug "Loaded variables: ${state.vars}"
     } catch (e) {
-        log.warn "Could not load variables: $e"
+        log.error "Failed to load or parse flow: ${e}"
+		state.globalVars = []
     }
 }
 
 def setVariable(varName, varValue) {
+	if(logEnable) log.debug "In setVariable - varName: ${varName} - varValue: ${varValue}"
+	// Reload global_vars.json every time before setting/checking variables
+	
+	getGlobalVars()
+	
     def updatedGlobal = false
     def updatedLocal = false
     state.flowVars = state.flowVars ?: []
     state.globalVars = state.globalVars ?: []
 
     // Check for global var, update if exists
+	if(state.globalVars == []) log.info "There are NO Global vars"
     state.globalVars.each { v ->
+		//if(logEnable) log.info "GLOBAL - Checking v.name: ${v.name} VS varName: ${varName}"
         if (v.name == varName) {
+			if(logEnable) log.info "GLOBAL updating v.name: ${v.name} to varValue: ${varValue}"
             v.value = varValue
             updatedGlobal = true
         }
     }
+	if(!updatedGlobal) { if(logEnable) log.debug "Global - ${varName} - NOT FOUND" }
     // Check for local var, update if exists
+	if(state.flowVars == []) log.info "There are NO Flow vars"
     state.flowVars.each { v ->
+		//if(logEnable) log.info "Flow - Checking v.name: ${v.name} VS varName:{varName}"
         if (v.name == varName) {
             v.value = varValue
+			if(logEnable) log.info "Flow updating v.name: ${v.name} to varValue: ${varValue}"
             updatedLocal = true
         }
     }
-    // Add new var if not found anywhere, default to local
-    if (!updatedGlobal && !updatedLocal) {
-        state.flowVars << [name: varName, value: varValue]
-        updatedLocal = true
-    }
+
+	// Add new var if not found anywhere, default to local
+	if (!updatedGlobal && !updatedLocal) {
+		if(logEnable) log.info "${varName} - NOT FOUND in EITHER Global or Flow - Creating in Local"
+		state.flowVars << [name: varName, value: varValue]
+		updatedLocal = true
+	}
+
+	// If updatedLocal, update flow JSON's variables and resave
+	if (updatedLocal) {
+		if (state.flow) {
+		// Save ONLY the variables array, not the whole state.flow which may be mutated at runtime!
+		def cleanFlow = [:]
+		cleanFlow.putAll(state.flow)
+		// Only replace the variables section, never mutate drawflow!
+		cleanFlow.variables = state.flowVars
+		def fData = groovy.json.JsonOutput.toJson(cleanFlow)
+		parent.saveFlow(flowFile.replace(".json", ""), fData)
+		if(logEnable) log.debug "Saved updated variables back to flow JSON"
+		}
+	}
 
     // Save files as needed
-    if (updatedLocal) saveFlowVarsToFile()
     if (updatedGlobal) saveGlobalVarsToFile()
 
     // Update in-memory context for both
@@ -207,18 +219,11 @@ def setVariable(varName, varValue) {
     state.varCtx[varName] = varValue
 }
 
-def saveFlowVarsToFile() {
-	if(logEnable) log.debug "In saveFlowVarsToFile - Saving vars.json"
-	def fName = "vars"
-	def fData = groovy.json.JsonOutput.toJson(state.flowVars)
-	parent.saveFlow(fName, fData)
-}
-
 def saveGlobalVarsToFile() {
 	if(logEnable) log.debug "In saveGlobalVarsToFile - Saving global_vars.json"
-	def fName = "global_vars"
+	def flowFile = "global_vars.json"
 	def fData = groovy.json.JsonOutput.toJson(state.globalVars)
-	parent.saveFlow(fName, fData)
+	uploadHubFile("${flowFile}",fData.getBytes())
 }
 
 def readAndParseFlow() {
@@ -530,23 +535,23 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			break
 
                 case "condition":
-            // Handle time/day conditions
-            if(node.data.deviceId == "__time__") {
-                if(logEnable) log.debug "----- In __time__ -----"
-                def attr = node.data.attribute
-                def cmp = node.data.comparator
-                def value = resolveVars(node.data.value)
-				def value2 = resolveVars(node.data.value2)
-                def days = node.data.selectedDays ?: []
-                def allowDays = node.data.allowDayOfWeek
-                def passes = false
+					// Handle time/day conditions
+					if(node.data.deviceId == "__time__") {
+						if(logEnable) log.debug "----- In __time__ -----"
+						def attr = node.data.attribute
+						def cmp = node.data.comparator
+						def value = resolveVars(node.data.value)
+						def value2 = resolveVars(node.data.value2)
+						def days = node.data.selectedDays ?: []
+						def allowDays = node.data.allowDayOfWeek
+						def passes = false
 
-                def today = getTodayName()
-                def nowTime = getNowTimeStr()
-                def sunrise = location.sunrise
-                def sunset = location.sunset
+						def today = getTodayName()
+						def nowTime = getNowTimeStr()
+						def sunrise = location.sunrise
+						def sunset = location.sunset
 
-                if (logEnable) log.debug "Time/Day Condition: attr=${attr}, cmp=${cmp}, value=${value}, value2=${value2}, days=${days}, allowDays=${allowDays}, today=${today}, nowTime=${nowTime}"
+						if (logEnable) log.debug "Time/Day Condition: attr=${attr}, cmp=${cmp}, value=${value}, value2=${value2}, days=${days}, allowDays=${allowDays}, today=${today}, nowTime=${nowTime}"
 
                 if (attr == "currentTime") {
                     if (cmp == "==") {
@@ -804,15 +809,16 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             def msg = resolveVars(node.data.message) ?: "Test Notification"
 
 			ids.each { devId ->
-				def dev = masterDeviceList?.find { it.id == devId }
-				if (dev && node.data.notificationType == "push" && dev.hasCommand("deviceNotification")) {
-					dev.deviceNotification(msg)
+				getRealDeviceData(devId)
+		
+				if (state.device && node.data.notificationType == "push" && state.device.hasCommand("deviceNotification")) {
+					state.device.deviceNotification(msg)
 				}
-				if (dev && node.data.notificationType == "speech" && dev.hasCommand("speak")) {
-					dev.speak(msg)
+				if (state.device && node.data.notificationType == "speech" && state.device.hasCommand("speak")) {
+					state.device.speak(msg)
 				}
 			}
-			render contentType: "text/plain", data: "Notification sent to device(s)"
+			if(logEnable) log.debug "Notification sent to device(s)"
 			return
 		
 		case "setVariable":
@@ -821,6 +827,63 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			setVariable(varName, varValue)
 			node.outputs?.output_1?.connections?.each { conn ->
 				evaluateNode(conn.node, evt, null, visited)
+			}
+			break
+
+		case "notMatchingVar":
+			// Get node parameters
+			def deviceIds = node.data.deviceIds instanceof List ? node.data.deviceIds : node.data.deviceId ? [node.data.deviceId] : []
+			def attribute = node.data.attribute
+			def notValue = resolveVars(node.data.value)
+			def outputVar = node.data.outputVar ?: "Devices_Not_Matching"
+			def varScope = node.data.varScope ?: "flow" // "flow" or "global"
+
+			// Find all devices that DO NOT match the given value
+			def notMatching = []
+			deviceIds.each { devId ->
+				getRealDeviceData(devId)
+				if (state.device && attribute) {
+					def currVal = state.device.currentValue(attribute)
+					if (currVal != notValue) {
+						notMatching << devId
+					}
+				}
+			}
+
+			// Save outputVar (as comma-separated string or array—your choice)
+			def result = notMatching.join(",")
+			if (varScope == "global") {
+				// Save as a global variable
+				def existing = state.globalVars.find { it.name == outputVar }
+				if (existing) existing.value = result
+				else state.globalVars << [name: outputVar, value: result]
+				saveGlobalVarsToFile()
+				state.varCtx[outputVar] = result
+				state.vars = state.vars ?: [:]
+				state.vars[outputVar] = result
+			} else {
+				// Save as a flow variable
+				state.flowVars = state.flowVars ?: []
+				def existing = state.flowVars.find { it.name == outputVar }
+				if (existing) existing.value = result
+				else state.flowVars << [name: outputVar, value: result]
+				// Optionally persist back to flow file if needed:
+				if (state.flow) {
+					def cleanFlow = [:]; cleanFlow.putAll(state.flow)
+					cleanFlow.variables = state.flowVars
+					def fData = groovy.json.JsonOutput.toJson(cleanFlow)
+					parent.saveFlow(flowFile.replace(".json", ""), fData)
+				}
+				state.varCtx[outputVar] = result
+				state.vars = state.vars ?: [:]
+				state.vars[outputVar] = result
+			}
+			if (logEnable) log.info "notMatchingVar node: Set ${outputVar} (${varScope}) = ${result}"
+			// Continue execution for connected outputs
+			node.outputs?.each { outName, outObj ->
+				outObj.connections?.each { conn ->
+					evaluateNode(conn.node, evt, null, visited)
+				}
 			}
 			break
 
@@ -1017,4 +1080,3 @@ def display2() {
 		paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
     }
 }
-	
