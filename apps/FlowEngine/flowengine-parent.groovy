@@ -170,7 +170,7 @@ def apiGetDevices() {
 void saveFlow(fName, fData) {
     if(logEnable) log.debug "Saving to file - ${fName}"
 	String listJson = JsonOutput.toJson(fData) as String
-	uploadHubFile("${fName}.json",listJson.getBytes())
+	uploadHubFile("${fName}",listJson.getBytes())
 }
 
 def apiGetFile() {
