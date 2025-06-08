@@ -30,6 +30,7 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.transform.Field
+import groovy.json.JsonOutput
 
 definition(
     name:"Flow Engine",
@@ -58,16 +59,18 @@ def mainPage() {
                 app(name: "anyOpenApp", appName: "Flow Engine Child", namespace: "BPTWorld", title: "<b>Add a new 'Flow Engine' child</b>", multiple: true)
 			}
 			
+			section(getFormat("header-green", " <b>Device Master List:</b>")) {}
+			section(" Master List", hideable: true, hidden: true) {
+				input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
+			}
+			
 			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
             	paragraph "This app is used to receive flow data from your Flow Engine Editor."
 				paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
 				paragraph ""
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
-			}
-			
-			section(getFormat("header-green", " <b>Device Master List:</b>")) {}
-			section(" Master List", hideable: true, hidden: true) {
-				input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
+				paragraph "<hr>"
+				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
 			}
 			
 			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
@@ -106,12 +109,14 @@ def initialize() {
 		state.appId = app.id
 		state.token = state.accessToken
     }
+	notifyFlowTrace(flowFile=null, nodeId=null, nodeType=null)
+	exportModesToFile()
 }
 	
 def installCheck(){
-    display()
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
+		display()
 		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
   	}
   	else{
@@ -126,21 +131,54 @@ mappings {
 	path("/testTile") 	 { action: [POST: "testTileHandler"] }
 	path("/devices")     { action: [GET: "apiGetDevices"] }
 	path("/uploadFile")  { action: [POST: "apiUploadFile"] }
+	path("/getModes")  	 { action: [POST: "exportModesToFile"] }
 }
 
-def handleFlow() {
-    try {
-        def json = request.JSON
-		flowName = "${json?.flowName}"
-		if(logEnable) log.debug "Received Flow: ${flowName} - payload: ${json?.drawflow?.Home?.data?.size()} nodes"
-		
-        state.lastFlow = json
-        render contentType: "application/json", data: [status: "ok", nodes: json?.drawflow?.Home?.data?.size()]
-		saveFlow(flowName, state.lastFlow)
-    } catch (e) {
-        log.error "Flow handler error: ${e.message}"
-        render status: 500, data: [error: "Invalid JSON or server error"]
+def exportModesToFile() {
+	def currentMode = [ id: "current", name: location.mode]
+    def modeList = location.modes.collect { [ id: it.id, name: it.name ] } + currentMode
+    def json = groovy.json.JsonOutput.toJson([ modes: modeList ])
+	uploadHubFile("flowModes.json",json.getBytes())
+}
+
+void notifyFlowTrace(flowFile, nodeId, nodeType) {
+    if (!flowFile) return
+
+    // Track flows by runId (or generate one if missing)
+    if (!state.activeFlows) state.activeFlows = []
+
+    // When eventTrigger or new flow, start a new runId
+    def runId = state.lastRunId
+    if (nodeType == "eventTrigger" || !runId || state.lastFlowFile != flowFile) {
+        runId = "${now()}_${new Random().nextInt(1000000)}"
+        state.lastRunId = runId
+        state.lastFlowFile = flowFile
+        // Remove finished/old runs if needed (optional, e.g. keep last 3)
+        if (state.activeFlows.size() > 2) state.activeFlows = state.activeFlows[-2..-1]
+        // Add a new active flow path
+        state.activeFlows << [ runId: runId, flowFile: flowFile, steps: [] ]
     }
+
+    // Find the active flow object for this run
+    def thisFlow = state.activeFlows.find { it.runId == runId }
+    if (!thisFlow) {
+        thisFlow = [ runId: runId, flowFile: flowFile, steps: [] ]
+        state.activeFlows << thisFlow
+    }
+
+    def trace = [
+        flowFile: flowFile,
+        nodeId: nodeId,
+        nodeType: nodeType,
+        timestamp: new Date().time
+    ]
+    thisFlow.steps << trace
+
+    // Optional: remove oldest steps if too big
+    if (thisFlow.steps.size() > 40) thisFlow.steps = thisFlow.steps[-40..-1]
+
+    // Save all active flow paths
+    saveFlow("flowtrace.json", state.activeFlows)
 }
 
 def apiGetDevices() {
@@ -390,7 +428,7 @@ def getFormat(type, myText=null, page=null) {
 def display() {
     section() {
         paragraph getFormat("line")
-		label title: "Enter a name for this automation", required:true, submitOnChange:true
+		label title: "Enter a name for this automation", required:false, submitOnChange:true
     }
 }
 
