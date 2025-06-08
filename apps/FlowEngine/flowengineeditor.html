@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <title>Flow Engine Editor</title>
-  <link rel="stylesheet" href="drawflow-css.min.css">
-  <link rel="stylesheet" href="drawflow-extra.css">
+  <link rel="stylesheet" href="FE_drawflow-css.min.css">
+  <link rel="stylesheet" href="FE_drawflow-extra.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
-  <script src="flowvars.js"></script>
+  <script src="FE_flowvars.js"></script>
   <style>
     body { background: #191919; color: #e6e6e6; }
     #controls { padding: 16px; background: #222; border-bottom: 1px solid #333; }
@@ -154,7 +154,7 @@
       <button id="addDelayMin" title="Add a Delay (minutes) node">Add Delay min</button>
       <button id="addNotification" title="Add a Notification node">Add Notification</button>
       <button id="addSetVariable" title="Add a Set Variable node">Add Set Variable</button>
-      <button id="addNotMatchingVar" title="Add a Devices Not Matching variable node">Add Not Var</button>
+      <button id="addNotMatchingVar" title="Add a Devices Not Matching to JSON node">Add Not Var</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Add Do Nothing</button>
     </div>
   </div>
@@ -162,7 +162,7 @@
     <div id="drawflow"></div>
     <div id="editor">
       <div id="header" style="font-size:25px;" title="Test this node (Simulate execution of this Node)">
-        <b>Node Editor</b> - <button id="testTile" style="background:#1985d0; color:#fff;">Test Node</button>
+        <b>Node Editor</b>
       </div>
       <div id="nodeEditor">Click a node to edit</div>
       <div id="variableManager"></div>
@@ -182,25 +182,25 @@
       }
     }
 
-    // --- Auto-load global_vars.json ---
+    // --- Auto-load FE_global_vars.json ---
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
       try {
         if (typeof fetchHubitatVarFileContent === "function") {
-          const txt = await fetchHubitatVarFileContent("global_vars.json");
+          const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
           if (txt && txt.trim()) {
             if (window.flowVars && window.flowVars.setGlobalVars) {
               window.flowVars.setGlobalVars(JSON.parse(txt));
             }
-            logAction("Auto-loaded global_vars.json", "info");
+            logAction("Auto-loaded FE_global_vars.json", "info");
           } else {
             // --- CREATE EMPTY GLOBAL VARS FILE IF MISSING ---
             const emptyGlobals = "[]";
             if (typeof uploadToHubitatFile === "function") {
-              await uploadToHubitatFile("global_vars.json", emptyGlobals, { mimeType: "application/json" });
+              await uploadToHubitatFile("FE_global_vars.json", emptyGlobals, { mimeType: "application/json" });
               if (window.flowVars && window.flowVars.setGlobalVars) {
                 window.flowVars.setGlobalVars([]);
               }
-              logAction("global_vars.json not found: Created new empty global_vars.json", "warn");
+              logAction("FE_global_vars.json not found: Created new empty FE_global_vars.json", "warn");
             } else if (retries > 0) {
               setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
               logAction("Waiting for uploadToHubitatFile to become available...", "info");
@@ -209,7 +209,7 @@
               if (window.flowVars && window.flowVars.setGlobalVars) {
                 window.flowVars.setGlobalVars([]);
               }
-              logAction("No global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
+              logAction("No FE_global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
             }
           }
         }
@@ -217,11 +217,11 @@
         try {
           const emptyGlobals = "[]";
           if (typeof uploadToHubitatFile === "function") {
-            await uploadToHubitatFile("global_vars.json", emptyGlobals, { mimeType: "application/json" });
+            await uploadToHubitatFile("FE_global_vars.json", emptyGlobals, { mimeType: "application/json" });
             if (window.flowVars && window.flowVars.setGlobalVars) {
               window.flowVars.setGlobalVars([]);
             }
-            logAction("global_vars.json missing: Created new empty global_vars.json", "warn");
+            logAction("FE_global_vars.json missing: Created new empty FE_global_vars.json", "warn");
           } else if (retries > 0) {
             setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
             logAction("Waiting for uploadToHubitatFile to become available (error path)...", "info");
@@ -230,15 +230,15 @@
             if (window.flowVars && window.flowVars.setGlobalVars) {
               window.flowVars.setGlobalVars([]);
             }
-            logAction("No global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
+            logAction("No FE_global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
           }
         } catch (e2) {
-          logAction("Error creating empty global_vars.json: " + e2, "error");
+          logAction("Error creating empty FE_global_vars.json: " + e2, "error");
         }
-        console.warn("Error loading global_vars.json (continuing):", e);
+        console.warn("Error loading FE_global_vars.json (continuing):", e);
       }
     }
-    // --- END Auto-load global_vars.json ---
+    // --- END Auto-load FE_global_vars.json ---
 
     // ---- Time device for time/day-of-week conditions
     const TIME_DEVICE = {
@@ -327,22 +327,22 @@
         let attribute = (data && typeof data.attribute === "string" && data.attribute !== "undefined") ? data.attribute : "";
         let value = (data && typeof data.value === "string" && data.value !== "undefined") ? data.value : "";
 
-        // MAIN FIX: Never show outputVar as undefined or blank
+        // MAIN FIX: Always show custom outputVar as entered (never undefined or blank)
         let outputVar = (
           data && typeof data.outputVar === "string" &&
           data.outputVar.trim() &&
           data.outputVar.trim().toLowerCase() !== "undefined"
-        ) ? data.outputVar : "Devices Not Matching";
+        ) ? data.outputVar : "Devices Not Matching to JSON";
 
         let scope = (data && data.varScope === "global") ? "Global" : "Flow";
         return `<div class="setVariable-tile">
-          <b>Devices Not Matching</b><br>
+          <b>Devices Not Matching to JSON</b><br>
           <span style="font-size:11px">
             ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
             ${attribute ? "Attr: " + attribute + "<br>" : ""}
             ${value ? "Not: " + value + "<br>" : ""}
             <hr>
-            <b>Attr:</b> ${outputVar}<br><b>Attr Type:</b> ${scope}
+            <b>Output variable / file name:</b> ${outputVar}<br><b>Attr Type:</b> ${scope}
           </span>
         </div>`;
       }
@@ -580,6 +580,25 @@
 
       document.getElementById("flowName").value = "";
 
+      const flowNameInput = document.getElementById("flowName");
+      function sanitizeFlowName(str) {
+        return (str || "")
+          .replace(/\s+/g, "_")      // Replace all whitespace with underscores
+          .replace(/[^a-zA-Z0-9_\-]/g, "") // Only allow a-z, A-Z, 0-9, _, -
+          .replace(/_{2,}/g, "_")    // No double underscores
+          .replace(/^_+|_+$/g, "");  // No leading/trailing underscores
+      }
+      flowNameInput.addEventListener("input", function() {
+        const sanitized = sanitizeFlowName(flowNameInput.value);
+        if (flowNameInput.value !== sanitized) {
+          flowNameInput.value = sanitized;
+          logAction("No spaces or symbols allowed in Flow Name. Changed to: " + sanitized, "warn");
+        }
+      });
+      flowNameInput.addEventListener("blur", function() {
+        flowNameInput.value = sanitizeFlowName(flowNameInput.value);
+      });
+
       let devices = [];
 
       function patchFlowWithDeviceLabels(flow, devices) {
@@ -590,7 +609,7 @@
           Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
             if (node.name === "notMatchingVar") {
               if (!node.data.outputVar || node.data.outputVar === "undefined") {
-                node.data.outputVar = "Devices Not Matching";
+                node.data.outputVar = "Devices Not Matching to JSON";
               }
             }
           });
@@ -1535,7 +1554,9 @@
           varInput.value = node.data.varName || "";
           varInput.style.width = "98%";
           varInput.oninput = () => {
-            node.data.varName = varInput.value;
+            // Reuse the same sanitizer as flow name
+            node.data.varName = sanitizeFlowName(varInput.value);
+            varInput.value = node.data.varName; // Show fixed value in UI
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
           };
@@ -1571,7 +1592,7 @@
           plusVarBtn.style.color = "#fff";
           plusVarBtn.onclick = function() {
             if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-            if (!window.flowVars) return alert("flowVars.js not loaded!");
+            if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
             const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
             if (!allVars.length) return alert("No variables defined!");
             if (allVars.length === 1) {
@@ -1647,9 +1668,9 @@
             return;
           }
 
-          // --- Output variable name ---
+          // --- Output JSON name ---
           const outVarLabel = document.createElement("label");
-          outVarLabel.textContent = "Output variable name";
+          outVarLabel.textContent = "Output JSON name";
           outVarLabel.style.display = "block";
           el.appendChild(outVarLabel);
 
@@ -1659,8 +1680,9 @@
           outVarInput.style.display = "block";
           outVarInput.style.marginBottom = "12px";
           outVarInput.placeholder = "Result variable";
-          outVarInput.onchange = () => {
-            node.data.outputVar = outVarInput.value.trim();
+          outVarInput.oninput = () => {
+            node.data.outputVar = sanitizeFlowName(outVarInput.value);
+            outVarInput.value = node.data.outputVar; // Show fixed value in UI
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
           };
@@ -2021,7 +2043,7 @@
           plusVarBtn.style.color = "#fff";
           plusVarBtn.onclick = function() {
             if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-      if (!window.flowVars) return alert("flowVars.js not loaded!");
+      if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
             const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
             if (!allVars.length) return alert("No variables defined!");
 
@@ -2569,64 +2591,6 @@
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
 
-      const testBtn = document.getElementById("testTile");
-
-      testBtn.onclick = async function() {
-        // --- VISUAL CLICK EFFECT ---
-        testBtn.style.background = "#155ea9";
-        testBtn.style.boxShadow = "0 0 10px #27a0f7";
-        testBtn.style.transform = "scale(0.96)";
-        testBtn.disabled = true;
-
-        setTimeout(() => {
-          testBtn.style.background = "#1985d0";
-          testBtn.style.boxShadow = "";
-          testBtn.style.transform = "";
-          testBtn.disabled = false;
-        }, 350); // keep the "pressed" look for 350ms
-
-        // ---- EXISTING LOGIC ----
-        const selectedId = editor.selected_id;
-        if (!selectedId) {
-          alert("No node selected! Click a tile to select it first.");
-          return;
-        }
-        const node = editor.getNodeFromId(selectedId);
-        if (!node) {
-          alert("Selected node not found.");
-          return;
-        }
-
-        // Build test payload
-        const testData = {
-          node: node,
-          devices: window.devices || []
-        };
-
-        // Get Hubitat info
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-
-        if (!appId || !token) {
-          alert("Fill in App ID and Access Token first!");
-          return;
-        }
-
-        const testUrl = `/apps/api/${appId}/testTile?access_token=${token}`;
-
-        try {
-          const resp = await fetch(testUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(testData)
-          });
-          const text = await resp.text();
-          document.getElementById("logBox").innerHTML += `<div style="color:#19b;">TestTile: ${text}</div>`;
-        } catch (err) {
-          document.getElementById("logBox").innerHTML += `<div style="color:#f66;">TestTile error: ${err}</div>`;
-        }
-      };
-
       // --- Auto device and tile refresh every 5 seconds ---
       setInterval(async () => {
         // Only run if credentials are filled and devices are loaded
@@ -2755,9 +2719,12 @@ function highlightOnlyLatestRun(activeFlows) {
   // Find the latest run (highest timestamp in its last step)
   let latestFlow = null, latestTs = 0;
   activeFlows.forEach(flow => {
-    if (flow.steps && flow.steps.length > 0) {
+    if (
+      flow.steps && flow.steps.length > 0 &&
+      flow.steps.every(step => step.nodeId && step.timestamp)
+    ) {
       const lastStep = flow.steps[flow.steps.length - 1];
-      if (lastStep.timestamp > latestTs) {
+      if (typeof lastStep.timestamp === "number" && lastStep.timestamp > latestTs) {
         latestTs = lastStep.timestamp;
         latestFlow = flow;
       }
