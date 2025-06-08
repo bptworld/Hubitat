@@ -16,7 +16,7 @@
             "id": "f069a335-86f1-43c8-b2d9-7bd086517134",
             "name": "FE_pickr.es5.min.js",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/pickr.es5.min.js",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_pickr.es5.min.js",
             "description": "Color Picker File",
             "required": true
         },
@@ -24,7 +24,7 @@
             "id": "f188ce7b-bd8d-4791-a9d3-dc84a7ccf7cb",
             "name": "FE_pickr.min.css",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/pickr.min.css",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_pickr.min.css",
             "description": "Color Picker File",
             "required": true
         },
@@ -32,7 +32,7 @@
             "id": "c3726581-e8fa-42ba-9164-52b45dcbe42d",
             "name": "FE_drawflow-js.min.js",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-js.min.js",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_drawflow-js.min.js",
             "description": "UI File",
             "required": true
         },
@@ -40,7 +40,7 @@
             "id": "d8eead19-7efd-467e-9004-4f9ec66cb7ba",
             "name": "FE_drawflow-extra.css",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-extra.css",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_drawflow-extra.css",
             "description": "UI File",
             "required": true
         },
@@ -48,7 +48,7 @@
             "id": "0a04c142-7b90-45d5-b8fd-9073ec8bec99",
             "name": "FE_drawflow-css.min.css",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/drawflow-css.min.css",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_drawflow-css.min.css",
             "description": "UI File",
             "required": true
         },
@@ -56,7 +56,7 @@
             "id": "d9974ef6-a02e-41c2-9984-add8fef04a29",
             "name": "FE_flowvars.js",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowvars.js",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_flowvars.js",
             "description": "UI File",
             "required": true
         },
@@ -64,7 +64,7 @@
             "id": "6e6c4cbc-2e9f-40f1-8bfc-efb84fc0bfbd",
             "name": "FE_global_vars.json",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/global_vars.json",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_global_vars.json",
             "description": "UI File",
             "required": true
         },
