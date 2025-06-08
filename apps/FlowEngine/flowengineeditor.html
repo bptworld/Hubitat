@@ -2771,7 +2771,7 @@ function highlightOnlyLatestRun(activeFlows) {
 // === Poll the flowtrace file and highlight the latest run ===
 function pollFlowTrace() {
   const HUBITAT_IP = getHubitatIP();
-  const url = `http://${HUBITAT_IP}/local/flowtrace.json?nocache=${Date.now()}`;
+  const url = `http://${HUBITAT_IP}/local/FE_flowtrace.json?nocache=${Date.now()}`;
   fetch(url)
     .then(r => {
       if (!r.ok) throw new Error("Not found");
