@@ -492,6 +492,12 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
     def node = flowNodes()[nodeId]
     if (!node) return null
 
+	try {
+		parent.notifyFlowTrace(flowFile, nodeId, node?.name)
+	} catch (e) {
+		log.warn "Failed to notify parent for flow trace: $e"
+	}
+
     if(logEnable) log.debug "EVALUATING NODE: $nodeId (${node?.name}) - incomingValue: $incomingValue"
 
     switch (node.name) {
@@ -709,15 +715,15 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
             def val = resolveVars(node.data.value)
 			def output = []
 
-			// Handle Location Mode as action
 			if (devIds.size() == 1 && devIds[0] == "__mode__" && cmd == "setMode" && val) {
-				def modeObj = location.modes.find { it.name == val }
+				def modeToSet = (val instanceof List && val) ? val[0] : val
+				def modeObj = location.modes.find { it.name == modeToSet }
 				if (modeObj) {
-					setLocationMode(val)
-					render contentType: "text/plain", data: "Set location mode to ${val}"
+					setLocationMode(modeToSet)
+					render contentType: "text/plain", data: "Set location mode to ${modeToSet}"
 					return
 				} else {
-					render contentType: "text/plain", data: "Mode '${val}' not found"
+					render contentType: "text/plain", data: "Mode '${modeToSet}' not found"
 					return
 				}
 			}
