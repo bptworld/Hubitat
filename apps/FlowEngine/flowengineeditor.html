@@ -2677,14 +2677,14 @@
     async function fetchModesFromAppFile() {
       if (typeof fetchHubitatVarFileContent !== "function") return [];
       try {
-        const txt = await fetchHubitatVarFileContent("flowModes.json");
+        const txt = await fetchHubitatVarFileContent("FE_flowModes.json");
         if (!txt) { window.hubitatModes = []; return []; }
         const obj = JSON.parse(txt);
         window.hubitatModes = obj.modes || [];
         logAction("Loaded modes: " + window.hubitatModes.map(m => m.name).join(", "));
         return window.hubitatModes;
       } catch (e) {
-        logAction("Failed to load flowModes.json: " + e, "error");
+        logAction("Failed to load FE_flowModes.json: " + e, "error");
         window.hubitatModes = [];
         return [];
       }
@@ -2768,7 +2768,7 @@ function highlightOnlyLatestRun(activeFlows) {
   }
 }
 
-// === Poll the flowtrace file and highlight the latest run ===
+// === Poll the FE_flowtrace file and highlight the latest run ===
 function pollFlowTrace() {
   const HUBITAT_IP = getHubitatIP();
   const url = `http://${HUBITAT_IP}/local/FE_flowtrace.json?nocache=${Date.now()}`;
