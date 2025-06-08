@@ -131,7 +131,7 @@ String resolveVars(str) {
 def getGlobalVars() {
 	if(logEnable) log.debug "In getGlobalVars"
 	state.globalVars = []
-	uri = "http://${location.hub.localIP}:8080/local/global_vars.json"
+	uri = "http://${location.hub.localIP}:8080/local/FE_global_vars.json"
     def params = [
         uri: uri,
         contentType: "text/html; charset=UTF-8",
@@ -157,7 +157,7 @@ def getGlobalVars() {
 
 def setVariable(varName, varValue) {
 	if(logEnable) log.debug "In setVariable - varName: ${varName} - varValue: ${varValue}"
-	// Reload global_vars.json every time before setting/checking variables
+	// Reload FE_global_vars.json every time before setting/checking variables
 	
 	getGlobalVars()
 	
@@ -220,8 +220,8 @@ def setVariable(varName, varValue) {
 }
 
 def saveGlobalVarsToFile() {
-	if(logEnable) log.debug "In saveGlobalVarsToFile - Saving global_vars.json"
-	def flowFile = "global_vars.json"
+	if(logEnable) log.debug "In saveGlobalVarsToFile - Saving FE_global_vars.json"
+	def flowFile = "FE_global_vars.json"
 	def fData = groovy.json.JsonOutput.toJson(state.globalVars)
 	uploadHubFile("${flowFile}",fData.getBytes())
 }
@@ -837,59 +837,53 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			break
 
 		case "notMatchingVar":
-			// Get node parameters
-			def deviceIds = node.data.deviceIds instanceof List ? node.data.deviceIds : node.data.deviceId ? [node.data.deviceId] : []
-			def attribute = node.data.attribute
-			def notValue = resolveVars(node.data.value)
-			def outputVar = node.data.outputVar ?: "Devices_Not_Matching"
-			def varScope = node.data.varScope ?: "flow" // "flow" or "global"
+			if (logEnable) log.debug "----- In notMatchingVar node -----"
 
-			// Find all devices that DO NOT match the given value
+			// Gather device IDs (multi or single)
+			def devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds
+			} else if (node.data.deviceId) {
+				devIds = [node.data.deviceId]
+			}
+
+			def attr = node.data.attribute
+			def expectedValue = resolveVars(node.data.value)
+			def comparator = node.data.comparator ?: "=="
+			def outputVar = (node.data.outputVar && node.data.outputVar.trim() && node.data.outputVar.toLowerCase() != "undefined")
+				? node.data.outputVar.trim()
+				: "notMatchingVar"
+
 			def notMatching = []
-			deviceIds.each { devId ->
+
+			devIds.each { devId ->
 				getRealDeviceData(devId)
-				if (state.device && attribute) {
-					def currVal = state.device.currentValue(attribute)
-					if (currVal != notValue) {
-						notMatching << devId
-					}
+				def deviceName = state.device?.displayName ?: devId
+				def currentValue = state.device?.currentValue(attr)
+				if (!evaluateComparator(currentValue, expectedValue, comparator)) {
+					notMatching << [id: devId, name: deviceName, value: currentValue]
 				}
 			}
 
-			// Save outputVar (as comma-separated string or array—your choice)
-			def result = notMatching.join(",")
-			if (varScope == "global") {
-				// Save as a global variable
-				def existing = state.globalVars.find { it.name == outputVar }
-				if (existing) existing.value = result
-				else state.globalVars << [name: outputVar, value: result]
-				saveGlobalVarsToFile()
-				state.varCtx[outputVar] = result
-				state.vars = state.vars ?: [:]
-				state.vars[outputVar] = result
-			} else {
-				// Save as a flow variable
-				state.flowVars = state.flowVars ?: []
-				def existing = state.flowVars.find { it.name == outputVar }
-				if (existing) existing.value = result
-				else state.flowVars << [name: outputVar, value: result]
-				// Optionally persist back to flow file if needed:
-				if (state.flow) {
-					def cleanFlow = [:]; cleanFlow.putAll(state.flow)
-					cleanFlow.variables = state.flowVars
-					def fData = groovy.json.JsonOutput.toJson(cleanFlow)
-					parent.saveFlow(flowFile.replace(".json", ""), fData)
-				}
-				state.varCtx[outputVar] = result
-				state.vars = state.vars ?: [:]
-				state.vars[outputVar] = result
+			// Save to state variable for flow logic
+			state.vars = state.vars ?: [:]
+			state.vars[outputVar] = notMatching
+			state.varCtx = state.varCtx ?: [:]
+			state.varCtx[outputVar] = notMatching
+
+			// Save to /local/<outputVar>.json
+			try {
+				def filename = outputVar.endsWith(".json") ? outputVar : (outputVar + ".json")
+				def jsonStr = groovy.json.JsonOutput.toJson(notMatching)
+				uploadHubFile(filename, jsonStr.getBytes("UTF-8"))
+				if (logEnable) log.info "Saved notMatching devices to /local/${filename}"
+			} catch (e) {
+				log.error "Failed to save custom notMatchingVar json: ${e}"
 			}
-			if (logEnable) log.info "notMatchingVar node: Set ${outputVar} (${varScope}) = ${result}"
-			// Continue execution for connected outputs
-			node.outputs?.each { outName, outObj ->
-				outObj.connections?.each { conn ->
-					evaluateNode(conn.node, evt, null, visited)
-				}
+
+			// Continue the flow (output_1)
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(conn.node, evt, null, visited)
 			}
 			break
 
