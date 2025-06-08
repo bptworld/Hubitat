@@ -53,6 +53,16 @@
       display: inline-block;
       background: transparent !important;
     }
+    .main-path.highlighted {
+      stroke: limegreen !important;
+      stroke-width: 4px !important;
+      filter: drop-shadow(0 0 6px #0f0) !important;
+    }
+    .drawflow-node.executed {
+      border: 3px solid #ffe54e !important;
+      box-shadow: 0 0 18px #ffe54e !important;
+    }
+
     .cv-on    { color: #0c0; }
     .cv-off   { color: #e34c4c; }
     .cv-num   { color: #3af; }
@@ -247,10 +257,10 @@
 
     const MODE_DEVICE = {
       id: "__mode__",
-      label: "Location Mode",
+      label: "Home Location",
       name: "Mode",
-      attributes: { mode: ["Home", "Away", "Night", "Day"] }, // Edit to your real Hubitat modes
-      commands: ["setMode"]
+      attributes: { mode: "" },
+      commands: []
     };
 
     function isValidFlowName(flowName) {
@@ -524,9 +534,9 @@
       rememberInput("hubitatAppId", "hubitatAppId");
       rememberInput("hubitatToken", "hubitatToken");
 
-      // Device loader button event—**direct assignment, no guard**
       document.getElementById("loadDevices").onclick = async () => {
         logAction("loadDevices button clicked.");
+        await fetchModesFromAppFile();
         devices = await fetchDevicesFromApp();
         devices.forEach(dev => {
           if (Array.isArray(dev.attributes)) {
@@ -537,10 +547,19 @@
             dev.attributes = attrMap;
           }
         });
-        window.devices = devices;
-        // (add specials)
         devices.push(TIME_DEVICE);
         devices.push(MODE_DEVICE);
+        window.devices = devices;
+
+        // Set current mode on Home Location device
+        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+        const currentMode = currentModeObj ? currentModeObj.name : "";
+        const modeDev = window.devices.find(d => d.id === "__mode__");
+        if (modeDev) {
+          modeDev.attributes.mode = currentMode;
+        }
+
+        // (add specials)
         if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
           Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
           if (editor.selected_id) {
@@ -632,8 +651,8 @@
       };
 
       function getSortedDevicesWithSpecials(devices) {
-        const timeDevice = devices.find(d => d.id === "__time__");
         const modeDevice = devices.find(d => d.id === "__mode__");
+        const timeDevice = devices.find(d => d.id === "__time__");
         const realDevices = devices
           .filter(d => d.id !== "__time__" && d.id !== "__mode__")
           .slice()
@@ -645,8 +664,15 @@
             return 0;
           });
         const arr = [];
-        if (timeDevice) arr.push(timeDevice);
+        // 1. Home Location (mode device) first
         if (modeDevice) arr.push(modeDevice);
+        // 2. Time device second
+        if (timeDevice) arr.push(timeDevice);
+        // 3. Divider line if any other devices exist
+        if (realDevices.length) {
+          arr.push({ id: "__divider__", label: "───────────────" });
+        }
+        // 4. All real devices after the divider
         arr.push(...realDevices);
         return arr;
       }
@@ -700,19 +726,20 @@
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
             : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
-            if (i === 2 && arr.length > 2) {
+          getSortedDevicesWithSpecials(devices).forEach((d) => {
+            if (d.id === "__divider__") {
               const divider = document.createElement("option");
               divider.disabled = true;
-              divider.textContent = "───────────────";
+              divider.textContent = d.label;
               divider.style.background = "#444";
               devSelect.appendChild(divider);
+            } else {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label || d.name || d.id;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
             }
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label || d.name || d.id;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
           });
           el.appendChild(devSelect);
 
@@ -751,36 +778,6 @@
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               };
               pickerDiv.appendChild(timeInput);
-              return;
-            }
-            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-              // Mode picker
-              const modeLabel = document.createElement("label");
-              modeLabel.textContent = "Mode";
-              modeLabel.style.display = "block";
-              pickerDiv.appendChild(modeLabel);
-
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = 5;
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-              const allModes = window.hubitatModes || [];
-              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
-              allModes.forEach(mode => {
-                const opt = document.createElement("option");
-                opt.value = mode.id;
-                opt.textContent = mode.name;
-                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
-                modeSelect.appendChild(opt);
-              });
-              modeSelect.onchange = () => {
-                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                node.data.value = values;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
               return;
             }
 
@@ -873,23 +870,66 @@
               pickerDiv.appendChild(colorInput);
             }
 
-            // --- Value Picker (basic) ---
+            // --- Value Picker ---
             const valueLabel = document.createElement("label");
             valueLabel.textContent = "Value";
             valueLabel.style.display = "block";
             pickerDiv.appendChild(valueLabel);
 
-            const valueInput = document.createElement("input");
-            valueInput.type = "text";
-            valueInput.value = node.data.value || "";
-            valueInput.style.display = "block";
-            valueInput.style.marginBottom = "12px";
-            valueInput.onchange = () => {
-              node.data.value = valueInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            pickerDiv.appendChild(valueInput);
+            if (
+              selectedDevices.length === 1 &&
+              selectedDevices[0].id === "__mode__" &&
+              node.data.attribute === "mode"
+            ) {
+              // Multi-select dropdown for modes
+              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = Math.min(7, allModes.length);
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+
+              // Always store value as array for multi-select
+              if (!Array.isArray(node.data.value)) {
+                if (typeof node.data.value === "string" && node.data.value) {
+                  node.data.value = [node.data.value];
+                } else {
+                  node.data.value = [];
+                }
+              }
+
+              modeSelect.innerHTML = allModes.map(mode =>
+                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+              ).join('');
+
+              // Autofill to first mode if empty
+              if (node.data.value.length === 0 && allModes.length > 0) {
+                node.data.value = [allModes[0].name];
+                Array.from(modeSelect.options)[0].selected = true;
+                editor.updateNodeDataFromId(node.id, node.data);
+              }
+
+              modeSelect.onchange = () => {
+                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+
+            } else {
+              // Fallback to default text input for all others
+              let valueField = document.createElement("input");
+              valueField.type = "text";
+              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.onchange = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(valueField);
+            }
           }
 
           // Initial build
@@ -966,19 +1006,20 @@
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
             : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
-            if (i === 2 && arr.length > 2) {
+          getSortedDevicesWithSpecials(devices).forEach((d) => {
+            if (d.id === "__divider__") {
               const divider = document.createElement("option");
               divider.disabled = true;
-              divider.textContent = "───────────────";
+              divider.textContent = d.label;
               divider.style.background = "#444";
               devSelect.appendChild(divider);
+            } else {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label || d.name || d.id;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
             }
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label || d.name || d.id;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
           });
           el.appendChild(devSelect);
 
@@ -1016,36 +1057,6 @@
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               };
               pickerDiv.appendChild(timeInput);
-              return;
-            }
-            // --- Mode special device ---
-            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-              const modeLabel = document.createElement("label");
-              modeLabel.textContent = "Mode";
-              modeLabel.style.display = "block";
-              pickerDiv.appendChild(modeLabel);
-
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = 5;
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-              const allModes = window.hubitatModes || [];
-              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
-              allModes.forEach(mode => {
-                const opt = document.createElement("option");
-                opt.value = mode.id;
-                opt.textContent = mode.name;
-                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
-                modeSelect.appendChild(opt);
-              });
-              modeSelect.onchange = () => {
-                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                node.data.value = values;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
               return;
             }
 
@@ -1125,19 +1136,62 @@
             valueLabel.style.display = "block";
             pickerDiv.appendChild(valueLabel);
 
-            let valueField = document.createElement("input");
-            valueField.type = "text";
-            valueField.value = node.data.value || "";
-            valueField.style.display = "block";
-            valueField.style.marginBottom = "12px";
-            valueField.onchange = () => {
-              node.data.value = valueField.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            pickerDiv.appendChild(valueField);
-          }
+            if (
+              selectedDevices.length === 1 &&
+              selectedDevices[0].id === "__mode__" &&
+              node.data.attribute === "mode"
+            ) {
+              // Multi-select dropdown for modes
+              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = Math.min(7, allModes.length);
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
 
+              // Always store value as array for multi-select
+              if (!Array.isArray(node.data.value)) {
+                if (typeof node.data.value === "string" && node.data.value) {
+                  node.data.value = [node.data.value];
+                } else {
+                  node.data.value = [];
+                }
+              }
+
+              modeSelect.innerHTML = allModes.map(mode =>
+                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+              ).join('');
+
+              // Autofill to first mode if empty
+              if (node.data.value.length === 0 && allModes.length > 0) {
+                node.data.value = [allModes[0].name];
+                Array.from(modeSelect.options)[0].selected = true;
+                editor.updateNodeDataFromId(node.id, node.data);
+              }
+
+              modeSelect.onchange = () => {
+                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+
+            } else {
+              // Fallback to default text input for all others
+              let valueField = document.createElement("input");
+              valueField.type = "text";
+              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.onchange = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(valueField);
+            }
+          }
+          
           // Initial build
           buildPickers();
 
@@ -1208,19 +1262,20 @@
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
             : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
-            if (i === 2 && arr.length > 2) {
+          getSortedDevicesWithSpecials(devices).forEach((d) => {
+            if (d.id === "__divider__") {
               const divider = document.createElement("option");
               divider.disabled = true;
-              divider.textContent = "───────────────";
+              divider.textContent = d.label;
               divider.style.background = "#444";
               devSelect.appendChild(divider);
+            } else {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label || d.name || d.id;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
             }
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label || d.name || d.id;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
           });
           el.appendChild(devSelect);
 
@@ -1258,36 +1313,6 @@
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               };
               pickerDiv.appendChild(timeInput);
-              return;
-            }
-            // --- Mode special device ---
-            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-              const modeLabel = document.createElement("label");
-              modeLabel.textContent = "Mode";
-              modeLabel.style.display = "block";
-              pickerDiv.appendChild(modeLabel);
-
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = 5;
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-              const allModes = window.hubitatModes || [];
-              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
-              allModes.forEach(mode => {
-                const opt = document.createElement("option");
-                opt.value = mode.id;
-                opt.textContent = mode.name;
-                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
-                modeSelect.appendChild(opt);
-              });
-              modeSelect.onchange = () => {
-                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                node.data.value = values;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
               return;
             }
 
@@ -1367,17 +1392,60 @@
             valueLabel.style.display = "block";
             pickerDiv.appendChild(valueLabel);
 
-            let valueField = document.createElement("input");
-            valueField.type = "text";
-            valueField.value = node.data.value || "";
-            valueField.style.display = "block";
-            valueField.style.marginBottom = "12px";
-            valueField.onchange = () => {
-              node.data.value = valueField.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            pickerDiv.appendChild(valueField);
+            if (
+              selectedDevices.length === 1 &&
+              selectedDevices[0].id === "__mode__" &&
+              node.data.attribute === "mode"
+            ) {
+              // Multi-select dropdown for modes
+              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = Math.min(7, allModes.length);
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+
+              // Always store value as array for multi-select
+              if (!Array.isArray(node.data.value)) {
+                if (typeof node.data.value === "string" && node.data.value) {
+                  node.data.value = [node.data.value];
+                } else {
+                  node.data.value = [];
+                }
+              }
+
+              modeSelect.innerHTML = allModes.map(mode =>
+                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+              ).join('');
+
+              // Autofill to first mode if empty
+              if (node.data.value.length === 0 && allModes.length > 0) {
+                node.data.value = [allModes[0].name];
+                Array.from(modeSelect.options)[0].selected = true;
+                editor.updateNodeDataFromId(node.id, node.data);
+              }
+
+              modeSelect.onchange = () => {
+                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+
+            } else {
+              // Fallback to default text input for all others
+              let valueField = document.createElement("input");
+              valueField.type = "text";
+              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.onchange = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(valueField);
+            }
           }
 
           // Initial build
@@ -1634,19 +1702,20 @@
           const selectedIds = Array.isArray(node.data.deviceIds)
             ? node.data.deviceIds
             : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d, i, arr) => {
-            if (i === 2 && arr.length > 2) {
+          getSortedDevicesWithSpecials(devices).forEach((d) => {
+            if (d.id === "__divider__") {
               const divider = document.createElement("option");
               divider.disabled = true;
-              divider.textContent = "───────────────";
+              divider.textContent = d.label;
               divider.style.background = "#444";
               devSelect.appendChild(divider);
+            } else {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label || d.name || d.id;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
             }
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label || d.name || d.id;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
           });
           el.appendChild(devSelect);
 
@@ -1686,37 +1755,7 @@
               pickerDiv.appendChild(timeInput);
               return;
             }
-            // --- Mode special device ---
-            if (selectedDevices.length === 1 && selectedDevices[0].id === "__mode__") {
-              const modeLabel = document.createElement("label");
-              modeLabel.textContent = "Mode";
-              modeLabel.style.display = "block";
-              pickerDiv.appendChild(modeLabel);
-
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = 5;
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-              const allModes = window.hubitatModes || [];
-              const selectedModes = Array.isArray(node.data.value) ? node.data.value : node.data.value ? [node.data.value] : [];
-              allModes.forEach(mode => {
-                const opt = document.createElement("option");
-                opt.value = mode.id;
-                opt.textContent = mode.name;
-                if (selectedModes.includes(mode.id) || selectedModes.includes(mode.name)) opt.selected = true;
-                modeSelect.appendChild(opt);
-              });
-              modeSelect.onchange = () => {
-                const values = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                node.data.value = values;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
-              return;
-            }
-
+            
             // --- Standard device attribute pickers ---
             let sharedAttributes = [];
             if (selectedDevices.length > 0) {
@@ -1793,17 +1832,60 @@
             valueLabel.style.display = "block";
             pickerDiv.appendChild(valueLabel);
 
-            let valueField = document.createElement("input");
-            valueField.type = "text";
-            valueField.value = node.data.value || "";
-            valueField.style.display = "block";
-            valueField.style.marginBottom = "12px";
-            valueField.onchange = () => {
-              node.data.value = valueField.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            };
-            pickerDiv.appendChild(valueField);
+            if (
+              selectedDevices.length === 1 &&
+              selectedDevices[0].id === "__mode__" &&
+              node.data.attribute === "mode"
+            ) {
+              // Multi-select dropdown for modes
+              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+              const modeSelect = document.createElement("select");
+              modeSelect.multiple = true;
+              modeSelect.size = Math.min(7, allModes.length);
+              modeSelect.style.display = "block";
+              modeSelect.style.marginBottom = "12px";
+
+              // Always store value as array for multi-select
+              if (!Array.isArray(node.data.value)) {
+                if (typeof node.data.value === "string" && node.data.value) {
+                  node.data.value = [node.data.value];
+                } else {
+                  node.data.value = [];
+                }
+              }
+
+              modeSelect.innerHTML = allModes.map(mode =>
+                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+              ).join('');
+
+              // Autofill to first mode if empty
+              if (node.data.value.length === 0 && allModes.length > 0) {
+                node.data.value = [allModes[0].name];
+                Array.from(modeSelect.options)[0].selected = true;
+                editor.updateNodeDataFromId(node.id, node.data);
+              }
+
+              modeSelect.onchange = () => {
+                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(modeSelect);
+
+            } else {
+              // Fallback to default text input for all others
+              let valueField = document.createElement("input");
+              valueField.type = "text";
+              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.onchange = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              };
+              pickerDiv.appendChild(valueField);
+            }
           }
 
           // Initial build
@@ -2257,7 +2339,32 @@
       }
 
       // ---- REFRESH ALL TILES BUTTON ----
-      document.getElementById("refreshAllTiles").onclick = function() {
+      document.getElementById("refreshAllTiles").onclick = async function() {
+        logAction("Refreshing devices from Hubitat...");
+        // Fetch devices from Hubitat
+        const devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
+        // Update global window.devices and add TIME/MODE specials
+        devices.push(TIME_DEVICE);
+        devices.push(MODE_DEVICE);
+        window.devices = devices;
+
+        // Set current mode on Home Location device
+        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+        const currentMode = currentModeObj ? currentModeObj.name : "";
+        const modeDev = window.devices.find(d => d.id === "__mode__");
+        if (modeDev) {
+          modeDev.attributes.mode = currentMode;
+        }
+
         const data = editor.drawflow.drawflow.Home?.data;
         console.log("Drawflow nodes data:", data);
 
@@ -2404,6 +2511,7 @@
         if (loadBtn) {
           loadBtn.onclick = async () => {
             logAction("loadDevices button clicked.");
+            await fetchModesFromAppFile();
             devices = await fetchDevicesFromApp();
             devices.forEach(dev => {
               if (Array.isArray(dev.attributes)) {
@@ -2414,10 +2522,19 @@
                 dev.attributes = attrMap;
               }
             });
-            window.devices = devices;
-            // (add specials)
             devices.push(TIME_DEVICE);
             devices.push(MODE_DEVICE);
+            window.devices = devices;
+
+            // Set current mode on Home Location device
+            const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+            const currentMode = currentModeObj ? currentModeObj.name : "";
+            const modeDev = window.devices.find(d => d.id === "__mode__");
+            if (modeDev) {
+              modeDev.attributes.mode = currentMode;
+            }
+
+            // (add specials)          
             if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
               Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
               if (editor.selected_id) {
@@ -2509,33 +2626,202 @@
           document.getElementById("logBox").innerHTML += `<div style="color:#f66;">TestTile error: ${err}</div>`;
         }
       };
+
+      // --- Auto device and tile refresh every 5 seconds ---
+      setInterval(async () => {
+        // Only run if credentials are filled and devices are loaded
+        const appIdEl = document.getElementById("hubitatAppId");
+        const tokenEl = document.getElementById("hubitatToken");
+        if (!(appIdEl && appIdEl.value && tokenEl && tokenEl.value)) return;
+
+        // Fetch latest devices from Hubitat (same as refreshAllTiles logic)
+        const devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
+        devices.push(TIME_DEVICE);
+        devices.push(MODE_DEVICE);
+        window.devices = devices;
+
+        // Set current mode on Home Location device
+        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+        const currentMode = currentModeObj ? currentModeObj.name : "";
+        const modeDev = window.devices.find(d => d.id === "__mode__");
+        if (modeDev) {
+          modeDev.attributes.mode = currentMode;
+        }
+
+        // Update all node tiles
+        const data = editor.drawflow.drawflow.Home?.data;
+        if (data && Object.keys(data).length > 0) {
+          Object.values(data).forEach(node => {
+            if (["device", "condition", "eventTrigger"].includes(node.name) && node.data && node.data.deviceId) {
+              let dev = devices.find(d => d.id == node.data.deviceId);
+              node.data.deviceLabel = dev ? (dev.label || dev.name || node.data.deviceId) : node.data.deviceId;
+            }
+            if (editor && typeof editor.updateNodeHtmlFromId === "function") {
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            }
+          });
+          // Redraw node lines (optional nudge)
+          Object.values(data).forEach(node => {
+            editor.moveNodeTo(node.id, node.pos_x + 1, node.pos_y);
+          });
+          setTimeout(() => {
+            Object.values(data).forEach(node => {
+              editor.moveNodeTo(node.id, node.pos_x - 1, node.pos_y);
+            });
+          }, 30);
+          //logAction("Tiles auto-refreshed.");
+        }
+      }, 5000); // every 5 seconds
+
     });
+
     document.addEventListener("DOMContentLoaded", function() {
       if (window.flowVars && window.flowVars.renderManager) {
         flowVars.renderManager(document.getElementById('variableManager'), { globalVars: false });
       }
     });
-  </script>
-  <script>
-    async function uploadToHubitatFile(filename, contents, opts = {}) {
-        const appId = document.getElementById("hubitatAppId")?.value.trim();
-        const token = document.getElementById("hubitatToken")?.value.trim();
-        if (!appId || !token) { alert("Missing Hubitat appId/token"); throw new Error("Missing Hubitat appId/token"); }
-        const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(filename)}`;
-        let body = contents;
-        if (typeof contents !== "string") body = JSON.stringify(contents, null, 2);
 
-        const res = await fetch(url, {
-            method: "POST",
-            body: body,
-            headers: { "Content-Type": opts.mimeType || "application/json" }
-        });
-        if (!res.ok) {
-            alert("Failed to upload file to Hubitat: " + (await res.text()));
-            throw new Error("Failed to upload file");
-        }
-        return await res.json().catch(() => true); // works for both JSON and blank responses
-        }
+    async function uploadToHubitatFile(filename, contents, opts = {}) {
+      const appId = document.getElementById("hubitatAppId")?.value.trim();
+      const token = document.getElementById("hubitatToken")?.value.trim();
+      if (!appId || !token) { alert("Missing Hubitat appId/token"); throw new Error("Missing Hubitat appId/token"); }
+      const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(filename)}`;
+      let body = contents;
+      if (typeof contents !== "string") body = JSON.stringify(contents, null, 2);
+
+      const res = await fetch(url, {
+          method: "POST",
+          body: body,
+          headers: { "Content-Type": opts.mimeType || "application/json" }
+      });
+      if (!res.ok) {
+          alert("Failed to upload file to Hubitat: " + (await res.text()));
+          throw new Error("Failed to upload file");
+      }
+      return await res.json().catch(() => true); // works for both JSON and blank responses
+    }
+
+    async function fetchModesFromAppFile() {
+      if (typeof fetchHubitatVarFileContent !== "function") return [];
+      try {
+        const txt = await fetchHubitatVarFileContent("flowModes.json");
+        if (!txt) { window.hubitatModes = []; return []; }
+        const obj = JSON.parse(txt);
+        window.hubitatModes = obj.modes || [];
+        logAction("Loaded modes: " + window.hubitatModes.map(m => m.name).join(", "));
+        return window.hubitatModes;
+      } catch (e) {
+        logAction("Failed to load flowModes.json: " + e, "error");
+        window.hubitatModes = [];
+        return [];
+      }
+    }
+
+   // --- ONLY highlight the last-executed flow's path ---
+
+// === Helper: Get and save Hubitat IP ===
+function getHubitatIP() {
+  let ip = localStorage.getItem("hubitat_ip");
+  if (!ip && window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) ip = window.location.hostname;
+  if (!ip) ip = prompt("Enter Hubitat IP address:", "192.168.1.XX") || "";
+  if (ip) localStorage.setItem("hubitat_ip", ip);
+  return ip;
+}
+
+// === Highlight only the most recent flow execution (nodes and lines, all lines to last node) ===
+function highlightOnlyLatestRun(activeFlows) {
+  // Remove ALL previous highlights
+  document.querySelectorAll('.drawflow-node.executed').forEach(n => {
+    n.classList.remove('executed');
+    n.classList.remove('last-executed');
+  });
+  document.querySelectorAll('.main-path').forEach(path => {
+    path.removeAttribute("stroke");
+    path.removeAttribute("style");
+    path.classList.remove('highlighted');
+  });
+
+  if (!Array.isArray(activeFlows) || activeFlows.length === 0) return;
+
+  // Find the latest run (highest timestamp in its last step)
+  let latestFlow = null, latestTs = 0;
+  activeFlows.forEach(flow => {
+    if (flow.steps && flow.steps.length > 0) {
+      const lastStep = flow.steps[flow.steps.length - 1];
+      if (lastStep.timestamp > latestTs) {
+        latestTs = lastStep.timestamp;
+        latestFlow = flow;
+      }
+    }
+  });
+  if (!latestFlow) return;
+
+  // Highlight ONLY the nodes for that run
+  const steps = latestFlow.steps;
+  steps.forEach((step, idx) => {
+    const nodeEl = document.getElementById(`node-${step.nodeId}`);
+    if (nodeEl) {
+      nodeEl.classList.add('executed');
+      nodeEl.classList.remove('last-executed');
+      if (idx === steps.length - 1) nodeEl.classList.add('last-executed');
+    }
+  });
+
+  // Highlight the path/lines between nodes in order
+  for (let i = 0; i < steps.length - 1; i++) {
+    const fromId = steps[i].nodeId;
+    const toId = steps[i + 1].nodeId;
+    // Try both Drawflow default and data-* selectors for max compatibility
+    let path = document.querySelector(`.connection.node_out_node-${fromId}.node_in_node-${toId} .main-path`);
+    if (!path) path = document.querySelector(`.connection[data-from="${fromId}"][data-to="${toId}"] .main-path`);
+    if (path) {
+      path.setAttribute("stroke", "limegreen");
+      path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
+      path.classList.add("highlighted");
+    }
+  }
+  // Highlight **ALL incoming lines** to the last node
+  if (steps.length > 0) {
+    const lastNodeId = steps[steps.length - 1].nodeId;
+    // Both Drawflow and data-* selectors
+    document.querySelectorAll(`.connection.node_in_node-${lastNodeId} .main-path, .connection[data-to="${lastNodeId}"] .main-path`).forEach(path => {
+      path.setAttribute("stroke", "limegreen");
+      path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
+      path.classList.add("highlighted");
+    });
+  }
+}
+
+// === Poll the flowtrace file and highlight the latest run ===
+function pollFlowTrace() {
+  const HUBITAT_IP = getHubitatIP();
+  const url = `http://${HUBITAT_IP}/local/flowtrace.json?nocache=${Date.now()}`;
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("Not found");
+      return r.json();
+    })
+    .then(activeFlows => {
+      highlightOnlyLatestRun(activeFlows);
+    })
+    .catch(e => {
+      // Ignore errors (404 normal until first flow)
+    });
+}
+
+// === Start polling every 350ms ===
+setInterval(pollFlowTrace, 350);
+
+
     </script>
 </body>
 </html>
