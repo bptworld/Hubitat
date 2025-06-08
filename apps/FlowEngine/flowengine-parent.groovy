@@ -128,7 +128,6 @@ mappings {
     path("/runFlow") 	 { action: [POST: "handleFlow" ] }
 	path("/listFiles") 	 { action: [GET: "apiListFiles"] }
     path("/getFile")  	 { action: [GET: "apiGetFile"] }
-	path("/testTile") 	 { action: [POST: "testTileHandler"] }
 	path("/devices")     { action: [GET: "apiGetDevices"] }
 	path("/uploadFile")  { action: [POST: "apiUploadFile"] }
 	path("/getModes")  	 { action: [POST: "exportModesToFile"] }
@@ -282,115 +281,6 @@ def getDeviceById(id) {
     theDevice = settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
 	if(logDebug) log.debug "In getDeviceById - Returning: ${theDevice.deviceLabel}"
 	return theDevice
-}
-
-def testTileHandler() {
-    try {
-        def slurper = new groovy.json.JsonSlurper()
-        def req = request.JSON ?: slurper.parseText(request?.body ?: "{}")
-        def node = req.node
-        if (logEnable) log.info "In testTileHandler: Received node: ${node?.name}, id=${node?.id}"
-        // Minimal emulation: process node as if running in a flow
-        switch (node?.name) {
-            case "device":
-                def devIds = []
-                if (node.data.deviceIds instanceof List) {
-                    devIds = node.data.deviceIds
-                } else if (node.data.deviceIds) {
-                    devIds = [node.data.deviceIds]
-                } else if (node.data.deviceId) {
-                    devIds = [node.data.deviceId]
-                }
-                def cmd = node.data.command
-                def val = node.data.value
-                def output = []
-                devIds.each { devId ->
-                    def device = getDeviceById(devId)
-					if (device && cmd) {
-						if (cmd == "setColor" && node.data.color) {
-							// Convert hex to HSV or at least something the driver can use
-							def color = node.data.color
-							def rgb = color?.startsWith("#") ? color.substring(1) : color
-							if (rgb.size() == 6) {
-								def r = Integer.parseInt(rgb.substring(0,2),16) / 255.0
-								def g = Integer.parseInt(rgb.substring(2,4),16) / 255.0
-								def b = Integer.parseInt(rgb.substring(4,6),16) / 255.0
-
-								def max = [r, g, b].max()
-								def min = [r, g, b].min()
-								def h, s, v
-								v = max
-								def d = max - min
-								s = max == 0 ? 0 : d / max
-								if (max == min) {
-									h = 0 // achromatic
-								} else if (max == r) {
-									h = (g - b) / d + (g < b ? 6 : 0)
-								} else if (max == g) {
-									h = (b - r) / d + 2
-								} else if (max == b) {
-									h = (r - g) / d + 4
-								}
-								h = h / 6
-
-								def hue = (h * 100).toInteger()
-								def sat = (s * 100).toInteger()
-								def lev = (v * 100).toInteger()
-								def colorMap = [hue: hue, saturation: sat, level: lev]
-								device.setColor(colorMap)
-								output << "Executed setColor on ${device.displayName} with ${colorMap}"
-							} else {
-								output << "Invalid color format: ${color}"
-							}
-						} else if (val != null && val != "") {
-							def arg = val
-							if (val.isInteger()) arg = val.toInteger()
-							else if (val.isDouble()) arg = val.toDouble()
-							device."${cmd}"(arg)
-						} else {
-							device."${cmd}"()
-						}
-						output << "Executed ${cmd} on ${device.displayName} ${val ? "with value $val" : ""}"
-					}
-                }
-                render contentType: "text/plain", data: output ? output.join("; ") : "No device command executed."
-                return
-            case "condition":
-                def device = getDeviceById(node.data.deviceId)
-                if (!device) {
-                    render contentType: "text/plain", data: "Device not found"
-                    return
-                }
-                def attrVal = device.currentValue(node.data.attribute)
-                def passes = evaluateComparator(attrVal, node.data.value, node.data.comparator)
-                render contentType: "text/plain", data: "Condition result: ${passes} (current ${node.data.attribute}: ${attrVal})"
-                return
-            case "eventTrigger":
-                render contentType: "text/plain", data: "Test not implemented for eventTrigger (needs event context)."
-                return
-			case "notification":
-				def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [node.data.targetDeviceId]
-				def msg = node.data.message ?: "Test Notification"
-				ids.each { devId ->
-					def dev = masterDeviceList?.find { it.id == devId }
-					if (dev && node.data.notificationType == "push" && dev.hasCommand("deviceNotification")) {
-						dev.deviceNotification(msg)
-					}
-					if (dev && node.data.notificationType == "speech" && dev.hasCommand("speak")) {
-						dev.speak(msg)
-					}
-				}
-				render contentType: "text/plain", data: "Notification sent to device(s)"
-				return
-
-            // Add other node types if you want
-            default:
-                render contentType: "text/plain", data: "Node type ${node?.name} not supported for test."
-        }
-    } catch (ex) {
-        log.error "TestTileHandler error: $ex"
-        render contentType: "text/plain", data: "TestTileHandler error: $ex"
-    }
 }
 
 def apiUploadFile() {
