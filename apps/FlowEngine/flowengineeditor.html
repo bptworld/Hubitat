@@ -2114,7 +2114,7 @@
         }
       }
 
-      const editor = new Drawflow(document.getElementById("drawflow"));
+      const editor = new Drawflow(document.getElementById("FE_drawflow"));
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
         editor.moveNodeTo = function(nodeId, x, y) {
