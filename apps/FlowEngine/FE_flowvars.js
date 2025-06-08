@@ -1,4 +1,4 @@
-// flowvars.js - Full Advanced Variable/Expression Engine for FlowEngine
+// FE_flowvars.js - Full Advanced Variable/Expression Engine for FlowEngine
 
 // --- Hubitat File Manager helpers for variables ---
 async function uploadVarsToHubitat(varsArr, fileName) {
