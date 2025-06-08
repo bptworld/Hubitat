@@ -137,7 +137,7 @@ def exportModesToFile() {
 	def currentMode = [ id: "current", name: location.mode]
     def modeList = location.modes.collect { [ id: it.id, name: it.name ] } + currentMode
     def json = groovy.json.JsonOutput.toJson([ modes: modeList ])
-	uploadHubFile("flowModes.json",json.getBytes())
+	uploadHubFile("FE_flowModes.json",json.getBytes())
 }
 
 void notifyFlowTrace(flowFile, nodeId, nodeType) {
