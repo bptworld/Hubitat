@@ -70,9 +70,9 @@
         },
         {
             "id": "429adb62-6288-4bfe-9934-0735f76cff04",
-            "name": "FE_flowTrace.json",
+            "name": "FE_flowtrace.json",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_flowTrace.json",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_flowtrace.json",
             "description": "UI File",
             "required": true
         },
