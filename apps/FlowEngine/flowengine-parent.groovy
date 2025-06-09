@@ -177,7 +177,7 @@ void notifyFlowTrace(flowFile, nodeId, nodeType) {
     if (thisFlow.steps.size() > 40) thisFlow.steps = thisFlow.steps[-40..-1]
 
     // Save all active flow paths
-    saveFlow("flowtrace.json", state.activeFlows)
+    saveFlow("FE_flowtrace.json", state.activeFlows)
 }
 
 def apiGetDevices() {
