@@ -76,6 +76,34 @@ def initialize() {
 	}
 }
 
+def loadFlowJson() {
+    if (!flowFile) return null
+    def uri = "http://${location.hub.localIP}:8080/local/${flowFile}"
+    def params = [
+        uri: uri,
+        contentType: "text/html; charset=UTF-8",
+        headers: [
+            "Cookie": cookie
+        ]
+    ]
+    try {
+        def flow
+        httpGet(params) { resp ->
+            def jsonStr = resp.getData().toString()
+            if (!jsonStr) {
+                log.error "No file content found for ${flowFile}"
+                flow = null
+            } else {
+                flow = parseJson(jsonStr)
+            }
+        }
+        return flow
+    } catch (e) {
+        log.error "Failed to load or parse flow: ${e}"
+        return null
+    }
+}
+
 def loadVariables() {
     state.varCtx = [:]
     getGlobalVars()
@@ -455,7 +483,10 @@ def sustainedTriggerHandler(data) {
 }
 
 // Map of nodeID -> node from flow
-def flowNodes() { state.flow?.drawflow?.Home?.data ?: [:] }
+def flowNodes() {
+    def freshFlow = loadFlowJson()
+    return freshFlow?.drawflow?.Home?.data ?: [:]
+}
 
 def getTriggerNodes(evt) {
     if (evt.name == "mode") {
