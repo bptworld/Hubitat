@@ -174,6 +174,86 @@
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script>
+    // ---- CENTRALIZED CREDENTIAL CHECK ----
+    function hubitatCredentialsAreValid(logIfMissing = false) {
+      const appId = document.getElementById("hubitatAppId")?.value?.trim();
+      const token = document.getElementById("hubitatToken")?.value?.trim();
+      if (!appId || !token) {
+        if (logIfMissing) logAction("Missing App ID or Token. Please enter both.", "warn");
+        return false;
+      }
+      return true;
+    }
+
+    // ---- WARNING BANNER LOGIC ----
+    function showHubitatWarning(show) {
+      let warn = document.getElementById("hubitatWarnBanner");
+      if (!warn) {
+        warn = document.createElement("div");
+        warn.id = "hubitatWarnBanner";
+        warn.style = "background: #ffc107; color: #111; padding: 9px 22px; font-weight: bold; text-align:center; font-size:16px; border-bottom: 2px solid #b8860b;";
+        warn.innerHTML = "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+        document.body.insertBefore(warn, document.body.firstChild);
+      }
+      warn.style.display = show ? "block" : "none";
+    }
+
+    // ---- BUTTONS DISABLE LOGIC ----
+    function updateHubitatButtonStates() {
+      const valid = hubitatCredentialsAreValid();
+      const buttonIds = [
+        "loadDevices", 
+        "loadFlowFromHubitatDropdown", 
+        "sendFlow"
+        // Add other button IDs that need disabling here if any
+      ];
+      buttonIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = !valid;
+      });
+      showHubitatWarning(!valid);
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", updateHubitatButtonStates);
+    document.getElementById("hubitatToken").addEventListener("input", updateHubitatButtonStates);
+    window.addEventListener("DOMContentLoaded", updateHubitatButtonStates);
+
+    // ---- OPTIONAL: CLEAR DEVICES/FLOW IF CREDS MISSING ----
+    function clearUiIfCredentialsMissing() {
+      if (!hubitatCredentialsAreValid()) {
+        // Optional: Clear device/flow UI, or gray out editor
+        // For example:
+        if (typeof window.devices !== "undefined") window.devices = [];
+        if (window.editor && window.editor.clear) window.editor.clear();
+        // Or clear device/flow-related UI
+      }
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", clearUiIfCredentialsMissing);
+    document.getElementById("hubitatToken").addEventListener("input", clearUiIfCredentialsMissing);
+
+    // ---- OPTIONAL: VALIDATE FORMAT ----
+    function validateHubitatInputFormat() {
+      // You can make this more robust if your tokens/appIds have a known format
+      const appId = document.getElementById("hubitatAppId")?.value?.trim();
+      const token = document.getElementById("hubitatToken")?.value?.trim();
+      if (appId && !/^[a-zA-Z0-9]+$/.test(appId)) {
+        showHubitatWarning(true);
+        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid App ID format. Only letters and numbers are allowed.";
+      } else if (token && !/^[a-zA-Z0-9\-]+$/.test(token)) {
+        showHubitatWarning(true);
+        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid Token format.";
+      } else {
+        showHubitatWarning(!hubitatCredentialsAreValid());
+        if (hubitatCredentialsAreValid()) document.getElementById("hubitatWarnBanner").innerText =
+          "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+      }
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", validateHubitatInputFormat);
+    document.getElementById("hubitatToken").addEventListener("input", validateHubitatInputFormat);
+
+    window.addEventListener("DOMContentLoaded", function() {
+      setTimeout(updateHubitatButtonStates, 350); // For autofill
+    });
+      
     function logAction(msg, type = "info") {
       const logBox = document.getElementById("logBox");
       if (logBox) {
@@ -535,6 +615,7 @@
       rememberInput("hubitatToken", "hubitatToken");
 
       document.getElementById("loadDevices").onclick = async () => {
+        if (!hubitatCredentialsAreValid(true)) return;
         logAction("loadDevices button clicked.");
         await fetchModesFromAppFile();
         devices = await fetchDevicesFromApp();
@@ -696,6 +777,82 @@
         return arr;
       }
 
+      /**
+       * Renders a device search/filter + multi-select picker.
+       * @param {HTMLElement} el - Where to append the picker.
+       * @param {Array} devices - List of all devices.
+       * @param {Array} selectedIds - Array of currently selected device IDs.
+       * @param {Function} onChange - Called with (newSelectedIds, newDeviceLabels) when selection changes.
+       * @returns {void}
+       */
+      function renderDevicePicker(el, devices, selectedIds, onChange) {
+        // Search/filter input
+        const devFilterDiv = document.createElement("div");
+        devFilterDiv.style = "margin-bottom:4px";
+        const devFilterInput = document.createElement("input");
+        devFilterInput.type = "text";
+        devFilterInput.placeholder = "Search devices…";
+        devFilterInput.style = "width:98%;margin-bottom:3px;padding:3px 7px;border-radius:7px;border:1px solid #333;font-size:13px;";
+        devFilterDiv.appendChild(devFilterInput);
+        el.appendChild(devFilterDiv);
+
+        // Device select (multi)
+        const devSelect = document.createElement("select");
+        devSelect.multiple = true;
+        devSelect.size = Math.min(10, devices.length);
+        devSelect.style.width = "98%";
+        devSelect.style.display = "block";
+        devSelect.style.marginBottom = "12px";
+        el.appendChild(devSelect);
+
+        // Helper for populating select options
+        function populateDeviceSelect(filteredDevices) {
+          devSelect.innerHTML = "";
+          getSortedDevicesWithSpecials(filteredDevices).forEach((d) => {
+            if (d.id === "__divider__") {
+              const divider = document.createElement("option");
+              divider.disabled = true;
+              divider.textContent = d.label;
+              divider.style.background = "#444";
+              devSelect.appendChild(divider);
+            } else {
+              const opt = document.createElement("option");
+              opt.value = d.id;
+              opt.textContent = d.label || d.name || d.id;
+              if (selectedIds.includes(d.id)) opt.selected = true;
+              devSelect.appendChild(opt);
+            }
+          });
+        }
+        populateDeviceSelect(devices);
+
+        // Live search logic
+        devFilterInput.oninput = function() {
+          const filter = devFilterInput.value.trim().toLowerCase();
+          if (!filter) {
+            populateDeviceSelect(devices);
+            return;
+          }
+          const filtered = devices.filter(d =>
+            (d.label || d.name || d.id || "").toLowerCase().includes(filter) ||
+            d.id === "__time__" ||
+            d.id === "__mode__"
+          );
+          populateDeviceSelect(filtered);
+        };
+
+        setTimeout(() => devFilterInput.focus(), 100);
+
+        devSelect.onchange = () => {
+          const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+          const labels = newSelected.map(id => {
+            const dev = devices.find(d => d.id == id);
+            return dev ? (dev.label || dev.name || id) : id;
+          });
+          if (onChange) onChange(newSelected, labels);
+        };
+      }
+
       // PATCH START: renderEditor, multi-trigger support
       function renderEditor(node) {
         if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
@@ -735,32 +892,26 @@
           devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // --- Device Select (multi) ---
-          const devSelect = document.createElement("select");
-          devSelect.multiple = true;
-          devSelect.size = Math.min(10, devices.length);
-          devSelect.style.width = "98%";
-          devSelect.style.display = "block";
-          devSelect.style.marginBottom = "12px";
-          const selectedIds = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds
-            : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d) => {
-            if (d.id === "__divider__") {
-              const divider = document.createElement("option");
-              divider.disabled = true;
-              divider.textContent = d.label;
-              divider.style.background = "#444";
-              devSelect.appendChild(divider);
-            } else {
-              const opt = document.createElement("option");
-              opt.value = d.id;
-              opt.textContent = d.label || d.name || d.id;
-              if (selectedIds.includes(d.id)) opt.selected = true;
-              devSelect.appendChild(opt);
+          // --- Device Search/Filter Picker ---
+          renderDevicePicker(
+            el,
+            devices,
+            Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds
+              : node.data.deviceId ? [node.data.deviceId] : [],
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceIds = newSelectedIds;
+              node.data.deviceId = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
+              node.data.deviceLabel = newDeviceLabels.join(", ");
+              node.data.attribute = "";
+              node.data.command = "";
+              node.data.value = "";
+              node.data.color = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              if (typeof buildPickers === "function") buildPickers();
             }
-          });
-          el.appendChild(devSelect);
+          );
 
           // --- Picker container ---
           const pickerDiv = document.createElement("div");
@@ -953,32 +1104,6 @@
 
           // Initial build
           buildPickers();
-
-          // Device select onchange
-          devSelect.onchange = () => {
-            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = newSelected;
-            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
-
-            // Update deviceLabel for tile display
-            const labels = node.data.deviceIds.map(id => {
-              const dev = devices.find(d => d.id == id);
-              return dev ? (dev.label || dev.name || id) : id;
-            });
-            node.data.deviceLabel = labels.join(", ");
-
-            // Always clear dependent fields when devices change
-            node.data.attribute = "";
-            node.data.command = "";
-            node.data.value = "";
-            node.data.color = "";
-
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-
-            // Just rebuild pickers, no editor jump!
-            buildPickers();
-          };
         }
 
         // EVENT TRIGGER NODE (with multi-device support)
@@ -1015,32 +1140,30 @@
           devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // --- Device Select (multi) ---
-          const devSelect = document.createElement("select");
-          devSelect.multiple = true;
-          devSelect.size = Math.min(10, devices.length);
-          devSelect.style.width = "98%";
-          devSelect.style.display = "block";
-          devSelect.style.marginBottom = "12px";
-          const selectedIds = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds
-            : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d) => {
-            if (d.id === "__divider__") {
-              const divider = document.createElement("option");
-              divider.disabled = true;
-              divider.textContent = d.label;
-              divider.style.background = "#444";
-              devSelect.appendChild(divider);
-            } else {
-              const opt = document.createElement("option");
-              opt.value = d.id;
-              opt.textContent = d.label || d.name || d.id;
-              if (selectedIds.includes(d.id)) opt.selected = true;
-              devSelect.appendChild(opt);
+          // --- Device Search/Filter Picker ---
+          renderDevicePicker(
+            el,
+            devices,
+            Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds
+              : node.data.deviceId ? [node.data.deviceId] : [],
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceIds = newSelectedIds;
+              node.data.deviceId = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
+
+              // Update deviceLabel for tile display
+              node.data.deviceLabel = newDeviceLabels.join(", ");
+
+              // Always clear dependent fields when devices change
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              if (typeof buildPickers === "function") buildPickers();
             }
-          });
-          el.appendChild(devSelect);
+          );
 
           // --- Picker container ---
           const pickerDiv = document.createElement("div");
@@ -1210,35 +1333,12 @@
               pickerDiv.appendChild(valueField);
             }
           }
-          
+
           // Initial build
           buildPickers();
-
-          // Device select onchange
-          devSelect.onchange = () => {
-            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = newSelected;
-            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
-
-            // Update deviceLabel for tile display
-            const labels = node.data.deviceIds.map(id => {
-              const dev = devices.find(d => d.id == id);
-              return dev ? (dev.label || dev.name || id) : id;
-            });
-            node.data.deviceLabel = labels.join(", ");
-
-            // Always clear dependent fields when devices change
-            node.data.attribute = "";
-            node.data.comparator = "";
-            node.data.value = "";
-
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            buildPickers();
-          };
         }
 
-          // CONDITION NODE (multi-device support, like eventTrigger)
+        // CONDITION NODE (multi-device support, like eventTrigger)
         if (node.name === "condition") {
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
@@ -1271,32 +1371,30 @@
           devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // --- Device Select (multi) ---
-          const devSelect = document.createElement("select");
-          devSelect.multiple = true;
-          devSelect.size = Math.min(10, devices.length);
-          devSelect.style.width = "98%";
-          devSelect.style.display = "block";
-          devSelect.style.marginBottom = "12px";
-          const selectedIds = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds
-            : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d) => {
-            if (d.id === "__divider__") {
-              const divider = document.createElement("option");
-              divider.disabled = true;
-              divider.textContent = d.label;
-              divider.style.background = "#444";
-              devSelect.appendChild(divider);
-            } else {
-              const opt = document.createElement("option");
-              opt.value = d.id;
-              opt.textContent = d.label || d.name || d.id;
-              if (selectedIds.includes(d.id)) opt.selected = true;
-              devSelect.appendChild(opt);
+          // --- Device Search/Filter Picker ---
+          renderDevicePicker(
+            el,
+            devices,
+            Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds
+              : node.data.deviceId ? [node.data.deviceId] : [],
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceIds = newSelectedIds;
+              node.data.deviceId = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
+
+              // Update deviceLabel for tile display
+              node.data.deviceLabel = newDeviceLabels.join(", ");
+
+              // Always clear dependent fields when devices change
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              if (typeof buildPickers === "function") buildPickers();
             }
-          });
-          el.appendChild(devSelect);
+          );
 
           // --- Picker container ---
           const pickerDiv = document.createElement("div");
@@ -1469,29 +1567,6 @@
 
           // Initial build
           buildPickers();
-
-          // Device select onchange
-          devSelect.onchange = () => {
-            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = newSelected;
-            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
-
-            // Update deviceLabel for tile display
-            const labels = node.data.deviceIds.map(id => {
-              const dev = devices.find(d => d.id == id);
-              return dev ? (dev.label || dev.name || id) : id;
-            });
-            node.data.deviceLabel = labels.join(", ");
-
-            // Always clear dependent fields when devices change
-            node.data.attribute = "";
-            node.data.comparator = "";
-            node.data.value = "";
-
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            buildPickers();
-          };
         }
 
         if (node.name === "delay") {
@@ -2438,19 +2513,35 @@
         }, 30);
       };
 
-      // ---- After Importing a Flow, Refresh All Tiles ----
       document.getElementById("loadFlowFromHubitatDropdown").onclick = async function() {
-        const button = this;
+        if (!hubitatCredentialsAreValid(true)) return;
+        const button = document.getElementById("loadFlowFromHubitatDropdown");
         const dropdown = document.getElementById("hubitatFileDropdown");
 
         button.style.display = "none";
         dropdown.style.display = "inline-block";
         dropdown.innerHTML = "<option>Loading...</option>";
 
-        const files = await fetchHubitatFiles();
+        let files = [];
+        try {
+          files = await fetchHubitatFiles();
+        } catch (err) {
+          dropdown.innerHTML = "<option>Failed to load files</option>";
+          logAction("Error loading file list: " + (err.message || err), "error");
+          setTimeout(() => {
+            dropdown.style.display = "none";
+            button.style.display = "inline-block";
+          }, 1500);
+          return;
+        }
+
         dropdown.innerHTML = "";
-        if (files.length === 0) {
+        if (!files || !files.length) {
           dropdown.innerHTML = "<option>No .json files found</option>";
+          setTimeout(() => {
+            dropdown.style.display = "none";
+            button.style.display = "inline-block";
+          }, 1500);
           return;
         }
         dropdown.innerHTML = "<option value=''>Pick a flow file…</option>";
@@ -2468,46 +2559,29 @@
           try {
             const data = await fetchHubitatFileContent(fileName);
             editor.import(data);
-              if (data.flowName) document.getElementById("flowName").value = data.flowName;
-              // ---- Auto-refresh tiles after import
-              document.getElementById("refreshAllTiles").click();
-              logAction("Loaded flow from Hubitat File Manager: " + fileName);
+            if (data.flowName) document.getElementById("flowName").value = data.flowName;
+            document.getElementById("refreshAllTiles").click();
+            logAction("Loaded flow from Hubitat File Manager: " + fileName);
 
-              // --- PATCH: Set data-node-type for device nodes after import ---
-              setTimeout(() => {
-                const nodeEls = document.querySelectorAll('.drawflow-node');
-                nodeEls.forEach(el => {
-                  const id = el.id.replace('node-', '');
-                  if (editor.getNodeFromId && editor.getNodeFromId(id)) {
-                    const node = editor.getNodeFromId(id);
-                    if (node && node.name === "device") {
-                      el.setAttribute('data-node-type', 'device');
-                    }
-                    if (node && node.name === "condition") {
-                      el.setAttribute('data-node-type', 'condition');
-                    }
-                    if (node && node.name === "eventTrigger") {
-                      el.setAttribute('data-node-type', 'eventTrigger');
-                    }
-                  }
-                });
-              }, 200);
+            setTimeout(() => {
+              const nodeEls = document.querySelectorAll('.drawflow-node');
+              nodeEls.forEach(el => {
+                const id = el.id.replace('node-', '');
+                if (editor.getNodeFromId && editor.getNodeFromId(id)) {
+                  const node = editor.getNodeFromId(id);
+                  if (node && node.name === "device") el.setAttribute('data-node-type', 'device');
+                  if (node && node.name === "condition") el.setAttribute('data-node-type', 'condition');
+                  if (node && node.name === "eventTrigger") el.setAttribute('data-node-type', 'eventTrigger');
+                }
+              });
+            }, 200);
           } catch (e) {
-            logAction("Error loading from Hubitat File Manager: " + e.message, "error");
+            logAction("Error loading from Hubitat File Manager: " + (e.message || e), "error");
           }
           dropdown.style.display = "none";
           button.style.display = "inline-block";
           dropdown.value = "";
         };
-
-        dropdown.onblur = function() {
-          setTimeout(() => {
-            dropdown.style.display = "none";
-            button.style.display = "inline-block";
-            dropdown.value = "";
-          }, 200);
-        };
-        await autoLoadGlobalVarsFromHubitat();
       };
 
       async function fetchDevicesFromApp() {
@@ -2567,7 +2641,8 @@
           };
         }
 
-      document.getElementById("sendFlow").onclick = async function() {
+      document.getElementById("sendFlow").onclick = async () => {
+        if (!hubitatCredentialsAreValid(true)) return;
         if (!editor) return;
         const flowName = document.getElementById("flowName").value.trim();
         if (!flowName) {
@@ -2692,103 +2767,101 @@
 
    // --- ONLY highlight the last-executed flow's path ---
 
-// === Helper: Get and save Hubitat IP ===
-function getHubitatIP() {
-  let ip = localStorage.getItem("hubitat_ip");
-  if (!ip && window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) ip = window.location.hostname;
-  if (!ip) ip = prompt("Enter Hubitat IP address:", "192.168.1.XX") || "";
-  if (ip) localStorage.setItem("hubitat_ip", ip);
-  return ip;
-}
+    // === Helper: Get and save Hubitat IP ===
+    function getHubitatIP() {
+      let ip = localStorage.getItem("hubitat_ip");
+      if (!ip && window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) ip = window.location.hostname;
+      if (!ip) ip = prompt("Enter Hubitat IP address:", "192.168.1.XX") || "";
+      if (ip) localStorage.setItem("hubitat_ip", ip);
+      return ip;
+    }
 
-// === Highlight only the most recent flow execution (nodes and lines, all lines to last node) ===
-function highlightOnlyLatestRun(activeFlows) {
-  // Remove ALL previous highlights
-  document.querySelectorAll('.drawflow-node.executed').forEach(n => {
-    n.classList.remove('executed');
-    n.classList.remove('last-executed');
-  });
-  document.querySelectorAll('.main-path').forEach(path => {
-    path.removeAttribute("stroke");
-    path.removeAttribute("style");
-    path.classList.remove('highlighted');
-  });
+    // === Highlight only the most recent flow execution (nodes and lines, all lines to last node) ===
+    function highlightOnlyLatestRun(activeFlows) {
+      // Remove ALL previous highlights
+      document.querySelectorAll('.drawflow-node.executed').forEach(n => {
+        n.classList.remove('executed');
+        n.classList.remove('last-executed');
+      });
+      document.querySelectorAll('.main-path').forEach(path => {
+        path.removeAttribute("stroke");
+        path.removeAttribute("style");
+        path.classList.remove('highlighted');
+      });
 
-  if (!Array.isArray(activeFlows) || activeFlows.length === 0) return;
+      if (!Array.isArray(activeFlows) || activeFlows.length === 0) return;
 
-  // Find the latest run (highest timestamp in its last step)
-  let latestFlow = null, latestTs = 0;
-  activeFlows.forEach(flow => {
-    if (
-      flow.steps && flow.steps.length > 0 &&
-      flow.steps.every(step => step.nodeId && step.timestamp)
-    ) {
-      const lastStep = flow.steps[flow.steps.length - 1];
-      if (typeof lastStep.timestamp === "number" && lastStep.timestamp > latestTs) {
-        latestTs = lastStep.timestamp;
-        latestFlow = flow;
+      // Find the latest run (highest timestamp in its last step)
+      let latestFlow = null, latestTs = 0;
+      activeFlows.forEach(flow => {
+        if (
+          flow.steps && flow.steps.length > 0 &&
+          flow.steps.every(step => step.nodeId && step.timestamp)
+        ) {
+          const lastStep = flow.steps[flow.steps.length - 1];
+          if (typeof lastStep.timestamp === "number" && lastStep.timestamp > latestTs) {
+            latestTs = lastStep.timestamp;
+            latestFlow = flow;
+          }
+        }
+      });
+      if (!latestFlow) return;
+
+      // Highlight ONLY the nodes for that run
+      const steps = latestFlow.steps;
+      steps.forEach((step, idx) => {
+        const nodeEl = document.getElementById(`node-${step.nodeId}`);
+        if (nodeEl) {
+          nodeEl.classList.add('executed');
+          nodeEl.classList.remove('last-executed');
+          if (idx === steps.length - 1) nodeEl.classList.add('last-executed');
+        }
+      });
+
+      // Highlight the path/lines between nodes in order
+      for (let i = 0; i < steps.length - 1; i++) {
+        const fromId = steps[i].nodeId;
+        const toId = steps[i + 1].nodeId;
+        // Try both Drawflow default and data-* selectors for max compatibility
+        let path = document.querySelector(`.connection.node_out_node-${fromId}.node_in_node-${toId} .main-path`);
+        if (!path) path = document.querySelector(`.connection[data-from="${fromId}"][data-to="${toId}"] .main-path`);
+        if (path) {
+          path.setAttribute("stroke", "limegreen");
+          path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
+          path.classList.add("highlighted");
+        }
+      }
+      // Highlight **ALL incoming lines** to the last node
+      if (steps.length > 0) {
+        const lastNodeId = steps[steps.length - 1].nodeId;
+        // Both Drawflow and data-* selectors
+        document.querySelectorAll(`.connection.node_in_node-${lastNodeId} .main-path, .connection[data-to="${lastNodeId}"] .main-path`).forEach(path => {
+          path.setAttribute("stroke", "limegreen");
+          path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
+          path.classList.add("highlighted");
+        });
       }
     }
-  });
-  if (!latestFlow) return;
 
-  // Highlight ONLY the nodes for that run
-  const steps = latestFlow.steps;
-  steps.forEach((step, idx) => {
-    const nodeEl = document.getElementById(`node-${step.nodeId}`);
-    if (nodeEl) {
-      nodeEl.classList.add('executed');
-      nodeEl.classList.remove('last-executed');
-      if (idx === steps.length - 1) nodeEl.classList.add('last-executed');
+    // === Poll the FE_flowtrace file and highlight the latest run ===
+    function pollFlowTrace() {
+      const HUBITAT_IP = getHubitatIP();
+      const url = `http://${HUBITAT_IP}/local/FE_flowtrace.json?nocache=${Date.now()}`;
+      fetch(url)
+        .then(r => {
+          if (!r.ok) throw new Error("Not found");
+          return r.json();
+        })
+        .then(activeFlows => {
+          highlightOnlyLatestRun(activeFlows);
+        })
+        .catch(e => {
+          // Ignore errors (404 normal until first flow)
+        });
     }
-  });
 
-  // Highlight the path/lines between nodes in order
-  for (let i = 0; i < steps.length - 1; i++) {
-    const fromId = steps[i].nodeId;
-    const toId = steps[i + 1].nodeId;
-    // Try both Drawflow default and data-* selectors for max compatibility
-    let path = document.querySelector(`.connection.node_out_node-${fromId}.node_in_node-${toId} .main-path`);
-    if (!path) path = document.querySelector(`.connection[data-from="${fromId}"][data-to="${toId}"] .main-path`);
-    if (path) {
-      path.setAttribute("stroke", "limegreen");
-      path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
-      path.classList.add("highlighted");
-    }
-  }
-  // Highlight **ALL incoming lines** to the last node
-  if (steps.length > 0) {
-    const lastNodeId = steps[steps.length - 1].nodeId;
-    // Both Drawflow and data-* selectors
-    document.querySelectorAll(`.connection.node_in_node-${lastNodeId} .main-path, .connection[data-to="${lastNodeId}"] .main-path`).forEach(path => {
-      path.setAttribute("stroke", "limegreen");
-      path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
-      path.classList.add("highlighted");
-    });
-  }
-}
-
-// === Poll the FE_flowtrace file and highlight the latest run ===
-function pollFlowTrace() {
-  const HUBITAT_IP = getHubitatIP();
-  const url = `http://${HUBITAT_IP}/local/FE_flowtrace.json?nocache=${Date.now()}`;
-  fetch(url)
-    .then(r => {
-      if (!r.ok) throw new Error("Not found");
-      return r.json();
-    })
-    .then(activeFlows => {
-      highlightOnlyLatestRun(activeFlows);
-    })
-    .catch(e => {
-      // Ignore errors (404 normal until first flow)
-    });
-}
-
-// === Start polling every 350ms ===
-setInterval(pollFlowTrace, 350);
-
-
+    // === Start polling every 350ms ===
+    setInterval(pollFlowTrace, 350);
     </script>
 </body>
 </html>
