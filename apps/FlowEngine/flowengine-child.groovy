@@ -78,7 +78,7 @@ def initialize() {
 
 def loadFlowJson() {
     if (!flowFile) return null
-    def uri = "http://${location.hub.localIP}:8080/local/${flowFile}"
+    def uri = "http://127.0.0.1:8080/local/${flowFile}"
     def params = [
         uri: uri,
         contentType: "text/html; charset=UTF-8",
@@ -165,7 +165,7 @@ String resolveVars(str) {
 def getGlobalVars() {
 	if(logEnable) log.debug "In getGlobalVars"
 	state.globalVars = []
-	uri = "http://${location.hub.localIP}:8080/local/FE_global_vars.json"
+	uri = "http://127.0.0.1:8080/local/FE_global_vars.json"
     def params = [
         uri: uri,
         contentType: "text/html; charset=UTF-8",
@@ -262,7 +262,7 @@ def saveGlobalVarsToFile() {
 
 def readAndParseFlow() {
     if(logEnable) log.debug "In readAndParseFlow"
-    uri = "http://${location.hub.localIP}:8080/local/${flowFile}"
+    uri = "http://127.0.0.1:8080/local/${flowFile}"
     def params = [
         uri: uri,
         contentType: "text/html; charset=UTF-8",
@@ -980,7 +980,6 @@ def formatTimeEvalLog(Map args = [:]) {
     return msg
 }
 
-// Simple comparators for string/number
 def evaluateComparator(actual, expected, cmp) {
     switch(cmp) {
         case "==":      return "$actual" == "$expected"
@@ -996,12 +995,31 @@ def evaluateComparator(actual, expected, cmp) {
         case "empty":   return !actual
         case "isTrue":  return actual == true || "$actual" == "true"
         case "isFalse": return actual == false || "$actual" == "false"
-		case "changes": 
-    		// Always true, because an event means it changed
-    		return true
+        case "changes": return true
+        case "between":
+			def minVal
+			def maxVal
 
-        // Add more as needed
-        default:        return "$actual" == "$expected"
+			if (expected instanceof List && expected.size() == 2) {
+				minVal = expected[0] as Double
+				maxVal = expected[1] as Double
+				if (logEnable) log.debug "expected as List: minVal=${minVal}, maxVal=${maxVal}"
+			} else if (expected instanceof String && expected.contains(",")) {
+				def cleaned = expected.replaceAll(/[\[\]\s]/, "")
+				def parts = cleaned.split(",")
+				minVal = parts[0] as Double
+				maxVal = parts[1] as Double
+				if (logEnable) log.debug "expected as String: minVal=${minVal}, maxVal=${maxVal}"
+			} else {
+				if (logEnable) log.debug "Invalid expected value for 'between': ${expected}"
+				return false
+			}
+
+			def actualNum = actual as Double
+			if (logEnable) log.debug "Between - actualNum: ${actualNum} - minVal: ${minVal} - maxVal: ${maxVal}"
+
+			return (actualNum >= minVal && actualNum <= maxVal)
+
     }
 }
 
@@ -1029,7 +1047,7 @@ def toDouble(val) {
 
 Boolean getFileList(){
     if(logEnable) log.debug "Getting list of files"
-    uri = "http://${location.hub.localIP}:8080/hub/fileManager/json";
+    uri = "http://127.0.0.1:8080/hub/fileManager/json";
     def params = [ uri: uri ]
     try {
         def tempList = []
