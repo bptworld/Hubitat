@@ -149,9 +149,15 @@ def resolveNodeFields(data) {
 
 String resolveVars(str) {
     if (!str || !(str instanceof String)) return str
-    def pattern = /\$\((\w+)\)/
-    def out = str.replaceAll(pattern) { all, var ->
-        state.vars?.get(var)?.toString() ?: ""
+    // Supports both $(var) and ${var}
+    def pattern = /\$\((\w+)\)|\$\{(\w+)\}/
+    def out = str.replaceAll(pattern) { all, v1, v2 ->
+        def var = v1 ?: v2
+        state.vars?.get(var)?.toString() ?:
+        state.flowVars?.find { it.name == var }?.value?.toString() ?:
+        state.globalVars?.find { it.name == var }?.value?.toString() ?:
+        state.varCtx?.get(var)?.toString() ?:
+        ""
     }
     return out
 }
@@ -849,9 +855,11 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 				getRealDeviceData(devId)
 		
 				if (state.device && node.data.notificationType == "push" && state.device.hasCommand("deviceNotification")) {
+					if(logEnable) log.debug "push - ${msg}"
 					state.device.deviceNotification(msg)
 				}
 				if (state.device && node.data.notificationType == "speech" && state.device.hasCommand("speak")) {
+					if(logEnable) log.debug "speech - ${msg}"
 					state.device.speak(msg)
 				}
 			}
