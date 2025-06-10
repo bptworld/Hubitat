@@ -249,31 +249,33 @@ def apiListFiles() {
     if(logEnable) log.debug "Getting list of files"
     uri = "http://127.0.0.1:8080/hub/fileManager/json";
     def params = [
-        uri: uri,
-        headers: [
-				"Cookie": cookie
-            ]        
+        uri: uri,     
     ]
     try {
         fileList = []
-        httpGet(params) { resp ->
-            if (resp != null){
-                log.debug "Found the files"
-                def json = resp.data
-                for (rec in json.files) {
-					if (rec.name?.toLowerCase()?.endsWith(".json")) {
-                    	fileList << rec.name
+		httpGet(params) { resp ->
+			if (resp != null){
+				log.debug "Found the files"
+				def json = resp.data
+				for (rec in json.files) {
+					if (
+						rec.name?.toLowerCase()?.endsWith(".json") &&    // Must end with .json
+						!(rec.name?.startsWith("FE_")) &&                // Exclude if starts with FE_
+						!(rec.name?.startsWith("var_"))                  // Exclude if starts with FE_
+					) {
+						fileList << rec.name
 					}
-                }
-            } else {
-                //
-            }
-        }
+				}
+			} else {
+				//
+			}
+		}
         if(logEnable) log.debug fileList.sort()
     } catch (e) {
         log.error e
     }
-    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([files: fileList])
+	def files = fileList.sort()
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([files: files])
 }
 
 def getDeviceById(id) {
