@@ -62,7 +62,13 @@
       border: 3px solid #ffe54e !important;
       box-shadow: 0 0 18px #ffe54e !important;
     }
-
+    #sendFlow.need-save {
+      background: #e6462d !important;   /* red */
+      color: #fff !important;
+      border: 2px solid #900 !important;
+      font-weight: bold;
+      box-shadow: 0 0 8px #e6462d77;
+    }
     .cv-on    { color: #0c0; }
     .cv-off   { color: #e34c4c; }
     .cv-num   { color: #3af; }
@@ -117,6 +123,13 @@
       background: #159084  !important;
       border: 2.2px solid #02f84c !important;
       color: #fff !important;
+    }
+    #exportVarsBtn.need-export {
+      background: #e6462d !important;   /* red */
+      color: #fff !important;
+      border: 2px solid #900 !important;
+      font-weight: bold;
+      box-shadow: 0 0 8px #e6462d77;
     }
     .device-tile,
     .device-tile.selected,
@@ -174,6 +187,16 @@
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script>
+    function markFlowNeedsSave(needed = true) {
+      const btn = document.getElementById('sendFlow');
+      if (!btn) return;
+      if (needed) {
+        btn.classList.add('need-save');
+      } else {
+        btn.classList.remove('need-save');
+      }
+    }
+
     // ---- CENTRALIZED CREDENTIAL CHECK ----
     function hubitatCredentialsAreValid(logIfMissing = false) {
       const appId = document.getElementById("hubitatAppId")?.value?.trim();
@@ -850,6 +873,7 @@
             return dev ? (dev.label || dev.name || id) : id;
           });
           if (onChange) onChange(newSelected, labels);
+          markFlowNeedsSave(true);
         };
       }
 
@@ -910,6 +934,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               if (typeof buildPickers === "function") buildPickers();
+              markFlowNeedsSave(true);
             }
           );
 
@@ -1162,6 +1187,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               if (typeof buildPickers === "function") buildPickers();
+              markFlowNeedsSave(true);
             }
           );
 
@@ -1393,6 +1419,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               if (typeof buildPickers === "function") buildPickers();
+              markFlowNeedsSave(true);
             }
           );
 
@@ -1998,6 +2025,7 @@
             const labels = node.data.deviceIds.map(id => {
               const dev = devices.find(d => d.id == id);
               return dev ? (dev.label || dev.name || id) : id;
+              markFlowNeedsSave(true);
             });
             node.data.deviceLabel = labels.join(", ");
 
@@ -2086,6 +2114,7 @@
               node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
             };
             el.appendChild(devSelect);
 
@@ -2103,6 +2132,7 @@
             node.data.message = msgInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
           };
           el.appendChild(msgInput);
 
@@ -2143,6 +2173,7 @@
         msgInput.selectionStart = msgInput.selectionEnd = start + insert.length;
         msgInput.dispatchEvent(new Event('input'));
         document.body.removeChild(sel);
+        markFlowNeedsSave(true);
       };
       sel.style.position = "absolute";
       let r = plusVarBtn.getBoundingClientRect();
@@ -2221,6 +2252,18 @@
       }
       editor.reroute = true;
       editor.start();
+      editor.on('nodeMoved', function(id) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('connectionRemoved', function(connection) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('connectionCreated', function(connection) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('nodeRemoved', function(id) {
+        markFlowNeedsSave(true);
+      });
 
       if (typeof Drawflow !== "undefined" && !Drawflow.prototype.updateNodeHtmlFromId) {
         Drawflow.prototype.updateNodeHtmlFromId = function(id, html) {
@@ -2250,6 +2293,7 @@
         editor.addNode("notMatchingVar", 1, 1, 320, 180, "notMatchingVar", {
             deviceIds: [], attribute: "", value: "", varScope: "flow"}
         ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
+        markFlowNeedsSave(true);
         logAction("addNotMatchingVar finished.");
       };
 
@@ -2277,6 +2321,7 @@
             }
           });
         }, 100);
+        markFlowNeedsSave(true);
         logAction("addAction finished.");
       };
 
@@ -2303,6 +2348,7 @@
             }
           });
         }, 100);
+        markFlowNeedsSave(true);
         logAction("addCondition finished.");
       };
 
@@ -2329,6 +2375,7 @@
             }
           });
         }, 100);
+        markFlowNeedsSave(true);
         logAction("addTrigger finished.");
       };
 
@@ -2347,20 +2394,25 @@
           targetDeviceId: "",
           message: ""
         }, nodeTileHtml("notification", { notificationType: "push", message: "" }));
+        markFlowNeedsSave(true);
         logAction("addNotification finished.");
       };
 
       document.getElementById("addLogicAND").onclick = () => {
+        markFlowNeedsSave(true);
         editor.addNode("AND", 2, 2, 300, 100, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
       };
       document.getElementById("addLogicOR").onclick = () => {
+        markFlowNeedsSave(true);
         editor.addNode("OR", 2, 2, 350, 100, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
       };
       document.getElementById("addLogicNOT").onclick = () => {
+        markFlowNeedsSave(true);
         editor.addNode("NOT", 1, 2, 400, 100, "NOT", {}, nodeTileHtml("NOT", {}), undefined, { outputs: ["true", "false"] });
       };
 
       document.getElementById("addDoNothing").onclick = () => {
+        markFlowNeedsSave(true);
         editor.addNode(
           "doNothing", 
           1, 1, 600, 100, 
@@ -2374,11 +2426,13 @@
         editor.addNode("delay", 1, 1, 500, 100, "delay", {
           delayMs: 1000
         }, nodeTileHtml("delay", { delayMs: 1000 }));
+        markFlowNeedsSave(true);
       };
       document.getElementById("addDelayMin").onclick = () => {
         editor.addNode("delayMin", 1, 1, 550, 100, "delayMin", {
           delayMin: 1
         }, nodeTileHtml("delayMin", { delayMin: 1 }));
+        markFlowNeedsSave(true);
       };
 
       document.getElementById("newFlow").onclick  = async function() {
@@ -2663,6 +2717,7 @@
         };
 
         await uploadToHubitatFile(flowName + ".json", JSON.stringify(out, null, 2));
+        markFlowNeedsSave(false);
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
 
@@ -2862,6 +2917,17 @@
 
     // === Start polling every 350ms ===
     setInterval(pollFlowTrace, 350);
+
+      function markExportNeeded(needed = true) {
+        const btn = document.getElementById('exportVarsBtn');
+        if (!btn) return;
+        if (needed) {
+          btn.classList.add('need-export');
+        } else {
+          btn.classList.remove('need-export');
+        }
+      }
+
     </script>
 </body>
 </html>
