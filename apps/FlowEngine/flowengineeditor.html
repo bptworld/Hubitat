@@ -293,7 +293,12 @@
           const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
           if (txt && txt.trim()) {
             if (window.flowVars && window.flowVars.setGlobalVars) {
-              window.flowVars.setGlobalVars(JSON.parse(txt));
+              try {
+                window.flowVars.setGlobalVars(txt && txt.trim() ? JSON.parse(txt) : []);
+              } catch (e) {
+                window.flowVars.setGlobalVars([]);
+                console.warn("Globals JSON invalid or missing. Starting with empty globals.");
+              }
             }
             logAction("Auto-loaded FE_global_vars.json", "info");
           } else {
@@ -729,10 +734,11 @@
             }
           });
         }
+        if (!flow) flow = {};
         if (!flow.drawflow) flow.drawflow = {};
         if (!flow.drawflow.drawflow) flow.drawflow.drawflow = {};
         if (!flow.drawflow.drawflow.Home) flow.drawflow.drawflow.Home = { data: {} };
-        if (!flow.drawflow.drawflow.Home.data) flow.drawflow.drawflow.Home.data = {};
+        if (!flow.drawflow.drawflow.Home.data) flow.drawflow.drawflow.Home.data = {}; 
 
         Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
           if (
@@ -1888,7 +1894,7 @@
 
           // --- Output JSON name ---
           const outVarLabel = document.createElement("label");
-          outVarLabel.textContent = "Output JSON name";
+          outVarLabel.textContent = "Output JSON name - Be sure it starts with 'var_'";
           outVarLabel.style.display = "block";
           el.appendChild(outVarLabel);
 
