@@ -212,15 +212,18 @@ async function fetchHubitatVarFileContent(fileName) {
       arr.push({ name:"", value:"", type:"String" });
       renderVarsList(opts.globalVars ? "global" : "flow");
       notifyVarsChange();
+      if (opts.globalVars) markExportNeeded(true);
     };
     if (opts.globalVars) {
       // Export global variables to Hubitat
       document.getElementById('exportVarsBtn').onclick = async () => {
         let arr = globalVars;
-        let fileName = prompt("Export file name?", "global_vars.json");
-        if (!fileName) return;
+        let fileName = "FE_global_vars.json";
         let ok = await uploadVarsToHubitat(arr, fileName);
-        if (ok) alert("Global variables exported to Hubitat as " + fileName);
+        if (ok) {
+          markExportNeeded(false); // Set back to green!
+          logAction("Global variables exported to Hubitat as " + fileName, "success");
+        }
       };
       // Import global variables from Hubitat
       document.getElementById('importVarsBtn').onclick = async () => {
@@ -261,6 +264,7 @@ async function fetchHubitatVarFileContent(fileName) {
               globalVars = arr;
               renderVarsList("global");
               notifyVarsChange();
+              markExportNeeded(true);
               alert("Imported " + arr.length + " global vars from " + pick);
             } else alert("File does not contain an array.");
           } catch(e) { alert("Failed to parse file: " + e.message); }
@@ -323,17 +327,20 @@ async function fetchHubitatVarFileContent(fileName) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr[i].name = name;
     notifyVarsChange();
+    if (scope === "global") markExportNeeded(true);
   };
   root.setVarVal = function(scope, i, val) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr[i].value = val;
     notifyVarsChange();
+    if (scope === "global") markExportNeeded(true);
   };
   root.delVar = function(scope, i) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr.splice(i,1);
     renderVarsList(scope);
     notifyVarsChange();
+    if (scope === "global") markExportNeeded(true);
   };
   // --- ADVANCED: VAR HOVER TOOLTIP ---
   // Call this in your value field's mouseover to get a tooltip with variable info
