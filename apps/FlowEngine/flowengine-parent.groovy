@@ -105,7 +105,7 @@ def updated() {
 def initialize() {
 	if (!state.accessToken) {
         createAccessToken()
-		state.lastFullUrl = "http://${location.hub.localIP}:80/apps/api/${app.id}/flow?access_token=${state.accessToken}"
+		state.lastFullUrl = "http://127.0.0.1:80/apps/api/${app.id}/flow?access_token=${state.accessToken}"
 		state.appId = app.id
 		state.token = state.accessToken
     }
@@ -220,7 +220,7 @@ def apiGetFile() {
     }
     def fileData = null
     try {
-        def url = "http://${location.hub.localIP}:8080/local/${name}"
+        def url = "http://127.0.0.1:8080/local/${name}"
         log.debug "Fetching file via httpGet: ${url}"
         httpGet([uri: url, contentType: 'text/plain']) { resp ->
             fileData = resp.data?.text
@@ -247,7 +247,7 @@ def apiGetFile() {
 
 def apiListFiles() {
     if(logEnable) log.debug "Getting list of files"
-    uri = "http://${location.hub.localIP}:8080/hub/fileManager/json";
+    uri = "http://127.0.0.1:8080/hub/fileManager/json";
     def params = [
         uri: uri,
         headers: [
