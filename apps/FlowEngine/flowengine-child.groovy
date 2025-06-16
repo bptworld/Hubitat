@@ -13,6 +13,7 @@ import groovy.json.JsonSlurper
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 state.nodeDebounce = state.nodeDebounce ?: [:]
+state.lastVarValues = state.lastVarValues ?: [:]
 
 // --- VARIABLE SUPPORT ---
 state.globalVars = state.globalVars ?: []
@@ -66,6 +67,12 @@ def updated() {
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "Keep On") unschedule(logsOff)
+	// Schedule variable triggers if any exist
+    unschedule('checkVariableTriggers')
+    if (hasVariableTrigger()) {
+        runEvery5Seconds('checkVariableTriggers')
+        if (logEnable) log.info "Scheduled variable trigger polling every 5 seconds"
+    }
 	initialize()
 }
 
@@ -74,6 +81,15 @@ def initialize() {
 	if(flowFile) {
     	readAndParseFlow()
 	}
+}
+
+boolean hasVariableTrigger() {
+    def nodes = flowNodes()
+    return nodes?.find { id, node ->
+        node?.name == "eventTrigger" &&
+        (node.data?.deviceId == "__variable__" ||
+         (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
+    } != null
 }
 
 def loadFlowJson() {
@@ -319,6 +335,33 @@ def subscribeToTriggers() {
                     }
                 }
             }
+        }
+    }
+}
+
+void checkVariableTriggers() {
+    def nodes = flowNodes().findAll { id, node ->
+        node?.name == "eventTrigger" &&
+        (node.data?.deviceId == "__variable__" ||
+         (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
+    }
+    if (!nodes) return
+
+    getGlobalVars()
+    def globals = state.globalVars ?: []
+    def globalMap = [:]
+    globals.each { v -> globalMap[v.name] = v.value }
+
+    nodes.each { id, node ->
+        def varName = node.data?.varName
+        if (!varName) return
+        def curValue = globalMap[varName]
+        def lastValue = state.lastVarValues[varName]
+        if (curValue != lastValue) {
+            if (logEnable) log.info "Variable trigger: '${varName}' changed from '${lastValue}' to '${curValue}', running trigger"
+            state.lastVarValues[varName] = curValue
+            // Fire this trigger node as if an event occurred
+            evaluateNode(id, [name: varName, value: curValue])
         }
     }
 }
