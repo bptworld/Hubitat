@@ -969,6 +969,67 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			break
 
+		case "saveDeviceState":
+    		def devId = node.data.deviceId
+			if (devId) {
+				getRealDeviceData(devId)
+				def device = state.device
+				if (device) {
+					// --- Capture all current attributes ---
+					def devState = [:]
+					device.supportedAttributes.each { attr ->
+						try {
+							def val = device.currentValue(attr.name)
+							if (val != null) devState[attr.name] = val
+						} catch (e) {
+							if (logEnable) log.warn "Failed to get attribute ${attr.name} for ${device.displayName}: $e"
+						}
+					}
+					state.savedDeviceStates = state.savedDeviceStates ?: [:]
+					state.savedDeviceStates[devId] = devState
+					if (logEnable) log.info "Saved ALL attributes for device ${device.displayName} (${devId}): ${devState}"
+				} else {
+					if (logEnable) log.warn "saveDeviceState: Device ID ${devId} not found"
+				}
+			}
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(conn.node, evt, null, visited)
+			}
+			break
+
+        case "restoreDeviceState":
+			def devId = node.data.deviceId
+			if (devId) {
+				getRealDeviceData(devId)
+				def device = state.device
+				def devState = state.savedDeviceStates?.get(devId)
+				if (device && devState) {
+					// For each saved attribute, attempt to restore using the best matching command
+					devState.each { attrName, attrValue ->
+						try {
+							// Try generic set<AttributeName> command (e.g., setLevel, setHue)
+							def cmd = "set${attrName.capitalize()}"
+							if (device.hasCommand(cmd)) {
+								device."${cmd}"(attrValue)
+								if (logEnable) log.info "Restored ${attrName} to ${attrValue} using ${cmd} for ${device.displayName}"
+							} else if (attrName == "switch" && device.hasCommand(attrValue)) {
+								// Special: on/off commands
+								device."${attrValue}"()
+								if (logEnable) log.info "Restored switch to ${attrValue} for ${device.displayName}"
+							} // Add more special cases if needed
+						} catch (e) {
+							if (logEnable) log.warn "Failed to restore ${attrName} for ${device.displayName}: $e"
+						}
+					}
+				} else {
+					if (logEnable) log.warn "restoreDeviceState: No saved state for device ID ${devId}"
+				}
+			}
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(conn.node, evt, null, visited)
+			}
+			break
+
         default:
             log.warn "Unknown node type: ${node.name}"
     }
