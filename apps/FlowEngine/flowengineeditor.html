@@ -169,6 +169,8 @@
       <button id="addNotification" title="Add a Notification node">Add Notification</button>
       <button id="addSetVariable" title="Add a Set Variable node">Add Set Variable</button>
       <button id="addNotMatchingVar" title="Add a Devices Not Matching to JSON node">Add Not Var</button>
+      <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
+      <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Add Do Nothing</button>
     </div>
   </div>
@@ -433,6 +435,15 @@
       if (t === "delaymin") {
         let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
         return `<div class="logic-node">${label}</div>`;
+      }
+
+      if (t === "savedevicestate") {
+        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
+        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span></div>`;
+      }
+      if (t === "restoredevicestate") {
+        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
+        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span></div>`;
       }
 
       if (t === "setvariable") {
@@ -2024,6 +2035,30 @@
           };
         }
 
+        if (node.name === "saveDeviceState" || node.name === "restoreDeviceState") {
+          el.innerHTML = `${node.name === "saveDeviceState" ? "Save Device State" : "Restore Device State"}<br><br>`;
+
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+
+          renderDevicePicker(
+            el,
+            devices,
+            node.data.deviceId ? [node.data.deviceId] : [],
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceId = newSelectedIds[0] || "";
+              node.data.deviceLabel = newDeviceLabels[0] || "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            },
+            false // single-select
+          );
+          return;
+        }
+
         if (node.name === "notification") {
           const el = document.getElementById("nodeEditor");
           el.innerHTML = "<b>Notification Node</b><br><br>";
@@ -2132,77 +2167,77 @@
           plusVarBtn.style.color = "#fff";
           plusVarBtn.onclick = function() {
             if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-      if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
+            if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
             const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
             if (!allVars.length) return alert("No variables defined!");
 
-      if (allVars.length === 1) {
-        let insert = `$(${allVars[0].name})`;
-        let start = valInput.selectionStart, end = valInput.selectionEnd;
-        let oldVal = valInput.value;
-        valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-        valInput.focus();
-        valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-        valInput.dispatchEvent(new Event('input'));
-        return;
-      }
-      const sel = document.createElement("select");
-      sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
-      sel.onchange = () => {
-        let insert = `$(${sel.value})`;
-        let start = msgInput.selectionStart, end = msgInput.selectionEnd;
-        let oldVal = msgInput.value;
-        msgInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-        msgInput.focus();
-        msgInput.selectionStart = msgInput.selectionEnd = start + insert.length;
-        msgInput.dispatchEvent(new Event('input'));
-        document.body.removeChild(sel);
-        markFlowNeedsSave(true);
-      };
-      sel.style.position = "absolute";
-      let r = plusVarBtn.getBoundingClientRect();
-      sel.style.left = r.left + "px";
-      sel.style.top = (r.bottom+2) + "px";
-      sel.style.zIndex = 9999;
-      document.body.appendChild(sel);
-      sel.focus();
-    };
-    el.appendChild(plusVarBtn);
+            if (allVars.length === 1) {
+              let insert = `$(${allVars[0].name})`;
+              let start = valInput.selectionStart, end = valInput.selectionEnd;
+              let oldVal = valInput.value;
+              valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
+              valInput.focus();
+              valInput.selectionStart = valInput.selectionEnd = start + insert.length;
+              valInput.dispatchEvent(new Event('input'));
+              return;
+            }
+            const sel = document.createElement("select");
+            sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+            sel.onchange = () => {
+              let insert = `$(${sel.value})`;
+              let start = msgInput.selectionStart, end = msgInput.selectionEnd;
+              let oldVal = msgInput.value;
+              msgInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
+              msgInput.focus();
+              msgInput.selectionStart = msgInput.selectionEnd = start + insert.length;
+              msgInput.dispatchEvent(new Event('input'));
+              document.body.removeChild(sel);
+              markFlowNeedsSave(true);
+            };
+            sel.style.position = "absolute";
+            let r = plusVarBtn.getBoundingClientRect();
+            sel.style.left = r.left + "px";
+            sel.style.top = (r.bottom+2) + "px";
+            sel.style.zIndex = 9999;
+            document.body.appendChild(sel);
+            sel.focus();
+          };
+          el.appendChild(plusVarBtn);
     
-    const previewChip = document.createElement("div");
-    previewChip.className = "current-value";
-    previewChip.style.marginLeft = "2px";
-    previewChip.style.fontSize = "13px";
-    previewChip.style.fontWeight = "bold";
-    previewChip.style.cursor = "pointer";
-    previewChip.title = "Preview of value/expression";
-    el.appendChild(previewChip);
-    function updatePreview() {
-      if (window.flowVars && window.flowVars.evaluate) {
-        try {
-          const v = msgInput.value;
-          if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
-          const result = window.flowVars.evaluate(v);
-          let color = "#b7ffac";
-          if (typeof result === "number") color = "#3af";
-          else if (typeof result === "boolean") color = "#0c0";
-          else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-          previewChip.textContent = "= " + result;
-          previewChip.style.color = color;
-          previewChip.title = (typeof result) + ": " + result;
-        } catch(e) {
-          previewChip.textContent = "ERR: " + e.message;
-          previewChip.style.color = "#f33";
-          previewChip.title = e.message;
-        }
-      }
-    }
-    msgInput.addEventListener("input", updatePreview);
-    updatePreview();
-    
-          return;
-        }
-      }
+          const previewChip = document.createElement("div");
+          previewChip.className = "current-value";
+          previewChip.style.marginLeft = "2px";
+          previewChip.style.fontSize = "13px";
+          previewChip.style.fontWeight = "bold";
+          previewChip.style.cursor = "pointer";
+          previewChip.title = "Preview of value/expression";
+          el.appendChild(previewChip);
+          function updatePreview() {
+            if (window.flowVars && window.flowVars.evaluate) {
+              try {
+                const v = msgInput.value;
+                if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
+                const result = window.flowVars.evaluate(v);
+                let color = "#b7ffac";
+                if (typeof result === "number") color = "#3af";
+                else if (typeof result === "boolean") color = "#0c0";
+                else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
+                previewChip.textContent = "= " + result;
+                previewChip.style.color = color;
+                previewChip.title = (typeof result) + ": " + result;
+              } catch(e) {
+                previewChip.textContent = "ERR: " + e.message;
+                previewChip.style.color = "#f33";
+                previewChip.title = e.message;
+              }
+            }
+          }
+          msgInput.addEventListener("input", updatePreview);
+          updatePreview();
+          
+                return;
+              }
+            }
 
       const editor = new Drawflow(document.getElementById("drawflow"));
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
@@ -2279,6 +2314,24 @@
         ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
         markFlowNeedsSave(true);
         logAction("addNotMatchingVar finished.");
+      };
+
+      // --- Save Device State ---
+      document.getElementById("addSaveDeviceState").onclick = function() {
+        logAction("addSaveDeviceState button clicked.");
+        editor.addNode("saveDeviceState", 1, 1, 140, 40, "saveDeviceState", {
+         deviceId: "", deviceLabel: "" 
+        }, nodeTileHtml("saveDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        markFlowNeedsSave(true);
+      };
+
+      // --- Restore Device State ---
+      document.getElementById("addRestoreDeviceState").onclick = function() {
+        logAction("addRestoreDeviceState button clicked.");
+        editor.addNode("restoreDeviceState", 1, 1, 120, 40, "restoreDeviceState", {
+         deviceId: "", deviceLabel: "" 
+        }, nodeTileHtml("restoreDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        markFlowNeedsSave(true);
       };
 
       document.getElementById("addDevice").onclick = () => {
