@@ -1540,10 +1540,10 @@
                 valLabel.style.display = "block";
                 el.appendChild(valLabel);
 
-                // --- SPECIAL CASE: Time > timeOfDay, show time picker ---
+                // --- SPECIAL CASE: Time > currentTime, show time picker ---
                 if (
                     node.data.deviceId === "__time__" &&
-                    (node.data.attribute === "timeOfDay" || node.data.attribute === "currentTime") &&
+                    node.data.attribute === "currentTime" &&
                     node.data.comparator !== "between"
                 ) {
                     let valueField = document.createElement("input");
@@ -1557,6 +1557,71 @@
                         markFlowNeedsSave(true);
                     };
                     el.appendChild(valueField);
+
+                // --- SPECIAL CASE: Time > timeOfDay, show sunrise/sunset + offset ---
+                } else if (
+                    node.data.deviceId === "__time__" &&
+                    node.data.attribute === "timeOfDay" &&
+                    node.data.comparator !== "between"
+                ) {
+                    // Dropdown: sunrise/sunset
+                    const options = [
+                        { value: "sunrise", label: "Sunrise" },
+                        { value: "sunset", label: "Sunset" }
+                    ];
+                    let base = "sunrise";
+                    let offset = 0;
+
+                    if (typeof node.data.value === "string" && node.data.value.length) {
+                        const match = node.data.value.match(/^(sunrise|sunset)([+-]\d+)?$/);
+                        if (match) {
+                            base = match[1];
+                            offset = match[2] ? parseInt(match[2], 10) : 0;
+                        }
+                    }
+
+                    const select = document.createElement("select");
+                    select.style.marginRight = "7px";
+                    options.forEach(opt => {
+                        const o = document.createElement("option");
+                        o.value = opt.value;
+                        o.textContent = opt.label;
+                        if (opt.value === base) o.selected = true;
+                        select.appendChild(o);
+                    });
+                    select.onchange = () => {
+                        base = select.value;
+                        node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    };
+                    el.appendChild(select);
+
+                    // --- "Offset" label above the input ---
+                    const offsetLabel = document.createElement("label");
+                    offsetLabel.textContent = "Offset";
+                    offsetLabel.style.display = "block";
+                    offsetLabel.style.marginTop = "2px";
+                    el.appendChild(offsetLabel);
+
+                    // Offset input
+                    const offsetInput = document.createElement("input");
+                    offsetInput.type = "number";
+                    offsetInput.style.width = "65px";
+                    offsetInput.placeholder = "offset (min)";
+                    offsetInput.value = offset;
+                    offsetInput.oninput = () => {
+                        offset = parseInt(offsetInput.value, 10) || 0;
+                        node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    };
+                    el.appendChild(offsetInput);
+
+                    const minLabel = document.createElement("span");
+                    minLabel.textContent = "min";
+                    minLabel.style.marginLeft = "3px";
+                    el.appendChild(minLabel);
                 } else if (node.data.comparator === "between") {
                     // Two inputs for min/max
                     let betweenValues = Array.isArray(node.data.value)
@@ -1584,6 +1649,7 @@
                     minInput.onchange = maxInput.onchange = updateBetweenValues;
                     el.appendChild(minInput);
                     el.appendChild(maxInput);
+
                 } else {
                     let valueField = document.createElement("input");
                     valueField.type = "text";
@@ -1718,68 +1784,134 @@
 
           // --- Value input ---
           if (node.data.attribute && node.data.comparator) {
-            const valLabel = document.createElement("label");
-            valLabel.textContent = "Value";
-            valLabel.style.display = "block";
-            el.appendChild(valLabel);
+              const valLabel = document.createElement("label");
+              valLabel.textContent = "Value";
+              valLabel.style.display = "block";
+              el.appendChild(valLabel);
 
-            // --- SPECIAL CASE: Time > timeOfDay, show time picker ---
-            if (
-                node.data.deviceId === "__time__" &&
-                (node.data.attribute === "timeOfDay" || node.data.attribute === "currentTime") &&
-                node.data.comparator !== "between"
-            ) {
-                let valueField = document.createElement("input");
-                valueField.type = "time";
-                valueField.value = node.data.value || "";
-                valueField.style.display = "block";
-                valueField.style.marginBottom = "12px";
-                valueField.oninput = () => {
-                    node.data.value = valueField.value;
-                    editor.updateNodeDataFromId(node.id, node.data);
-                    markFlowNeedsSave(true);
-                };
-                el.appendChild(valueField);
-            } else if (node.data.comparator === "between") {
-                // Two inputs for min/max
-                let betweenValues = Array.isArray(node.data.value)
-                    ? node.data.value
-                    : typeof node.data.value === "string" && node.data.value.includes(",")
-                        ? node.data.value.split(",")
-                        : ["", ""];
-                if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-                let minInput = document.createElement("input");
-                minInput.type = "text";
-                minInput.value = betweenValues[0];
-                minInput.placeholder = "Min";
-                minInput.style.width = "45%";
-                minInput.style.marginRight = "7px";
-                let maxInput = document.createElement("input");
-                maxInput.type = "text";
-                maxInput.value = betweenValues[1];
-                maxInput.placeholder = "Max";
-                maxInput.style.width = "45%";
-                function updateBetweenValues() {
-                    node.data.value = [minInput.value, maxInput.value];
-                    editor.updateNodeDataFromId(node.id, node.data);
-                    markFlowNeedsSave(true);
-                }
-                minInput.onchange = maxInput.onchange = updateBetweenValues;
-                el.appendChild(minInput);
-                el.appendChild(maxInput);
-            } else {
-                let valueField = document.createElement("input");
-                valueField.type = "text";
-                valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-                valueField.style.display = "block";
-                valueField.style.marginBottom = "12px";
-                valueField.oninput = () => {
-                    node.data.value = valueField.value;
-                    editor.updateNodeDataFromId(node.id, node.data);
-                    markFlowNeedsSave(true);
-                };
-                el.appendChild(valueField);
-            }
+              // --- SPECIAL CASE: Time > currentTime, show time picker ---
+              if (
+                  node.data.deviceId === "__time__" &&
+                  node.data.attribute === "currentTime" &&
+                  node.data.comparator !== "between"
+              ) {
+                  let valueField = document.createElement("input");
+                  valueField.type = "time";
+                  valueField.value = node.data.value || "";
+                  valueField.style.display = "block";
+                  valueField.style.marginBottom = "12px";
+                  valueField.oninput = () => {
+                      node.data.value = valueField.value;
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      markFlowNeedsSave(true);
+                  };
+                  el.appendChild(valueField);
+
+              // --- SPECIAL CASE: Time > timeOfDay, show sunrise/sunset + offset ---
+              } else if (
+                  node.data.deviceId === "__time__" &&
+                  node.data.attribute === "timeOfDay" &&
+                  node.data.comparator !== "between"
+              ) {
+                  // Dropdown: sunrise/sunset
+                  const options = [
+                      { value: "sunrise", label: "Sunrise" },
+                      { value: "sunset", label: "Sunset" }
+                  ];
+                  let base = "sunrise";
+                  let offset = 0;
+
+                  if (typeof node.data.value === "string" && node.data.value.length) {
+                      const match = node.data.value.match(/^(sunrise|sunset)([+-]\d+)?$/);
+                      if (match) {
+                          base = match[1];
+                          offset = match[2] ? parseInt(match[2], 10) : 0;
+                      }
+                  }
+
+                  const select = document.createElement("select");
+                  select.style.marginRight = "7px";
+                  options.forEach(opt => {
+                      const o = document.createElement("option");
+                      o.value = opt.value;
+                      o.textContent = opt.label;
+                      if (opt.value === base) o.selected = true;
+                      select.appendChild(o);
+                  });
+                  select.onchange = () => {
+                      base = select.value;
+                      node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      markFlowNeedsSave(true);
+                  };
+                  el.appendChild(select);
+
+                  // --- "Offset" label above the input ---
+                  const offsetLabel = document.createElement("label");
+                  offsetLabel.textContent = "Offset";
+                  offsetLabel.style.display = "block";
+                  offsetLabel.style.marginTop = "2px";
+                  el.appendChild(offsetLabel);
+
+                  // Offset input
+                  const offsetInput = document.createElement("input");
+                  offsetInput.type = "number";
+                  offsetInput.style.width = "65px";
+                  offsetInput.placeholder = "offset (min)";
+                  offsetInput.value = offset;
+                  offsetInput.oninput = () => {
+                      offset = parseInt(offsetInput.value, 10) || 0;
+                      node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      markFlowNeedsSave(true);
+                  };
+                  el.appendChild(offsetInput);
+
+                  const minLabel = document.createElement("span");
+                  minLabel.textContent = "min";
+                  minLabel.style.marginLeft = "3px";
+                  el.appendChild(minLabel);
+              } else if (node.data.comparator === "between") {
+                  // Two inputs for min/max
+                  let betweenValues = Array.isArray(node.data.value)
+                      ? node.data.value
+                      : typeof node.data.value === "string" && node.data.value.includes(",")
+                          ? node.data.value.split(",")
+                          : ["", ""];
+                  if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+                  let minInput = document.createElement("input");
+                  minInput.type = "text";
+                  minInput.value = betweenValues[0];
+                  minInput.placeholder = "Min";
+                  minInput.style.width = "45%";
+                  minInput.style.marginRight = "7px";
+                  let maxInput = document.createElement("input");
+                  maxInput.type = "text";
+                  maxInput.value = betweenValues[1];
+                  maxInput.placeholder = "Max";
+                  maxInput.style.width = "45%";
+                  function updateBetweenValues() {
+                      node.data.value = [minInput.value, maxInput.value];
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      markFlowNeedsSave(true);
+                  }
+                  minInput.onchange = maxInput.onchange = updateBetweenValues;
+                  el.appendChild(minInput);
+                  el.appendChild(maxInput);
+
+              } else {
+                  let valueField = document.createElement("input");
+                  valueField.type = "text";
+                  valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+                  valueField.style.display = "block";
+                  valueField.style.marginBottom = "12px";
+                  valueField.oninput = () => {
+                      node.data.value = valueField.value;
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      markFlowNeedsSave(true);
+                  };
+                  el.appendChild(valueField);
+              }
           }
         }
 
