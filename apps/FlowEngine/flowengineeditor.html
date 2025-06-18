@@ -1540,7 +1540,24 @@
                 valLabel.style.display = "block";
                 el.appendChild(valLabel);
 
-                if (node.data.comparator === "between") {
+                // --- SPECIAL CASE: Time > timeOfDay, show time picker ---
+                if (
+                    node.data.deviceId === "__time__" &&
+                    (node.data.attribute === "timeOfDay" || node.data.attribute === "currentTime") &&
+                    node.data.comparator !== "between"
+                ) {
+                    let valueField = document.createElement("input");
+                    valueField.type = "time";
+                    valueField.value = node.data.value || "";
+                    valueField.style.display = "block";
+                    valueField.style.marginBottom = "12px";
+                    valueField.oninput = () => {
+                        node.data.value = valueField.value;
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    };
+                    el.appendChild(valueField);
+                } else if (node.data.comparator === "between") {
                     // Two inputs for min/max
                     let betweenValues = Array.isArray(node.data.value)
                         ? node.data.value
@@ -1699,50 +1716,70 @@
           };
           el.appendChild(compSelect);
 
-          // --- Value input (single or between) ---
-          const valLabel = document.createElement("label");
-          valLabel.textContent = "Value";
-          valLabel.style.display = "block";
-          el.appendChild(valLabel);
+          // --- Value input ---
+          if (node.data.attribute && node.data.comparator) {
+            const valLabel = document.createElement("label");
+            valLabel.textContent = "Value";
+            valLabel.style.display = "block";
+            el.appendChild(valLabel);
 
-          if (node.data.comparator === "between") {
-            let betweenValues = Array.isArray(node.data.value)
-              ? node.data.value
-              : typeof node.data.value === "string" && node.data.value.includes(",")
-                ? node.data.value.split(",")
-                : ["", ""];
-            if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-            let minInput = document.createElement("input");
-            minInput.type = "text";
-            minInput.value = betweenValues[0];
-            minInput.placeholder = "Min";
-            minInput.style.width = "45%";
-            minInput.style.marginRight = "7px";
-            let maxInput = document.createElement("input");
-            maxInput.type = "text";
-            maxInput.value = betweenValues[1];
-            maxInput.placeholder = "Max";
-            maxInput.style.width = "45%";
-            function updateBetweenValues() {
-              node.data.value = [minInput.value, maxInput.value];
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
+            // --- SPECIAL CASE: Time > timeOfDay, show time picker ---
+            if (
+                node.data.deviceId === "__time__" &&
+                (node.data.attribute === "timeOfDay" || node.data.attribute === "currentTime") &&
+                node.data.comparator !== "between"
+            ) {
+                let valueField = document.createElement("input");
+                valueField.type = "time";
+                valueField.value = node.data.value || "";
+                valueField.style.display = "block";
+                valueField.style.marginBottom = "12px";
+                valueField.oninput = () => {
+                    node.data.value = valueField.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                };
+                el.appendChild(valueField);
+            } else if (node.data.comparator === "between") {
+                // Two inputs for min/max
+                let betweenValues = Array.isArray(node.data.value)
+                    ? node.data.value
+                    : typeof node.data.value === "string" && node.data.value.includes(",")
+                        ? node.data.value.split(",")
+                        : ["", ""];
+                if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+                let minInput = document.createElement("input");
+                minInput.type = "text";
+                minInput.value = betweenValues[0];
+                minInput.placeholder = "Min";
+                minInput.style.width = "45%";
+                minInput.style.marginRight = "7px";
+                let maxInput = document.createElement("input");
+                maxInput.type = "text";
+                maxInput.value = betweenValues[1];
+                maxInput.placeholder = "Max";
+                maxInput.style.width = "45%";
+                function updateBetweenValues() {
+                    node.data.value = [minInput.value, maxInput.value];
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                }
+                minInput.onchange = maxInput.onchange = updateBetweenValues;
+                el.appendChild(minInput);
+                el.appendChild(maxInput);
+            } else {
+                let valueField = document.createElement("input");
+                valueField.type = "text";
+                valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+                valueField.style.display = "block";
+                valueField.style.marginBottom = "12px";
+                valueField.oninput = () => {
+                    node.data.value = valueField.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                };
+                el.appendChild(valueField);
             }
-            minInput.onchange = maxInput.onchange = updateBetweenValues;
-            el.appendChild(minInput);
-            el.appendChild(maxInput);
-          } else {
-            let valueField = document.createElement("input");
-            valueField.type = "text";
-            valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-            valueField.style.display = "block";
-            valueField.style.marginBottom = "12px";
-            valueField.oninput = () => {
-              node.data.value = valueField.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
-            };
-            el.appendChild(valueField);
           }
         }
 
