@@ -1222,6 +1222,7 @@
 
         // EVENT TRIGGER NODE (with multi-device support)
         // ---- Event Trigger Node ----
+        // EVENT TRIGGER NODE (full logic)
         if (node.name === "eventTrigger") {
             // ---- Device picker setup (Home Location, Time, Variable, divider, all others) ----
             const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
@@ -1242,7 +1243,7 @@
 
             // --- Device(s) label ---
             const devLabel = document.createElement("label");
-            devLabel.textContent = "Device(s)";
+            devLabel.textContent = "Device";
             devLabel.style.display = "block";
             el.appendChild(devLabel);
 
@@ -1260,138 +1261,328 @@
                 node.data.value = "";
                 editor.updateNodeDataFromId(node.id, node.data);
                 markFlowNeedsSave(true);
-                if (typeof buildPickers === "function") buildPickers();
                 renderEditor(node);
               },
-              false
+              false // single select
             );
 
-            // --- Make pickerDiv for all trigger pickers ---
-            const pickerDiv = document.createElement("div");
-            pickerDiv.id = "trigger-pickers-" + node.id;
-            pickerDiv.style.marginTop = "8px";
-            el.appendChild(pickerDiv);
+            // ---- Stop if nothing picked
+            if (!node.data.deviceId) return;
 
-            // --- If "Variable" is selected, show variable name dropdown ---
-            if (
-              node.data.deviceId === "__variable__" ||
-              (Array.isArray(node.data.deviceIds) && node.data.deviceIds[0] === "__variable__")
-            ) {
-              const globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-              const allVars = globalVars.map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
+            // --- "Variable" Virtual Device Special Case ---
+            if (node.data.deviceId === "__variable__") {
+                const globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+                const allVars = globalVars.map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
-              const varNameLabel = document.createElement("label");
-              varNameLabel.textContent = "Variable Name";
-              varNameLabel.style.display = "block";
-              pickerDiv.appendChild(varNameLabel);
+                const varNameLabel = document.createElement("label");
+                varNameLabel.textContent = "Variable Name";
+                varNameLabel.style.display = "block";
+                el.appendChild(varNameLabel);
 
-              const varNameSelect = document.createElement("select");
-              varNameSelect.style.display = "block";
-              varNameSelect.style.marginBottom = "12px";
-              varNameSelect.innerHTML =
-                `<option value="">Pick a variable…</option>` +
-                allVars.map(v =>
-                  `<option value="${v}" ${node.data.varName == v ? "selected" : ""}>${v}</option>`
-                ).join('');
-              varNameSelect.value = node.data.varName || "";
-              varNameSelect.onchange = () => {
-                node.data.varName = varNameSelect.value;
+                const varNameSelect = document.createElement("select");
+                varNameSelect.style.display = "block";
+                varNameSelect.style.marginBottom = "12px";
+                varNameSelect.innerHTML =
+                  `<option value="">Pick a variable…</option>` +
+                  allVars.map(v =>
+                    `<option value="${v}" ${node.data.varName == v ? "selected" : ""}>${v}</option>`
+                  ).join('');
+                varNameSelect.value = node.data.varName || "";
+                varNameSelect.onchange = () => {
+                  node.data.varName = varNameSelect.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  markFlowNeedsSave(true);
+                };
+                el.appendChild(varNameSelect);
+
+                // Comparators for variable
+                const compLabel = document.createElement("label");
+                compLabel.textContent = "Comparator";
+                compLabel.style.display = "block";
+                el.appendChild(compLabel);
+
+                const compSelect = document.createElement("select");
+                compSelect.style.display = "block";
+                compSelect.style.marginBottom = "12px";
+                const comparators = [
+                    "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
+                ];
+                const comparatorLabels = {
+                    "==": "equals (==)",
+                    "!=": "not equals (!=)",
+                    "<": "less than (<)",
+                    "<=": "less than or equal (<=)",
+                    ">": "greater than (>)",
+                    ">=": "greater than or equal (>=)",
+                    "between": "between",
+                    "contains": "contains",
+                    "not contains": "not contains",
+                    "changes": "changes"
+                };
+                compSelect.innerHTML = `<option value="">Pick…</option>` +
+                    comparators.map(cmp =>
+                        `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+                    ).join('');
+                compSelect.value = node.data.comparator || "";
+                compSelect.onchange = () => {
+                    node.data.comparator = compSelect.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                    renderEditor(node);
+                };
+                el.appendChild(compSelect);
+
+                // Value field
+                const valLabel = document.createElement("label");
+                valLabel.textContent = "Value";
+                valLabel.style.display = "block";
+                el.appendChild(valLabel);
+
+                if (node.data.comparator === "between") {
+                    // Two inputs for min/max
+                    let betweenValues = Array.isArray(node.data.value)
+                        ? node.data.value
+                        : typeof node.data.value === "string" && node.data.value.includes(",")
+                            ? node.data.value.split(",")
+                            : ["", ""];
+                    if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+                    let minInput = document.createElement("input");
+                    minInput.type = "text";
+                    minInput.value = betweenValues[0];
+                    minInput.placeholder = "Min";
+                    minInput.style.width = "45%";
+                    minInput.style.marginRight = "7px";
+                    let maxInput = document.createElement("input");
+                    maxInput.type = "text";
+                    maxInput.value = betweenValues[1];
+                    maxInput.placeholder = "Max";
+                    maxInput.style.width = "45%";
+                    function updateBetweenValues() {
+                        node.data.value = [minInput.value, maxInput.value];
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    }
+                    minInput.onchange = maxInput.onchange = updateBetweenValues;
+                    el.appendChild(minInput);
+                    el.appendChild(maxInput);
+                } else {
+                    let valueField = document.createElement("input");
+                    valueField.type = "text";
+                    valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+                    valueField.style.display = "block";
+                    valueField.style.marginBottom = "12px";
+                    valueField.oninput = () => {
+                        node.data.value = valueField.value;
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    };
+                    el.appendChild(valueField);
+                }
+                return;
+            }
+
+            // --- Home Location (Mode) special handling ---
+            if (node.data.deviceId === "__mode__") {
+                const attrLabel = document.createElement("label");
+                attrLabel.textContent = "Attribute";
+                attrLabel.style.display = "block";
+                el.appendChild(attrLabel);
+
+                const attrSelect = document.createElement("select");
+                attrSelect.style.display = "block";
+                attrSelect.style.marginBottom = "12px";
+                attrSelect.innerHTML = `<option value="mode" selected>mode</option>`;
+                attrSelect.value = node.data.attribute || "mode";
+                attrSelect.onchange = () => {
+                  node.data.attribute = attrSelect.value;
+                  node.data.comparator = "";
+                  node.data.value = [];
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  markFlowNeedsSave(true);
+                  renderEditor(node);
+                };
+                el.appendChild(attrSelect);
+
+                // Comparator
+                const compLabel = document.createElement("label");
+                compLabel.textContent = "Comparator";
+                compLabel.style.display = "block";
+                el.appendChild(compLabel);
+
+                const compSelect = document.createElement("select");
+                compSelect.style.display = "block";
+                compSelect.style.marginBottom = "12px";
+                const comparators = ["==", "!="];
+                compSelect.innerHTML = `<option value="">Pick…</option>` +
+                  comparators.map(cmp =>
+                    `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${cmp === "==" ? "equals (==)" : "not equals (!=)"}</option>`
+                  ).join('');
+                compSelect.value = node.data.comparator || "";
+                compSelect.onchange = () => {
+                  node.data.comparator = compSelect.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  markFlowNeedsSave(true);
+                  renderEditor(node);
+                };
+                el.appendChild(compSelect);
+
+                // Mode value multi-select
+                if (node.data.comparator) {
+                    const valueLabel = document.createElement("label");
+                    valueLabel.textContent = "Value";
+                    valueLabel.style.display = "block";
+                    el.appendChild(valueLabel);
+
+                    const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+                    const modeSelect = document.createElement("select");
+                    modeSelect.multiple = true;
+                    modeSelect.size = Math.min(7, allModes.length);
+                    modeSelect.style.display = "block";
+                    modeSelect.style.marginBottom = "12px";
+
+                    if (!Array.isArray(node.data.value)) {
+                        if (typeof node.data.value === "string" && node.data.value) {
+                          node.data.value = [node.data.value];
+                        } else {
+                          node.data.value = [];
+                        }
+                    }
+                    modeSelect.innerHTML = allModes.map(mode =>
+                      `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+                    ).join('');
+
+                    if (node.data.value.length === 0 && allModes.length > 0) {
+                      node.data.value = [allModes[0].name];
+                      Array.from(modeSelect.options)[0].selected = true;
+                      editor.updateNodeDataFromId(node.id, node.data);
+                    }
+
+                    modeSelect.onchange = () => {
+                      node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                      editor.updateNodeDataFromId(node.id, node.data);
+                      editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                    };
+                    el.appendChild(modeSelect);
+                }
+                return;
+            }
+
+            // --- Regular Device ---
+            // --- Attribute dropdown ---
+            const dev = devices.find(d => d.id === node.data.deviceId);
+            if (!dev || !dev.attributes) return;
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            el.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              Object.keys(dev.attributes).map(attr =>
+                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+                node.data.attribute = attrSelect.value;
+                node.data.comparator = "";
+                node.data.value = "";
                 editor.updateNodeDataFromId(node.id, node.data);
                 markFlowNeedsSave(true);
-              };
-              pickerDiv.appendChild(varNameSelect);
+                renderEditor(node);
+            };
+            el.appendChild(attrSelect);
+
+            // --- Comparator dropdown ---
+            if (node.data.attribute) {
+                const compLabel = document.createElement("label");
+                compLabel.textContent = "Comparator";
+                compLabel.style.display = "block";
+                el.appendChild(compLabel);
+
+                const compSelect = document.createElement("select");
+                compSelect.style.display = "block";
+                compSelect.style.marginBottom = "12px";
+                const comparators = [
+                    "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
+                ];
+                const comparatorLabels = {
+                    "==": "equals (==)",
+                    "!=": "not equals (!=)",
+                    "<": "less than (<)",
+                    "<=": "less than or equal (<=)",
+                    ">": "greater than (>)",
+                    ">=": "greater than or equal (>=)",
+                    "between": "between",
+                    "contains": "contains",
+                    "not contains": "not contains",
+                    "changes": "changes"
+                };
+                compSelect.innerHTML = `<option value="">Pick…</option>` +
+                    comparators.map(cmp =>
+                        `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+                    ).join('');
+                compSelect.value = node.data.comparator || "";
+                compSelect.onchange = () => {
+                    node.data.comparator = compSelect.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                    renderEditor(node);
+                };
+                el.appendChild(compSelect);
             }
 
-            // --- Value Picker ---
-            const valueLabel = document.createElement("label");
-            valueLabel.textContent = "Value";
-            valueLabel.style.display = "block";
-            pickerDiv.appendChild(valueLabel);
+            // --- Value input ---
+            if (node.data.attribute && node.data.comparator) {
+                const valLabel = document.createElement("label");
+                valLabel.textContent = "Value";
+                valLabel.style.display = "block";
+                el.appendChild(valLabel);
 
-            if (
-              node.data.deviceId === "__mode__" &&
-              node.data.attribute === "mode"
-            ) {
-              // Multi-select dropdown for modes
-              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = Math.min(7, allModes.length);
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-
-              if (!Array.isArray(node.data.value)) {
-                if (typeof node.data.value === "string" && node.data.value) {
-                  node.data.value = [node.data.value];
+                if (node.data.comparator === "between") {
+                    // Two inputs for min/max
+                    let betweenValues = Array.isArray(node.data.value)
+                        ? node.data.value
+                        : typeof node.data.value === "string" && node.data.value.includes(",")
+                            ? node.data.value.split(",")
+                            : ["", ""];
+                    if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+                    let minInput = document.createElement("input");
+                    minInput.type = "text";
+                    minInput.value = betweenValues[0];
+                    minInput.placeholder = "Min";
+                    minInput.style.width = "45%";
+                    minInput.style.marginRight = "7px";
+                    let maxInput = document.createElement("input");
+                    maxInput.type = "text";
+                    maxInput.value = betweenValues[1];
+                    maxInput.placeholder = "Max";
+                    maxInput.style.width = "45%";
+                    function updateBetweenValues() {
+                        node.data.value = [minInput.value, maxInput.value];
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    }
+                    minInput.onchange = maxInput.onchange = updateBetweenValues;
+                    el.appendChild(minInput);
+                    el.appendChild(maxInput);
                 } else {
-                  node.data.value = [];
+                    let valueField = document.createElement("input");
+                    valueField.type = "text";
+                    valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+                    valueField.style.display = "block";
+                    valueField.style.marginBottom = "12px";
+                    valueField.oninput = () => {
+                        node.data.value = valueField.value;
+                        editor.updateNodeDataFromId(node.id, node.data);
+                        markFlowNeedsSave(true);
+                    };
+                    el.appendChild(valueField);
                 }
-              }
-              modeSelect.innerHTML = allModes.map(mode =>
-                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
-              ).join('');
-
-              if (node.data.value.length === 0 && allModes.length > 0) {
-                node.data.value = [allModes[0].name];
-                Array.from(modeSelect.options)[0].selected = true;
-                editor.updateNodeDataFromId(node.id, node.data);
-              }
-
-              modeSelect.onchange = () => {
-                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
-
-            } else if (node.data.comparator === "between") {
-              // Render two inputs, for lower and upper bounds
-              let betweenValues = Array.isArray(node.data.value)
-                ? node.data.value
-                : typeof node.data.value === "string" && node.data.value.includes(",")
-                  ? node.data.value.split(",")
-                  : ["", ""];
-              if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-
-              // Min
-              let minInput = document.createElement("input");
-              minInput.type = "text";
-              minInput.value = betweenValues[0];
-              minInput.placeholder = "Min";
-              minInput.style.width = "45%";
-              minInput.style.marginRight = "7px";
-
-              // Max
-              let maxInput = document.createElement("input");
-              maxInput.type = "text";
-              maxInput.value = betweenValues[1];
-              maxInput.placeholder = "Max";
-              maxInput.style.width = "45%";
-
-              function updateBetweenValues() {
-                node.data.value = [minInput.value, maxInput.value];
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              }
-
-              minInput.onchange = maxInput.onchange = updateBetweenValues;
-              pickerDiv.appendChild(minInput);
-              pickerDiv.appendChild(maxInput);
-            } else {
-              // Default single value input
-              let valueField = document.createElement("input");
-              valueField.type = "text";
-              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-              valueField.style.display = "block";
-              valueField.style.marginBottom = "12px";
-              valueField.onchange = () => {
-                node.data.value = valueField.value;
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(valueField);
             }
-          }
+            return;
+        }
 
         // CONDITION NODE (multi-device support, like eventTrigger)
         if (node.name === "condition") {
