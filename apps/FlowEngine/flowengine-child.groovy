@@ -346,6 +346,29 @@ def subscribeToTriggers() {
     }
 }
 
+// Format notification message with all supported wildcards
+String formatWildcards(String msg, Map eventData = [:]) {
+    if (!msg) return ""
+    def now = new Date()
+    def device = eventData.device ?: ""
+    def value = eventData.value ?: ""
+    def text = eventData.text ?: ""
+    def time24 = eventData.time24 ?: now.format("HH:mm", location.timeZone)
+    def time12 = eventData.time12 ?: now.format("h:mm a", location.timeZone)
+    def date = eventData.date ?: now.format("MM-dd-yyyy", location.timeZone)
+    def current = eventData.now ?: now.format("yyyy-MM-dd HH:mm:ss", location.timeZone)
+
+    msg = msg
+        .replace("{device}", "$device")
+        .replace("{value}", "$value")
+        .replace("{text}", "$text")
+        .replace("{time24}", "$time24")
+        .replace("{time12}", "$time12")
+        .replace("{date}", "$date")
+        .replace("{now}", "$current")
+    return msg
+}
+
 void checkVariableTriggers() {
     def nodes = flowNodes().findAll { id, node ->
         node?.name == "eventTrigger" &&
@@ -951,11 +974,28 @@ def evaluateNode(nodeId, evt, incomingValue = null, Set visited = null) {
 		
 		case "notification":
 			def ids = node.data.targetDeviceId instanceof List ? node.data.targetDeviceId : [resolveVars(node.data.targetDeviceId)]
-            def msg = resolveVars(node.data.message) ?: "Test Notification"
+			def eventDevice = state.device?.displayName ?: ""
+			def eventValue = evt?.value ?: ""
+			def eventText = evt?.descriptionText ?: evt?.desc ?: ""
+			def now = new Date()
+			def eventTime24 = now.format("HH:mm", location.timeZone)
+			def eventTime12 = now.format("h:mm a", location.timeZone)
+			def eventDate = now.format("MM-dd-yyyy", location.timeZone)
+			def eventNow = now.format("yyyy-MM-dd HH:mm:ss", location.timeZone)
+
+			def msgTemplate = resolveVars(node.data.message) ?: "Test Notification"
+			def msg = formatWildcards(msgTemplate, [
+				device: eventDevice,
+				value: eventValue,
+				text: eventText,
+				time24: eventTime24,
+				time12: eventTime12,
+				date: eventDate,
+				now: eventNow
+			])
 
 			ids.each { devId ->
 				getRealDeviceData(devId)
-		
 				if (state.device && node.data.notificationType == "push" && state.device.hasCommand("deviceNotification")) {
 					if(logEnable) log.debug "push - ${msg}"
 					state.device.deviceNotification(msg)
