@@ -109,6 +109,9 @@
       <b> | </b>
       <button id="newFlow" title="Start a new flow from scratch">Start New Flow</button>
       <button id="refreshAllTiles" title="Refresh all node tiles">Refresh Tiles</button>
+      <b> | </b>
+      <button id="undoBtn" title="Undo last change" style="margin-left:8px;">Undo</button>
+      <button id="redoBtn" title="Redo" style="margin-left:3px;">Redo</button>
     </div>
     <div>
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
@@ -157,9 +160,75 @@
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script>
+    window.editor = null;
     window.FE_global_var_names = [];
     window.FE_flowvars = [];
     window.FE_global_vars = [];
+
+    // --- Undo/Redo History ---
+    window.undoStack = [];
+    window.redoStack = [];
+
+    function pushUndoState() {
+      //console.log("pushUndoState called");
+
+      if (!editor || !editor.export) {
+        console.log("editor or editor.export missing");
+        return;
+      }
+      const state = JSON.stringify(editor.export());
+      //console.log("About to push state:", state);
+
+      if (window.undoStack.length && window.undoStack[window.undoStack.length-1] === state) {
+        //console.log("State is a duplicate, not pushing.");
+        return;
+      }
+      window.undoStack.push(state);
+      //console.log("undoStack length now:", window.undoStack.length);
+      if (window.undoStack.length > 50) window.undoStack.shift();
+      window.redoStack = [];
+    }
+
+    function doUndo() {
+      logAction("doUndo button clicked.");
+      if (window.undoStack.length < 2) return; // must have at least one previous
+      // Pop current state, keep as redo
+      const current = window.undoStack.pop();
+      window.redoStack.push(current);
+      // Restore previous
+      const prev = window.undoStack[window.undoStack.length-1];
+      if (prev) {
+        restoreFlowFromJson(prev);
+      }
+    }
+
+    function doRedo() {
+      logAction("doRedo button clicked.");
+      if (!window.redoStack.length) return;
+      const state = window.redoStack.pop();
+      if (state) {
+        // Save current before restore
+        if (editor && editor.export)
+          window.undoStack.push(JSON.stringify(editor.export()));
+        restoreFlowFromJson(state);
+      }
+    }
+
+    // Helper: restore flow
+    function restoreFlowFromJson(jsonStr) {
+      try {
+        const flow = JSON.parse(jsonStr);
+        if (editor && typeof editor.import === "function") {
+          editor.import(flow);
+          if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+            Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
+          }
+          // ...reroute/editor panel logic here...
+        }
+      } catch (e) {
+        logAction("Undo/Redo failed to restore flow: " + e, "error");
+      }
+    }
 
     function markFlowNeedsSave(needed = true) {
       const btn = document.getElementById('sendFlow');
@@ -220,7 +289,7 @@
         // Optional: Clear device/flow UI, or gray out editor
         // For example:
         if (typeof window.devices !== "undefined") window.devices = [];
-        if (window.editor && window.editor.clear) window.editor.clear();
+        if (editor && editor.clear) editor.clear();
         // Or clear device/flow-related UI
       }
     }
@@ -338,8 +407,8 @@
             }
 
             // --- FORCE RE-RENDER IF NODE EDITOR OPEN ---
-            if (window.editor && window.editor.selected_id) {
-              const node = window.editor.getNodeFromId(window.editor.selected_id);
+            if (editor && editor.selected_id) {
+              const node = editor.getNodeFromId(editor.selected_id);
               if (node) renderEditor(node);
             }
           } else {
@@ -1104,6 +1173,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               buildPickers();
+              pushUndoState();
             };
             pickerDiv.appendChild(attrSelect);
 
@@ -1127,6 +1197,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               buildPickers();
+              pushUndoState();
             };
             pickerDiv.appendChild(cmdSelect);
 
@@ -1225,6 +1296,7 @@
                   node.data.value = [minInput.value, maxInput.value];
                   editor.updateNodeDataFromId(node.id, node.data);
                   editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  pushUndoState();
                 }
 
                 minInput.onchange = maxInput.onchange = updateBetweenValues;
@@ -1241,6 +1313,7 @@
                   node.data.value = valueField.value;
                   editor.updateNodeDataFromId(node.id, node.data);
                   editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  pushUndoState();
                 };
                 pickerDiv.appendChild(valueField);
               }
@@ -1404,6 +1477,7 @@
                     node.data.value = valueField.value;
                     editor.updateNodeDataFromId(node.id, node.data);
                     markFlowNeedsSave(true);
+                    pushUndoState();
                 };
                 el.appendChild(valueField);
             }
@@ -1429,6 +1503,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
               renderEditor(node);
+              pushUndoState();
             };
             el.appendChild(attrSelect);
 
@@ -1520,6 +1595,7 @@
                 editor.updateNodeDataFromId(node.id, node.data);
                 markFlowNeedsSave(true);
                 renderEditor(node);
+                pushUndoState();
             };
             el.appendChild(attrSelect);
 
@@ -1584,6 +1660,7 @@
                         node.data.value = valueField.value;
                         editor.updateNodeDataFromId(node.id, node.data);
                         markFlowNeedsSave(true);
+                        pushUndoState();
                     };
                     el.appendChild(valueField);
 
@@ -1623,6 +1700,7 @@
                         node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
                         editor.updateNodeDataFromId(node.id, node.data);
                         markFlowNeedsSave(true);
+                        pushUndoState();
                     };
                     el.appendChild(select);
 
@@ -1689,6 +1767,7 @@
                         node.data.value = valueField.value;
                         editor.updateNodeDataFromId(node.id, node.data);
                         markFlowNeedsSave(true);
+                        pushUndoState();
                     };
                     el.appendChild(valueField);
                 }
@@ -1696,15 +1775,12 @@
             return;
         }
 
-        // CONDITION NODE (multi-device support, like eventTrigger)
         if (node.name === "condition") {
-          // Build device dropdown (Home Location, Time, Variable, divider, all others A–Z)
           const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
           const homeLoc = devices.find(d => d.id === "__mode__");
           const timeDev = devices.find(d => d.id === "__time__");
           const varDev = { id: "__variable__", label: "Variable", name: "Variable" };
           const rest = devices.filter(d => !["__mode__", "__time__"].includes(d.id));
-          // Insert Variable in correct spot (always after Time if Time exists)
           let pickerDevices = [];
           if (homeLoc) pickerDevices.push(homeLoc);
           if (timeDev) pickerDevices.push(timeDev);
@@ -1716,13 +1792,13 @@
             return la.localeCompare(lb);
           }));
 
-          // --- Device(s) label ---
+          // --- Device label ---
           const devLabel = document.createElement("label");
-          devLabel.textContent = "Device(s)";
+          devLabel.textContent = "Device";
           devLabel.style.display = "block";
           el.appendChild(devLabel);
 
-          // --- Device picker (single-select) ---
+          // --- Device picker (single select) ---
           renderDevicePicker(
             el,
             pickerDevices,
@@ -1736,234 +1812,499 @@
               node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
-              if (typeof buildPickers === "function") buildPickers();
               renderEditor(node);
+              pushUndoState();
             },
-            false
+            false // SINGLE select
           );
 
-          // --- If "Variable" is selected, show variable name dropdown ---
-          if (
-            node.data.deviceId === "__variable__" ||
-            (Array.isArray(node.data.deviceIds) && node.data.deviceIds[0] === "__variable__")
-          ) {
-            const globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-            const allVars = globalVars.map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
-            console.log("DEBUG: Names from FE_global_vars", allVars);
+          // ---- Stop if nothing picked
+          if (!node.data.deviceId) return;
 
+          // --------- Variable special case ---------
+          if (node.data.deviceId === "__var__") {
+            // Variable dropdown (same as triggers)
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Variable";
+            attrLabel.style.display = "block";
+            el.appendChild(attrLabel);
 
-            const varNameLabel = document.createElement("label");
-            varNameLabel.textContent = "Variable Name";
-            varNameLabel.style.display = "block";
-            el.appendChild(varNameLabel);
-
+            const varNames = (window.FE_global_var_names || []);
             const varNameSelect = document.createElement("select");
             varNameSelect.style.display = "block";
             varNameSelect.style.marginBottom = "12px";
-            varNameSelect.innerHTML =
-              `<option value="">Pick a variable…</option>` +
-              allVars.map(v =>
-                `<option value="${v}" ${node.data.varName == v ? "selected" : ""}>${v}</option>`
+            varNameSelect.innerHTML = `<option value="">Pick variable…</option>` +
+              varNames.map(varname =>
+                `<option value="${varname}" ${node.data.attribute == varname ? "selected" : ""}>${varname}</option>`
               ).join('');
-            varNameSelect.value = node.data.varName || "";
+            varNameSelect.value = node.data.attribute || "";
             varNameSelect.onchange = () => {
-              node.data.varName = varNameSelect.value;
+              node.data.attribute = varNameSelect.value;
+              node.data.comparator = "";
+              node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
+              renderEditor(node);
+              pushUndoState();
             };
             el.appendChild(varNameSelect);
+
+            if (!node.data.attribute) return;
+
+            // Comparator dropdown
+            const compLabel = document.createElement("label");
+            compLabel.textContent = "Comparator";
+            compLabel.style.display = "block";
+            el.appendChild(compLabel);
+
+            const comparators = [
+              { value: "=", label: "=" },
+              { value: ">", label: ">" },
+              { value: "<", label: "<" },
+              { value: ">=", label: ">=" },
+              { value: "<=", label: "<=" },
+              { value: "between", label: "between" },
+              { value: "!=", label: "≠" }
+            ];
+            const compSelect = document.createElement("select");
+            compSelect.style.display = "block";
+            compSelect.style.marginBottom = "12px";
+            compSelect.innerHTML = `<option value="">Pick comparator…</option>` +
+              comparators.map(comp =>
+                `<option value="${comp.value}" ${node.data.comparator == comp.value ? "selected" : ""}>${comp.label}</option>`
+              ).join('');
+            compSelect.value = node.data.comparator || "";
+            compSelect.onchange = () => {
+              node.data.comparator = compSelect.value;
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+              pushUndoState();
+            };
+            el.appendChild(compSelect);
+
+            if (!node.data.comparator) return;
+
+            // Value
+            const valLabel = document.createElement("label");
+            valLabel.textContent = "Value";
+            valLabel.style.display = "block";
+            el.appendChild(valLabel);
+
+            if (node.data.comparator === "between") {
+              let betweenValues = Array.isArray(node.data.value)
+                ? node.data.value
+                : typeof node.data.value === "string" && node.data.value.includes(",")
+                  ? node.data.value.split(",")
+                  : ["", ""];
+              if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+              let minInput = document.createElement("input");
+              minInput.type = "text";
+              minInput.value = betweenValues[0];
+              minInput.placeholder = "Min";
+              minInput.style.width = "45%";
+              minInput.style.marginRight = "7px";
+              let maxInput = document.createElement("input");
+              maxInput.type = "text";
+              maxInput.value = betweenValues[1];
+              maxInput.placeholder = "Max";
+              maxInput.style.width = "45%";
+              function updateBetweenValues() {
+                node.data.value = [minInput.value, maxInput.value];
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              }
+              minInput.onchange = maxInput.onchange = updateBetweenValues;
+              el.appendChild(minInput);
+              el.appendChild(maxInput);
+            } else {
+              let valueField = document.createElement("input");
+              valueField.type = "text";
+              valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.oninput = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              };
+              el.appendChild(valueField);
+            }
+            return;
           }
 
-          // --- Comparator dropdown ---
+          // --------- Mode special case ---------
+          if (node.data.deviceId === "__mode__") {
+            // Attribute (fixed)
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            el.appendChild(attrLabel);
+
+            const attrDisplay = document.createElement("span");
+            attrDisplay.textContent = "mode";
+            attrDisplay.style.display = "block";
+            attrDisplay.style.marginBottom = "10px";
+            el.appendChild(attrDisplay);
+            node.data.attribute = "mode"; // Always "mode"
+
+            // Comparator: = or !=
+            const compLabel = document.createElement("label");
+            compLabel.textContent = "Comparator";
+            compLabel.style.display = "block";
+            el.appendChild(compLabel);
+
+            const compSelect = document.createElement("select");
+            compSelect.style.display = "block";
+            compSelect.style.marginBottom = "12px";
+            compSelect.innerHTML = `<option value="">Pick comparator…</option>
+              <option value="=" ${node.data.comparator == "=" ? "selected" : ""}>=</option>
+              <option value="!=" ${node.data.comparator == "!=" ? "selected" : ""}>≠</option>`;
+            compSelect.value = node.data.comparator || "";
+            compSelect.onchange = () => {
+              node.data.comparator = compSelect.value;
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+              pushUndoState();
+            };
+            el.appendChild(compSelect);
+
+            if (!node.data.comparator) return;
+
+            // Value: mode multi-select
+            const modeLabel = document.createElement("label");
+            modeLabel.textContent = "Mode(s)";
+            modeLabel.style.display = "block";
+            el.appendChild(modeLabel);
+
+            const modes = (window.hubitatModes || []);
+            const modeSelect = document.createElement("select");
+            modeSelect.multiple = true;
+            modeSelect.size = Math.min(5, modes.length);
+            modeSelect.style.width = "100%";
+            modeSelect.style.marginBottom = "12px";
+            modeSelect.innerHTML = modes.map(mode =>
+              `<option value="${mode.id}" ${Array.isArray(node.data.value) && node.data.value.includes(mode.id) ? "selected" : ""}>${mode.name}</option>`
+            ).join('');
+            modeSelect.onchange = () => {
+              node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              pushUndoState();
+            };
+            el.appendChild(modeSelect);
+            return;
+          }
+
+          // --------- Time special case ---------
+          if (node.data.deviceId === "__time__") {
+            // Attribute picker
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            el.appendChild(attrLabel);
+
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            const timeAttrs = [
+              { value: "currentTime", label: "Current Time" },
+              { value: "timeOfDay", label: "Sunrise/Sunset (w/offset)" }
+            ];
+            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+              timeAttrs.map(attr =>
+                `<option value="${attr.value}" ${node.data.attribute == attr.value ? "selected" : ""}>${attr.label}</option>`
+              ).join('');
+            attrSelect.value = node.data.attribute || "";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+              pushUndoState();
+            };
+            el.appendChild(attrSelect);
+
+            if (!node.data.attribute) return;
+
+            // Comparator (no contains)
+            const compLabel = document.createElement("label");
+            compLabel.textContent = "Comparator";
+            compLabel.style.display = "block";
+            el.appendChild(compLabel);
+
+            const comparators = [
+              { value: "=", label: "=" },
+              { value: ">", label: ">" },
+              { value: "<", label: "<" },
+              { value: ">=", label: ">=" },
+              { value: "<=", label: "<=" },
+              { value: "between", label: "between" },
+              { value: "!=", label: "≠" }
+            ];
+            const compSelect = document.createElement("select");
+            compSelect.style.display = "block";
+            compSelect.style.marginBottom = "12px";
+            compSelect.innerHTML = `<option value="">Pick comparator…</option>` +
+              comparators.map(comp =>
+                `<option value="${comp.value}" ${node.data.comparator == comp.value ? "selected" : ""}>${comp.label}</option>`
+              ).join('');
+            compSelect.value = node.data.comparator || "";
+            compSelect.onchange = () => {
+              node.data.comparator = compSelect.value;
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+              pushUndoState();
+            };
+            el.appendChild(compSelect);
+
+            if (!node.data.comparator) return;
+
+            // Value input(s)
+            const valLabel = document.createElement("label");
+            valLabel.textContent = "Value";
+            valLabel.style.display = "block";
+            el.appendChild(valLabel);
+
+            if (
+              node.data.attribute === "currentTime" &&
+              node.data.comparator !== "between"
+            ) {
+              let valueField = document.createElement("input");
+              valueField.type = "time";
+              valueField.value = node.data.value || "";
+              valueField.style.display = "block";
+              valueField.style.marginBottom = "12px";
+              valueField.oninput = () => {
+                node.data.value = valueField.value;
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              };
+              el.appendChild(valueField);
+            }
+            // timeOfDay: sunrise/sunset + offset
+            else if (
+              node.data.attribute === "timeOfDay" &&
+              node.data.comparator !== "between"
+            ) {
+              // Dropdown: sunrise/sunset
+              const options = [
+                { value: "sunrise", label: "Sunrise" },
+                { value: "sunset", label: "Sunset" }
+              ];
+              let base = "sunrise";
+              let offset = 0;
+
+              if (typeof node.data.value === "string" && node.data.value.length) {
+                const match = node.data.value.match(/^(sunrise|sunset)([+-]\d+)?$/);
+                if (match) {
+                  base = match[1];
+                  offset = match[2] ? parseInt(match[2], 10) : 0;
+                }
+              }
+
+              const select = document.createElement("select");
+              select.style.marginRight = "7px";
+              options.forEach(opt => {
+                const o = document.createElement("option");
+                o.value = opt.value;
+                o.textContent = opt.label;
+                if (opt.value === base) o.selected = true;
+                select.appendChild(o);
+              });
+              select.onchange = () => {
+                base = select.value;
+                node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              };
+              el.appendChild(select);
+
+              // "Offset" label above input
+              const offsetLabel = document.createElement("label");
+              offsetLabel.textContent = "Offset";
+              offsetLabel.style.display = "block";
+              offsetLabel.style.marginTop = "2px";
+              el.appendChild(offsetLabel);
+
+              // Offset input
+              const offsetInput = document.createElement("input");
+              offsetInput.type = "number";
+              offsetInput.style.width = "65px";
+              offsetInput.placeholder = "offset (min)";
+              offsetInput.value = offset;
+              offsetInput.oninput = () => {
+                offset = parseInt(offsetInput.value, 10) || 0;
+                node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              };
+              el.appendChild(offsetInput);
+
+              const minLabel = document.createElement("span");
+              minLabel.textContent = "min";
+              minLabel.style.marginLeft = "3px";
+              el.appendChild(minLabel);
+            }
+            // between: two time fields
+            else if (node.data.comparator === "between") {
+              let betweenValues = Array.isArray(node.data.value)
+                ? node.data.value
+                : typeof node.data.value === "string" && node.data.value.includes(",")
+                  ? node.data.value.split(",")
+                  : ["", ""];
+              if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+              let minInput = document.createElement("input");
+              minInput.type = "time";
+              minInput.value = betweenValues[0];
+              minInput.placeholder = "Start";
+              minInput.style.width = "45%";
+              minInput.style.marginRight = "7px";
+              let maxInput = document.createElement("input");
+              maxInput.type = "time";
+              maxInput.value = betweenValues[1];
+              maxInput.placeholder = "End";
+              maxInput.style.width = "45%";
+              function updateBetweenValues() {
+                node.data.value = [minInput.value, maxInput.value];
+                editor.updateNodeDataFromId(node.id, node.data);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              }
+              minInput.onchange = maxInput.onchange = updateBetweenValues;
+              el.appendChild(minInput);
+              el.appendChild(maxInput);
+            }
+            return;
+          }
+
+          // --------- Normal device ---------
+          const dev = (window.devices || []).find(d => d.id === node.data.deviceId);
+          if (!dev || !dev.attributes) return;
+
+          // Attribute
+          const attrLabel = document.createElement("label");
+          attrLabel.textContent = "Attribute";
+          attrLabel.style.display = "block";
+          el.appendChild(attrLabel);
+
+          const attrSelect = document.createElement("select");
+          attrSelect.style.display = "block";
+          attrSelect.style.marginBottom = "12px";
+          attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
+            Object.keys(dev.attributes).map(attr =>
+              `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
+            ).join('');
+          attrSelect.value = node.data.attribute || "";
+          attrSelect.onchange = () => {
+            node.data.attribute = attrSelect.value;
+            node.data.comparator = "";
+            node.data.value = "";
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+            renderEditor(node);
+            pushUndoState();
+          };
+          el.appendChild(attrSelect);
+
+          if (!node.data.attribute) return;
+
+          // Comparator
           const compLabel = document.createElement("label");
           compLabel.textContent = "Comparator";
           compLabel.style.display = "block";
           el.appendChild(compLabel);
 
+          const comparators = [
+            { value: "=", label: "=" },
+            { value: ">", label: ">" },
+            { value: "<", label: "<" },
+            { value: ">=", label: ">=" },
+            { value: "<=", label: "<=" },
+            { value: "between", label: "between" },
+            { value: "!=", label: "≠" },
+            { value: "contains", label: "contains" },
+            { value: "not_contains", label: "not contains" }
+          ];
           const compSelect = document.createElement("select");
           compSelect.style.display = "block";
           compSelect.style.marginBottom = "12px";
-          const comparators = [
-            "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
-          ];
-          const comparatorLabels = {
-            "==": "equals (==)",
-            "!=": "not equals (!=)",
-            "<": "less than (<)",
-            "<=": "less than or equal (<=)",
-            ">": "greater than (>)",
-            ">=": "greater than or equal (>=)",
-            "between": "between",
-            "contains": "contains",
-            "not contains": "not contains",
-            "changes": "changes"
-          };
-          compSelect.innerHTML = `<option value="">Pick…</option>` +
-            comparators.map(cmp =>
-              `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+          compSelect.innerHTML = `<option value="">Pick comparator…</option>` +
+            comparators.map(comp =>
+              `<option value="${comp.value}" ${node.data.comparator == comp.value ? "selected" : ""}>${comp.label}</option>`
             ).join('');
           compSelect.value = node.data.comparator || "";
           compSelect.onchange = () => {
             node.data.comparator = compSelect.value;
+            node.data.value = "";
             editor.updateNodeDataFromId(node.id, node.data);
             markFlowNeedsSave(true);
             renderEditor(node);
+            pushUndoState();
           };
           el.appendChild(compSelect);
 
-          // --- Value input ---
-          if (node.data.attribute && node.data.comparator) {
-              const valLabel = document.createElement("label");
-              valLabel.textContent = "Value";
-              valLabel.style.display = "block";
-              el.appendChild(valLabel);
+          if (!node.data.comparator) return;
 
-              // --- SPECIAL CASE: Time > currentTime, show time picker ---
-              if (
-                  node.data.deviceId === "__time__" &&
-                  node.data.attribute === "currentTime" &&
-                  node.data.comparator !== "between"
-              ) {
-                  let valueField = document.createElement("input");
-                  valueField.type = "time";
-                  valueField.value = node.data.value || "";
-                  valueField.style.display = "block";
-                  valueField.style.marginBottom = "12px";
-                  valueField.oninput = () => {
-                      node.data.value = valueField.value;
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      markFlowNeedsSave(true);
-                  };
-                  el.appendChild(valueField);
+          // Value
+          const valLabel = document.createElement("label");
+          valLabel.textContent = "Value";
+          valLabel.style.display = "block";
+          el.appendChild(valLabel);
 
-              // --- SPECIAL CASE: Time > timeOfDay, show sunrise/sunset + offset ---
-              } else if (
-                  node.data.deviceId === "__time__" &&
-                  node.data.attribute === "timeOfDay" &&
-                  node.data.comparator !== "between"
-              ) {
-                  // Dropdown: sunrise/sunset
-                  const options = [
-                      { value: "sunrise", label: "Sunrise" },
-                      { value: "sunset", label: "Sunset" }
-                  ];
-                  let base = "sunrise";
-                  let offset = 0;
-
-                  if (typeof node.data.value === "string" && node.data.value.length) {
-                      const match = node.data.value.match(/^(sunrise|sunset)([+-]\d+)?$/);
-                      if (match) {
-                          base = match[1];
-                          offset = match[2] ? parseInt(match[2], 10) : 0;
-                      }
-                  }
-
-                  const select = document.createElement("select");
-                  select.style.marginRight = "7px";
-                  options.forEach(opt => {
-                      const o = document.createElement("option");
-                      o.value = opt.value;
-                      o.textContent = opt.label;
-                      if (opt.value === base) o.selected = true;
-                      select.appendChild(o);
-                  });
-                  select.onchange = () => {
-                      base = select.value;
-                      node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      markFlowNeedsSave(true);
-                  };
-                  el.appendChild(select);
-
-                  // --- "Offset" label above the input ---
-                  const offsetLabel = document.createElement("label");
-                  offsetLabel.textContent = "Offset";
-                  offsetLabel.style.display = "block";
-                  offsetLabel.style.marginTop = "2px";
-                  el.appendChild(offsetLabel);
-
-                  // Offset input
-                  const offsetInput = document.createElement("input");
-                  offsetInput.type = "number";
-                  offsetInput.style.width = "65px";
-                  offsetInput.placeholder = "offset (min)";
-                  offsetInput.value = offset;
-                  offsetInput.oninput = () => {
-                      offset = parseInt(offsetInput.value, 10) || 0;
-                      node.data.value = base + (offset !== 0 ? (offset > 0 ? "+" : "") + offset : "");
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      markFlowNeedsSave(true);
-                  };
-                  el.appendChild(offsetInput);
-
-                  const minLabel = document.createElement("span");
-                  minLabel.textContent = "min";
-                  minLabel.style.marginLeft = "3px";
-                  el.appendChild(minLabel);
-              } else if (node.data.comparator === "between") {
-                  // Two inputs for min/max
-                  let betweenValues = Array.isArray(node.data.value)
-                      ? node.data.value
-                      : typeof node.data.value === "string" && node.data.value.includes(",")
-                          ? node.data.value.split(",")
-                          : ["", ""];
-                  if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-                  let minInput = document.createElement("input");
-                  minInput.type = "text";
-                  minInput.value = betweenValues[0];
-                  minInput.placeholder = "Min";
-                  minInput.style.width = "45%";
-                  minInput.style.marginRight = "7px";
-                  let maxInput = document.createElement("input");
-                  maxInput.type = "text";
-                  maxInput.value = betweenValues[1];
-                  maxInput.placeholder = "Max";
-                  maxInput.style.width = "45%";
-                  function updateBetweenValues() {
-                      node.data.value = [minInput.value, maxInput.value];
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      markFlowNeedsSave(true);
-                  }
-                  minInput.onchange = maxInput.onchange = updateBetweenValues;
-                  el.appendChild(minInput);
-                  el.appendChild(maxInput);
-
-              } else {
-                  let valueField = document.createElement("input");
-                  valueField.type = "text";
-                  valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-                  valueField.style.display = "block";
-                  valueField.style.marginBottom = "12px";
-                  valueField.oninput = () => {
-                      node.data.value = valueField.value;
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      markFlowNeedsSave(true);
-                  };
-                  el.appendChild(valueField);
-              }
+          if (node.data.comparator === "between") {
+            let betweenValues = Array.isArray(node.data.value)
+              ? node.data.value
+              : typeof node.data.value === "string" && node.data.value.includes(",")
+                ? node.data.value.split(",")
+                : ["", ""];
+            if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+            let minInput = document.createElement("input");
+            minInput.type = "text";
+            minInput.value = betweenValues[0];
+            minInput.placeholder = "Min";
+            minInput.style.width = "45%";
+            minInput.style.marginRight = "7px";
+            let maxInput = document.createElement("input");
+            maxInput.type = "text";
+            maxInput.value = betweenValues[1];
+            maxInput.placeholder = "Max";
+            maxInput.style.width = "45%";
+            function updateBetweenValues() {
+              node.data.value = [minInput.value, maxInput.value];
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              pushUndoState();
+            }
+            minInput.onchange = maxInput.onchange = updateBetweenValues;
+            el.appendChild(minInput);
+            el.appendChild(maxInput);
+          } else {
+            let valueField = document.createElement("input");
+            valueField.type = "text";
+            valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+            valueField.style.display = "block";
+            valueField.style.marginBottom = "12px";
+            valueField.oninput = () => {
+              node.data.value = valueField.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              pushUndoState();
+            };
+            el.appendChild(valueField);
           }
-          return;
-        }
-
-        if (node.name === "delay") {
-          const el = document.getElementById("nodeEditor");
-          el.innerHTML = "<b>Delay (Milliseconds)</b><br><br>";
-
-          const msLabel = document.createElement("label");
-          msLabel.textContent = "Delay (ms): ";
-          el.appendChild(msLabel);
-
-          const msInput = document.createElement("input");
-          msInput.type = "number";
-          msInput.min = 1;
-          msInput.value = node.data.delayMs || 1000;
-          msInput.style.width = "80px";
-          msInput.oninput = () => {
-            node.data.delayMs = Number(msInput.value) || 1;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(msInput);
           return;
         }
 
@@ -2383,6 +2724,7 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               buildPickers();
+              pushUndoState();
             };
             pickerDiv.appendChild(attrSelect);
 
@@ -2719,7 +3061,18 @@
         return;
       }
       
-      const editor = new Drawflow(document.getElementById("drawflow"));
+      window.editor = new Drawflow(document.getElementById("drawflow"));
+      if (editor && editor.on) {
+      console.log("Attaching undo/redo event listeners to real editor");
+      editor.on('all', function(event, ...args) { 
+        //console.log("DRAWFLOW EVENT:", event, args); 
+      });
+
+      editor.on('nodeCreated', pushUndoState);
+      editor.on('nodeRemoved', pushUndoState);
+      editor.on('nodeMoved', pushUndoState);
+      editor.on('nodeDataChanged', pushUndoState);
+    }
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
         editor.moveNodeTo = function(nodeId, x, y) {
@@ -2786,6 +3139,9 @@
           editor.selected_id = null;
         }
       });
+
+      document.getElementById("undoBtn").onclick = doUndo;
+      document.getElementById("redoBtn").onclick = doRedo;
 
       document.getElementById("addNotMatchingVar").onclick = function () {
         logAction("addNotMatchingVar button clicked.");
@@ -2975,6 +3331,10 @@
           editor.clear();
           document.getElementById("flowName").value = "";
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          if (editor && typeof editor.export === "function") {
+            window.undoStack = [JSON.stringify(editor.export())];
+            window.redoStack = [];
+          }
           logAction("Started a new flow (all nodes cleared).");
         }
         await autoLoadGlobalVarsFromHubitat();
@@ -3052,7 +3412,7 @@
         }
 
         const data = editor.drawflow.drawflow.Home?.data;
-        console.log("Drawflow nodes data:", data);
+        //console.log("Drawflow nodes data:", data);
 
         if (!data || Object.keys(data).length === 0) {
           logAction("No flow loaded. Nothing to refresh.", "error");
@@ -3182,6 +3542,10 @@
                 }
               });
             }, 200);
+            if (editor && typeof editor.export === "function") {
+              window.undoStack = [JSON.stringify(editor.export())];
+              window.redoStack = [];
+            }
           } catch (e) {
             logAction("Error loading from Hubitat File Manager: " + (e.message || e), "error");
           }
@@ -3507,6 +3871,266 @@
           };
         }
       });
+
+      setInterval(() => {
+        document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
+          if (nodeEl._hasCtxMenu) return;
+          nodeEl._hasCtxMenu = true;
+
+          nodeEl.addEventListener('contextmenu', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            // Remove old menu if present
+            const existingMenu = document.getElementById('df-ctx-menu');
+            if (existingMenu) existingMenu.remove();
+
+            // --- Define menu items (label, icon SVG, action) ---
+            const menuItems = [
+              {
+                label: "Delete Node",
+                icon: `<svg width="22" height="22" fill="none"><rect x="4" y="6" width="14" height="11" rx="2.3" stroke="#ff5f56" stroke-width="2"/><rect x="9" y="3" width="4" height="3" rx="1.2" fill="#ff5f56"/><rect x="8" y="10" width="2" height="4" rx="0.8" fill="#fff"/><rect x="12" y="10" width="2" height="4" rx="0.8" fill="#fff"/></svg>`,
+                action: function() {
+                  // Defensive: always get nodeId as string
+                  const nodeId = String(nodeEl.id.replace("node-", ""));
+                  let deleted = false;
+
+                  // Try deleting from drawflow if it exists in data
+                  try {
+                    const df = window.editor?.drawflow?.drawflow?.Home?.data;
+                    if (df && Object.prototype.hasOwnProperty.call(df, nodeId)) {
+                      window.editor.removeNodeId(nodeId);
+                      markFlowNeedsSave(true);
+                      pushUndoState();
+                      deleted = true;
+                      logAction("Node Deleted", "info")
+                    }
+                  } catch (err) {
+                    //logAction("Error deleting node: " + err, "error");
+                  }
+
+                  // If not deleted from drawflow, forcibly remove DOM node
+                  if (!deleted) {
+                    logAction("Node Deleted", "info")
+                    //logAction(`Node ${nodeId} not found in drawflow data or drawflow state missing; removing DOM tile.`, "warn");
+                    const el = document.getElementById(`node-${nodeId}`);
+                    if (el && el.parentNode) el.parentNode.removeChild(el);
+                  }
+                }
+              },
+              {
+                label: "Duplicate Node",
+                icon: `<svg width="20" height="20" fill="none"><rect x="4" y="5" width="10" height="10" rx="2" fill="#69c0ff" stroke="#2589f5" stroke-width="2"/><rect x="8" y="9" width="8" height="8" rx="2" fill="#eaf6ff" stroke="#2589f5" stroke-width="2"/></svg>`,
+                action: function() {
+                  const nodeId = nodeEl.id.replace("node-", "");
+                  const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+                  if (df && df.Home && df.Home.data && df.Home.data[nodeId]) {
+                    duplicateNode(nodeId);
+                    logAction("Node Duplicated", "info")
+                  } else {
+                    //logAction(`Node ${nodeId} not found in drawflow data; skipping duplicate.`, "warn");
+                  }
+                }
+              }
+            ];
+
+            // --- Sort menu alphabetically by label ---
+            menuItems.sort((a, b) => a.label.localeCompare(b.label));
+
+            // --- Build menu ---
+            const menuDiv = document.createElement('div');
+            menuDiv.id = 'df-ctx-menu';
+            menuDiv.style.position = 'fixed';
+            menuDiv.style.left = ev.clientX + 'px';
+            menuDiv.style.top = ev.clientY + 'px';
+            menuDiv.style.zIndex = 9999;
+            menuDiv.style.background = '#25292f';
+            menuDiv.style.color = '#fff';
+            menuDiv.style.border = '1.8px solid #434f5a';
+            menuDiv.style.borderRadius = '14px';
+            menuDiv.style.boxShadow = '0 4px 18px #0007';
+            menuDiv.style.padding = '12px 0';
+            menuDiv.style.minWidth = '200px';
+            menuDiv.style.fontFamily = 'system-ui, Inter, sans-serif';
+            menuDiv.style.fontSize = '16px';
+            menuDiv.style.letterSpacing = '.01em';
+            menuDiv.style.userSelect = 'none';
+
+            menuItems.forEach(item => {
+              const btn = document.createElement('div');
+              btn.style.display = 'flex';
+              btn.style.alignItems = 'center';
+              btn.style.gap = '13px';
+              btn.style.padding = "12px 24px";
+              btn.style.cursor = "pointer";
+              btn.style.transition = "background .14s, color .14s";
+              btn.style.fontWeight = "500";
+
+              // Insert SVG icon
+              const icon = document.createElement('span');
+              icon.innerHTML = item.icon;
+              icon.style.flex = 'none';
+              btn.appendChild(icon);
+
+              // Insert label
+              const label = document.createElement('span');
+              label.innerText = item.label;
+              btn.appendChild(label);
+
+              btn.onmouseenter = () => {
+                btn.style.background = "#3145d8";
+                btn.style.color = "#fff";
+              };
+              btn.onmouseleave = () => {
+                btn.style.background = "none";
+                btn.style.color = "#fff";
+              };
+              btn.onclick = function(e) {
+                e.stopPropagation();
+                menuDiv.remove();
+                item.action();
+              };
+              menuDiv.appendChild(btn);
+            });
+
+            document.body.appendChild(menuDiv);
+
+            // Remove menu on click elsewhere
+            setTimeout(() => {
+              document.addEventListener('click', function handler() {
+                menuDiv.remove();
+                document.removeEventListener('click', handler);
+              });
+            }, 10);
+          });
+        });
+      }, 1000);
+
+
+/*
+      setInterval(() => {
+        document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
+          if (nodeEl._hasCtxMenu) return;
+          nodeEl._hasCtxMenu = true;
+
+          nodeEl.addEventListener('contextmenu', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            // Remove old menu if present
+            const existingMenu = document.getElementById('df-ctx-menu');
+            if (existingMenu) existingMenu.remove();
+
+            // Create menu
+            const menuDiv = document.createElement('div');
+            menuDiv.id = 'df-ctx-menu';
+            menuDiv.style.position = 'fixed';
+            menuDiv.style.left = ev.clientX + 'px';
+            menuDiv.style.top = ev.clientY + 'px';
+            menuDiv.style.zIndex = 9999;
+            menuDiv.style.background = '#222';
+            menuDiv.style.color = '#fff';
+            menuDiv.style.border = '1px solid #444';
+            menuDiv.style.borderRadius = '8px';
+            menuDiv.style.boxShadow = '0 4px 12px #000a';
+            menuDiv.style.padding = '6px 0';
+            menuDiv.style.minWidth = '160px';
+
+            // --- Duplicate Node Option ---
+            const dupBtn = document.createElement("div");
+            dupBtn.innerText = "Duplicate Node";
+            dupBtn.style.padding = "8px 20px";
+            dupBtn.style.cursor = "pointer";
+            dupBtn.onmouseenter = () => dupBtn.style.background = "#444";
+            dupBtn.onmouseleave = () => dupBtn.style.background = "none";
+            dupBtn.onclick = function(e) {
+              e.stopPropagation();
+              menuDiv.remove();
+              const nodeId = nodeEl.id.replace("node-", "");
+              if (
+                window.editor.drawflow &&
+                window.editor.drawflow.drawflow &&
+                window.editor.drawflow.drawflow.Home &&
+                window.editor.drawflow.drawflow.Home.data &&
+                window.editor.drawflow.drawflow.Home.data[nodeId]
+              ) {
+                duplicateNode(nodeId);
+                markFlowNeedsSave(true);
+                pushUndoState();
+              } else {
+                //logAction(`Node ${nodeId} not found in drawflow data; skipping duplicate.`, "warn");
+              }
+            }
+            menuDiv.appendChild(dupBtn);
+
+            // --- Delete Node Option ---
+            const delBtn = document.createElement("div");
+            delBtn.innerText = "Delete Node";
+            delBtn.style.padding = "8px 20px";
+            delBtn.style.cursor = "pointer";
+            delBtn.onmouseenter = () => delBtn.style.background = "#444";
+            delBtn.onmouseleave = () => delBtn.style.background = "none";
+            delBtn.onclick = function(e) {
+              e.stopPropagation();
+              menuDiv.remove();
+              if (window.editor && nodeEl.id && nodeEl.id.startsWith("node-")) {
+                const nodeId = nodeEl.id.replace("node-", "");
+                if (
+                  window.editor.drawflow &&
+                  window.editor.drawflow.Home &&
+                  window.editor.drawflow.Home.data &&
+                  window.editor.drawflow.Home.data[nodeId]
+                ) {
+                  window.editor.removeNodeId(nodeId);
+                  markFlowNeedsSave(true);
+                  pushUndoState();
+                } else {
+                  //logAction(`Node ${nodeId} not found in drawflow data; skipping delete.`, "warn");
+                  // --- forcibly remove from DOM if stuck ---
+                  const el = document.getElementById(`node-${nodeId}`);
+                  if (el && el.parentNode) el.parentNode.removeChild(el);
+                }
+              }
+            };
+            menuDiv.appendChild(delBtn);
+
+            document.body.appendChild(menuDiv);
+
+            // Remove menu on click elsewhere
+            setTimeout(() => {
+              document.addEventListener('click', function handler() {
+                menuDiv.remove();
+                document.removeEventListener('click', handler);
+              });
+            }, 10);
+          });
+        });
+      }, 1000);
+*/
+      function duplicateNode(nodeId) {
+        if (!window.editor || !window.editor.getNodeFromId) return;
+        const node = window.editor.getNodeFromId(nodeId);
+        if (!node) return;
+        const newNode = JSON.parse(JSON.stringify(node));
+        delete newNode.id;
+        newNode.pos_x += 50;
+        newNode.pos_y += 50;
+        newNode.outputs = {};
+        newNode.inputs = {};
+        window.editor.addNode(
+          newNode.name,
+          newNode.inputs_count,
+          newNode.outputs_count,
+          newNode.pos_x,
+          newNode.pos_y,
+          newNode.class,
+          JSON.parse(JSON.stringify(newNode.data)),
+          newNode.html
+        );
+        markFlowNeedsSave(true);
+        pushUndoState();
+      }
+
     </script>
 </body>
 </html>
