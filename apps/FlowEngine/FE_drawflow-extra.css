@@ -25,3 +25,68 @@ input, button, select { padding:6px; font-size:14px; border-radius:4px; border:1
   max-height: 300px;
   height: 120px;
 }
+
+/* Default node style (optional, in case you want to tweak the base look) */
+.drawflow .drawflow-node {
+  background: #5d2ef8 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow .drawflow-node.selected {
+  border: 3px solid #02f84c !important;
+  box-shadow: 0 0 8px 2px #02f84c80 !important;
+}
+
+.drawflow-node.eventTrigger {
+  background: #fb0101 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.condition {
+  background: #fc9331 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.device {
+  background: #68f389 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.setVariable {
+  background: #f7026c !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.notification {
+  background: #01a8fb !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.comment {
+  background: #faf777 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+  min-width: 300px !important;
+  border-radius: 0 !important;
+  transform: rotate(-1deg);
+}
+
+.drawflow-node.and,
+.drawflow-node.or,
+.drawflow-node.not {
+  background: #ab02f9 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
+
+.drawflow-node.schedule {
+  background: #fb0101 !important;
+  border: 2.2px solid #0cb56d !important;
+  color: #000 !important;
+}
