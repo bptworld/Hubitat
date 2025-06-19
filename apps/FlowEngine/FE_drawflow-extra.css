@@ -90,3 +90,19 @@ input, button, select { padding:6px; font-size:14px; border-radius:4px; border:1
   border: 2.2px solid #0cb56d !important;
   color: #000 !important;
 }
+
+#df-ctx-menu {
+  animation: fadeinCtx .16s;
+  box-shadow: 0 8px 32px #000b !important;
+}
+#df-ctx-menu div {
+  border-radius: 7px;
+}
+#df-ctx-menu div:active {
+  filter: brightness(1.12);
+  background: #3e62ed !important;
+}
+@keyframes fadeinCtx {
+  from { opacity: 0; transform: scale(.97);}
+  to { opacity: 1; transform: scale(1);}
+}
