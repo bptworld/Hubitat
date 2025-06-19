@@ -84,46 +84,7 @@
       border-radius: 0 0 16px 16px;
       padding: 9px 8px;
     }
-    .drawflow-node[data-node-type="device"] {
-      background: #1E90FF !important;
-      border: 1.5px solid #d04040 !important;
-      transition: background 0.2s, border 0.2s;
-    }
-    .drawflow-node[data-node-type="device"].selected {
-      background: #00008B !important;
-      border: 2.2px solid #02f84c !important;
-      color: #fff !important;
-    }
-    .drawflow-node[data-node-type="condition"] {
-      background: #fe9a3c !important;
-      border: 1.5px solid #d04040 !important;
-      transition: background 0.2s, border 0.2s;
-    }
-    .drawflow-node[data-node-type="condition"].selected {
-      background: #fe7b00 !important;
-      border: 2.2px solid #02f84c !important;
-      color: #fff !important;
-    }
-    .drawflow-node[data-node-type="eventTrigger"] {
-      background: #fd6057 !important;
-      border: 1.5px solid #d04040 !important;
-      transition: background 0.2s, border 0.2s;
-    }
-    .drawflow-node[data-node-type="eventTrigger"].selected {
-      background: #8B0000  !important;
-      border: 2.2px solid #02f84c !important;
-      color: #fff !important;
-    }
-    .drawflow-node[data-node-type="setVariable"] {
-      background: #1de9b6 !important;
-      border: 1.5px solid #d04040 !important;
-      transition: background 0.2s, border 0.2s;
-    }
-    .drawflow-node[data-node-type="setVariable"].selected {
-      background: #159084  !important;
-      border: 2.2px solid #02f84c !important;
-      color: #fff !important;
-    }
+    
     #exportVarsBtn.need-export {
       background: #e6462d !important;   /* red */
       color: #fff !important;
@@ -131,14 +92,6 @@
       font-weight: bold;
       box-shadow: 0 0 8px #e6462d77;
     }
-    .device-tile,
-    .device-tile.selected,
-    .condition-tile,
-    .condition-tile.selected,
-    .eventTrigger-tile,
-    .eventTrigger-tile.selected,
-    .setVariable-tile,
-    .setVariable-tile.selected { background: transparent !important; }
   </style>
 </head>
 <body>
@@ -159,6 +112,7 @@
     </div>
     <div>
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
+      <button id="addSchedule" title="Add a Schedule node">Add Schedule</button>
       <button id="addDevice" title="Add an Action (Device) node">Add Action</button>
       <button id="addCondition" title="Add a Condition node">Add Condition</button>
       <button id="addLogicAND" title="Add an AND logic node">Add AND</button>
@@ -172,16 +126,29 @@
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Add Do Nothing</button>
+      <button id="addComment" title="Add a Comment/Note node">Add Comment</button>
     </div>
   </div>
   <div id="main">
     <div id="drawflow"></div>
     <div id="editor">
-      <div id="header" style="font-size:25px;" title="Test this node (Simulate execution of this Node)">
+      <div id="header" style="font-size:25px;" title="Node Editor">
         <b>Node Editor</b>
       </div>
       <div id="nodeEditor">Click a node to edit</div>
-      <div id="variableManager"></div>
+      <div><hr></div>
+      <div id="variableInspector" style="margin-top:16px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:12px 10px 8px 10px; min-height:80px; max-height:260px; overflow:auto;">
+        <div style="font-size:15px;font-weight:bold;margin-bottom:6px;">Variable Inspector</div>
+        <div id="variableInspectorContent" style="font-size:13px;"></div>
+      </div>
+      <div><hr></div>
+      <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+        <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+          <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Hide/Show Variables
+        </div>
+        <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
+      </div>
       <div id="logBox"
            style="margin-top:20px;max-height:200px;overflow:auto;border-top:1px solid #333;padding-top:10px;font-family:monospace;font-size:12px;">
         Logs:<br>
@@ -292,6 +259,41 @@
       }
     }
 
+    function renderVariableInspector() {
+      const container = document.getElementById("variableInspectorContent");
+      if (!container) return;
+      let html = "";
+
+      // --- Global Variables ---
+      let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+      if (globals.length) {
+        html += `<div style="color:#eee;margin-bottom:3px;"><b>Global Variables</b></div>`;
+        globals.forEach(v => {
+          html += `<div style="margin-left:8px;">
+            <span style="color:#eec150;">${v.name}</span> = 
+            <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
+          </div>`;
+        });
+      }
+
+      // --- Flow Variables ---
+      if (window.FE_flowvars && Array.isArray(window.FE_flowvars) && window.FE_flowvars.length) {
+        html += `<div style="color:#eee;margin:10px 0 3px 0;"><b>Flow Variables</b></div>`;
+        window.FE_flowvars.forEach(v => {
+          html += `<div style="margin-left:8px;">
+            <span style="color:#90cdf4;">${v.name}</span> = 
+            <span style="color:#9fff9a;">${JSON.stringify(v.value)}</span>
+          </div>`;
+        });
+      }
+
+      if (!html) {
+        html = `<div style="color:#888;">No variables set.</div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
     // --- Auto-load FE_global_vars.json ---
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
       try {
@@ -301,9 +303,11 @@
             if (window.flowVars && window.flowVars.setGlobalVars) {
               try {
                 window.flowVars.setGlobalVars(txt && txt.trim() ? JSON.parse(txt) : []);
+                setInterval(renderVariableInspector, 1500);
                 logAction("Auto-loaded FE_global_vars.json", "info");
               } catch (e) {
                 window.flowVars.setGlobalVars([]);
+                setInterval(renderVariableInspector, 1500);
                 console.warn("Globals JSON invalid or missing. Starting with empty globals.");
               }
             }
@@ -324,9 +328,11 @@
             if (window.flowVars && window.flowVars.setGlobalVars) {
               try {
                 window.flowVars.setGlobalVars(txt && txt.trim() ? JSON.parse(txt) : []);
+                setInterval(renderVariableInspector, 1500);
                 logAction("Auto-collected glabal variables", "info");
               } catch (e) {
                 window.flowVars.setGlobalVars([]);
+                setInterval(renderVariableInspector, 1500);
                 console.warn("Globals JSON invalid or missing. Starting with empty globals.");
               }
             }
@@ -358,6 +364,7 @@
         window.FE_global_vars = [];
         window.FE_global_var_names = [];
       }
+      renderVariableInspector();
     }
     // --- END Auto-load FE_global_vars.json ---
 
@@ -446,6 +453,32 @@
         return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span></div>`;
       }
 
+      if (t === "comment") {
+        let isSelected = false;
+        if (editor && editor.selected_id && nodeId) {
+          if (editor.selected_id == nodeId) isSelected = true;
+        }
+        let txt = data && data.text ? data.text : "(No comment)";
+        return `<div class="comment-tile">
+          Comment<hr>
+          <div>${txt}</div>
+        </div>`;
+      }
+
+      if (t === "schedule") {
+        let cron = data.cron || "";
+        let repeatDays = Array.isArray(data.repeatDays) ? data.repeatDays.join(", ") : "";
+        let time = data.time || "";
+        return `<div class="schedule-tile">
+          Schedule<hr>
+          <span style="font-size:11px">
+            ${cron ? "Cron: " + cron + "<br>" : ""}
+            ${repeatDays ? "Repeat: " + repeatDays + "<br>" : ""}
+            ${time ? "Time: " + time : ""}
+          </span>
+        </div>`;
+      }
+
       if (t === "setvariable") {
         let vName = data.varName || "Variable";
         let vValue = data.varValue || "Value";
@@ -471,7 +504,6 @@
         let attribute = (data && typeof data.attribute === "string" && data.attribute !== "undefined") ? data.attribute : "";
         let value = (data && typeof data.value === "string" && data.value !== "undefined") ? data.value : "";
 
-        // MAIN FIX: Always show custom outputVar as entered (never undefined or blank)
         let outputVar = (
           data && typeof data.outputVar === "string" &&
           data.outputVar.trim() &&
@@ -480,7 +512,7 @@
 
         let scope = (data && data.varScope === "global") ? "Global" : "Flow";
         return `<div class="setVariable-tile">
-          <b>Devices Not Matching to JSON</b><br>
+          Devices Not Matching to JSON<br>
           <span style="font-size:11px">
             ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
             ${attribute ? "Attr: " + attribute + "<br>" : ""}
@@ -502,7 +534,7 @@
 
         let type = (data.notificationType === "speech") ? "Speech" : "Push";
         let msg = data.message || "";
-        return `<div class="device-tile">
+        return `<div class="notification-tile">
           ${type} Notifications<br>
           <span style="font-size:11px">
             Device: ${devLabelStr}<br>
@@ -963,7 +995,6 @@
           showStatusDiv.appendChild(showStatusLbl);
           el.appendChild(showStatusDiv);
 
-          // --- Device Label ---
           // --- Device(s) label and dropdown (now with search, single-select) ---
           const devLabel = document.createElement("label");
           devLabel.textContent = "Device(s)";
@@ -2083,6 +2114,178 @@
           return;
         }
 
+        if (node.name === "schedule") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<div style='font-size:18px;font-weight:bold;margin-bottom:8px;'>Schedule Node</div>";
+
+          // --- Cron Preset Dropdown ---
+          const cronPresetLabel = document.createElement("label");
+          cronPresetLabel.textContent = "Quick Cron Presets:";
+          cronPresetLabel.style.display = "block";
+          el.appendChild(cronPresetLabel);
+
+          const cronPresets = [
+            { label: "-- Custom Examples - Change to fit your needs --", value: "" },
+            { label: "Every Minute", value: "* * * * *" },
+            { label: "Every 5 Minutes", value: "*/5 * * * *" },
+            { label: "Every 15 Minutes", value: "*/15 * * * *" },
+            { label: "Every Hour", value: "0 * * * *" },
+            { label: "Every Day at Midnight", value: "0 0 * * *" },
+            { label: "Every Day at 7 AM", value: "0 7 * * *" },
+            { label: "Every Other Day (7 AM)", value: "0 7 */2 * *" },
+            { label: "Every 3rd Day (8 AM)", value: "0 8 */3 * *" },
+            { label: "Every Week (Sunday at 7 AM)", value: "0 7 * * 0" },
+            { label: "Every Month (1st at 7 AM)", value: "0 7 1 * *" },
+            { label: "Every Weekday (Mon-Fri, 7 AM)", value: "0 7 * * 1-5" },
+            { label: "Custom", value: "" }
+          ];
+
+          const cronPresetSelect = document.createElement("select");
+          cronPresetSelect.style.marginBottom = "8px";
+          cronPresets.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.value;
+            opt.textContent = p.label;
+            cronPresetSelect.appendChild(opt);
+          });
+          cronPresetSelect.value = cronPresets.find(p => p.value === node.data.cron)?.value || "";
+          el.appendChild(cronPresetSelect);
+
+          // --- Cron Expression Input ---
+          const cronLabel = document.createElement("label");
+          cronLabel.textContent = "Or enter a Cron Expression:";
+          cronLabel.style.display = "block";
+          el.appendChild(cronLabel);
+
+          const cronInput = document.createElement("input");
+          cronInput.type = "text";
+          cronInput.value = node.data.cron || "";
+          cronInput.placeholder = "e.g. 0 7 * * 1-5";
+          cronInput.style.display = "block";
+          cronInput.style.marginBottom = "10px";
+          el.appendChild(cronInput);
+
+          // --- Days Multi-select Dropdown ---
+          const repeatLabel = document.createElement("label");
+          repeatLabel.textContent = "Repeat on Days:";
+          repeatLabel.style.display = "block";
+          el.appendChild(repeatLabel);
+
+          const days = [
+            { value: "Sunday", label: "Sunday" },
+            { value: "Monday", label: "Monday" },
+            { value: "Tuesday", label: "Tuesday" },
+            { value: "Wednesday", label: "Wednesday" },
+            { value: "Thursday", label: "Thursday" },
+            { value: "Friday", label: "Friday" },
+            { value: "Saturday", label: "Saturday" }
+          ];
+
+          const selected = Array.isArray(node.data.repeatDays) ? node.data.repeatDays : [];
+
+          const daySelect = document.createElement("select");
+          daySelect.multiple = true;
+          daySelect.size = 7;
+          daySelect.style.display = "block";
+          daySelect.style.marginBottom = "12px";
+
+          days.forEach(day => {
+            const opt = document.createElement("option");
+            opt.value = day.value;
+            opt.textContent = day.label;
+            if (selected.includes(day.value)) opt.selected = true;
+            daySelect.appendChild(opt);
+          });
+          el.appendChild(daySelect);
+
+          // --- Time Picker ---
+          const timeLabel = document.createElement("label");
+          timeLabel.textContent = "Time of Day:";
+          timeLabel.style.display = "block";
+          el.appendChild(timeLabel);
+
+          const timeInput = document.createElement("input");
+          timeInput.type = "time";
+          timeInput.value = node.data.time || "";
+          timeInput.style.display = "block";
+          timeInput.style.marginBottom = "10px";
+          el.appendChild(timeInput);
+
+          // --- Event Handlers ---
+
+          // When selecting a cron preset
+          cronPresetSelect.onchange = () => {
+            if (cronPresetSelect.value !== "") {
+              cronInput.value = cronPresetSelect.value;
+              node.data.cron = cronInput.value;
+
+              // --- CLEAR other schedule fields ---
+              node.data.repeatDays = [];
+              node.data.time = "";
+
+              // Clear multi-select days
+              Array.from(daySelect.options).forEach(opt => opt.selected = false);
+
+              // Clear time input
+              timeInput.value = "";
+
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            } else {
+              cronInput.value = node.data.cron || "";
+            }
+          };
+
+          // When typing a cron expression
+          cronInput.oninput = () => {
+            node.data.cron = cronInput.value;
+            cronPresetSelect.value = ""; // Deselect preset
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+
+          // When selecting days
+          daySelect.onchange = () => {
+            node.data.repeatDays = Array.from(daySelect.selectedOptions).map(opt => opt.value);
+            // Clear cron and preset
+            node.data.cron = "";
+            cronInput.value = "";
+            cronPresetSelect.value = "";
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+
+          // When picking a time
+          timeInput.oninput = () => {
+            node.data.time = timeInput.value;
+            // Clear cron and preset
+            node.data.cron = "";
+            cronInput.value = "";
+            cronPresetSelect.value = "";
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+        }
+
+        if (node.name === "comment") {
+          el.innerHTML = `<label>Comment</label>`;
+          let textarea = document.createElement("textarea");
+          textarea.style = "width:98%;min-height:60px;font-size:13px;background:#fffbe6;color:#7d6103;border-radius:7px;margin-top:6px;";
+          textarea.value = node.data.text || "";
+          textarea.oninput = function () {
+            node.data.text = textarea.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(textarea);
+          return;
+        }
+
         if (node.name === "notMatchingVar") {
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
@@ -2694,6 +2897,16 @@
         markFlowNeedsSave(true);
       };
 
+      document.getElementById("addSchedule").onclick = function() {
+        logAction("addSchedule button clicked.");
+        editor.addNode("schedule", 0, 1, 220, 140, "schedule", {
+          cron: "",
+          repeatDays: [],
+          time: ""
+        });
+        markFlowNeedsSave(true);
+      };
+
       document.getElementById("addDevice").onclick = () => {
         logAction("addAction button clicked.");
         editor.addNode("device", 1, 1, 100, 100, "device", {
@@ -2774,6 +2987,14 @@
         }, 100);
         markFlowNeedsSave(true);
         logAction("addTrigger finished.");
+      };
+
+      document.getElementById("addComment").onclick = function () {
+        logAction("addComment button clicked.");
+        editor.addNode("comment", 1, 0, 200, 150, "comment", { 
+          text: "comment..." }
+        );
+        markFlowNeedsSave(true);
       };
 
       document.getElementById("addSetVariable").onclick = () => {
@@ -3353,7 +3574,22 @@
           return e.returnValue;
         }
       });
+      document.addEventListener("DOMContentLoaded", function() {
+        const header = document.getElementById("variableManagerHeader");
+        const content = document.getElementById("variableManager");
+        const arrow = document.getElementById("variableManagerArrow");
+        let open = false; // Start hidden
 
+        if (header && content && arrow) {
+          content.style.display = "none";
+          arrow.style.transform = "rotate(-90deg)";
+          header.onclick = function() {
+            open = !open;
+            content.style.display = open ? "" : "none";
+            arrow.style.transform = open ? "rotate(0deg)" : "rotate(-90deg)";
+          };
+        }
+      });
     </script>
 </body>
 </html>
