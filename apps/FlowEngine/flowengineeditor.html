@@ -1251,251 +1251,249 @@
           buildPickers();
         }
 
-        // EVENT TRIGGER NODE (with multi-device support)
-        // ---- Event Trigger Node ----
         // EVENT TRIGGER NODE (full logic)
         if (node.name === "eventTrigger") {
-            // ---- Device picker setup (Home Location, Time, Variable, divider, all others) ----
-            const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
-            const homeLoc = devices.find(d => d.id === "__mode__");
-            const timeDev = devices.find(d => d.id === "__time__");
-            const varDev = { id: "__variable__", label: "Variable", name: "Variable" };
-            const rest = devices.filter(d => !["__mode__", "__time__"].includes(d.id));
-            let pickerDevices = [];
-            if (homeLoc) pickerDevices.push(homeLoc);
-            if (timeDev) pickerDevices.push(timeDev);
-            pickerDevices.push(varDev);
-            if (rest.length) pickerDevices.push({ id: "__divider__", label: "───────────────" });
-            pickerDevices = pickerDevices.concat(rest.sort((a, b) => {
-              const la = (a.label || a.name || a.id).toLowerCase();
-              const lb = (b.label || b.name || b.id).toLowerCase();
-              return la.localeCompare(lb);
-            }));
+          // ---- Device picker setup (Home Location, Time, Variable, divider, all others) ----
+          const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
+          const homeLoc = devices.find(d => d.id === "__mode__");
+          const timeDev = devices.find(d => d.id === "__time__");
+          const varDev = { id: "__variable__", label: "Variable", name: "Variable" };
+          const rest = devices.filter(d => !["__mode__", "__time__"].includes(d.id));
+          let pickerDevices = [];
+          if (homeLoc) pickerDevices.push(homeLoc);
+          if (timeDev) pickerDevices.push(timeDev);
+          pickerDevices.push(varDev);
+          if (rest.length) pickerDevices.push({ id: "__divider__", label: "───────────────" });
+          pickerDevices = pickerDevices.concat(rest.sort((a, b) => {
+            const la = (a.label || a.name || a.id).toLowerCase();
+            const lb = (b.label || b.name || b.id).toLowerCase();
+            return la.localeCompare(lb);
+          }));
 
-            // --- Device(s) label ---
-            const devLabel = document.createElement("label");
-            devLabel.textContent = "Device";
-            devLabel.style.display = "block";
-            el.appendChild(devLabel);
+          // --- Device(s) label ---
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
 
-            // --- Device picker ---
-            renderDevicePicker(
-              el,
-              pickerDevices,
-              [node.data.deviceId || (Array.isArray(node.data.deviceIds) ? node.data.deviceIds[0] : "")].filter(Boolean),
-              (newSelectedIds, newDeviceLabels) => {
-                node.data.deviceId = newSelectedIds[0] || "";
-                node.data.deviceIds = [node.data.deviceId];
-                if (node.data.deviceId !== "__variable__") node.data.varName = "";
-                node.data.attribute = "";
-                node.data.comparator = "";
-                node.data.value = "";
+          // --- Device picker ---
+          renderDevicePicker(
+            el,
+            pickerDevices,
+            [node.data.deviceId || (Array.isArray(node.data.deviceIds) ? node.data.deviceIds[0] : "")].filter(Boolean),
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceId = newSelectedIds[0] || "";
+              node.data.deviceIds = [node.data.deviceId];
+              if (node.data.deviceId !== "__variable__") node.data.varName = "";
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+            },
+            false // single select
+          );
+
+          // ---- Stop if nothing picked
+          if (!node.data.deviceId) return;
+
+          // --- "Variable" Virtual Device Special Case ---
+          if (node.data.deviceId === "__variable__") {
+            const globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+            const allVars = globalVars.map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
+
+            const varNameLabel = document.createElement("label");
+            varNameLabel.textContent = "Variable Name";
+            varNameLabel.style.display = "block";
+            el.appendChild(varNameLabel);
+
+            const varNameSelect = document.createElement("select");
+            varNameSelect.style.display = "block";
+            varNameSelect.style.marginBottom = "12px";
+            varNameSelect.innerHTML =
+              `<option value="">Pick a variable…</option>` +
+              allVars.map(v =>
+                `<option value="${v}" ${node.data.varName == v ? "selected" : ""}>${v}</option>`
+              ).join('');
+            varNameSelect.value = node.data.varName || "";
+            varNameSelect.onchange = () => {
+              node.data.varName = varNameSelect.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+            };
+            el.appendChild(varNameSelect);
+
+            // Comparators for variable
+            const compLabel = document.createElement("label");
+            compLabel.textContent = "Comparator";
+            compLabel.style.display = "block";
+            el.appendChild(compLabel);
+
+            const compSelect = document.createElement("select");
+            compSelect.style.display = "block";
+            compSelect.style.marginBottom = "12px";
+            const comparators = [
+                "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
+            ];
+            const comparatorLabels = {
+                "==": "equals (==)",
+                "!=": "not equals (!=)",
+                "<": "less than (<)",
+                "<=": "less than or equal (<=)",
+                ">": "greater than (>)",
+                ">=": "greater than or equal (>=)",
+                "between": "between",
+                "contains": "contains",
+                "not contains": "not contains",
+                "changes": "changes"
+            };
+            compSelect.innerHTML = `<option value="">Pick…</option>` +
+                comparators.map(cmp =>
+                    `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
+                ).join('');
+            compSelect.value = node.data.comparator || "";
+            compSelect.onchange = () => {
+                node.data.comparator = compSelect.value;
                 editor.updateNodeDataFromId(node.id, node.data);
                 markFlowNeedsSave(true);
                 renderEditor(node);
-              },
-              false // single select
-            );
+            };
+            el.appendChild(compSelect);
 
-            // ---- Stop if nothing picked
-            if (!node.data.deviceId) return;
+            // Value field
+            const valLabel = document.createElement("label");
+            valLabel.textContent = "Value";
+            valLabel.style.display = "block";
+            el.appendChild(valLabel);
 
-            // --- "Variable" Virtual Device Special Case ---
-            if (node.data.deviceId === "__variable__") {
-                const globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-                const allVars = globalVars.map(v => v.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
-
-                const varNameLabel = document.createElement("label");
-                varNameLabel.textContent = "Variable Name";
-                varNameLabel.style.display = "block";
-                el.appendChild(varNameLabel);
-
-                const varNameSelect = document.createElement("select");
-                varNameSelect.style.display = "block";
-                varNameSelect.style.marginBottom = "12px";
-                varNameSelect.innerHTML =
-                  `<option value="">Pick a variable…</option>` +
-                  allVars.map(v =>
-                    `<option value="${v}" ${node.data.varName == v ? "selected" : ""}>${v}</option>`
-                  ).join('');
-                varNameSelect.value = node.data.varName || "";
-                varNameSelect.onchange = () => {
-                  node.data.varName = varNameSelect.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  markFlowNeedsSave(true);
-                };
-                el.appendChild(varNameSelect);
-
-                // Comparators for variable
-                const compLabel = document.createElement("label");
-                compLabel.textContent = "Comparator";
-                compLabel.style.display = "block";
-                el.appendChild(compLabel);
-
-                const compSelect = document.createElement("select");
-                compSelect.style.display = "block";
-                compSelect.style.marginBottom = "12px";
-                const comparators = [
-                    "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
-                ];
-                const comparatorLabels = {
-                    "==": "equals (==)",
-                    "!=": "not equals (!=)",
-                    "<": "less than (<)",
-                    "<=": "less than or equal (<=)",
-                    ">": "greater than (>)",
-                    ">=": "greater than or equal (>=)",
-                    "between": "between",
-                    "contains": "contains",
-                    "not contains": "not contains",
-                    "changes": "changes"
-                };
-                compSelect.innerHTML = `<option value="">Pick…</option>` +
-                    comparators.map(cmp =>
-                        `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
-                    ).join('');
-                compSelect.value = node.data.comparator || "";
-                compSelect.onchange = () => {
-                    node.data.comparator = compSelect.value;
+            if (node.data.comparator === "between") {
+                // Two inputs for min/max
+                let betweenValues = Array.isArray(node.data.value)
+                    ? node.data.value
+                    : typeof node.data.value === "string" && node.data.value.includes(",")
+                        ? node.data.value.split(",")
+                        : ["", ""];
+                if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
+                let minInput = document.createElement("input");
+                minInput.type = "text";
+                minInput.value = betweenValues[0];
+                minInput.placeholder = "Min";
+                minInput.style.width = "45%";
+                minInput.style.marginRight = "7px";
+                let maxInput = document.createElement("input");
+                maxInput.type = "text";
+                maxInput.value = betweenValues[1];
+                maxInput.placeholder = "Max";
+                maxInput.style.width = "45%";
+                function updateBetweenValues() {
+                    node.data.value = [minInput.value, maxInput.value];
                     editor.updateNodeDataFromId(node.id, node.data);
                     markFlowNeedsSave(true);
-                    renderEditor(node);
-                };
-                el.appendChild(compSelect);
-
-                // Value field
-                const valLabel = document.createElement("label");
-                valLabel.textContent = "Value";
-                valLabel.style.display = "block";
-                el.appendChild(valLabel);
-
-                if (node.data.comparator === "between") {
-                    // Two inputs for min/max
-                    let betweenValues = Array.isArray(node.data.value)
-                        ? node.data.value
-                        : typeof node.data.value === "string" && node.data.value.includes(",")
-                            ? node.data.value.split(",")
-                            : ["", ""];
-                    if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-                    let minInput = document.createElement("input");
-                    minInput.type = "text";
-                    minInput.value = betweenValues[0];
-                    minInput.placeholder = "Min";
-                    minInput.style.width = "45%";
-                    minInput.style.marginRight = "7px";
-                    let maxInput = document.createElement("input");
-                    maxInput.type = "text";
-                    maxInput.value = betweenValues[1];
-                    maxInput.placeholder = "Max";
-                    maxInput.style.width = "45%";
-                    function updateBetweenValues() {
-                        node.data.value = [minInput.value, maxInput.value];
-                        editor.updateNodeDataFromId(node.id, node.data);
-                        markFlowNeedsSave(true);
-                    }
-                    minInput.onchange = maxInput.onchange = updateBetweenValues;
-                    el.appendChild(minInput);
-                    el.appendChild(maxInput);
-                } else {
-                    let valueField = document.createElement("input");
-                    valueField.type = "text";
-                    valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-                    valueField.style.display = "block";
-                    valueField.style.marginBottom = "12px";
-                    valueField.oninput = () => {
-                        node.data.value = valueField.value;
-                        editor.updateNodeDataFromId(node.id, node.data);
-                        markFlowNeedsSave(true);
-                    };
-                    el.appendChild(valueField);
                 }
-                return;
+                minInput.onchange = maxInput.onchange = updateBetweenValues;
+                el.appendChild(minInput);
+                el.appendChild(maxInput);
+            } else {
+                let valueField = document.createElement("input");
+                valueField.type = "text";
+                valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
+                valueField.style.display = "block";
+                valueField.style.marginBottom = "12px";
+                valueField.oninput = () => {
+                    node.data.value = valueField.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                    markFlowNeedsSave(true);
+                };
+                el.appendChild(valueField);
             }
+            return;
+          }
 
-            // --- Home Location (Mode) special handling ---
-            if (node.data.deviceId === "__mode__") {
-                const attrLabel = document.createElement("label");
-                attrLabel.textContent = "Attribute";
-                attrLabel.style.display = "block";
-                el.appendChild(attrLabel);
+          // --- Home Location (Mode) special handling ---
+          if (node.data.deviceId === "__mode__") {
+            const attrLabel = document.createElement("label");
+            attrLabel.textContent = "Attribute";
+            attrLabel.style.display = "block";
+            el.appendChild(attrLabel);
 
-                const attrSelect = document.createElement("select");
-                attrSelect.style.display = "block";
-                attrSelect.style.marginBottom = "12px";
-                attrSelect.innerHTML = `<option value="mode" selected>mode</option>`;
-                attrSelect.value = node.data.attribute || "mode";
-                attrSelect.onchange = () => {
-                  node.data.attribute = attrSelect.value;
-                  node.data.comparator = "";
-                  node.data.value = [];
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  markFlowNeedsSave(true);
-                  renderEditor(node);
-                };
-                el.appendChild(attrSelect);
+            const attrSelect = document.createElement("select");
+            attrSelect.style.display = "block";
+            attrSelect.style.marginBottom = "12px";
+            attrSelect.innerHTML = `<option value="mode" selected>mode</option>`;
+            attrSelect.value = node.data.attribute || "mode";
+            attrSelect.onchange = () => {
+              node.data.attribute = attrSelect.value;
+              node.data.comparator = "";
+              node.data.value = [];
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+            };
+            el.appendChild(attrSelect);
 
-                // Comparator
-                const compLabel = document.createElement("label");
-                compLabel.textContent = "Comparator";
-                compLabel.style.display = "block";
-                el.appendChild(compLabel);
+            // Comparator
+            const compLabel = document.createElement("label");
+            compLabel.textContent = "Comparator";
+            compLabel.style.display = "block";
+            el.appendChild(compLabel);
 
-                const compSelect = document.createElement("select");
-                compSelect.style.display = "block";
-                compSelect.style.marginBottom = "12px";
-                const comparators = ["==", "!="];
-                compSelect.innerHTML = `<option value="">Pick…</option>` +
-                  comparators.map(cmp =>
-                    `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${cmp === "==" ? "equals (==)" : "not equals (!=)"}</option>`
-                  ).join('');
-                compSelect.value = node.data.comparator || "";
-                compSelect.onchange = () => {
-                  node.data.comparator = compSelect.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  markFlowNeedsSave(true);
-                  renderEditor(node);
-                };
-                el.appendChild(compSelect);
+            const compSelect = document.createElement("select");
+            compSelect.style.display = "block";
+            compSelect.style.marginBottom = "12px";
+            const comparators = ["==", "!="];
+            compSelect.innerHTML = `<option value="">Pick…</option>` +
+              comparators.map(cmp =>
+                `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${cmp === "==" ? "equals (==)" : "not equals (!=)"}</option>`
+              ).join('');
+            compSelect.value = node.data.comparator || "";
+            compSelect.onchange = () => {
+              node.data.comparator = compSelect.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              renderEditor(node);
+            };
+            el.appendChild(compSelect);
 
-                // Mode value multi-select
-                if (node.data.comparator) {
-                    const valueLabel = document.createElement("label");
-                    valueLabel.textContent = "Value";
-                    valueLabel.style.display = "block";
-                    el.appendChild(valueLabel);
+            // Mode value multi-select
+            if (node.data.comparator) {
+                const valueLabel = document.createElement("label");
+                valueLabel.textContent = "Value";
+                valueLabel.style.display = "block";
+                el.appendChild(valueLabel);
 
-                    const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
-                    const modeSelect = document.createElement("select");
-                    modeSelect.multiple = true;
-                    modeSelect.size = Math.min(7, allModes.length);
-                    modeSelect.style.display = "block";
-                    modeSelect.style.marginBottom = "12px";
+                const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
+                const modeSelect = document.createElement("select");
+                modeSelect.multiple = true;
+                modeSelect.size = Math.min(7, allModes.length);
+                modeSelect.style.display = "block";
+                modeSelect.style.marginBottom = "12px";
 
-                    if (!Array.isArray(node.data.value)) {
-                        if (typeof node.data.value === "string" && node.data.value) {
-                          node.data.value = [node.data.value];
-                        } else {
-                          node.data.value = [];
-                        }
-                    }
-                    modeSelect.innerHTML = allModes.map(mode =>
-                      `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
-                    ).join('');
-
-                    if (node.data.value.length === 0 && allModes.length > 0) {
-                      node.data.value = [allModes[0].name];
-                      Array.from(modeSelect.options)[0].selected = true;
-                      editor.updateNodeDataFromId(node.id, node.data);
-                    }
-
-                    modeSelect.onchange = () => {
-                      node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                      editor.updateNodeDataFromId(node.id, node.data);
-                      editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                    };
-                    el.appendChild(modeSelect);
+                if (!Array.isArray(node.data.value)) {
+                  if (typeof node.data.value === "string" && node.data.value) {
+                    node.data.value = [node.data.value];
+                  } else {
+                    node.data.value = [];
+                  }
                 }
-                return;
+                modeSelect.innerHTML = allModes.map(mode =>
+                  `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
+                ).join('');
+
+                if (node.data.value.length === 0 && allModes.length > 0) {
+                  node.data.value = [allModes[0].name];
+                  Array.from(modeSelect.options)[0].selected = true;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                }
+
+                modeSelect.onchange = () => {
+                  node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                };
+                el.appendChild(modeSelect);
+              }
+              return;
             }
 
             // --- Regular Device ---
@@ -1944,6 +1942,7 @@
                   el.appendChild(valueField);
               }
           }
+          return;
         }
 
         if (node.name === "delay") {
@@ -1965,7 +1964,6 @@
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
           };
           el.appendChild(msInput);
-
           return;
         }
 
@@ -2030,54 +2028,6 @@
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
           };
           el.appendChild(valInput);
-
-          // Variable Insert Button
-          const plusVarBtn = document.createElement("button");
-          plusVarBtn.type = "button";
-          plusVarBtn.textContent = "+Var";
-          plusVarBtn.title = "Insert a variable into this field";
-          plusVarBtn.style.marginLeft = "6px";
-          plusVarBtn.style.padding = "2px 8px";
-          plusVarBtn.style.fontSize = "13px";
-          plusVarBtn.style.borderRadius = "7px";
-          plusVarBtn.style.background = "#334bff";
-          plusVarBtn.style.color = "#fff";
-          plusVarBtn.onclick = function() {
-            if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-            if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
-            const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
-            if (!allVars.length) return alert("No variables defined!");
-            if (allVars.length === 1) {
-              let insert = `$(${allVars[0].name})`;
-              let start = valInput.selectionStart, end = valInput.selectionEnd;
-              let oldVal = valInput.value;
-              valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-              valInput.focus();
-              valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-              valInput.dispatchEvent(new Event('input'));
-              return;
-            }
-            const sel = document.createElement("select");
-            sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
-            sel.onchange = () => {
-              let insert = `$(${sel.value})`;
-              let start = valInput.selectionStart, end = valInput.selectionEnd;
-              let oldVal = valInput.value;
-              valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-              valInput.focus();
-              valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-              valInput.dispatchEvent(new Event('input'));
-              document.body.removeChild(sel);
-            };
-            sel.style.position = "absolute";
-            let r = plusVarBtn.getBoundingClientRect();
-            sel.style.left = r.left + "px";
-            sel.style.top = (r.bottom + 2) + "px";
-            sel.style.zIndex = 9999;
-            document.body.appendChild(sel);
-            sel.focus();
-          };
-          el.appendChild(plusVarBtn);
 
           // Preview of result
           const previewChip = document.createElement("div");
@@ -2673,135 +2623,102 @@
           if (filteredDevices.length === 0) filteredDevices = devices;
           filteredDevices.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
           const devSelect = document.createElement("select");
-            devSelect.multiple = true;
-            devSelect.size = Math.min(8, filteredDevices.length); // Show up to 8
+          devSelect.multiple = true;
+          devSelect.size = Math.min(8, filteredDevices.length); // Show up to 8
 
-            // Support both array and legacy string for selected devices
-            const selectedIds = Array.isArray(node.data.targetDeviceId)
-              ? node.data.targetDeviceId
-              : node.data.targetDeviceId
-                ? [node.data.targetDeviceId]
-                : [];
+          // Support both array and legacy string for selected devices
+          const selectedIds = Array.isArray(node.data.targetDeviceId)
+            ? node.data.targetDeviceId
+            : node.data.targetDeviceId
+              ? [node.data.targetDeviceId]
+              : [];
 
-            filteredDevices.forEach(d => {
-              const opt = document.createElement("option");
-              opt.value = d.id;
-              opt.textContent = d.label;
-              if (selectedIds.includes(d.id)) opt.selected = true;
-              devSelect.appendChild(opt);
-            });
+          filteredDevices.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.label;
+            if (selectedIds.includes(d.id)) opt.selected = true;
+            devSelect.appendChild(opt);
+          });
 
-            devSelect.onchange = () => {
-              // Save as array (supports multiple)
-              node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              markFlowNeedsSave(true);
-            };
-            el.appendChild(devSelect);
-
-          // --- Message input ---
-          const msgLabel = document.createElement("label");
-          msgLabel.textContent = "Message";
-          el.appendChild(msgLabel);
-
-          const msgInput = document.createElement("input");
-          msgInput.type = "text";
-          msgInput.placeholder = "Enter message";
-          msgInput.value = node.data.message || "";
-          msgInput.style.width = "98%";
-          msgInput.oninput = () => {
-            node.data.message = msgInput.value;
+          devSelect.onchange = () => {
+            // Save as array (supports multiple)
+            node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             markFlowNeedsSave(true);
           };
+          el.appendChild(devSelect);
+
+          // Message label & inpu
+          const msgLabel = document.createElement("label");
+          msgLabel.textContent = "Message";
+          msgLabel.style.display = "block";
+          el.appendChild(msgLabel);
+
+          const msgInput = document.createElement("input");
+          msgInput.type = "text";
+          msgInput.style.width = "100%";
+          msgInput.style.marginBottom = "8px";
+          msgInput.placeholder = "";
+          msgInput.value = node.data.message || "";
+          msgInput.oninput = () => {
+            node.data.message = msgInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
           el.appendChild(msgInput);
 
-          const plusVarBtn = document.createElement("button");
-          plusVarBtn.type = "button";
-          plusVarBtn.textContent = "+Var";
-          plusVarBtn.title = "Insert a variable into this field";
-          plusVarBtn.style.marginLeft = "6px";
-          plusVarBtn.style.padding = "2px 8px";
-          plusVarBtn.style.fontSize = "13px";
-          plusVarBtn.style.borderRadius = "7px";
-          plusVarBtn.style.background = "#334bff";
-          plusVarBtn.style.color = "#fff";
-          plusVarBtn.onclick = function() {
-            if (window.flowVars && window.flowVars.updateCtx) window.flowVars.updateCtx();
-            if (!window.flowVars) return alert("FE_flowVars.js not loaded!");
-            const allVars = (window.flowVars.getVars ? window.flowVars.getVars() : []);
-            if (!allVars.length) return alert("No variables defined!");
+         const wildcardMsg = document.createElement("div");
+         wildcardMsg.style.fontSize = "13px";
+         wildcardMsg.style.marginTop = "7px";
+         wildcardMsg.style.color = "#b7cdfd";
+         wildcardMsg.innerHTML =
+          '<b><u>Wildcards:</b></u><br>' +
+          '<b>{device}</b> -	Event device name/label<br>' +
+          '<b>{value}</b> -	Event value<br>' +
+          '<b>{text}</b> -	Event description or text<br>' +
+          '<b>{time24}</b> -	Event time (24-hour, e.g. 14:32)<br>' +
+          '<b>{time12}</b> -	Event time (12-hour, e.g. 3:00 pm)<br>' +
+          '<b>{date}</b> -	Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
+          '<b>{now}</b> -	Current system date & time (now)<br>' +
+          '<span style="color:#eee;">Example: The {device} is {value} at {time12} on {date}</span>';
+        el.appendChild(wildcardMsg);
 
-            if (allVars.length === 1) {
-              let insert = `$(${allVars[0].name})`;
-              let start = valInput.selectionStart, end = valInput.selectionEnd;
-              let oldVal = valInput.value;
-              valInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-              valInput.focus();
-              valInput.selectionStart = valInput.selectionEnd = start + insert.length;
-              valInput.dispatchEvent(new Event('input'));
-              return;
-            }
-            const sel = document.createElement("select");
-            sel.innerHTML = allVars.map(v => `<option value="${v.name}">${v.name}</option>`).join('');
-            sel.onchange = () => {
-              let insert = `$(${sel.value})`;
-              let start = msgInput.selectionStart, end = msgInput.selectionEnd;
-              let oldVal = msgInput.value;
-              msgInput.value = oldVal.slice(0, start) + insert + oldVal.slice(end);
-              msgInput.focus();
-              msgInput.selectionStart = msgInput.selectionEnd = start + insert.length;
-              msgInput.dispatchEvent(new Event('input'));
-              document.body.removeChild(sel);
-              markFlowNeedsSave(true);
-            };
-            sel.style.position = "absolute";
-            let r = plusVarBtn.getBoundingClientRect();
-            sel.style.left = r.left + "px";
-            sel.style.top = (r.bottom+2) + "px";
-            sel.style.zIndex = 9999;
-            document.body.appendChild(sel);
-            sel.focus();
-          };
-          el.appendChild(plusVarBtn);
+          return;
+        }
     
-          const previewChip = document.createElement("div");
-          previewChip.className = "current-value";
-          previewChip.style.marginLeft = "2px";
-          previewChip.style.fontSize = "13px";
-          previewChip.style.fontWeight = "bold";
-          previewChip.style.cursor = "pointer";
-          previewChip.title = "Preview of value/expression";
-          el.appendChild(previewChip);
-          function updatePreview() {
-            if (window.flowVars && window.flowVars.evaluate) {
-              try {
-                const v = msgInput.value;
-                if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
-                const result = window.flowVars.evaluate(v);
-                let color = "#b7ffac";
-                if (typeof result === "number") color = "#3af";
-                else if (typeof result === "boolean") color = "#0c0";
-                else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-                previewChip.textContent = "= " + result;
-                previewChip.style.color = color;
-                previewChip.title = (typeof result) + ": " + result;
-              } catch(e) {
-                previewChip.textContent = "ERR: " + e.message;
-                previewChip.style.color = "#f33";
-                previewChip.title = e.message;
-              }
+        const previewChip = document.createElement("div");
+        previewChip.className = "current-value";
+        previewChip.style.marginLeft = "2px";
+        previewChip.style.fontSize = "13px";
+        previewChip.style.fontWeight = "bold";
+        previewChip.style.cursor = "pointer";
+        previewChip.title = "Preview of value/expression";
+        el.appendChild(previewChip);
+        function updatePreview() {
+          if (window.flowVars && window.flowVars.evaluate) {
+            try {
+              const v = msgInput.value;
+              if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
+              const result = window.flowVars.evaluate(v);
+              let color = "#b7ffac";
+              if (typeof result === "number") color = "#3af";
+              else if (typeof result === "boolean") color = "#0c0";
+              else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
+              previewChip.textContent = "= " + result;
+              previewChip.style.color = color;
+              previewChip.title = (typeof result) + ": " + result;
+            } catch(e) {
+              previewChip.textContent = "ERR: " + e.message;
+              previewChip.style.color = "#f33";
+              previewChip.title = e.message;
             }
           }
-          msgInput.addEventListener("input", updatePreview);
-          updatePreview();
-          
-                return;
-              }
-            }
-
+        }
+        return;
+      }
+      
       const editor = new Drawflow(document.getElementById("drawflow"));
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
