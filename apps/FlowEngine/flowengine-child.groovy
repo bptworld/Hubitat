@@ -308,14 +308,21 @@ def subscribeToTriggers() {
     unsubscribe()
     unschedule() // Important: clear all previous schedules
     if (!state.flow) return
+
     state.flow.drawflow?.Home?.data.each { id, node ->
-        if (node.name == "eventTrigger") {
-            if (node.data.deviceId == "__time__") {
+        if (node.name == "eventTrigger" || node.name == "schedule") {
+            if (node.name == "schedule") {
+                scheduleScheduleNode(id, node)
+                if (logEnable) log.debug "Subscribed Schedule node: $id"
+            }
+            else if (node.data.deviceId == "__time__") {
                 scheduleTimeTrigger(id, node)
-            } else if (node.data.deviceId == "__mode__") {
+            }
+            else if (node.data.deviceId == "__mode__") {
                 if (logEnable) log.debug "Subscribing to location mode changes"
                 getRealDeviceData(devId, "subscribeToTriggers: nodeId=${id}, attr=${attr}")
-            } else {
+            }
+            else {
                 def devIds = []
                 if (node.data.deviceIds instanceof List && node.data.deviceIds) {
                     devIds = node.data.deviceIds
@@ -450,6 +457,58 @@ def scheduleTimeTrigger(nodeId, node) {
                 }
             }
         }
+    }
+}
+
+def scheduleScheduleNode(nodeId, node) {
+    try {
+        // Handle cron if present
+        if (node.data?.cron && node.data.cron.trim()) {
+            schedule(node.data.cron.trim(), {
+                if (logEnable) log.info "Schedule node (cron) fired for nodeId=$nodeId"
+                evaluateNode(nodeId, [name: "schedule", value: "cron"])
+            })
+            if (logEnable) log.debug "Scheduled cron for node $nodeId: ${node.data.cron.trim()}"
+        }
+        // Handle repeatDays + time (multi-select day/time)
+        else if (node.data?.repeatDays && node.data.repeatDays instanceof List && node.data?.time) {
+            node.data.repeatDays.each { dayName ->
+                int dowNum = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].indexOf(dayName)
+                if (dowNum >= 0) {
+                    scheduleDayAndTime(nodeId, node, dowNum)
+                }
+            }
+        }
+        // Handle simple time only (no days)
+        else if (node.data?.time) {
+            def parts = node.data.time.split(":")
+            if (parts.size() == 2) {
+                def hour = parts[0] as int
+                def minute = parts[1] as int
+                schedule("${minute} ${hour} * * *", {
+                    if (logEnable) log.info "Schedule node (simple time) fired for nodeId=$nodeId"
+                    evaluateNode(nodeId, [name: "schedule", value: node.data.time])
+                })
+                if (logEnable) log.debug "Scheduled daily time for node $nodeId: ${node.data.time}"
+            }
+        }
+    } catch (e) {
+        log.error "Failed to schedule Schedule node: ${e}"
+    }
+}
+
+// Helper for scheduling on specific day of week at a given time
+def scheduleDayAndTime(nodeId, node, dowNum) {
+    def parts = node.data?.time?.split(":")
+    if (parts?.size() == 2) {
+        def hour = parts[0] as int
+        def minute = parts[1] as int
+        def cron = "${minute} ${hour} * * ${dowNum}"
+        schedule(cron, {
+            if (logEnable) log.info "Schedule node (repeatDays+time) fired for nodeId=$nodeId"
+            evaluateNode(nodeId, [name: "schedule", value: node.data.time])
+        })
+        if (logEnable) log.debug "Scheduled repeatDay+time for node $nodeId: DOW $dowNum at $hour:$minute"
     }
 }
 
