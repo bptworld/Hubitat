@@ -1322,6 +1322,11 @@ def apiRunFlow() {
     render contentType: "text/plain", data: "Flow received and executed."
 }
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
 def getFormat(type, myText=null, page=null) {
     if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid #000000;box-shadow: 2px 3px #8B8F8F;border-radius: 5px'>${myText}</div>"
 	if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;' />"
