@@ -54,11 +54,6 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			display()
-			
-			section(getFormat("header-green", " Child Apps")) {
-                app(name: "anyOpenApp", appName: "Flow Engine Child", namespace: "BPTWorld", title: "<b>Add a new 'Flow Engine' child</b>", multiple: true)
-			}
-			
 			section(getFormat("header-green", " <b>Device Master List:</b>")) {}
 			section(" Master List", hideable: true, hidden: true) {
 				input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
@@ -71,6 +66,10 @@ def mainPage() {
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
 				paragraph "<hr>"
 				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
+			}
+			
+			section(getFormat("header-green", " Child Apps")) {
+                app(name: "anyOpenApp", appName: "Flow Engine Child", namespace: "BPTWorld", title: "<b>Add a new 'Flow Engine' child</b>", multiple: true)
 			}
 			
 			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
