@@ -131,6 +131,26 @@ mappings {
 	path("/devices")     { action: [GET: "apiGetDevices"] }
 	path("/uploadFile")  { action: [POST: "apiUploadFile"] }
 	path("/getModes")  	 { action: [POST: "exportModesToFile"] }
+	path("/activeFlows") { action: [GET: "apiActiveFlows"] }
+	path("/testChildFlow") { action: [GET: "apiTestChildFlow"] }
+}
+
+def apiTestChildFlow() {
+    def childId = params.childId
+    def flow = params.flow
+    def testValue = params.value ?: "Test Triggered from Editor"
+    if (!childId || !flow) {
+        render contentType: "application/json", data: '{"error":"Missing childId or flow"}'
+        return
+    }
+    def theChild = childApps.find { it.id?.toString() == childId?.toString() }
+    if (!theChild) {
+        render contentType: "application/json", data: '{"error":"Child app not found"}'
+        return
+    }
+    // Pass testValue to the child
+    def result = theChild.runFlow(testValue)
+    render contentType: "application/json", data: '{"result":"Test triggered"}'
 }
 
 def exportModesToFile() {
@@ -212,6 +232,10 @@ void saveFlow(fName, fData) {
 
 def apiGetFile() {
     log.debug "In apiGetFile"
+	childApps.each { child ->
+		log.debug "Child: ${child.label} | flowFile: ${child.settings?.flowFile}"
+	}
+
     def name = params.name
     if (!name) {
         log.debug "In apiGetFile - Missing file name"
@@ -310,6 +334,17 @@ def apiUploadFile() {
         log.error "apiUploadFile error: $e"
         render status: 500, text: "Error: $e"
     }
+}
+
+def apiActiveFlows() {
+    def list = []
+    childApps.each { child ->
+        def flow = child.getFlowFile()
+        if (flow) {
+            list << [child: child.label, flow: flow, appId: child.id]
+        }
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(list)
 }
 
 def logsOff() {
