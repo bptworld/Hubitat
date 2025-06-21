@@ -554,40 +554,95 @@ def handleScheduledTrigger(data) {
     evaluateNode(nodeId, [name: "time", value: timeValue], null, null)
 }
 
+// Utility: Clear tap state after timeout
+void clearTapTracker(devId, attr) {
+    state.tapTracker.remove("${devId}:${attr}")
+}
+
+// Utility: Clear hold state
+void clearHoldTracker(devId, attr) {
+    state.holdTracker.remove("${devId}:${attr}")
+}
+
 def handleEvent(evt) {
-    if(logEnable) {
-		def triggerDevName = evt?.device?.displayName ?: "Unknown Device"
-		log.info "------------------------ In handleEvent ------------------------"
-		log.info "Triggered by ${triggerDevName} ${evt?.name}=${evt?.value}"
-	}
+	// --- Multi-tap/hold detection state ---
+	state.tapTracker = state.tapTracker ?: [:]
+	state.holdTracker = state.holdTracker ?: [:]
+    if (logEnable) {
+        def triggerDevName = evt?.device?.displayName ?: "Unknown Device"
+        log.info "------------------------ In handleEvent ------------------------"
+        log.info "Triggered by ${triggerDevName} ${evt?.name}=${evt?.value}"
+    }
     def triggerNodes = getTriggerNodes(evt)
     if (!triggerNodes) {
         log.warn "No trigger node found for this event."
         return
     }
+
     triggerNodes.each { triggerId, triggerNode ->
-		def eventDeviceId = evt.device?.id?.toString()
-		getRealDeviceData(eventDeviceId, "handleEvent: triggerId=${triggerId}")
+        def eventDeviceId = evt.device?.id?.toString()
+        getRealDeviceData(eventDeviceId, "handleEvent: triggerId=${triggerId}")
         if (!state.device) {
             if (logEnable) log.warn "Skipping trigger for missing device ID: ${triggerNode.data.deviceId}"
             return // Skip this trigger node only
         }
-        def devName = state.device?.displayName ?: "Unknown Device"
-        if (logEnable) log.info "Trigger node matched: Node $triggerId (${devName} - ${evt?.name}=${evt?.value})"
-        def forMin = (triggerNode.data.sustainedMin ?: 0) as Integer
-        def expectedValue = triggerNode.data.value
-        def comparator = triggerNode.data.comparator ?: "=="
-        unschedule("sustainedTriggerHandler")
-        if (forMin > 0) {
-            if (evaluateComparator(evt.value, expectedValue, comparator)) {
-                if (logEnable) log.info "Scheduling sustainedTriggerHandler for node ${triggerId} (${devName}) in ${forMin} min"
-                runIn(forMin * 60, "sustainedTriggerHandler", [data: [triggerId: triggerId, deviceId: evt?.device?.id, attribute: evt?.name, value: evt?.value]])
-                state.sustainedTimers = state.sustainedTimers ?: [:]
-                state.sustainedTimers[triggerId] = [startValue: evt.value, start: now()]
+        def devId = eventDeviceId
+        def attr = evt.name
+        def pattern = triggerNode.data.clickPattern ?: "single"
+
+        // ---- Click Pattern logic ----
+        if (pattern == "single") {
+            evaluateNode(triggerId, evt)
+        } else if (pattern in ["double", "triple"]) {
+            // Multi-tap detection (per device/attr)
+            def key = "${devId}:${attr}"
+            def required = (pattern == "double") ? 2 : 3
+            def now = now()
+            def windowMs = 1200 // Time window (ms) for counting taps (1.2s is typical)
+            def tracker = state.tapTracker[key] ?: [times: []]
+            tracker.times = tracker.times.findAll { now - it < windowMs }
+            tracker.times << now
+            state.tapTracker[key] = tracker
+            if (tracker.times.size() == required) {
+                evaluateNode(triggerId, evt)
+                // Reset tap state for this key
+                state.tapTracker.remove(key)
             } else {
-                if (logEnable) log.info "Event did not match value for sustained trigger, no timer scheduled."
+                // Schedule a cleanup
+                runInMillis(windowMs + 100, "clearTapTracker", [data: [devId: devId, attr: attr]])
             }
+        } else if (pattern == "holdPerSecond" && evt.value == "held") {
+            // For each new second held, fire the node
+            def key = "${devId}:${attr}"
+            def tracker = state.holdTracker[key] ?: [lastSecond: -1, lastEpoch: 0]
+            // Try to get "held" duration from evt if available (Hubitat sends duration in some drivers)
+            def durationSec = 0
+            if (evt.data && evt.data =~ /\d+/) {
+                // Try to parse number from evt.data (may not always be present)
+                def match = (evt.data =~ /\d+/)
+                if (match) durationSec = match[0] as Integer
+            } else if (evt.descriptionText && evt.descriptionText =~ /\d+ sec/) {
+                def match = (evt.descriptionText =~ /(\d+) sec/)
+                if (match) durationSec = match[0][1] as Integer
+            } else {
+                // If no duration info, fallback to "fire once" on held, but don't repeat
+                durationSec = tracker.lastSecond + 1
+            }
+
+            // Only fire for new seconds (to avoid repeats)
+            if (durationSec > tracker.lastSecond) {
+                // Fire once for each new second since last
+                ((tracker.lastSecond + 1)..durationSec).each { _ ->
+                    evaluateNode(triggerId, evt)
+                }
+                tracker.lastSecond = durationSec
+                tracker.lastEpoch = now()
+                state.holdTracker[key] = tracker
+            }
+            // Schedule cleanup
+            runIn(3, "clearHoldTracker", [data: [devId: devId, attr: attr]])
         } else {
+            // Default, just fire
             evaluateNode(triggerId, evt)
         }
     }
@@ -1296,7 +1351,6 @@ def getRealDeviceData(devId, context = null) {
 }
 
 mappings {
-    path("/runFlow") 	{ action: [ POST: "apiRunFlow" ] }
 	path("/setVar") 	{ action: [ POST: "apiSetVar" ] }
 }
 
@@ -1312,14 +1366,29 @@ def apiSetVar() {
     }
 }
 
-def apiRunFlow() {
-    def json = request.JSON
-    if(logEnable) log.info "Received flow for execution: ${json}"
-    // Optionally, store it
-    state.lastRunFlow = json
-    // Now, parse and execute the flow
-    handleEvent(json)
-    render contentType: "text/plain", data: "Flow received and executed."
+def runFlow(reason) {
+	if(logEnable) {
+		log.info "------------------------------------------------------------------------------"
+		log.info "------------------------------------------------------------------------------"
+		log.info "Running flow via Test button. Reason: $reason"
+		log.info "------------------------------------------------------------------------------"
+		log.info "------------------------------------------------------------------------------"
+	}
+    // Fire all event trigger nodes (simulate trigger event)
+    def triggers = flowNodes().findAll { id, node -> node?.name == "eventTrigger" }
+    if(!triggers) {
+        log.warn "No trigger nodes found in flow."
+        return
+    }
+    triggers.each { id, node ->
+        def attr = node.data?.attribute ?: "test"
+        def evt = [name: attr, value: reason, device: [id: node.data?.deviceId ?: "testDevice", displayName: "Test Device"]]
+        evaluateNode(id, evt)
+    }
+}
+
+def getFlowFile() {
+    return settings?.flowFile
 }
 
 def logsOff() {
