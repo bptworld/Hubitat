@@ -201,3 +201,14 @@ button:hover { background: #02c258; }
   from { opacity: 0; transform: scale(.97);}
   to { opacity: 1; transform: scale(1);}
 }
+
+.drawflow-node.replay-path {
+  box-shadow: 0 0 0 4px #ffe46b, 0 2px 10px #000b !important;
+  border-color: #ffe46b !important;
+  /* You can add any effect you want here! */
+}
+
+.drawflow-node.flow-path {
+  box-shadow: 0 0 0 4px #f0e130, 0 2px 10px #000b !important;
+  border-color: #ffe46b !important;
+}
