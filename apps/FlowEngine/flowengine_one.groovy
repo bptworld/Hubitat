@@ -1049,7 +1049,6 @@ def getFormat(type, myText=null, page=null) {
 def installCheck(){
     state.appInstalled = app.getInstallationState() 
     if(state.appInstalled != 'COMPLETE'){
-        display()
         section{paragraph "Please hit 'Done' to install '${app.label}' app "}
     } else {
         //if(logEnable) log.info "App Installed OK"
