@@ -180,7 +180,15 @@ def apiTestFlow() {
 	def fname = json?.flow
 	def nodeId = json?.nodeId
 	def value = (json?.value ?: "Test Triggered").toString().toLowerCase()
-	log.info "[apiTestFlow] params: ${params} | request.JSON: ${request?.JSON} | using: ${fname}, ${nodeId}, ${value}"
+	
+	def scrubbedParams = params.clone()
+	scrubbedParams.remove('access_token')
+	def scrubbedJson = request?.JSON ? request.JSON.clone() : null
+	if (scrubbedJson instanceof Map) {
+		scrubbedJson.remove('access_token')
+	}
+	log.info "[apiTestFlow] params: ${scrubbedParams} | request.JSON: ${scrubbedJson} | using: ${fname}, ${nodeId}, ${value}"
+
     if (!fname || !state.activeFlows[fname]) {
 		log.info "[apiTestFlow] Oh no, I'm in here!"
         render status: 404, data: '{"error":"Flow not found"}'
