@@ -11,7 +11,7 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
-   		"name": "Flow Engine",
+   		"name": "Flow Engine One",
    		"category": "Utilities",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/packageManifest.json",
    		"description": "Visual drag and drop rules engine.",
