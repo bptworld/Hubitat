@@ -88,19 +88,10 @@
     "apps": [
         {
             "id": "7f9f927d-bc2a-4fe6-b12a-fd7d8bee3e46",
-            "name": "Flow Engine Parent",
+            "name": "Flow Engine One",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowengine-parent.groovy",
-            "description": "Parent File",
-            "oauth": true,
-            "required": true
-        },
-        {
-            "id": "414e5892-81f2-4f76-a0c7-914163276fc9",
-            "name": "Flow Engine Child",
-            "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowengine-child.groovy",
-            "description": "Parent File",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/flowengine_one.groovy",
+            "description": "Flow Engine One",
             "oauth": true,
             "required": true
         }
