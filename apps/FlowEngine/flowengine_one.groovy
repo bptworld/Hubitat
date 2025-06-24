@@ -58,7 +58,7 @@ def mainPage() {
 			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
             	paragraph "This app is used to receive flow data from your Flow Engine Editor."
 				paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
-				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots! This will allow anyone to take control of your devices.</b></center>"
+				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
 				paragraph "<hr>"
 				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
