@@ -256,7 +256,7 @@ async function fetchHubitatVarFileContent(fileName) {
         document.getElementById("varsImportOK").onclick = async () => {
           let pick = document.getElementById("varsFileDropdown").value;
           document.body.removeChild(modal);
-          if (!pick) return;
+          if (!pick || pick == 'null') return;
           let txt = await fetchHubitatVarFileContent(pick);
           try {
             let arr = JSON.parse(txt);
