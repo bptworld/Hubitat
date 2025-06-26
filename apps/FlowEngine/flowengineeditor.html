@@ -4303,67 +4303,109 @@
         const fileInput = document.getElementById("bgImageFile");
         const slider = document.getElementById('gridBrightnessSlider');
 
+        // --- Helpers for storage ---
+        function savePrefs(obj) {
+          localStorage.setItem("fe_bg_prefs", JSON.stringify(obj));
+        }
+        function loadPrefs() {
+          try {
+            return JSON.parse(localStorage.getItem("fe_bg_prefs")) || {};
+          } catch(e) { return {}; }
+        }
+
+        // --- Get/set mode and UI ---
         function getCurrentMode() {
           return drawflow.classList.contains("image-bg") ? "image" : "grid";
         }
 
-        function setSliderToCurrent() {
+        function setSliderToCurrent(prefs) {
+          prefs = prefs || loadPrefs();
           if (getCurrentMode() === "grid") {
-            slider.value = localStorage.getItem('grid-brightness') ?? 1;
+            slider.value = prefs.gridBrightness ?? 1;
           } else {
-            slider.value = localStorage.getItem('image-brightness') ?? 1;
+            slider.value = prefs.imageBrightness ?? 1;
           }
         }
 
-        function setBgMode(mode) {
+        function setBgMode(mode, prefs) {
+          prefs = prefs || loadPrefs();
           drawflow.classList.toggle('grid-bg', mode === "grid");
           drawflow.classList.toggle('image-bg', mode === "image");
           fileInput.style.display = (mode === "image") ? "" : "none";
-          setSliderToCurrent();
+          setSliderToCurrent(prefs);
           if (mode === "grid") {
             document.documentElement.style.setProperty('--grid-brightness', slider.value);
           } else {
             document.documentElement.style.setProperty('--image-brightness', slider.value);
+            // restore image if known
+            if (prefs.bgImage && prefs.bgImageType === "file") {
+              img.src = prefs.bgImage;
+            }
           }
+          gridRadio.checked = mode === "grid";
+          imageRadio.checked = mode === "image";
         }
 
+        // --- Apply prefs on load ---
+        let prefs = loadPrefs();
+        setBgMode(prefs.bgMode || "grid", prefs);
+
+        // --- Mode switching ---
         gridRadio.addEventListener('change', function () {
-          if (gridRadio.checked) setBgMode("grid");
+          if (gridRadio.checked) {
+            setBgMode("grid");
+            let p = loadPrefs();
+            p.bgMode = "grid";
+            savePrefs(p);
+          }
         });
         imageRadio.addEventListener('change', function () {
-          if (imageRadio.checked) setBgMode("image");
+          if (imageRadio.checked) {
+            setBgMode("image");
+            let p = loadPrefs();
+            p.bgMode = "image";
+            savePrefs(p);
+          }
         });
 
+        // --- File upload, store as data URL
         fileInput.addEventListener("change", function () {
           const file = fileInput.files[0];
           if (file) {
             const reader = new FileReader();
             reader.onload = function (e) {
               img.src = e.target.result;
+              let p = loadPrefs();
+              p.bgImage = e.target.result;
+              p.bgImageType = "file";
+              savePrefs(p);
             };
             reader.readAsDataURL(file);
           }
         });
 
+        // --- Brightness slider
         slider.addEventListener('input', function () {
           const val = String(Math.min(1, Math.max(0, Number(slider.value))));
+          let p = loadPrefs();
           if (getCurrentMode() === "grid") {
             document.documentElement.style.setProperty('--grid-brightness', val);
-            localStorage.setItem('grid-brightness', val);
+            p.gridBrightness = val;
           } else {
             document.documentElement.style.setProperty('--image-brightness', val);
-            localStorage.setItem('image-brightness', val);
+            p.imageBrightness = val;
           }
+          savePrefs(p);
         });
 
-        // Restore previous brightness for both
-        let lastGrid = localStorage.getItem('grid-brightness');
-        if (lastGrid !== null) document.documentElement.style.setProperty('--grid-brightness', lastGrid);
-        let lastImg = localStorage.getItem('image-brightness');
-        if (lastImg !== null) document.documentElement.style.setProperty('--image-brightness', lastImg);
+        // --- On first load, set brightness from prefs
+        if (prefs.gridBrightness !== undefined) document.documentElement.style.setProperty('--grid-brightness', prefs.gridBrightness);
+        if (prefs.imageBrightness !== undefined) document.documentElement.style.setProperty('--image-brightness', prefs.imageBrightness);
 
-        // Initial mode & slider
-        setBgMode(gridRadio.checked ? "grid" : "image");
+        // --- Restore image if needed
+        if (prefs.bgMode === "image" && prefs.bgImage && prefs.bgImageType === "file") {
+          img.src = prefs.bgImage;
+        }
       });
 
     </script>
