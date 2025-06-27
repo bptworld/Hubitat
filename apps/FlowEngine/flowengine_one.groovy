@@ -779,43 +779,39 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             else if (node.data.deviceId) devIds = [node.data.deviceId]
             def cmd = resolveVars(fname, node.data.command)
             def val = resolveVars(fname, node.data.value)
-            devIds.each { devId ->
-                def device = getDeviceById(devId)
-                if (device && cmd) {
-                    if (val != null && val != "") {
-                        device."${cmd}"(val)
-                    } else {
-                        device."${cmd}"()
-                    }
-                }
-            }
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            return
-
-		case "toggle":
-			flowLog(fname, "In evaluateNode - toggle", "debug")
-			def devIds = []
-			if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
-			else if (node.data.deviceIds) devIds = [node.data.deviceIds]
-			else if (node.data.deviceId) devIds = [node.data.deviceId]
-			devIds.each { devId ->
-				def device = getDeviceById(devId)
-				if (device && device.hasCommand("on") && device.hasCommand("off")) {
-					def currentVal = device.currentValue("switch")
-					if (currentVal == "on") {
-						device.off()
-					} else {
-						device.on()
+				if(cmd =="toggle") {
+					flowLog(fname, "In evaluateNode - toggle", "debug")
+					devIds.each { devId ->
+						def device = getDeviceById(devId)
+						if (device && device.hasCommand("on") && device.hasCommand("off")) {
+							def currentVal = device.currentValue("switch")
+							if (currentVal == "on") {
+								device.off()
+							} else {
+								device.on()
+							}
+						} else {
+							flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
+						}
+					}
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
 					}
 				} else {
-					flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
-				}
-			}
-			node.outputs?.output_1?.connections?.each { conn ->
-				evaluateNode(fname, conn.node, evt, null, visited)
-			}
+					devIds.each { devId ->
+						def device = getDeviceById(devId)
+						if (device && cmd) {
+							if (val != null && val != "") {
+								device."${cmd}"(val)
+							} else {
+								device."${cmd}"()
+							}
+						}
+					}
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}		
 			return
 
         case "notification":
