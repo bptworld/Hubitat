@@ -249,3 +249,54 @@ button:hover { background: #02c258; }
 #drawflow.image-bg::before {
   display: none !important; /* Hide grid if image is on */
 }
+
+/* --- Ensure Drawflow input/output dots show up --- */
+.drawflow .drawflow-node .inputs,
+.drawflow .drawflow-node .outputs {
+  width: 20px !important;
+  min-width: 20px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 3;
+}
+
+.drawflow .drawflow-node .input,
+.drawflow .drawflow-node .output {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50%;
+  border: 2px solid #000 !important;
+  margin: 10px 0 10px 0 !important; /* was 6 6 0 */
+  cursor: crosshair;
+  box-shadow: 0 1px 4px #0005;
+  display: block;
+  background: #fc9d2e !important;  /* orange for output */
+}
+.drawflow .drawflow-node .input {
+  background: #90cdf4 !important;   /* blue for input */
+  left: -23px !important;    /* was -14px */
+  position: relative;
+}
+
+.drawflow .drawflow-node .output {
+  background: #fc9d2e !important;  /* orange for output */
+  right: -23px !important;    /* was -14px */
+  position: relative;
+}
+
+/* TOP output: If multiple outputs, first child = green */
+.drawflow .drawflow-node .outputs .output:first-child {
+  background: #27ae60 !important; /* green */
+}
+
+/* BOTTOM output: If multiple outputs, last child = red */
+.drawflow .drawflow-node .outputs .output:last-child {
+  background: #e6462d !important; /* red */
+}
+
+/* Only one output: both first and last, so override to green! */
+.drawflow .drawflow-node .outputs .output:first-child:last-child {
+  background: #27ae60 !important; /* green */
+}
