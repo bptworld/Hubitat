@@ -13,30 +13,32 @@
   <div id="controls">
     <div style="margin-bottom:5px;">
       <b>Flow Engine Editor</b> <small>- Ver. 1.0.0</small><br>
-      <input id="hubitatToken" placeholder="Token" style="width:100px; margin-left:6px;">
-      <input id="hubitatAppId" placeholder="App ID" style="width:100px; margin-left:6px;">
+      <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
+      <input id="hubitatAppId" placeholder="App ID" style="width:75px; margin-left:6px;">
       <button id="loadDevices" title="Load all devices from Hubitat">Load Devices</button>
       <button id="loadFlowFromHubitatDropdown" title="Load a saved flow from Hubitat">Load Flow</button>
       <select id="hubitatFileDropdown" style="width:260px;display:none;"></select>
       <button id="sendFlow" title="Save current flow to Hubitat">Save Flow</button>
       <b> | </b>
-      <input id="flowName" placeholder="Flow Name" style="width:250px; font-weight:bold; font-size:16px;">
+      <input id="flowName" placeholder="Flow Name" style="width:200px; font-weight:bold; font-size:16px;">
       <b> | </b>
       <button id="newFlow" title="Start a new flow from scratch">Start New Flow</button>
       <button id="refreshAllTiles" title="Refresh all node tiles">Refresh Tiles</button>
       <b> | </b>
-      <button id="undoBtn" title="Undo last change" style="margin-left:8px;">Undo</button>
-      <button id="redoBtn" title="Redo" style="margin-left:3px;">Redo</button>
+      <button id="undoBtn" title="Undo last change">Undo</button>
+      <button id="redoBtn" title="Redo">Redo</button>
       <b> | </b>
+      <button id="screenshotFlowBtn">Screenshot Flow</button>
+      <button id="exportAnonFlow" title="Export flow for sharing">Export Flow</button>
     </div>
     <div style="margin-bottom:5px;">
       <button id="bgImageBtn" type="button">Select Background Image</button>
       <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
       <b> | </b>
-      <label for="gridBrightnessSlider" style="margin-right:10px;">Background Brightness</label>
+      <label for="gridBrightnessSlider">Background Brightness</label>
       <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
       <b> | </b>
-      <label style="margin-left:16px; user-select:none; font-size: 15px;">
+      <label style="margin-left:5px; user-select:none;">
         <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
         Snap to grid
       </label>
@@ -94,6 +96,7 @@
     </div>
   </div>
   <script src="FE_drawflow-js.min.js"></script>
+  <script src="FE_html2canvas.min.js"></script>
   <script>
     window.editor = null;
     // --- Node placement tracking ---
@@ -4545,6 +4548,62 @@
       document.getElementById('gridBrightnessSlider').addEventListener('input', function(e) {
         document.getElementById('drawflow-bg-image').style.opacity = e.target.value;
       });
+
+      //*****************************************************
+      //  Export a Flow
+      document.getElementById("exportAnonFlow").onclick = function() {
+        if (!editor || !editor.export) return;
+        let flow = editor.export();
+        // Strip device IDs and labels in all nodes
+        if (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data) {
+          Object.values(flow.drawflow.Home.data).forEach(node => {
+            if (node.data) {
+              // Blank out device references
+              node.data.deviceId = "";
+              node.data.deviceIds = [];
+              node.data.deviceLabel = "";
+            }
+          });
+        }
+        // Download as JSON
+        let blob = new Blob([JSON.stringify(flow, null, 2)], {type: "application/json"});
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = (document.getElementById("flowName").value || "flow") + "_anonymized.json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+
+      document.getElementById("screenshotFlowBtn").onclick = function() {
+        const flowArea = document.getElementById("drawflow");
+        if (!flowArea) return alert("Flow area not found!");
+
+        // Hide the background image (if you want screenshot only grid/nodes)
+        const bgImg = document.getElementById("drawflow-bg-image");
+        let prevDisplay = "";
+        if (bgImg) {
+          prevDisplay = bgImg.style.display;
+          bgImg.style.display = "none";
+        }
+
+        // Wait a tick for hiding (optional)
+        setTimeout(() => {
+          html2canvas(flowArea, {
+            backgroundColor: null, // keeps transparency if any
+            useCORS: true
+          }).then(canvas => {
+            // Restore background image display
+            if (bgImg) bgImg.style.display = prevDisplay;
+
+            // Download as PNG
+            const link = document.createElement("a");
+            link.download = "flow_screenshot.png";
+            link.href = canvas.toDataURL();
+            link.click();
+          });
+        }, 50);
+      };
 
     </script>
 
