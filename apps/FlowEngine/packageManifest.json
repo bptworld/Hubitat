@@ -37,6 +37,14 @@
             "required": true
         },
         {
+            "id": "499510b1-3e00-4abf-900e-2cf479392f91",
+            "name": "FE_html2canvas.min.js",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_html2canvas.min.js",
+            "description": "Screenshot File",
+            "required": true
+        },
+        {
             "id": "d8eead19-7efd-467e-9004-4f9ec66cb7ba",
             "name": "FE_drawflow-extra.css",
             "namespace": "BPTWorld",
