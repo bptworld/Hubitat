@@ -29,20 +29,19 @@
       <button id="redoBtn" title="Redo" style="margin-left:3px;">Redo</button>
       <b> | </b>
     </div>
-    <div>
-      <label><input type="radio" name="bgMode" value="grid" id="bgModeGrid" checked> Grid</label>
-      <label style="margin-left:16px;"><input type="radio" name="bgMode" value="image" id="bgModeImage"> Image</label>
-      <input type="file" id="bgImageFile" accept="image/*" style="margin-left:10px; display:none;">
-        <b> | </b>
-      <label for="gridBrightnessSlider" style="margin-right:10px;">Grid Brightness</label>
+    <div style="margin-bottom:5px;">
+      <button id="bgImageBtn" type="button">Select Background Image</button>
+      <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
+      <b> | </b>
+      <label for="gridBrightnessSlider" style="margin-right:10px;">Background Brightness</label>
       <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
       <b> | </b>
       <label style="margin-left:16px; user-select:none; font-size: 15px;">
         <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
-      Snap to grid
+        Snap to grid
       </label>
     </div>
-    <div>
+    <div style="margin-bottom:5px;">
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
       <button id="addSchedule" title="Add a Schedule node">Add Schedule</button>
       <button id="addDevice" title="Add an Action (Device) node">Add Action</button>
@@ -63,8 +62,7 @@
   </div>
   <div id="main">
     <div id="drawflow">
-      <img id="drawflow-bg-image" src="">
-      <div id="drawflow-bottomline"></div>
+      <img id="drawflow-bg-image" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; pointer-events:none;">
     </div>
     <div id="editor">
       <div id="flowTestStatus" style="margin: 12px 0;"></div>
@@ -4240,87 +4238,54 @@
       function highlightFlowPathDelayed(run, delayMs = 100) {
         setTimeout(() => highlightFlowPath(run), delayMs);
       }
-
+  
       document.addEventListener("DOMContentLoaded", function () {
         const drawflow = document.getElementById("drawflow");
         const img = document.getElementById("drawflow-bg-image");
-        const gridRadio = document.getElementById("bgModeGrid");
-        const imageRadio = document.getElementById("bgModeImage");
         const fileInput = document.getElementById("bgImageFile");
         const slider = document.getElementById('gridBrightnessSlider');
+        const bgImageBtn = document.getElementById('bgImageBtn');
+        const snapToGridToggle = document.getElementById('snapToGridToggle');
 
-        // --- Helpers for storage ---
+        // --- Open file picker on button click
+        bgImageBtn.onclick = function() {
+          fileInput.click();
+        };
+
+        // --- Storage helpers ---
         function savePrefs(obj) {
           localStorage.setItem("fe_bg_prefs", JSON.stringify(obj));
         }
         function loadPrefs() {
           try {
             return JSON.parse(localStorage.getItem("fe_bg_prefs")) || {};
-          } catch(e) { return {}; }
+          } catch (e) { return {}; }
         }
 
-        // --- Get/set mode and UI ---
-        function getCurrentMode() {
-          return drawflow.classList.contains("image-bg") ? "image" : "grid";
-        }
-
-        function setSliderToCurrent(prefs) {
-          prefs = prefs || loadPrefs();
-          if (getCurrentMode() === "grid") {
-            slider.value = prefs.gridBrightness ?? 1;
-          } else {
-            slider.value = prefs.imageBrightness ?? 1;
-          }
-        }
-
-        function setBgMode(mode, prefs) {
-          prefs = prefs || loadPrefs();
-          drawflow.classList.toggle('grid-bg', mode === "grid");
-          drawflow.classList.toggle('image-bg', mode === "image");
-          fileInput.style.display = (mode === "image") ? "" : "none";
-          setSliderToCurrent(prefs);
-          if (mode === "grid") {
-            document.documentElement.style.setProperty('--grid-brightness', slider.value);
-          } else {
-            document.documentElement.style.setProperty('--image-brightness', slider.value);
-            // restore image if known
-            if (prefs.bgImage && prefs.bgImageType === "file") {
-              img.src = prefs.bgImage;
-            }
-          }
-          gridRadio.checked = mode === "grid";
-          imageRadio.checked = mode === "image";
-        }
-
-        // --- Apply prefs on load ---
+        // --- Restore settings from storage
         let prefs = loadPrefs();
-        setBgMode(prefs.bgMode || "grid", prefs);
+        if (prefs.bgImage && prefs.bgImageType === "file") {
+          img.src = prefs.bgImage;
+          drawflow.classList.add('image-bg');
+          img.style.display = "";
+        }
+        if (prefs.imageBrightness) {
+          img.style.opacity = prefs.imageBrightness;
+          slider.value = prefs.imageBrightness;
+        }
+        if (prefs.snapToGrid !== undefined) {
+          snapToGridToggle.checked = !!prefs.snapToGrid;
+        }
 
-        // --- Mode switching ---
-        gridRadio.addEventListener('change', function () {
-          if (gridRadio.checked) {
-            setBgMode("grid");
-            let p = loadPrefs();
-            p.bgMode = "grid";
-            savePrefs(p);
-          }
-        });
-        imageRadio.addEventListener('change', function () {
-          if (imageRadio.checked) {
-            setBgMode("image");
-            let p = loadPrefs();
-            p.bgMode = "image";
-            savePrefs(p);
-          }
-        });
-
-        // --- File upload, store as data URL
+        // --- File picker: load and display image
         fileInput.addEventListener("change", function () {
           const file = fileInput.files[0];
           if (file) {
             const reader = new FileReader();
             reader.onload = function (e) {
               img.src = e.target.result;
+              drawflow.classList.add('image-bg');
+              img.style.display = "";
               let p = loadPrefs();
               p.bgImage = e.target.result;
               p.bgImageType = "file";
@@ -4333,25 +4298,18 @@
         // --- Brightness slider
         slider.addEventListener('input', function () {
           const val = String(Math.min(1, Math.max(0, Number(slider.value))));
+          img.style.opacity = val;
           let p = loadPrefs();
-          if (getCurrentMode() === "grid") {
-            document.documentElement.style.setProperty('--grid-brightness', val);
-            p.gridBrightness = val;
-          } else {
-            document.documentElement.style.setProperty('--image-brightness', val);
-            p.imageBrightness = val;
-          }
+          p.imageBrightness = val;
           savePrefs(p);
         });
 
-        // --- On first load, set brightness from prefs
-        if (prefs.gridBrightness !== undefined) document.documentElement.style.setProperty('--grid-brightness', prefs.gridBrightness);
-        if (prefs.imageBrightness !== undefined) document.documentElement.style.setProperty('--image-brightness', prefs.imageBrightness);
-
-        // --- Restore image if needed
-        if (prefs.bgMode === "image" && prefs.bgImage && prefs.bgImageType === "file") {
-          img.src = prefs.bgImage;
-        }
+        // --- Snap to grid: remember setting
+        snapToGridToggle.addEventListener('change', function () {
+          let p = loadPrefs();
+          p.snapToGrid = snapToGridToggle.checked;
+          savePrefs(p);
+        });
       });
 
       // Full PATCH: prevent fetch error AND popup - Thanks to WarlockWeary
@@ -4443,7 +4401,7 @@
               node.outputs = {};
               fix = true;
             }
-          } else if (t === 'comment') {
+          } else if (t === 'donothing') {
             // 0 input, 0 outputs
             if (Object.keys(node.inputs).length !== 0) {
               node.inputs = {};
@@ -4472,6 +4430,28 @@
         }
       }
 
+      document.getElementById('bgImageBtn').onclick = function() {
+        document.getElementById('bgImageFile').click();
+      };
+
+      document.getElementById('bgImageFile').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            const img = document.getElementById('drawflow-bg-image');
+            img.src = evt.target.result;
+            img.style.display = '';
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      document.getElementById('gridBrightnessSlider').addEventListener('input', function(e) {
+        document.getElementById('drawflow-bg-image').style.opacity = e.target.value;
+      });
+
     </script>
+
 </body>
 </html>
