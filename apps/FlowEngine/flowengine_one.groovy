@@ -74,10 +74,13 @@ def mainPage() {
 			
 			section(getFormat("header-green", " Per-Flow Logging")) {
 				if (settings?.flowFiles) {
-					def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
-					input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
-					if (perFlowLogEnabled) {
-						paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
+					input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+					if(logEnable) {
+						def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
+						input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
+						if (perFlowLogEnabled) {
+							paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
+						}
 					}
 				} else {
 					paragraph "Select at least one Flow JSON file to enable per-flow logging."
@@ -371,14 +374,16 @@ def apiActiveFlows() {
 }
 
 def flowLog(fname, msg, level = "info") {
-    if (settings?.perFlowLogEnabled && !(settings.perFlowLogEnabled.contains(fname))) return
-    def prefix = "[${fname}]"
-    switch(level) {
-        case "warn":  log.warn "${prefix} ${msg}"; break
-        case "error": log.error "${prefix} ${msg}"; break
-        case "debug": log.debug "${prefix} ${msg}"; break
-        default:      log.info "${prefix} ${msg}"
-    }
+	if(logEnable) {
+		if (settings?.perFlowLogEnabled && !(settings.perFlowLogEnabled.contains(fname))) return
+		def prefix = "[${fname}]"
+		switch(level) {
+			case "warn":  log.warn "${prefix} ${msg}"; break
+			case "error": log.error "${prefix} ${msg}"; break
+			case "debug": log.debug "${prefix} ${msg}"; break
+			default:      log.info "${prefix} ${msg}"
+		}
+	}
 }
 
 def loadAndStartFlow(fname) {
