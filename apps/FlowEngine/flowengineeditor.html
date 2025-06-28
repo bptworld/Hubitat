@@ -4598,7 +4598,7 @@
 
             // Download as PNG
             const link = document.createElement("a");
-            link.download = "flow_screenshot.png";
+            link.download = (document.getElementById("flowName").value || "flow") + "_screenshot.png";
             link.href = canvas.toDataURL();
             link.click();
           });
