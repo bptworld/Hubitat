@@ -1320,8 +1320,103 @@
               if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
             };
             pickerDiv.appendChild(cmdSelect);
-          }
 
+            // --- Value Picker ---
+            if (node.data.command) {
+              console.log("Building Value picker, command:", node.data.command, "attribute:", node.data.attribute);
+              // Decide if we need a dropdown, color picker, or plain text
+              let knownVals = [];
+              if (node.data.attribute && ATTRIBUTE_KNOWN_VALUES[node.data.attribute]) {
+                knownVals = ATTRIBUTE_KNOWN_VALUES[node.data.attribute];
+              }
+
+              // setLevel, setTemperature, setVolume, etc: numeric slider
+              if (["setLevel", "setTemperature", "setVolume", "setPosition", "setHue", "setSaturation", "setSpeed"].includes(node.data.command)) {
+                const valueLabel = document.createElement("label");
+                valueLabel.textContent = "Value";
+                valueLabel.style.display = "block";
+                pickerDiv.appendChild(valueLabel);
+
+                const valueInput = document.createElement("input");
+                valueInput.type = "number";
+                valueInput.style.display = "block";
+                valueInput.style.marginBottom = "12px";
+                valueInput.value = node.data.value || "";
+                valueInput.oninput = () => {
+                  node.data.value = valueInput.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                pickerDiv.appendChild(valueInput);
+              }
+              // setColor: color picker
+              else if (node.data.command === "setColor") {
+                const valueLabel = document.createElement("label");
+                valueLabel.textContent = "Value (color)";
+                valueLabel.style.display = "block";
+                pickerDiv.appendChild(valueLabel);
+
+                const valueInput = document.createElement("input");
+                valueInput.type = "color";
+                valueInput.style.display = "block";
+                valueInput.style.marginBottom = "12px";
+                valueInput.value = node.data.value || "#ffffff";
+                valueInput.oninput = () => {
+                  node.data.value = valueInput.value;
+                  node.data.color = valueInput.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                pickerDiv.appendChild(valueInput);
+              }
+              // Known value options (like "on", "off", etc)
+              else if (knownVals.length > 0) {
+                const valueLabel = document.createElement("label");
+                valueLabel.textContent = "Value";
+                valueLabel.style.display = "block";
+                pickerDiv.appendChild(valueLabel);
+
+                const valueSelect = document.createElement("select");
+                valueSelect.style.display = "block";
+                valueSelect.style.marginBottom = "12px";
+                valueSelect.innerHTML =
+                  `<option value="">(none)</option>` +
+                  knownVals.map(v =>
+                    `<option value="${v}" ${node.data.value == v ? "selected" : ""}>${v}</option>`
+                  ).join('');
+                valueSelect.value = node.data.value || "";
+                valueSelect.onchange = () => {
+                  node.data.value = valueSelect.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                pickerDiv.appendChild(valueSelect);
+              }
+              // Fallback: plain text
+              else {
+                const valueLabel = document.createElement("label");
+                valueLabel.textContent = "Value";
+                valueLabel.style.display = "block";
+                pickerDiv.appendChild(valueLabel);
+
+                const valueInput = document.createElement("input");
+                valueInput.type = "text";
+                valueInput.style.display = "block";
+                valueInput.style.marginBottom = "12px";
+                valueInput.value = node.data.value || "";
+                valueInput.oninput = () => {
+                  node.data.value = valueInput.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                pickerDiv.appendChild(valueInput);
+              }
+            }
+          }
           // Initial build
           buildPickers();
 
