@@ -42,6 +42,7 @@
         <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
         Snap to grid
       </label>
+      <button id="tidyFlowBtn" class="btn">Tidy Flow</button>
     </div>
     <div style="margin-bottom:5px;">
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
@@ -94,6 +95,11 @@
         Logs:<br>
       </div>
     </div>
+  </div>
+  <div id="minimap-container"
+    style="position:fixed; bottom:24px; right:28px; width:240px; height:140px; background:#181d20cc; border-radius:12px; z-index:9999; box-shadow:0 2px 10px #0008; border:2px solid #444; overflow:hidden; cursor:pointer; display:none;">
+    <canvas id="minimap-canvas" width="240" height="140"></canvas>
+    <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">minimap</div>
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
@@ -4606,6 +4612,281 @@
       };
 
     </script>
+    <script>
+      window.addEventListener('DOMContentLoaded', function() {
+        const W = 240, H = 140;
+        const MINIMAP_ID = 'minimap-container';
+        const CANVAS_ID = 'minimap-canvas';
+        const STORAGE_KEY = "fe_minimap_pos";
+
+        // Show minimap on load
+        const container = document.getElementById(MINIMAP_ID);
+        container.style.display = '';
+
+        // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
+        let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+        // Load position from storage (if any)
+        function restoreMinimapPosition() {
+          try {
+            const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (pos && typeof pos.left === "number" && typeof pos.top === "number") {
+              container.style.left = pos.left + "px";
+              container.style.top = pos.top + "px";
+              container.style.right = "auto";
+              container.style.bottom = "auto";
+            } else {
+              container.style.right = "28px";
+              container.style.bottom = "24px";
+            }
+          } catch(e) {
+            // fallback
+            container.style.right = "28px";
+            container.style.bottom = "24px";
+          }
+        }
+        restoreMinimapPosition();
+
+        container.addEventListener('mousedown', function(e) {
+          // Only drag if clicking the container or canvas, not the inner label
+          if (e.target.id !== MINIMAP_ID && e.target.id !== CANVAS_ID) return;
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          const rect = container.getBoundingClientRect();
+          origX = rect.left;
+          origY = rect.top;
+          container.style.transition = "none";
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const newLeft = origX + dx;
+          const newTop = origY + dy;
+          container.style.left = newLeft + "px";
+          container.style.top = newTop + "px";
+          container.style.right = "auto";
+          container.style.bottom = "auto";
+          // Save live while dragging
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: newLeft, top: newTop }));
+        });
+
+        document.addEventListener('mouseup', function() {
+          if (isDragging) {
+            isDragging = false;
+            container.style.transition = "";
+            // Save one more time in case of final position
+            const rect = container.getBoundingClientRect();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
+          }
+        });
+
+        // Set initial left/top if not set
+        container.style.position = "fixed";
+        if (!container.style.left && !container.style.top) {
+          container.style.right = "28px";
+          container.style.bottom = "24px";
+        }
+
+        // ---- REALISTIC MINIMAP DRAWING (unchanged) ----
+
+        function getNodeStyleAndLabel(id, n) {
+          const el = document.getElementById('node-' + id);
+          let bg = '#3ad688', border = '#222', txt = '';
+          if (el) {
+            const comp = window.getComputedStyle(el);
+            bg = comp.backgroundColor || bg;
+            border = comp.borderColor || border;
+            // Use best label from tile
+            const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
+            if (tile) {
+              txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
+            } else {
+              txt = el.textContent.trim().split('\n')[0].substring(0, 6);
+            }
+          } else if (n.data && n.data.label) {
+            txt = n.data.label.substring(0, 6);
+          } else if (n.name) {
+            txt = n.name.substring(0, 6);
+          } else {
+            txt = id;
+          }
+          return { bg, border, txt };
+        }
+
+        function renderMinimap() {
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !df.Home.data) return;
+          const data = df.Home.data;
+          const nodes = Object.entries(data);
+
+          if (!nodes.length) return;
+
+          // Compute bounding box
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(([id, n]) => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale = Math.min(scaleX, scaleY);
+
+          const ctx = document.getElementById(CANVAS_ID).getContext('2d');
+          ctx.clearRect(0,0,W,H);
+
+          // Draw connections as lines
+          ctx.save();
+          ctx.strokeStyle = "#888";
+          ctx.globalAlpha = 0.85;
+          ctx.lineWidth = 1.2;
+          nodes.forEach(([id, n]) => {
+            Object.values(n.outputs || {}).forEach(out => {
+              (out.connections || []).forEach(conn => {
+                const target = data[conn.node];
+                if (!target) return;
+                const x1 = Math.round((n.pos_x - minX + 80) * scale);
+                const y1 = Math.round((n.pos_y - minY + 35) * scale);
+                const x2 = Math.round((target.pos_x - minX + 80) * scale);
+                const y2 = Math.round((target.pos_y - minY + 35) * scale);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.bezierCurveTo(
+                  x1 + 32, y1,
+                  x2 - 32, y2,
+                  x2, y2
+                );
+                ctx.stroke();
+              });
+            });
+          });
+          ctx.restore();
+
+          // Draw nodes with real color, border, label
+          nodes.forEach(([id, n]) => {
+            const x = Math.round((n.pos_x - minX) * scale);
+            const y = Math.round((n.pos_y - minY) * scale);
+            const w = Math.max(30, Math.round(120 * scale));
+            const h = Math.max(18, Math.round(48 * scale));
+
+            const { bg, border, txt } = getNodeStyleAndLabel(id, n);
+
+            ctx.save();
+            ctx.globalAlpha = 0.93;
+            ctx.fillStyle = bg;
+            ctx.strokeStyle = border;
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(x+4, y);
+            ctx.lineTo(x+w-4, y);
+            ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+            ctx.lineTo(x+w, y+h-4);
+            ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+            ctx.lineTo(x+4, y+h);
+            ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+            ctx.lineTo(x, y+4);
+            ctx.quadraticCurveTo(x, y, x+4, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = `bold ${Math.max(9, Math.round(h/2.3))}px sans-serif`;
+            ctx.fillStyle = "#181d20";
+            ctx.globalAlpha = 1.0;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(txt, x + w/2, y + h/2);
+            ctx.restore();
+          });
+
+          // Draw viewport rectangle
+          const precanvas = document.querySelector('.drawflow');
+          if (precanvas) {
+            const transform = window.getComputedStyle(precanvas).transform;
+            let translateX = 0, translateY = 0, scaleDF = 1;
+            if (transform && transform !== "none") {
+              const match = transform.match(/matrix\(([^)]+)\)/);
+              if (match) {
+                const parts = match[1].split(',');
+                scaleDF = parseFloat(parts[0]);
+                translateX = parseFloat(parts[4]);
+                translateY = parseFloat(parts[5]);
+              }
+            }
+            const rect = document.getElementById('drawflow').getBoundingClientRect();
+            const flowW = rect.width, flowH = rect.height;
+            const visX = (-translateX) / scaleDF;
+            const visY = (-translateY) / scaleDF;
+            const vx = (visX - minX) * scale;
+            const vy = (visY - minY) * scale;
+            const vw = flowW / scaleDF * scale;
+            const vh = flowH / scaleDF * scale;
+            ctx.save();
+            ctx.strokeStyle = "#f4e43a";
+            ctx.globalAlpha = 0.9;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(vx, vy, vw, vh);
+            ctx.restore();
+          }
+        }
+
+        function hookMinimapEvents() {
+          if (!window.editor) return;
+          window.editor.on('nodeMoved', renderMinimap);
+          window.editor.on('nodeCreated', renderMinimap);
+          window.editor.on('nodeRemoved', renderMinimap);
+          window.editor.on('connectionCreated', renderMinimap);
+          window.editor.on('connectionRemoved', renderMinimap);
+          window.editor.on('import', renderMinimap);
+          window.editor.on('zoom', renderMinimap);
+          setInterval(renderMinimap, 2000);
+        }
+
+        document.getElementById(CANVAS_ID).addEventListener('click', function(e){
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !df.Home.data) return;
+          const data = df.Home.data;
+          const nodes = Object.values(data);
+          if (!nodes.length) return;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(n => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale = Math.min(scaleX, scaleY);
+          const x = e.offsetX / scale + minX;
+          const y = e.offsetY / scale + minY;
+          const precanvas = document.querySelector('.drawflow');
+          if (precanvas) {
+            let scaleDF = 1;
+            const transform = window.getComputedStyle(precanvas).transform;
+            if (transform && transform !== "none") {
+              const match = transform.match(/matrix\(([^)]+)\)/);
+              if (match) scaleDF = parseFloat(match[1].split(',')[0]);
+            }
+            const main = document.getElementById('drawflow');
+            const rect = main.getBoundingClientRect();
+            const targetX = -(x - rect.width/2/scaleDF) * scaleDF;
+            const targetY = -(y - rect.height/2/scaleDF) * scaleDF;
+            precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
+          }
+        });
+
+        hookMinimapEvents();
+        setTimeout(renderMinimap, 1000);
+      });
+</script>
 
 </body>
 </html>
