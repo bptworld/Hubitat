@@ -10,6 +10,10 @@
   <script src="FE_flowvars.js"></script>
 </head>
 <body>
+  <button id="toggleToolbarBtn"
+    style="position:absolute;top:8px;right:12px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
+  ▲ Hide Toolbar
+  </button>
   <div id="controls">
     <div style="margin-bottom:5px;">
       <b>Flow Engine Editor</b> <small>- Ver. 1.0.0</small><br>
@@ -113,6 +117,8 @@
   <script src="FE_html2canvas.min.js"></script>
   <script>
     window.editor = null;
+    window._multiSelectedNodes = new Set();
+
     // --- Node placement tracking ---
     window.nextNodeX = 1200;  // Set this based on your grid/canvas width
     window.nextNodeY = 40;
@@ -619,16 +625,16 @@
       const t = (type || "").toLowerCase();
 
       if (t === "donothing") {
-        return `<div class="logic-node">Do Nothing</div>`;
+        return `<div class="logic-node">Do Nothing<${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}/div>`;
       }
       if (t === "and") {
-        return `<div class="logic-node">AND</div>`;
+        return `<div class="logic-node">AND${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "or") {
-        return `<div class="logic-node">OR</div>`;
+        return `<div class="logic-node">OR${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "not") {
-        return `<div class="logic-node">NOT</div>`;
+        return `<div class="logic-node">NOT${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "delay") {
         let label = "Delay";
@@ -639,20 +645,20 @@
         } else if (data && data.minutes) {
           label = `Delay ${data.minutes} min`;
         }
-        return `<div class="logic-node">${label}</div>`;
+        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "delaymin") {
         let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
-        return `<div class="logic-node">${label}</div>`;
+        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
       if (t === "savedevicestate") {
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span></div>`;
+        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "restoredevicestate") {
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span></div>`;
+        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
       if (t === "comment") {
@@ -664,6 +670,7 @@
         return `<div class="comment-tile">
           Comment<hr>
           <div>${txt}</div>
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -678,6 +685,7 @@
             ${repeatDays ? "Repeat: " + repeatDays + "<br>" : ""}
             ${time ? "Time: " + time : ""}
           </span>
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -689,6 +697,7 @@
           <span style="font-size:11px">
             ${vName} = ${vValue}
           </span>
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -722,6 +731,7 @@
             <hr>
             <b>Output variable / file name:</b> ${outputVar}<br><b>Attr Type:</b> ${scope}
           </span>
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -741,6 +751,7 @@
           <span style="font-size:11px">
             Device: ${devLabelStr}<br>
             ${msg ? `Message: "${msg}"<br>` : ""}
+            ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
           </span>
         </div>`;
       }
@@ -790,6 +801,7 @@
         ${forMinutesStr}
         ${clickPattern}
         ${(data.showStatus !== false) ? currentStr : ""}
+        ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
       </div>`;
     }
 
@@ -841,6 +853,7 @@
           <span style="font-size:11px">${label} ${cmd} ${val}<br><hr></span>
           ${(data.showStatus !== false) ? allAttrVals : ""}
           ${colorPreview}
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -892,6 +905,7 @@
           ${forMinutesStr}
           ${clickPattern}
           ${(data.showStatus !== false) ? currentStr : ""}
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
     }
@@ -4469,6 +4483,32 @@
                 menuDiv.remove();
               };
               menuDiv.appendChild(multiDupBtn);
+
+              // --- Lock Selected Nodes ---
+              const lockBtn = document.createElement('div');
+              lockBtn.textContent = "Lock Selected Nodes";
+              lockBtn.style.cursor = 'pointer';
+              lockBtn.style.padding = '6px 12px';
+              lockBtn.onmouseenter = () => lockBtn.style.background = "#555";
+              lockBtn.onmouseleave = () => lockBtn.style.background = "transparent";
+              lockBtn.onclick = () => {
+                lockSelectedNodes(true);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(lockBtn);
+
+              // --- Unlock Selected Nodes ---
+              const unlockBtn = document.createElement('div');
+              unlockBtn.textContent = "Unlock Selected Nodes";
+              unlockBtn.style.cursor = 'pointer';
+              unlockBtn.style.padding = '6px 12px';
+              unlockBtn.onmouseenter = () => unlockBtn.style.background = "#555";
+              unlockBtn.onmouseleave = () => unlockBtn.style.background = "transparent";
+              unlockBtn.onclick = () => {
+                lockSelectedNodes(false);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(unlockBtn);
             }
 
             document.body.appendChild(menuDiv);
@@ -5145,7 +5185,35 @@
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
+            ctx.restore();
 
+            // Highlight selected node(s)
+            const isSelected =
+              (window._multiSelectedNodes && window._multiSelectedNodes.has(String(id))) ||
+              (editor.selected_id && String(editor.selected_id) === String(id));
+            if (isSelected) {
+              ctx.save();
+              ctx.shadowColor = "#00fff7";
+              ctx.shadowBlur = 10;
+              ctx.strokeStyle = "#00fff7";
+              ctx.lineWidth = 4;
+              ctx.globalAlpha = 0.92;
+              ctx.beginPath();
+              ctx.moveTo(x+4, y);
+              ctx.lineTo(x+w-4, y);
+              ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+              ctx.lineTo(x+w, y+h-4);
+              ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+              ctx.lineTo(x+4, y+h);
+              ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+              ctx.lineTo(x, y+4);
+              ctx.quadraticCurveTo(x, y, x+4, y);
+              ctx.closePath();
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            ctx.save();
             ctx.font = `bold ${Math.max(9, Math.round(h/2.3))}px sans-serif`;
             ctx.fillStyle = "#181d20";
             ctx.globalAlpha = 1.0;
@@ -5305,13 +5373,12 @@
             el._multiNodeHandled = true;
 
             el.addEventListener('mousedown', function(e) {
-              // Only left button
               if (e.button !== 0) return;
 
               const nodeId = this.id.replace('node-', '');
 
+              // Multi-select add/remove (ALWAYS allow, even if locked)
               if (e.ctrlKey || e.metaKey) {
-                // Multi-select add/remove
                 if (window._multiSelectedNodes.has(nodeId)) {
                   window._multiSelectedNodes.delete(nodeId);
                 } else {
@@ -5323,6 +5390,30 @@
                 // No drag on ctrl+mousedown
                 return;
               }
+
+              // --- PATCH: Only block DRAG, NOT selection, if locked ---
+              // Figure out which set is about to be dragged
+              let dragSet = [];
+              if (window._multiSelectedNodes && window._multiSelectedNodes.size > 1 && window._multiSelectedNodes.has(nodeId)) {
+                dragSet = Array.from(window._multiSelectedNodes);
+              } else {
+                dragSet = [nodeId];
+              }
+              let lockedFound = false;
+              for (const id of dragSet) {
+                const n = editor.getNodeFromId(id);
+                if (n && n.data && n.data.locked) {
+                  lockedFound = true;
+                  break;
+                }
+              }
+              if (lockedFound) {
+                // Allow selection, but block drag (by returning before dragStart is set)
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+              }
+              // --- PATCH END ---
 
               // If node is already selected, drag group. If not, make it only selection
               if (!window._multiSelectedNodes.has(nodeId)) {
@@ -5406,52 +5497,56 @@
         const nodes = ids.map(id => ({ id, node: data[id] }));
         if (nodes.some(n => !n.node)) return;
 
+        // Use the first selected node as the anchor
+        const anchor = nodes[0].node;
+
         switch (direction) {
           case "left": {
-            const alignTo = Math.min(...nodes.map(n => n.node.pos_x));
+            const alignTo = anchor.pos_x;
             nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo, n.node.pos_y));
             break;
           }
           case "right": {
-            const alignTo = Math.max(...nodes.map(n => n.node.pos_x));
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo, n.node.pos_y));
+            const alignTo = anchor.pos_x + 160; // node width
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo - 160, n.node.pos_y));
             break;
           }
           case "top": {
-            const alignTo = Math.min(...nodes.map(n => n.node.pos_y));
+            const alignTo = anchor.pos_y;
             nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo));
             break;
           }
           case "bottom": {
-            const alignTo = Math.max(...nodes.map(n => n.node.pos_y));
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo));
+            const alignTo = anchor.pos_y + 60; // node height
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo - 60));
             break;
           }
           case "center": {
-            // Average X for horizontal center
-            const avgX = Math.round(nodes.reduce((sum, n) => sum + n.node.pos_x, 0) / nodes.length);
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), avgX, n.node.pos_y));
+            // Center X of anchor node
+            const anchorCenterX = anchor.pos_x + 160 / 2;
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), anchorCenterX - 160 / 2, n.node.pos_y));
             break;
           }
           case "middle": {
-            // Average Y for vertical middle
-            const avgY = Math.round(nodes.reduce((sum, n) => sum + n.node.pos_y, 0) / nodes.length);
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, avgY));
+            // Center Y of anchor node
+            const anchorCenterY = anchor.pos_y + 60 / 2;
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, anchorCenterY - 60 / 2));
             break;
           }
           case "distributeH": {
-            // Sort nodes by X, evenly space between leftmost/rightmost
-            const sorted = [...nodes].sort((a, b) => a.node.pos_x - b.node.pos_x);
-            const left = sorted[0].node.pos_x;
+            // Sort nodes by X, evenly space between anchor and last node
+            const sorted = [...nodes];
+            // Use anchor as left, last node as right
+            const left = anchor.pos_x;
             const right = sorted[sorted.length - 1].node.pos_x;
             const step = (sorted.length > 1) ? (right - left) / (sorted.length - 1) : 0;
             sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), Math.round(left + i * step), n.node.pos_y));
             break;
           }
           case "distributeV": {
-            // Sort nodes by Y, evenly space between topmost/bottommost
-            const sorted = [...nodes].sort((a, b) => a.node.pos_y - b.node.pos_y);
-            const top = sorted[0].node.pos_y;
+            // Sort nodes by Y, evenly space between anchor and last node
+            const sorted = [...nodes];
+            const top = anchor.pos_y;
             const bottom = sorted[sorted.length - 1].node.pos_y;
             const step = (sorted.length > 1) ? (bottom - top) / (sorted.length - 1) : 0;
             sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, Math.round(top + i * step)));
@@ -5465,15 +5560,6 @@
           markFlowNeedsSave(true);
         }
       }
-
-      document.getElementById("alignLeftBtn").onclick      = () => alignNodes("left");
-      document.getElementById("alignRightBtn").onclick     = () => alignNodes("right");
-      document.getElementById("alignTopBtn").onclick       = () => alignNodes("top");
-      document.getElementById("alignBottomBtn").onclick    = () => alignNodes("bottom");
-      document.getElementById("alignCenterBtn").onclick    = () => alignNodes("center");
-      document.getElementById("alignMiddleBtn").onclick    = () => alignNodes("middle");
-      document.getElementById("distributeHBtn").onclick    = () => alignNodes("distributeH");
-      document.getElementById("distributeVBtn").onclick    = () => alignNodes("distributeV");
 
       function deleteSelectedNodes() {
         if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
@@ -5547,6 +5633,150 @@
         const cm = document.querySelector('.context-menu');
         if (cm) cm.remove();
       }
+
+      function lockSelectedNodes(lockState) {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        Array.from(window._multiSelectedNodes).forEach(id => {
+          const node = editor.getNodeFromId(id);
+          if (node) {
+            node.data.locked = !!lockState;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+          }
+        });
+        markFlowNeedsSave(true);
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const toolbar = document.getElementById("controls");
+        const toggleBtn = document.getElementById("toggleToolbarBtn");
+        let toolbarVisible = true;
+        toggleBtn.onclick = function() {
+          toolbarVisible = !toolbarVisible;
+          toolbar.style.display = toolbarVisible ? "" : "none";
+          toggleBtn.innerHTML = toolbarVisible ? "▲ Hide Toolbar" : "▼ Show Toolbar";
+        };
+      });
+
+      // Align Left: Use the left X of the first selected node
+      document.getElementById("alignLeftBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorX = anchor.pos_x;
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorX;
+              editor.moveNodeTo(n.id, anchorX, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Right: Use the right edge of the first selected node
+      document.getElementById("alignRightBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorRight = anchor.pos_x + 160; // 160 = node width in px
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorRight - 160; // align right edge
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Top: Use the top Y of the first selected node
+      document.getElementById("alignTopBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorY = anchor.pos_y;
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorY;
+              editor.moveNodeTo(n.id, n.pos_x, anchorY);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Bottom: Use the bottom edge of the first selected node
+      document.getElementById("alignBottomBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorBottom = anchor.pos_y + 60; // 60 = node height in px
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorBottom - 60; // align bottom edge
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Center X (horizontal center): Use center X of first node
+      document.getElementById("alignCenterBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorCenterX = anchor.pos_x + 160 / 2; // node width
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorCenterX - 160 / 2;
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Middle Y (vertical center): Use center Y of first node
+      document.getElementById("alignMiddleBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorMiddleY = anchor.pos_y + 60 / 2; // node height
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorMiddleY - 60 / 2;
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
 
     </script>
 </body>
