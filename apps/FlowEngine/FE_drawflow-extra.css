@@ -253,12 +253,12 @@ button:hover { background: #02c258; }
 }
 .drawflow .drawflow-node .input {
   background: #90cdf4 !important;
-  left: -23px !important;
+  left: -20px !important;
   position: relative;
 }
 .drawflow .drawflow-node .output {
   background: #fc9d2e !important;
-  right: -23px !important;
+  right: -20px !important;
   position: relative;
 }
 .drawflow .drawflow-node .outputs .output:first-child {
