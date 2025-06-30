@@ -38,10 +38,19 @@
       <label for="gridBrightnessSlider">Background Brightness</label>
       <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
       <b> | </b>
-      <label style="margin-left:5px; user-select:none;">
+      <label style="user-select:none;">
         <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
         Snap to grid
       </label>
+      <b> | </b>Align: 
+      <button id="alignLeftBtn"  title="Align Left"> Left</button>
+      <button id="alignRightBtn" title="Align Right"> Right</button>
+      <button id="alignTopBtn"   title="Align Top"> Top</button>
+      <button id="alignBottomBtn" title="Align Bottom"> Bottom</button>
+      <button id="alignCenterBtn"   title="Align Center"> Center</button>
+      <button id="alignMiddleBtn"   title="Align Middle"> Middle</button>
+      <button id="distributeHBtn"   title="Distribute Horizontally">Dist H</button>
+      <button id="distributeVBtn"   title="Distribute Vertically">Dist V</button>
     </div>
     <div style="margin-bottom:5px;">
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
@@ -71,7 +80,7 @@
       <div id="header" style="font-size:25px; display:flex; align-items:center; gap:16px;" title="Node Editor">
         <b>Node Editor</b>
       </div>
-      <div id="nodeEditor">Click a node to edit</div>
+      <div id="nodeEditor">Right Click a node to edit</div>
       <div><small>Use 'ctrl-click' to select multiple Devices</small></div>
       <div><hr></div>
       <div id="variableInspector" style="margin-top:16px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:12px 10px 8px 10px; min-height:80px; max-height:260px; overflow:auto;">
@@ -163,26 +172,63 @@
       if (state) {
         if (editor && editor.export)
           window.undoStack.push(JSON.stringify(editor.export()));
-          //restoreFlowFromJson(state);
+        restoreFlowFromJson(state);
       }
     }
 
     // Helper: restore flow
-    function restoreFlowFromJson(jsonStr) {
-      const appId = document.getElementById("hubitatAppId")?.value?.trim();
-      const token = document.getElementById("hubitatToken")?.value?.trim();
+    async function restoreFlowFromJson(jsonStr) {
       try {
+        // Make sure devices are loaded first
+        if (!window.devices || !window.devices.length) {
+          if (typeof fetchDevicesFromApp === "function") {
+            window.devices = await fetchDevicesFromApp();
+            window.devices.forEach(dev => {
+              if (Array.isArray(dev.attributes)) {
+                const attrMap = {};
+                dev.attributes.forEach(a => {
+                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+                });
+                dev.attributes = attrMap;
+              }
+            });
+            window.devices.push(TIME_DEVICE);
+            window.devices.push(MODE_DEVICE);
+          }
+        }
+
         const flow = JSON.parse(jsonStr);
         if (editor && typeof editor.import === "function") {
           editor.import(flow);
-          if (flow.flowName && document.getElementById("flowName")) {
-              document.getElementById("flowName").value = flow.flowName;
-          }
-          checkIfFlowIsInUse(flow.flowName, appId, token);
-          setTimeout(() => zoomDrawflowToFit(), 30);
-          if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+          // Patch device labels and consistency
+          patchFlowWithDeviceLabels(flow, window.devices);
+
+          // Update all tiles
+          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
             Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
           }
+
+          // --- PATCH: force field sync after import/undo ---
+          setTimeout(() => {
+            // 1. Always pick a node to edit
+            let selected = editor.selected_id;
+            if (!selected) {
+              // If nothing selected, pick the first node in the flow (if any)
+              const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
+                ? Object.keys(editor.drawflow.Home.data)
+                : [];
+              if (allIds.length) {
+                selected = allIds[0];
+                editor.selected_id = selected;
+              }
+            }
+            if (selected) {
+              // Always refresh the editor panel to match current node data
+              window.renderEditor(editor.getNodeFromId(selected));
+            } else {
+              document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+            }
+          }, 10);
         }
       } catch (e) {
         logAction("Undo/Redo failed to restore flow: " + e, "error");
@@ -194,6 +240,7 @@
       if (!btn) return;
       if (needed) {
         btn.classList.add('need-save');
+        pushUndoState();
       } else {
         btn.classList.remove('need-save');
       }
@@ -410,6 +457,127 @@
       },
       commands: []
     };
+
+    // --- Time‐device picker helper (sunrise/sunset, day-of-week, current time) ---
+    function buildTimeDevicePicker(pickerDiv, node) {
+      const devs = node.data.deviceIds || [];
+      if (devs.length !== 1 || node.data.deviceId !== "__time__") return false;
+
+      // 0) Clear out any previous controls
+      pickerDiv.innerHTML = "";
+
+      // If no condition selected yet, default to Time of Day
+      if (!node.data.attribute) {
+        node.data.attribute  = "timeOfDay";
+        node.data.comparator = "";
+        node.data.value      = "";
+      }
+
+      // 1) Attribute selector
+      pickerDiv.appendChild(Object.assign(document.createElement("label"), {
+        textContent: "Condition",
+        style: "display:block;margin-bottom:4px"
+      }));
+      const attrSelect = document.createElement("select");
+      attrSelect.style = "display:block;margin-bottom:12px";
+      [
+        { key: "timeOfDay",   label: "Time of Day"   },
+        { key: "dayOfWeek",   label: "Day of Week"   },
+        { key: "currentTime", label: "Current Time"  }
+      ].forEach(o => {
+        const opt = document.createElement("option");
+        opt.value = o.key;
+        opt.textContent = o.label;
+        if (node.data.attribute === o.key) opt.selected = true;
+        attrSelect.appendChild(opt);
+      });
+      attrSelect.onchange = () => {
+        // update model
+        node.data.attribute  = attrSelect.value;
+        node.data.comparator = "";
+        node.data.value      = "";
+        editor.updateNodeDataFromId(node.id, node.data);
+
+        // rebuild the picker controls
+        buildTimeDevicePicker(pickerDiv, node);
+      };
+      pickerDiv.appendChild(attrSelect);
+
+      // 2) Comparator selector
+      pickerDiv.appendChild(Object.assign(document.createElement("label"), {
+        textContent: "Comparator",
+        style: "display:block;margin-bottom:4px"
+      }));
+      const cmpSelect = document.createElement("select");
+      cmpSelect.style = "display:block;margin-bottom:12px";
+      ["==","!=", "<","<=", ">",">=", "between"].forEach(cmp => {
+        const opt = document.createElement("option");
+        opt.value = cmp;
+        opt.textContent = cmp === "==" ? "equals" : cmp;
+        if (node.data.comparator === cmp) opt.selected = true;
+        cmpSelect.appendChild(opt);
+      });
+      cmpSelect.onchange = () => {
+        node.data.comparator = cmpSelect.value;
+        node.data.value      = "";
+        editor.updateNodeDataFromId(node.id, node.data);
+
+        // only need to rebuild the value control
+        buildTimeDevicePicker(pickerDiv, node);
+      };
+      pickerDiv.appendChild(cmpSelect);
+
+      // 3) Value control based on attribute
+      if (node.data.attribute === "timeOfDay") {
+        // Sunrise/Sunset dropdown
+        const todSelect = document.createElement("select");
+        todSelect.style = "display:block;margin-bottom:12px";
+        ["sunrise", "sunset"].forEach(tod => {
+          const opt = document.createElement("option");
+          opt.value = tod;
+          opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
+          if (node.data.value === tod) opt.selected = true;
+          todSelect.appendChild(opt);
+        });
+        todSelect.onchange = () => {
+          node.data.value = todSelect.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(todSelect);
+
+      } else if (node.data.attribute === "dayOfWeek") {
+        // Day of Week dropdown
+        const dowSelect = document.createElement("select");
+        dowSelect.style = "display:block;margin-bottom:12px";
+        ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+          .forEach(day => {
+            const opt = document.createElement("option");
+            opt.value = day;
+            opt.textContent = day;
+            if (node.data.value === day) opt.selected = true;
+            dowSelect.appendChild(opt);
+        });
+        dowSelect.onchange = () => {
+          node.data.value = dowSelect.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(dowSelect);
+
+      } else {
+        // Current Time input
+        const timeInput = document.createElement("input");
+        timeInput.type  = "time";
+        timeInput.value = node.data.value || "";
+        timeInput.style = "display:block;margin-bottom:12px";
+        timeInput.onchange = () => {
+          node.data.value = timeInput.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(timeInput);
+      }
+
+      return true;
+    }
 
     const MODE_DEVICE = {
       id: "__mode__",
@@ -785,13 +953,27 @@
           modeDev.attributes.mode = currentMode;
         }
 
-        // (add specials)
-        if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-          Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
-          if (editor.selected_id) {
-            renderEditor(editor.getNodeFromId(editor.selected_id));
+        // --- PATCH: force field sync after import/undo ---
+        setTimeout(() => {
+          // 1. Always pick a node to edit
+          let selected = editor.selected_id;
+          if (!selected) {
+            // If nothing selected, pick the first node in the flow (if any)
+            const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
+              ? Object.keys(editor.drawflow.Home.data)
+              : [];
+            if (allIds.length) {
+              selected = allIds[0];
+              editor.selected_id = selected;
+            }
           }
-        }
+          if (selected) {
+            // Always refresh the editor panel to match current node data
+            window.renderEditor(editor.getNodeFromId(selected));
+          } else {
+            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          }
+        }, 10);
         logAction("Devices loaded: " + devices.length);
       };
 
@@ -1002,7 +1184,19 @@
       }
 
       // PATCH START: renderEditor, multi-trigger support
-      function renderEditor(node) {
+      window.renderEditor = function renderEditor(node) {
+        if (
+          ["device", "condition", "eventTrigger"].includes(node.name)
+        ) {
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          if (node.data.deviceId && node.data.deviceIds.length === 0) {
+            node.data.deviceIds = [node.data.deviceId];
+          }
+          if (node.data.deviceIds.length === 1) {
+            node.data.deviceId = node.data.deviceIds[0];
+          }
+        }
+        
         if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
         const el = document.getElementById("nodeEditor");
         el.innerHTML = "";
@@ -1235,7 +1429,12 @@
           pickerDiv.style.marginTop = "8px";
           el.appendChild(pickerDiv);
 
-          // --- Picker builder ---
+          // delegate to helper
+          if (buildTimeDevicePicker(pickerDiv, node)) {
+            return;
+          }
+
+          // fallback: original action pickers
           function buildPickers() {
             pickerDiv.innerHTML = "";
 
@@ -1287,7 +1486,6 @@
               node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               buildPickers();
-              pushUndoState();
               // Fix: Always refresh ports after attribute change
               if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
             };
@@ -1323,7 +1521,6 @@
               node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               buildPickers();
-              pushUndoState();
               // Fix: Always refresh ports after command change
               if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
             };
@@ -1438,38 +1635,47 @@
         if (node.name === "eventTrigger") {
           renderShowStatus(el, node, editor, nodeTileHtml);
 
-          // --- Normalize deviceIds/deviceId for safe picker state ---
+          // normalize
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          if (node.data.deviceIds.length === 1) {
-            node.data.deviceId = node.data.deviceIds[0];
-          } else {
-            node.data.deviceId = ""; // For true multi, clear single
-          }
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
 
+          // render device dropdown (multi‐select)
           const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
           const pickerDevices = getPickerDevices(devices);
-
           renderDevicePickerSection(
             el,
             node,
             pickerDevices,
             (newSelectedIds, newDeviceLabels) => {
-              node.data.deviceIds = newSelectedIds;
-              node.data.deviceId = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
+              node.data.deviceIds   = newSelectedIds;
+              node.data.deviceId    = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
               node.data.deviceLabel = newDeviceLabels.join(", ");
-              node.data.attribute = "";
-              node.data.command = "";
-              node.data.value = "";
-              node.data.color = "";
+              node.data.attribute   = "";
+              node.data.command     = "";
+              node.data.value       = "";
+              node.data.color       = "";
               editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              renderEditor(node); // Always redraw everything on selection change
+              editor.updateNodeHtmlFromId(node.id, node.data, node.id);
+              renderEditor(node);
               markFlowNeedsSave(true);
             },
-            true // Multi-select enabled
+            true
           );
 
-          // Don't render below if nothing picked
+          // insert picker container before helper
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "trigger-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // delegate to helper
+          if (buildTimeDevicePicker(pickerDiv, node)) {
+            return;
+          }
+
+          // don't render if nothing
           if (node.data.deviceIds.length === 0) return;
 
           // If exactly one picked, handle special virtuals
@@ -1583,7 +1789,6 @@
                   editor.updateNodeDataFromId(node.id, node.data);
                   editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                   markFlowNeedsSave(true);
-                  pushUndoState();
                 };
                 el.appendChild(valueField);
               }
@@ -1609,7 +1814,6 @@
                 editor.updateNodeDataFromId(node.id, node.data);
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                 markFlowNeedsSave(true);
-                pushUndoState();
                 renderEditor(node);
               };
               el.appendChild(attrSelect);
@@ -1722,7 +1926,6 @@
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             renderEditor(node);
-            pushUndoState();
             markFlowNeedsSave(true);
           };
           el.appendChild(attrSelect);
@@ -1786,7 +1989,6 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               markFlowNeedsSave(true);
-              pushUndoState();
               renderEditor(node);
             });
           }
@@ -1801,7 +2003,6 @@
                 editor.updateNodeDataFromId(node.id, node.data);
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                 markFlowNeedsSave(true);
-                pushUndoState();
               },
               node.data.comparator === "between"
             );
@@ -1973,7 +2174,6 @@
                   editor.updateNodeDataFromId(node.id, node.data);
                   editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                   markFlowNeedsSave(true);
-                  pushUndoState();
                 };
                 el.appendChild(valueField);
               }
@@ -1999,7 +2199,6 @@
                 editor.updateNodeDataFromId(node.id, node.data);
                 editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                 markFlowNeedsSave(true);
-                pushUndoState();
                 renderEditor(node);
               };
               el.appendChild(attrSelect);
@@ -2107,7 +2306,6 @@
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             renderEditor(node);
-            pushUndoState();
             markFlowNeedsSave(true);
           };
           el.appendChild(attrSelect);
@@ -2148,7 +2346,6 @@
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               renderEditor(node);
               markFlowNeedsSave(true);
-              pushUndoState();
             };
             el.appendChild(compSelect);
 
@@ -2182,7 +2379,6 @@
                   editor.updateNodeDataFromId(node.id, node.data);
                   editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                   markFlowNeedsSave(true);
-                  pushUndoState();
                 }
                 minInput.onchange = maxInput.onchange = updateBetweenValues;
                 el.appendChild(minInput);
@@ -2210,7 +2406,6 @@
                     editor.updateNodeDataFromId(node.id, node.data);
                     editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                     markFlowNeedsSave(true);
-                    pushUndoState();
                   };
                   el.appendChild(valueSelect);
                 } else {
@@ -2224,7 +2419,6 @@
                     editor.updateNodeDataFromId(node.id, node.data);
                     editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
                     markFlowNeedsSave(true);
-                    pushUndoState();
                   };
                   el.appendChild(valueField);
                 }
@@ -2621,25 +2815,113 @@
                 ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
                 : [];
 
-            // --- Time special device ---
+            // --- Time special device (TimeOfDay, DayOfWeek, CurrentTime) ---
             if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
-              const timeLabel = document.createElement("label");
-              timeLabel.textContent = "Time";
-              timeLabel.style.display = "block";
-              pickerDiv.appendChild(timeLabel);
+              // 1) Attribute picker
+              const attrLabel = document.createElement("label");
+              attrLabel.textContent = "Condition";
+              attrLabel.style.display = "block";
+              pickerDiv.appendChild(attrLabel);
 
-              const timeInput = document.createElement("input");
-              timeInput.type = "time";
-              timeInput.value = node.data.value || "";
-              timeInput.style.display = "block";
-              timeInput.style.marginBottom = "12px";
-              timeInput.onchange = () => {
-                node.data.value = timeInput.value;
+              const attrSelect = document.createElement("select");
+              attrSelect.style.display = "block";
+              attrSelect.style.marginBottom = "12px";
+              [
+                { key: "timeOfDay", label: "Time of Day" },
+                { key: "dayOfWeek", label: "Day of Week" },
+                { key: "currentTime", label: "Current Time" }
+              ].forEach(optDef => {
+                const opt = document.createElement("option");
+                opt.value = optDef.key;
+                opt.textContent = optDef.label;
+                if (node.data.attribute === optDef.key) opt.selected = true;
+                attrSelect.appendChild(opt);
+              });
+              attrSelect.onchange = () => {
+                node.data.attribute   = attrSelect.value;
+                node.data.comparator  = "";
+                node.data.value       = "";
                 editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                renderEditor(node);
               };
-              pickerDiv.appendChild(timeInput);
-              return;
+              pickerDiv.appendChild(attrSelect);
+
+              // 2) Comparator picker
+              const cmpLabel = document.createElement("label");
+              cmpLabel.textContent = "Comparator";
+              cmpLabel.style.display = "block";
+              pickerDiv.appendChild(cmpLabel);
+
+              const cmpSelect = document.createElement("select");
+              cmpSelect.style.display = "block";
+              cmpSelect.style.marginBottom = "12px";
+              ["==","!=", "<","<=", ">",">=", "between"].forEach(cmp => {
+                const opt = document.createElement("option");
+                opt.value = cmp;
+                opt.textContent = cmp === "==" ? "equals" : cmp;
+                if (node.data.comparator === cmp) opt.selected = true;
+                cmpSelect.appendChild(opt);
+              });
+              cmpSelect.onchange = () => {
+                node.data.comparator = cmpSelect.value;
+                node.data.value      = "";
+                editor.updateNodeDataFromId(node.id, node.data);
+                renderEditor(node);
+              };
+              pickerDiv.appendChild(cmpSelect);
+
+              // 3) Value picker based on attribute
+              if (node.data.attribute === "timeOfDay") {
+                // Sunrise/Sunset dropdown
+                const todSelect = document.createElement("select");
+                todSelect.style.display = "block";
+                todSelect.style.marginBottom = "12px";
+                TIME_DEVICE.attributes.timeOfDay.forEach(tod => {
+                  const opt = document.createElement("option");
+                  opt.value = tod;
+                  opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
+                  if (node.data.value === tod) opt.selected = true;
+                  todSelect.appendChild(opt);
+                });
+                todSelect.onchange = () => {
+                  node.data.value = todSelect.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                };
+                pickerDiv.appendChild(todSelect);
+
+              } else if (node.data.attribute === "dayOfWeek") {
+                // Day of Week dropdown
+                const dowSelect = document.createElement("select");
+                dowSelect.style.display = "block";
+                dowSelect.style.marginBottom = "12px";
+                TIME_DEVICE.attributes.dayOfWeek.forEach(dow => {
+                  const opt = document.createElement("option");
+                  opt.value = dow;
+                  opt.textContent = dow;
+                  if (node.data.value === dow) opt.selected = true;
+                  dowSelect.appendChild(opt);
+                });
+                dowSelect.onchange = () => {
+                  node.data.value = dowSelect.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                };
+                pickerDiv.appendChild(dowSelect);
+
+              } else {
+                // Current Time input
+                const timeInput = document.createElement("input");
+                timeInput.type = "time";
+                timeInput.value = node.data.value || "";
+                timeInput.style.display = "block";
+                timeInput.style.marginBottom = "12px";
+                timeInput.onchange = () => {
+                  node.data.value = timeInput.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                };
+                pickerDiv.appendChild(timeInput);
+              }
+
+              return;  // skip the normal attribute/comparator/value builder
             }
             
             // --- Standard device attribute pickers ---
@@ -2673,7 +2955,6 @@
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               buildPickers();
-              pushUndoState();
             };
             pickerDiv.appendChild(attrSelect);
 
@@ -3241,6 +3522,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
         logAction("addAction finished.");
       };
 
@@ -3279,6 +3562,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
         logAction("addCondition finished.");
       };
 
@@ -3317,6 +3602,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
         logAction("addTrigger finished.");
       };
 
@@ -3337,6 +3624,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
       };
 
       document.getElementById("addSetVariable").onclick = () => {
@@ -3355,6 +3644,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
         logAction("addSetVariable finished.");
       };
 
@@ -3377,6 +3668,8 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
         logAction("addNotification finished.");
       };
 
@@ -3772,13 +4065,27 @@
               modeDev.attributes.mode = currentMode;
             }
 
-            // (add specials)          
-            if (editor && editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-              Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
-              if (editor.selected_id) {
-                renderEditor(editor.getNodeFromId(editor.selected_id));
+            // --- PATCH: force field sync after import/undo ---
+            setTimeout(() => {
+              // 1. Always pick a node to edit
+              let selected = editor.selected_id;
+              if (!selected) {
+                // If nothing selected, pick the first node in the flow (if any)
+                const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
+                  ? Object.keys(editor.drawflow.Home.data)
+                  : [];
+                if (allIds.length) {
+                  selected = allIds[0];
+                  editor.selected_id = selected;
+                }
               }
-            }
+              if (selected) {
+                // Always refresh the editor panel to match current node data
+                window.renderEditor(editor.getNodeFromId(selected));
+              } else {
+                document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+              }
+            }, 10);
             logAction("Devices loaded: " + devices.length);
           };
         }
@@ -4073,6 +4380,21 @@
               fontFamily: 'sans-serif',
               minWidth: '140px'
             });
+
+            // --- Edit Node ---
+            const editBtn = document.createElement('div');
+            editBtn.textContent = "Edit Node";
+            editBtn.style.cursor = 'pointer';
+            editBtn.style.padding = '6px 12px';
+            editBtn.onmouseenter = () => editBtn.style.background = "#555";
+            editBtn.onmouseleave = () => editBtn.style.background = "transparent";
+            editBtn.onclick = () => {
+              editor.selected_id = nodeId;
+              const node = editor.getNodeFromId(nodeId);
+              if (node) renderEditor(node);
+              menuDiv.remove();
+            };
+            menuDiv.appendChild(editBtn);
 
             // --- Delete Node ---
             const delBtn = document.createElement('div');
@@ -4690,7 +5012,7 @@
           container.style.bottom = "24px";
         }
 
-        // ---- REALISTIC MINIMAP DRAWING (unchanged) ----
+        // ---- REALISTIC MINIMAP DRAWING ----
 
         function getNodeStyleAndLabel(id, n) {
           const el = document.getElementById('node-' + id);
@@ -4885,7 +5207,245 @@
         hookMinimapEvents();
         setTimeout(renderMinimap, 1000);
       });
-</script>
 
+      // A global Set to track selected nodes for multi-select
+      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+
+      // Call this to update visual selection UI
+      function updateNodeSelectionUI() {
+        document.querySelectorAll('.drawflow-node').forEach(node => {
+          const id = node.getAttribute('id');
+          if (window._multiSelectedNodes.has(id)) {
+            node.classList.add('multi-selected');
+          } else {
+            node.classList.remove('multi-selected');
+          }
+        });
+      }
+
+      function attachNodeClickHandlers() {
+        document.querySelectorAll('.drawflow-node').forEach(node => {
+          // Remove any old handler to avoid duplicate bindings
+          node.onclick = null;
+
+          node.addEventListener('click', function(event) {
+            const id = node.getAttribute('id');
+
+            if (event.ctrlKey || event.metaKey) {
+              // --- Ctrl/Cmd-click: Toggle selection ---
+              if (window._multiSelectedNodes.has(id)) {
+                window._multiSelectedNodes.delete(id);
+              } else {
+                window._multiSelectedNodes.add(id);
+              }
+            } else {
+              // --- Regular click: Single select only ---
+              window._multiSelectedNodes.clear();
+              window._multiSelectedNodes.add(id);
+            }
+
+            updateNodeSelectionUI();
+
+            // Optional: handle editor.selected_id if needed
+            if (!event.ctrlKey && !event.metaKey) {
+              if (window.editor) window.editor.selected_id = id;
+            }
+          });
+        });
+      }
+
+      // *********************************************
+      // Multi-select Node
+      window.addEventListener('DOMContentLoaded', function() {
+        window._multiSelectedNodes = new Set();
+        let dragStart = null, dragMoving = false;
+
+        function updateMultiSelectUI() {
+          document.querySelectorAll('.drawflow-node').forEach(el => {
+            el.classList.remove('selected-multi');
+            const nodeId = el.id.replace('node-', '');
+            if (window._multiSelectedNodes.has(nodeId)) {
+              el.classList.add('selected-multi');
+            }
+          });
+        }
+
+        function attachNodeListeners() {
+          document.querySelectorAll('.drawflow-node').forEach(el => {
+            if (el._multiNodeHandled) return; // Only once
+            el._multiNodeHandled = true;
+
+            el.addEventListener('mousedown', function(e) {
+              // Only left button
+              if (e.button !== 0) return;
+
+              const nodeId = this.id.replace('node-', '');
+
+              if (e.ctrlKey || e.metaKey) {
+                // Multi-select add/remove
+                if (window._multiSelectedNodes.has(nodeId)) {
+                  window._multiSelectedNodes.delete(nodeId);
+                } else {
+                  window._multiSelectedNodes.add(nodeId);
+                }
+                updateMultiSelectUI();
+                e.stopPropagation();
+                e.preventDefault();
+                // No drag on ctrl+mousedown
+                return;
+              }
+
+              // If node is already selected, drag group. If not, make it only selection
+              if (!window._multiSelectedNodes.has(nodeId)) {
+                window._multiSelectedNodes.clear();
+                window._multiSelectedNodes.add(nodeId);
+                updateMultiSelectUI();
+              }
+
+              // Start group drag
+              dragStart = {
+                baseX: e.clientX,
+                baseY: e.clientY,
+                positions: Array.from(window._multiSelectedNodes).map(id => {
+                  const data = window.editor.drawflow.drawflow.Home.data[id];
+                  return { id, x: data.pos_x, y: data.pos_y };
+                })
+              };
+              dragMoving = false;
+              e.stopPropagation();
+              e.preventDefault();
+            });
+          });
+        }
+
+        let animationFrame = null;
+
+        document.addEventListener('mousemove', function(e){
+          if (!dragStart) return;
+          const dx = e.clientX - dragStart.baseX;
+          const dy = e.clientY - dragStart.baseY;
+          if (Math.abs(dx) + Math.abs(dy) > 1) dragMoving = true;
+          dragStart.positions.forEach(pos => {
+            const newX = pos.x + dx;
+            const newY = pos.y + dy;
+            const data = window.editor.drawflow.drawflow.Home.data[pos.id];
+            data.pos_x = newX;
+            data.pos_y = newY;
+            // Use only Drawflow API for node move & redraw
+            if (window.editor && typeof window.editor.moveNodeTo === "function") {
+              window.editor.moveNodeTo(Number(pos.id), newX, newY);
+            }
+          });
+        });
+
+        document.addEventListener('mouseup', function(e){
+          dragStart = null;
+          dragMoving = false;
+        });
+
+        // Ensure every node has handler after creation/import
+        if (window.editor) {
+          window.editor.on('nodeCreated', function() {
+            setTimeout(attachNodeListeners, 1);
+            updateMultiSelectUI();
+          });
+          window.editor.on('import', function() {
+            setTimeout(attachNodeListeners, 1);
+            updateMultiSelectUI();
+          });
+          window.editor.on('nodeRemoved', function(id) {
+            window._multiSelectedNodes.delete(String(id));
+            updateMultiSelectUI();
+          });
+        }
+        // Initial attach for existing nodes
+        setTimeout(attachNodeListeners, 100);
+      });
+
+      function getMultiSelectedNodeIds() {
+        return Array.from(window._multiSelectedNodes || []);
+      }
+
+      // *******************************************
+      
+      function alignNodes(direction) {
+        if (!window.editor || !window.editor.drawflow || !window.editor.drawflow.drawflow || !window.editor.drawflow.drawflow.Home) return;
+        const data = window.editor.drawflow.drawflow.Home.data;
+        const ids = getMultiSelectedNodeIds();
+        if (ids.length < 2) return;
+
+        const nodes = ids.map(id => ({ id, node: data[id] }));
+        if (nodes.some(n => !n.node)) return;
+
+        switch (direction) {
+          case "left": {
+            const alignTo = Math.min(...nodes.map(n => n.node.pos_x));
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo, n.node.pos_y));
+            break;
+          }
+          case "right": {
+            const alignTo = Math.max(...nodes.map(n => n.node.pos_x));
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo, n.node.pos_y));
+            break;
+          }
+          case "top": {
+            const alignTo = Math.min(...nodes.map(n => n.node.pos_y));
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo));
+            break;
+          }
+          case "bottom": {
+            const alignTo = Math.max(...nodes.map(n => n.node.pos_y));
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo));
+            break;
+          }
+          case "center": {
+            // Average X for horizontal center
+            const avgX = Math.round(nodes.reduce((sum, n) => sum + n.node.pos_x, 0) / nodes.length);
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), avgX, n.node.pos_y));
+            break;
+          }
+          case "middle": {
+            // Average Y for vertical middle
+            const avgY = Math.round(nodes.reduce((sum, n) => sum + n.node.pos_y, 0) / nodes.length);
+            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, avgY));
+            break;
+          }
+          case "distributeH": {
+            // Sort nodes by X, evenly space between leftmost/rightmost
+            const sorted = [...nodes].sort((a, b) => a.node.pos_x - b.node.pos_x);
+            const left = sorted[0].node.pos_x;
+            const right = sorted[sorted.length - 1].node.pos_x;
+            const step = (sorted.length > 1) ? (right - left) / (sorted.length - 1) : 0;
+            sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), Math.round(left + i * step), n.node.pos_y));
+            break;
+          }
+          case "distributeV": {
+            // Sort nodes by Y, evenly space between topmost/bottommost
+            const sorted = [...nodes].sort((a, b) => a.node.pos_y - b.node.pos_y);
+            const top = sorted[0].node.pos_y;
+            const bottom = sorted[sorted.length - 1].node.pos_y;
+            const step = (sorted.length > 1) ? (bottom - top) / (sorted.length - 1) : 0;
+            sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, Math.round(top + i * step)));
+            break;
+          }
+        }
+        if (window.editor && typeof window.editor.updateConnectionNodes === "function") {
+          window.editor.updateConnectionNodes();
+        }
+        if (typeof markFlowNeedsSave === "function") {
+          markFlowNeedsSave(true);
+        }
+      }
+
+      document.getElementById("alignLeftBtn").onclick      = () => alignNodes("left");
+      document.getElementById("alignRightBtn").onclick     = () => alignNodes("right");
+      document.getElementById("alignTopBtn").onclick       = () => alignNodes("top");
+      document.getElementById("alignBottomBtn").onclick    = () => alignNodes("bottom");
+      document.getElementById("alignCenterBtn").onclick    = () => alignNodes("center");
+      document.getElementById("alignMiddleBtn").onclick    = () => alignNodes("middle");
+      document.getElementById("distributeHBtn").onclick    = () => alignNodes("distributeH");
+      document.getElementById("distributeVBtn").onclick    = () => alignNodes("distributeV");
+
+    </script>
 </body>
 </html>
