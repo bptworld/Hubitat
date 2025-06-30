@@ -181,9 +181,12 @@ button:hover { background: #02c258; }
   opacity: 1 !important;
 }
 .drawflow-node.selected-multi {
-  border: 2.5px solid #308bfa !important;
-  box-shadow: 0 0 0 3px #308bfa33, 0 3px 20px #000a !important;
-  z-index: 11 !important;
+  outline: 5px solid #00fff7 !important;
+  box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important; /* optional faint border for contrast */
+  border-radius: 14px !important;
+  z-index: 2000 !important;
+  animation: none !important;
+  filter: none !important;
 }
 
 #df-ctx-menu {
