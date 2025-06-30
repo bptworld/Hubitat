@@ -5373,12 +5373,19 @@
             el._multiNodeHandled = true;
 
             el.addEventListener('mousedown', function(e) {
+              // Only left button
               if (e.button !== 0) return;
+
+              // --- PATCH: Don't block input/output dot events ---
+              if (e.target.classList.contains('input') || e.target.classList.contains('output')) {
+                // Let Drawflow handle connections!
+                return;
+              }
 
               const nodeId = this.id.replace('node-', '');
 
-              // Multi-select add/remove (ALWAYS allow, even if locked)
               if (e.ctrlKey || e.metaKey) {
+                // Multi-select add/remove
                 if (window._multiSelectedNodes.has(nodeId)) {
                   window._multiSelectedNodes.delete(nodeId);
                 } else {
@@ -5391,31 +5398,6 @@
                 return;
               }
 
-              // --- PATCH: Only block DRAG, NOT selection, if locked ---
-              // Figure out which set is about to be dragged
-              let dragSet = [];
-              if (window._multiSelectedNodes && window._multiSelectedNodes.size > 1 && window._multiSelectedNodes.has(nodeId)) {
-                dragSet = Array.from(window._multiSelectedNodes);
-              } else {
-                dragSet = [nodeId];
-              }
-              let lockedFound = false;
-              for (const id of dragSet) {
-                const n = editor.getNodeFromId(id);
-                if (n && n.data && n.data.locked) {
-                  lockedFound = true;
-                  break;
-                }
-              }
-              if (lockedFound) {
-                // Allow selection, but block drag (by returning before dragStart is set)
-                e.stopPropagation();
-                e.preventDefault();
-                return;
-              }
-              // --- PATCH END ---
-
-              // If node is already selected, drag group. If not, make it only selection
               if (!window._multiSelectedNodes.has(nodeId)) {
                 window._multiSelectedNodes.clear();
                 window._multiSelectedNodes.add(nodeId);
@@ -5432,9 +5414,8 @@
                 })
               };
               dragMoving = false;
-              e.stopPropagation();
-              e.preventDefault();
-            });
+              // DO NOT stopPropagation or preventDefault here for normal click!
+            }, false);
           });
         }
 
