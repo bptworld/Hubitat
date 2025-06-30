@@ -4380,67 +4380,96 @@
               fontFamily: 'sans-serif',
               minWidth: '140px'
             });
+            if (window._multiSelectedNodes && window._multiSelectedNodes.size === 1) {
+              // --- Edit Node ---
+              const editBtn = document.createElement('div');
+              editBtn.textContent = "Edit Node";
+              editBtn.style.cursor = 'pointer';
+              editBtn.style.padding = '6px 12px';
+              editBtn.onmouseenter = () => editBtn.style.background = "#555";
+              editBtn.onmouseleave = () => editBtn.style.background = "transparent";
+              editBtn.onclick = () => {
+                editor.selected_id = nodeId;
+                const node = editor.getNodeFromId(nodeId);
+                if (node) renderEditor(node);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(editBtn);
 
-            // --- Edit Node ---
-            const editBtn = document.createElement('div');
-            editBtn.textContent = "Edit Node";
-            editBtn.style.cursor = 'pointer';
-            editBtn.style.padding = '6px 12px';
-            editBtn.onmouseenter = () => editBtn.style.background = "#555";
-            editBtn.onmouseleave = () => editBtn.style.background = "transparent";
-            editBtn.onclick = () => {
-              editor.selected_id = nodeId;
-              const node = editor.getNodeFromId(nodeId);
-              if (node) renderEditor(node);
-              menuDiv.remove();
-            };
-            menuDiv.appendChild(editBtn);
+              // --- Delete Node ---
+              const delBtn = document.createElement('div');
+              delBtn.textContent = "Delete Node";
+              delBtn.style.cursor = 'pointer';
+              delBtn.style.padding = '6px 12px';
+              delBtn.onmouseenter = () => delBtn.style.background = "#555";
+              delBtn.onmouseleave = () => delBtn.style.background = "transparent";
+              delBtn.onclick = () => {
+                editor.removeNodeId("node-" + nodeId);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(delBtn);
 
-            // --- Delete Node ---
-            const delBtn = document.createElement('div');
-            delBtn.textContent = "Delete Node";
-            delBtn.style.cursor = 'pointer';
-            delBtn.style.padding = '6px 12px';
-            delBtn.onmouseenter = () => delBtn.style.background = "#555";
-            delBtn.onmouseleave = () => delBtn.style.background = "transparent";
-            delBtn.onclick = () => {
-              editor.removeNodeId("node-" + nodeId);
-              menuDiv.remove();
-            };
-            menuDiv.appendChild(delBtn);
+              // --- Duplicate Node ---
+              const dupBtn = document.createElement('div');
+              dupBtn.textContent = "Duplicate Node";
+              dupBtn.style.cursor = 'pointer';
+              dupBtn.style.padding = '6px 12px';
+              dupBtn.onmouseenter = () => dupBtn.style.background = "#555";
+              dupBtn.onmouseleave = () => dupBtn.style.background = "transparent";
+              dupBtn.onclick = () => {
+                const node = editor.getNodeFromId(nodeId);
+                if (!node) return;
 
-            // --- Duplicate Node ---
-            const dupBtn = document.createElement('div');
-            dupBtn.textContent = "Duplicate Node";
-            dupBtn.style.cursor = 'pointer';
-            dupBtn.style.padding = '6px 12px';
-            dupBtn.onmouseenter = () => dupBtn.style.background = "#555";
-            dupBtn.onmouseleave = () => dupBtn.style.background = "transparent";
-            dupBtn.onclick = () => {
-              const node = editor.getNodeFromId(nodeId);
-              if (!node) return;
+                const newNode = JSON.parse(JSON.stringify(node));
+                delete newNode.id;
+                newNode.pos_x += 60;
+                newNode.pos_y += 60;
+                newNode.outputs = {};
+                newNode.inputs = {};
 
-              const newNode = JSON.parse(JSON.stringify(node));
-              delete newNode.id;
-              newNode.pos_x += 60;
-              newNode.pos_y += 60;
-              newNode.outputs = {};
-              newNode.inputs = {};
+                editor.addNode(
+                  newNode.name,
+                  newNode.inputs_count,
+                  newNode.outputs_count,
+                  newNode.pos_x,
+                  newNode.pos_y,
+                  newNode.class,
+                  newNode.data,
+                  newNode.html
+                );
+                menuDiv.remove();
+                setTimeout(forceFixPortsOnAllNodes, 5);
+              };
+              menuDiv.appendChild(dupBtn);
+            }
 
-              editor.addNode(
-                newNode.name,
-                newNode.inputs_count,
-                newNode.outputs_count,
-                newNode.pos_x,
-                newNode.pos_y,
-                newNode.class,
-                newNode.data,
-                newNode.html
-              );
-              menuDiv.remove();
-              setTimeout(forceFixPortsOnAllNodes, 5);
-            };
-            menuDiv.appendChild(dupBtn);
+            if (window._multiSelectedNodes && window._multiSelectedNodes.size > 1) {
+              // --- Delete Selected Nodes ---
+              const multiDelBtn = document.createElement('div');
+              multiDelBtn.textContent = "Delete Selected Nodes";
+              multiDelBtn.style.cursor = 'pointer';
+              multiDelBtn.style.padding = '6px 12px';
+              multiDelBtn.onmouseenter = () => multiDelBtn.style.background = "#555";
+              multiDelBtn.onmouseleave = () => multiDelBtn.style.background = "transparent";
+              multiDelBtn.onclick = () => {
+                deleteSelectedNodes();
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(multiDelBtn);
+
+              // --- Duplicate Selected Nodes ---
+              const multiDupBtn = document.createElement('div');
+              multiDupBtn.textContent = "Duplicate Selected Nodes";
+              multiDupBtn.style.cursor = 'pointer';
+              multiDupBtn.style.padding = '6px 12px';
+              multiDupBtn.onmouseenter = () => multiDupBtn.style.background = "#555";
+              multiDupBtn.onmouseleave = () => multiDupBtn.style.background = "transparent";
+              multiDupBtn.onclick = () => {
+                duplicateSelectedNodes();
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(multiDupBtn);
+            }
 
             document.body.appendChild(menuDiv);
 
@@ -5445,6 +5474,79 @@
       document.getElementById("alignMiddleBtn").onclick    = () => alignNodes("middle");
       document.getElementById("distributeHBtn").onclick    = () => alignNodes("distributeH");
       document.getElementById("distributeVBtn").onclick    = () => alignNodes("distributeV");
+
+      function deleteSelectedNodes() {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        // Make a COPY of the selected IDs array
+        const toDelete = Array.from(window._multiSelectedNodes);
+        // Clear selection BEFORE deleting
+        window._multiSelectedNodes.clear();
+        // Now delete each node by id (call the same logic as single node delete)
+        toDelete.forEach(id => {
+          try {
+            if (editor && typeof editor.removeNodeId === "function") {
+              editor.removeNodeId("node-" + id);  // <-- THIS LINE FIXES IT
+            }
+          } catch (e) {
+            // log or ignore, just in case node is already gone
+          }
+        });
+        markFlowNeedsSave(true);
+        // After delete, update editor UI
+        setTimeout(() => {
+          // Try to select a remaining node
+          let remainingIds = [];
+          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
+            remainingIds = Object.keys(editor.drawflow.Home.data);
+          }
+          if (remainingIds.length) {
+            editor.selected_id = remainingIds[0];
+            window.renderEditor(editor.getNodeFromId(remainingIds[0]));
+          } else {
+            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          }
+        }, 10);
+      }
+
+      function duplicateSelectedNodes() {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        const toDuplicate = Array.from(window._multiSelectedNodes).map(String);
+        const offsetStep = 40;
+        let offset = 0;
+        const newIds = [];
+
+        toDuplicate.forEach(id => {
+          const orig = editor.getNodeFromId(id);
+          if (!orig) return;
+          const newData = JSON.parse(JSON.stringify(orig.data));
+          const nId = editor.addNode(
+            orig.name,
+            1, // inputs
+            1, // outputs
+            orig.pos_x + offset + offsetStep,
+            orig.pos_y + offset + offsetStep,
+            orig.class,
+            newData,
+            orig.html
+          );
+          newIds.push(nId);
+          offset += offsetStep;
+        });
+
+        // Select all the new nodes
+        if (newIds.length) {
+          window._multiSelectedNodes = new Set(newIds.map(String));
+          editor.selected_id = newIds[0];
+          window.renderEditor(editor.getNodeFromId(editor.selected_id));
+        }
+
+        markFlowNeedsSave(true);
+      }
+
+      function hideContextMenu() {
+        const cm = document.querySelector('.context-menu');
+        if (cm) cm.remove();
+      }
 
     </script>
 </body>
