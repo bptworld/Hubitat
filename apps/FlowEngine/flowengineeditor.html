@@ -551,6 +551,24 @@
         };
         pickerDiv.appendChild(todSelect);
 
+        // ---- ADD THIS BLOCK ----
+        const offsetLabel = document.createElement("label");
+        offsetLabel.textContent = "Offset (minutes)";
+        offsetLabel.style.display = "block";
+        pickerDiv.appendChild(offsetLabel);
+
+        const offsetInput = document.createElement("input");
+        offsetInput.type = "number";
+        offsetInput.placeholder = "e.g. -10 or 15";
+        offsetInput.style.display = "block";
+        offsetInput.style.marginBottom = "12px";
+        offsetInput.value = node.data.offset || 0;
+        offsetInput.onchange = () => {
+          node.data.offset = parseInt(offsetInput.value) || 0;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(offsetInput);
+        // ---- END PATCH ----
       } else if (node.data.attribute === "dayOfWeek") {
         // Day of Week dropdown
         const dowSelect = document.createElement("select");
@@ -560,15 +578,19 @@
             const opt = document.createElement("option");
             opt.value = day;
             opt.textContent = day;
-            if (node.data.value === day) opt.selected = true;
+            // allow for array or single value
+            if (Array.isArray(node.data.value) ? node.data.value.includes(day) : node.data.value === day) opt.selected = true;
             dowSelect.appendChild(opt);
         });
+        dowSelect.multiple = true;
+        dowSelect.size = 7;
         dowSelect.onchange = () => {
-          node.data.value = dowSelect.value;
+          // Collect all selected days
+          const selected = Array.from(dowSelect.selectedOptions).map(opt => opt.value);
+          node.data.value = selected;
           editor.updateNodeDataFromId(node.id, node.data);
         };
         pickerDiv.appendChild(dowSelect);
-
       } else {
         // Current Time input
         const timeInput = document.createElement("input");
@@ -2027,52 +2049,110 @@
         // Condition Node
         // *****************************************************************************************************
         if (node.name === "condition") {
-          renderShowStatus(el, node, editor, nodeTileHtml);
-
-          // --- Normalize deviceIds/deviceId ---
+          // Ensure deviceIds is always an array and deviceId is synced
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           if (node.data.deviceIds.length === 1) {
             node.data.deviceId = node.data.deviceIds[0];
           } else {
-            node.data.deviceId = ""; // For true multi, clear single
+            node.data.deviceId = "";
           }
 
-          const devices = Array.isArray(window.devices) ? window.devices.slice() : [];
-          const pickerDevices = getPickerDevices(devices);
+          el.innerHTML = ""; // Clear panel
 
-          renderDevicePickerSection(
+          // Show/Hide status box
+          renderShowStatus(el, node, editor, nodeTileHtml);
+
+          // Device(s) label and multi-select dropdown
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+
+          renderDevicePicker(
             el,
-            node,
-            pickerDevices,
+            devices,
+            Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds
+              : node.data.deviceId ? [node.data.deviceId] : [],
             (newSelectedIds, newDeviceLabels) => {
-              const prevDeviceId = node.data.deviceId || "";
               node.data.deviceIds = newSelectedIds;
               node.data.deviceId = newSelectedIds.length === 1 ? newSelectedIds[0] : "";
               node.data.deviceLabel = newDeviceLabels.join(", ");
               node.data.attribute = "";
-              node.data.command = "";
+              node.data.comparator = "";
               node.data.value = "";
-              node.data.color = "";
+              node.data.offset = 0; // Clear offset on device change
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              // Only full redraw if switching to/from variable or mode
-              const isSpecial = (x) => x === "__variable__" || x === "__mode__";
-              if (isSpecial(node.data.deviceId) !== isSpecial(prevDeviceId)) {
-                renderEditor(node);
-              } else {
-                // No jump: just build the pickers after device select
-                renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-              }
+              renderEditor(node);
               markFlowNeedsSave(true);
+              if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
             },
-            true // Multi-select enabled
+            true // MULTI-select
           );
 
-          // Don't render below if nothing picked
-          if (node.data.deviceIds.length === 0) return;
+          // --- Picker container ---
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id = "condition-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
 
-          // After device pick, always build pickers for attribute/etc
-          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          // ---- THE KEY LINE: USE THE SAME TIME PICKER DELEGATION AS TRIGGERS ----
+          if (buildTimeDevicePicker(pickerDiv, node)) {
+            return; // Time picker handled, do not fall through to normal pickers
+          }
+
+          // --- fallback: regular attribute/comparator/value pickers for non-time devices ---
+
+          // 1. Attribute
+          const dev = devices.find(d => d.id == node.data.deviceId);
+          if (dev && dev.attributes) {
+            renderAttributePicker(pickerDiv, node, dev, function () {
+              node.data.attribute = this.value;
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              renderEditor(node);
+              markFlowNeedsSave(true);
+              if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
+            });
+          }
+
+          // 2. Comparator
+          const comparators = ["==", "!=", "<", "<=", ">", ">=", "between"];
+          const comparatorLabels = {
+            "==": "equals",
+            "!=": "not equal",
+            "<": "less than",
+            "<=": "less or equal",
+            ">": "greater than",
+            ">=": "greater or equal",
+            "between": "between"
+          };
+          renderComparatorPicker(pickerDiv, node, comparators, comparatorLabels, function () {
+            node.data.comparator = this.value;
+            node.data.value = "";
+            editor.updateNodeDataFromId(node.id, node.data);
+            renderEditor(node);
+            markFlowNeedsSave(true);
+            if (editor && editor.refreshNodePorts) editor.refreshNodePorts(node.id);
+          });
+
+          // 3. Value (with between support)
+          let attrKnownVals = [];
+          if (node.data.attribute && ATTRIBUTE_KNOWN_VALUES[node.data.attribute]) {
+            attrKnownVals = ATTRIBUTE_KNOWN_VALUES[node.data.attribute];
+          }
+          renderValueField(
+            pickerDiv,
+            node,
+            attrKnownVals,
+            function () {
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+            },
+            node.data.comparator === "between"
+          );
         }
 
         // --- Place this helper somewhere above or outside renderEditor: ---
@@ -2818,6 +2898,7 @@
           pickerDiv.id = "notmatchingvar-pickers-" + node.id;
           pickerDiv.style.marginTop = "8px";
           el.appendChild(pickerDiv);
+          
 
           // --- Picker builder ---
           function buildPickers() {
@@ -2888,9 +2969,8 @@
               if (node.data.attribute === "timeOfDay") {
                 // Sunrise/Sunset dropdown
                 const todSelect = document.createElement("select");
-                todSelect.style.display = "block";
-                todSelect.style.marginBottom = "12px";
-                TIME_DEVICE.attributes.timeOfDay.forEach(tod => {
+                todSelect.style = "display:block;margin-bottom:12px";
+                ["sunrise", "sunset"].forEach(tod => {
                   const opt = document.createElement("option");
                   opt.value = tod;
                   opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
@@ -2903,31 +2983,52 @@
                 };
                 pickerDiv.appendChild(todSelect);
 
+                // ---- ADD THIS BLOCK ----
+                const offsetLabel = document.createElement("label");
+                offsetLabel.textContent = "Offset (minutes)";
+                offsetLabel.style.display = "block";
+                pickerDiv.appendChild(offsetLabel);
+
+                const offsetInput = document.createElement("input");
+                offsetInput.type = "number";
+                offsetInput.placeholder = "e.g. -10 or 15";
+                offsetInput.style.display = "block";
+                offsetInput.style.marginBottom = "12px";
+                offsetInput.value = node.data.offset || 0;
+                offsetInput.onchange = () => {
+                  node.data.offset = parseInt(offsetInput.value) || 0;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                };
+                pickerDiv.appendChild(offsetInput);
+                // ---- END PATCH ----
               } else if (node.data.attribute === "dayOfWeek") {
                 // Day of Week dropdown
                 const dowSelect = document.createElement("select");
-                dowSelect.style.display = "block";
-                dowSelect.style.marginBottom = "12px";
-                TIME_DEVICE.attributes.dayOfWeek.forEach(dow => {
-                  const opt = document.createElement("option");
-                  opt.value = dow;
-                  opt.textContent = dow;
-                  if (node.data.value === dow) opt.selected = true;
-                  dowSelect.appendChild(opt);
+                dowSelect.style = "display:block;margin-bottom:12px";
+                ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+                  .forEach(day => {
+                    const opt = document.createElement("option");
+                    opt.value = day;
+                    opt.textContent = day;
+                    // allow for array or single value
+                    if (Array.isArray(node.data.value) ? node.data.value.includes(day) : node.data.value === day) opt.selected = true;
+                    dowSelect.appendChild(opt);
                 });
+                dowSelect.multiple = true;
+                dowSelect.size = 7;
                 dowSelect.onchange = () => {
-                  node.data.value = dowSelect.value;
+                  // Collect all selected days
+                  const selected = Array.from(dowSelect.selectedOptions).map(opt => opt.value);
+                  node.data.value = selected;
                   editor.updateNodeDataFromId(node.id, node.data);
                 };
                 pickerDiv.appendChild(dowSelect);
-
               } else {
                 // Current Time input
                 const timeInput = document.createElement("input");
-                timeInput.type = "time";
+                timeInput.type  = "time";
                 timeInput.value = node.data.value || "";
-                timeInput.style.display = "block";
-                timeInput.style.marginBottom = "12px";
+                timeInput.style = "display:block;margin-bottom:12px";
                 timeInput.onchange = () => {
                   node.data.value = timeInput.value;
                   editor.updateNodeDataFromId(node.id, node.data);
