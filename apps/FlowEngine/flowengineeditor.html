@@ -5957,6 +5957,30 @@
         return await res.json().catch(() => true);
       }
 
+      document.addEventListener("DOMContentLoaded", function() {
+        const canvas = document.getElementById("drawflow");
+        if (canvas) {
+          canvas.addEventListener("mousedown", function(e) {
+            // Only trigger if user clicks directly on the background, NOT a node or connection
+            if (e.target === canvas) {
+              // Unselect all nodes
+              window._multiSelectedNodes.clear();
+              if (window.editor) {
+                window.editor.selected_id = null;
+              }
+              // Remove highlight from all nodes
+              document.querySelectorAll('.drawflow-node').forEach(el => {
+                el.classList.remove('selected-multi');
+                el.classList.remove('selected');
+              });
+              // Clear node editor panel
+              const editorPanel = document.getElementById("nodeEditor");
+              if (editorPanel) editorPanel.innerHTML = "Click a node to edit";
+            }
+          });
+        }
+      });
+
     </script>
 </body>
 </html>
