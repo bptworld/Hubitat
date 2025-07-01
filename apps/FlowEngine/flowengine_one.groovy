@@ -134,6 +134,53 @@ mappings {
 
 // --- HANDLERS ---
 
+def recheckAllTriggers(fname) {
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+    dataNodes.each { id, node ->
+        if (node.name == "eventTrigger") {
+            def attr = node.data.attribute
+            def expectedValue = node.data.value
+            def comparator = node.data.comparator
+            def devIds = []
+            if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds
+            else if (node.data.deviceId) devIds = [node.data.deviceId]
+
+            // Variable trigger
+            if (node.data.deviceId == "__variable__" && node.data.varName) {
+                def varName = node.data.varName
+                def globalVars = flowObj.globalVars ?: []
+                def curValue = globalVars.find { it.name == varName }?.value
+                // Use your existing comparator logic
+                if (evaluateComparator(curValue, expectedValue, comparator)) {
+                    def evt = [name: varName, value: curValue]
+                    evaluateNode(fname, id, evt)
+                }
+            }
+            // Mode trigger
+            else if (node.data.deviceId == "__mode__") {
+                def curMode = location.mode
+                if (evaluateComparator(curMode, expectedValue, comparator)) {
+                    def evt = [name: "mode", value: curMode]
+                    evaluateNode(fname, id, evt)
+                }
+            }
+            // Device trigger
+            else if (devIds && attr) {
+                devIds.each { devId ->
+                    def device = getDeviceById(devId)
+                    def curValue = device?.currentValue(attr)
+                    if (evaluateComparator(curValue, expectedValue, comparator)) {
+                        def evt = [name: attr, value: curValue, device: device]
+                        evaluateNode(fname, id, evt)
+                    }
+                }
+            }
+        }
+    }
+}
+
 def apiRunFlow() {
     // Expects: { "flow": "filename.json", ... }
     def json = request?.JSON
@@ -918,10 +965,29 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			flowLog(fname, "In evaluateNode - doNothing", "debug")
 			break
 		
+		case "repeat":
+			flowLog(fname, "In evaluateNode - repeat", "debug")
+			def nodeIdStr = "${nodeId}"
+			def repeatMax = (node.data.repeatMax ?: 1) as Integer
+			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
+			def count = (flowObj.repeatCounts[nodeIdStr] ?: 0) as Integer
+
+			if (count <= repeatMax) {
+				flowObj.repeatCounts[nodeIdStr] = count + 1
+				flowLog(fname, "Repeat node: ${count+1} of ${repeatMax}", "info")
+				// Re-check all triggers as if they might be eligible to fire
+				recheckAllTriggers(fname)
+			} else {
+				flowLog(fname, "Repeat node: maximum repeats reached (${repeatMax}), not repeating.", "info")
+			}
+			break
+
         default:
             log.warn "Unknown node type: ${node.name}"
     }
 }
+
+
 
 void notifyFlowTrace(flowFile, nodeId, nodeType) {
     if (!flowFile) return
