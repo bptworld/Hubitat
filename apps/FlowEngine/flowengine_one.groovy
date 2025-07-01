@@ -973,13 +973,18 @@ def sendNotification(fname, data, evt) {
 	flowLog(fname, "In sendNotification - data: ${data} - evt: ${evt}", "debug")
     def msg = data.message ?: ""
     msg = expandWildcards(fname, msg, evt)
-    if (data.speakerId) {
-        def speaker = getDeviceById(data.speakerId)
-        if (speaker) speaker.speak(msg)
-    }
-    if (data.sendPush && data.pushDeviceId) {
-        def push = getDeviceById(data.pushDeviceId)
-        if (push) push.deviceNotification(msg)
+	if(data.notificationType == "speech") {
+		data.targetDeviceId.each { it ->
+        	def speaker = getDeviceById(it)
+			flowLog(fname, "In sendNotification - Going to Speak on - ${speaker}")
+			if (speaker) speaker.speak(msg)
+		}
+	} else {
+		data.targetDeviceId.each { it ->
+        	def push = getDeviceById(it)
+			flowLog(fname, "In sendNotification - Going to Push to - ${push}")
+			if (push) push.deviceNotification(msg)
+		}
     }
 }
 
