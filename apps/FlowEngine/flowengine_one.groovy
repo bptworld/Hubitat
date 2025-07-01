@@ -226,6 +226,7 @@ def apiRunFlow() {
 
 			// If matches, proceed as normal
 			evaluateNode(fname, id, [name: "apiRunFlow", value: "API Run", pattern: eventPattern])
+			if(!triggered) triggered = 0
 			triggered++
 		}
     }
@@ -244,10 +245,10 @@ def apiTestFlow() {
 	if (scrubbedJson instanceof Map) {
 		scrubbedJson.remove('access_token')
 	}
+	log.info "-------------------- [apiTestFlow - ${fname}] --------------------"
 	log.info "[apiTestFlow] params: ${scrubbedParams} | request.JSON: ${scrubbedJson} | using: ${fname}, ${nodeId}, ${value}"
 
     if (!fname || !state.activeFlows[fname]) {
-		log.info "[apiTestFlow] Oh no, I'm in here!"
         render status: 404, data: '{"error":"Flow not found"}'
         return
     }
@@ -285,6 +286,7 @@ def apiTestFlow() {
 
     // --- Route only to the specific node ---
     if (nodeId) {
+		log.warn "Found nodeId: ${nodeId} going to evaluateNode(${fname}, ${nodeId}, ${evt})"
         evaluateNode(fname, nodeId, evt)
     } else {
         // Fallback: run all eventTriggers if nodeId is missing (legacy support)
@@ -309,7 +311,8 @@ def apiTestFlow() {
 				}
 
 				// If matches, proceed as normal
-				evaluateNode(fname, id, [name: "apiRunFlow", value: "API Run", pattern: eventPattern])
+				evaluateNode(fname, id, [name: "apiRunFlow", value: value, pattern: eventPattern])
+				if(!triggered) triggered = 0
 				triggered++
 			}
         }
