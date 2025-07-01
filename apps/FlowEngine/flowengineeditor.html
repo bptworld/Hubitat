@@ -4353,6 +4353,8 @@
       if (!res.ok) {
           alert("Failed to upload file to Hubitat: " + (await res.text()));
           throw new Error("Failed to upload file");
+      } else {
+        await reloadHubitatApp();
       }
       return await res.json().catch(() => true); // works for both JSON and blank responses
     }
@@ -5497,23 +5499,46 @@
 
         function attachNodeListeners() {
           document.querySelectorAll('.drawflow-node').forEach(el => {
-            if (el._multiNodeHandled) return; // Only once
+            if (el._multiNodeHandled) return; // Only attach once
             el._multiNodeHandled = true;
 
             el.addEventListener('mousedown', function(e) {
-              // Only left button
               if (e.button !== 0) return;
 
-              // --- PATCH: Don't block input/output dot events ---
+              // PATCH: Allow connections to be made by not intercepting input/output port events
               if (e.target.classList.contains('input') || e.target.classList.contains('output')) {
-                // Let Drawflow handle connections!
-                return;
+                return; // Let Drawflow handle port connection creation natively
               }
 
               const nodeId = this.id.replace('node-', '');
+              const node = window.editor.getNodeFromId(nodeId);
 
+              // --- PATCH: Prevent drag if node is locked ---
+              if (node && node.data && node.data.locked) {
+                // Allow selection and multi-select but NOT drag/move
+                if (e.ctrlKey || e.metaKey) {
+                  if (window._multiSelectedNodes.has(nodeId)) {
+                    window._multiSelectedNodes.delete(nodeId);
+                  } else {
+                    window._multiSelectedNodes.add(nodeId);
+                  }
+                  updateMultiSelectUI();
+                  e.stopPropagation();
+                  e.preventDefault();
+                  return;
+                }
+                // Single select (locked)
+                window._multiSelectedNodes.clear();
+                window._multiSelectedNodes.add(nodeId);
+                updateMultiSelectUI();
+                e.stopPropagation();
+                e.preventDefault();
+                return; // Dragging/moving is blocked
+              }
+              // --- END PATCH ---
+
+              // --- Multi-select handling (unlocked nodes) ---
               if (e.ctrlKey || e.metaKey) {
-                // Multi-select add/remove
                 if (window._multiSelectedNodes.has(nodeId)) {
                   window._multiSelectedNodes.delete(nodeId);
                 } else {
@@ -5522,30 +5547,54 @@
                 updateMultiSelectUI();
                 e.stopPropagation();
                 e.preventDefault();
-                // No drag on ctrl+mousedown
                 return;
               }
 
+              // --- Single select handling (unlocked node) ---
               if (!window._multiSelectedNodes.has(nodeId)) {
                 window._multiSelectedNodes.clear();
                 window._multiSelectedNodes.add(nodeId);
                 updateMultiSelectUI();
               }
 
-              // Start group drag
+              // --- Drag logic for unlocked nodes only ---
+              let dragSet = [];
+              if (window._multiSelectedNodes && window._multiSelectedNodes.size > 1 && window._multiSelectedNodes.has(nodeId)) {
+                dragSet = Array.from(window._multiSelectedNodes);
+              } else {
+                dragSet = [nodeId];
+              }
+
+              // Attach drag events for all selected nodes (unless any are locked)
+              if (dragSet.some(id => {
+                const n = window.editor.getNodeFromId(id);
+                return n && n.data && n.data.locked;
+              })) {
+                // One or more nodes in selection are locked; do not drag
+                return;
+              }
+
+              // --- ACTUALLY START GROUP DRAG (THIS WAS MISSING!) ---
               dragStart = {
                 baseX: e.clientX,
                 baseY: e.clientY,
-                positions: Array.from(window._multiSelectedNodes).map(id => {
+                positions: dragSet.map(id => {
                   const data = window.editor.drawflow.drawflow.Home.data[id];
-                  return { id, x: data.pos_x, y: data.pos_y };
+                  return {
+                    id,
+                    x: data.pos_x,
+                    y: data.pos_y
+                  };
                 })
               };
               dragMoving = false;
-              // DO NOT stopPropagation or preventDefault here for normal click!
-            }, false);
+              document.body.style.userSelect = "none";
+              e.preventDefault();
+              e.stopPropagation();
+            });
           });
         }
+
 
         let animationFrame = null;
 
@@ -5887,6 +5936,26 @@
         markFlowNeedsSave(true);
       };
 
+      async function reloadHubitatApp(opts = {}) {
+        const appId = document.getElementById("hubitatAppId")?.value.trim();
+        const token = document.getElementById("hubitatToken")?.value.trim();
+        if (!appId || !token) { 
+          alert("Missing Hubitat appId/token"); 
+          throw new Error("Missing Hubitat appId/token"); 
+        }
+        const url = `/apps/api/${appId}/forceReload?access_token=${token}`;
+        console.log("Reload App Fetch:", url);
+        const res = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify({ action: "reload" }),
+          headers: { "Content-Type": opts.mimeType || "application/json" }
+        });
+        if (!res.ok) {
+          alert("Failed to reload app: " + (await res.text()));
+          throw new Error("Failed to reload app");
+        }
+        return await res.json().catch(() => true);
+      }
 
     </script>
 </body>
