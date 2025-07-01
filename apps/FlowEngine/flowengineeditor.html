@@ -73,6 +73,7 @@
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Add Do Nothing</button>
       <button id="addComment" title="Add a Comment/Note node">Add Comment</button>
+      <button id="addRepeat" title="Add a Repeat node">Add Repeat</button>
     </div>
   </div>
   <div id="main">
@@ -671,6 +672,11 @@
       }
       if (t === "delaymin") {
         let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
+        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
+      }
+
+      if (t === "repeat") {
+        let label = data && data.delayMin ? `Repeat ${data.delayMin} min` : "Repeat";
         return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
@@ -2568,6 +2574,33 @@
           return;
         }
 
+        
+        if (node.name === "repeat") {
+          el.innerHTML = "<b>Repeat Node</b><hr>";
+
+          // Max repeats input
+          const label = document.createElement("label");
+          label.textContent = "Max repeats:";
+          label.style.display = "block";
+          el.appendChild(label);
+
+          const maxInput = document.createElement("input");
+          maxInput.type = "number";
+          maxInput.min = 1;
+          maxInput.max = 100;
+          maxInput.value = node.data.repeatMax || 1;
+          maxInput.style.width = "60px";
+          maxInput.onchange = () => {
+            node.data.repeatMax = parseInt(maxInput.value, 10) || 1;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(maxInput);
+
+          return;
+        }
+
         if (node.name === "setVariable") {
           el.innerHTML = "<b>Set Variable</b><br><br>";
 
@@ -3516,6 +3549,19 @@
       document.getElementById("undoBtn").onclick = doUndo;
       document.getElementById("redoBtn").onclick = doRedo;
 
+      document.getElementById("addRepeat").onclick = function() {
+        logAction("addNotMatchingVar button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("repeat", 1, 0, x, y, "repeat",
+          {}, nodeTileHtml("repeat", {}),
+        );
+        markFlowNeedsSave(true);
+        // Increment offset for next node
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+      };
+    
       document.getElementById("addNotMatchingVar").onclick = function () {
         logAction("addNotMatchingVar button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
@@ -3791,7 +3837,7 @@
       document.getElementById("addLogicAND").onclick = () => {
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
-        editor.addNode("AND", 2, 2, x, y, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
+        editor.addNode("AND", 1, 2, x, y, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3807,7 +3853,7 @@
       document.getElementById("addLogicOR").onclick = () => {
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
-        editor.addNode("OR", 2, 2, x, y, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
+        editor.addNode("OR", 1, 2, x, y, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3839,10 +3885,7 @@
       document.getElementById("addDoNothing").onclick = () => {
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
-        editor.addNode(
-          "doNothing", 
-          1, 0, x, y, 
-          "doNothing", 
+        editor.addNode("doNothing", 1, 0, x, y, "doNothing", 
           {}, 
           '<div class="logic-node">Do Nothing</div>'
         );
@@ -4948,7 +4991,7 @@
           let fix = false;
 
           if (t === 'eventtrigger' || t === 'schedule') {
-            // Triggers and Schedules: 0 input, 1 output
+            // 0 input, 1 output
             if (Object.keys(node.inputs).length !== 0) {
               node.inputs = {};
               fix = true;
@@ -4957,7 +5000,7 @@
               node.outputs = { "output_1": { connections: [] } };
               fix = true;
             }
-          } else if (t === 'condition' || t === 'not') {
+          } else if (t === 'condition' || t === 'not' || t === 'and' || t === 'or') {
             // 1 input, 2 outputs
             if (Object.keys(node.inputs).length !== 1) {
               node.inputs = { "input_1": { connections: [] } };
@@ -4970,23 +5013,7 @@
               };
               fix = true;
             }
-          } else if (t === 'and' || t === 'or') {
-            // 2 inputs, 2 output
-            if (Object.keys(node.inputs).length !== 2) {
-              node.inputs = {
-                "input_1": { connections: [] },
-                "input_2": { connections: [] }
-              };
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 2) {
-              node.outputs = {
-                "output_1": { connections: [] },
-                "output_2": { connections: [] }
-              };
-              fix = true;
-            }
-          } else if (t === 'donothing') {
+          } else if (t === 'donothing' || t === 'repeat') {
             // 1 input, 0 outputs
             if (Object.keys(node.inputs).length !== 1) {
               node.inputs = { "input_1": { connections: [] } };
@@ -4996,7 +5023,7 @@
               node.outputs = {};
               fix = true;
             }
-          } else if (t === 'donothing') {
+          } else if (t === 'comment') {
             // 0 input, 0 outputs
             if (Object.keys(node.inputs).length !== 0) {
               node.inputs = {};
@@ -5859,6 +5886,7 @@
         });
         markFlowNeedsSave(true);
       };
+
 
     </script>
 </body>
