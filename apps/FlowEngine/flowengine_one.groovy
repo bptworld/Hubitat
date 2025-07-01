@@ -130,9 +130,16 @@ mappings {
     path("/getFile")         { action: [GET: "apiGetFile"] }
     path("/getModes")        { action: [POST: "exportModesToFile"] }
     path("/activeFlows")     { action: [GET: "apiActiveFlows"] }
+	path("/forceReload") 	 { action: [POST: "apiForceReload" ] }
 }
 
 // --- HANDLERS ---
+
+def apiForceReload() {
+	flowLog(fname, "In apiForceReload", "debug")
+    updated()
+    render contentType: "application/json", data: '{"result":"App reloaded (updated() called)"}'
+}
 
 def recheckAllTriggers(fname) {
     def flowObj = state.activeFlows[fname]
