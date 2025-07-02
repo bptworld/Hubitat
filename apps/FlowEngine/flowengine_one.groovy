@@ -275,13 +275,19 @@ def apiTestFlow() {
         evt.descriptionText = "Switch was held"
         evt.data = "1"
         evt.pattern = "holdPerSecond"
-    } else if (value.isInteger() && value.toInteger() > 1) {
-        evt.value = "on"
-        evt.name = "pushed"
-        evt.descriptionText = "Switch was tapped ${value}x"
-        evt.data = value
-        evt.pattern = (value == "2") ? "double" : (value == "3") ? "triple" : "single"
-    }
+    } else if (value.isInteger() && value.toInteger() >= 1 && value.toInteger() <= 10) {
+		def tapCount = value.toInteger()
+		evt.value = "on"
+		evt.name = "pushed"
+		evt.descriptionText = "Switch was tapped ${tapCount}x"
+		evt.data = "${tapCount}"
+		switch (tapCount) {
+			case 1: evt.pattern = "single"; break
+			case 2: evt.pattern = "double"; break
+			case 3: evt.pattern = "triple"; break
+			case 4..10: evt.pattern = "x${tapCount}"; break
+		}
+	}
 	log.info "[apiTestFlow] evt.value: ${evt.value} | evt.name: ${evt.name} | evt.descriptionText: ${evt.descriptionText} | evt.data: ${evt.data} | evt.pattern: ${evt.pattern}"
 
     // --- Route only to the specific node ---
