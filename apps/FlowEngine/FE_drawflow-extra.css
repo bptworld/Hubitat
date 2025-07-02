@@ -73,15 +73,18 @@ button:hover { background: #02c258; }
 }
 .main-path.highlighted {
   stroke: limegreen !important;
-  stroke-width: 4px !important;
-  filter: drop-shadow(0 0 6px #0f0) !important;
+  stroke-width: 10px !important;
 }
 .drawflow-node.executed {
-  border: 3px solid #ffe54e !important;
-  box-shadow: 0 0 18px #ffe54e !important;
+  outline: 5px solid limegreen !important;
+  box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important;
+  border-radius: 14px !important;
+  z-index: 2000 !important;
+  animation: none !important;
+  filter: none !important;
 }
 #sendFlow.need-save {
-  background: #e6462d !important;   /* red */
+  background: #e6462d !important;
   color: #fff !important;
   border: 2px solid #900 !important;
   font-weight: bold;
@@ -105,7 +108,7 @@ button:hover { background: #02c258; }
   padding: 9px 8px;
 }
 #exportVarsBtn.need-export {
-  background: #e6462d !important;   /* red */
+  background: #e6462d !important;
   color: #fff !important;
   border: 2px solid #900 !important;
   font-weight: bold;
@@ -163,7 +166,6 @@ button:hover { background: #02c258; }
   color: #000 !important;
   min-width: 300px !important;
   border-radius: 0 !important;
-  transform: rotate(-1deg);
   opacity: 1 !important;
 }
 .drawflow-node.and,
@@ -182,7 +184,7 @@ button:hover { background: #02c258; }
 }
 .drawflow-node.selected-multi {
   outline: 5px solid #00fff7 !important;
-  box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important; /* optional faint border for contrast */
+  box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important;
   border-radius: 14px !important;
   z-index: 2000 !important;
   animation: none !important;
