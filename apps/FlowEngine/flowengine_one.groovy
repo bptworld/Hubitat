@@ -900,8 +900,8 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "delay":
-			flowLog(fname, "In evaluateNode - delay", "debug")
-            def ms = (node.data.delayMs ?: 1000) as Integer
+		flowLog(fname, "In evaluateNode - delayMs: ${node.data.delayMs} - node: ${node.data}", "debug")
+            def ms = (node.data.ms ?: 1000) as Integer
             pauseExecution(ms)
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
