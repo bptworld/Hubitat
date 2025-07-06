@@ -117,17 +117,15 @@
   <script>
     window.editor = null;
     window._multiSelectedNodes = new Set();
-
-    // --- Node placement tracking ---
-    window.nextNodeX = 1200;  // Set this based on your grid/canvas width
+    window.nextNodeX = 1200;
     window.nextNodeY = 40;
     window.nodeYIncrement = 56;
-    window.nodeStartX = 1200;  // Start value for upper right (adjust as needed)
+    window.nodeStartX = 1200;
     window.nodeStartY = 40;
-    window.nodeYLimit = 800;   // How far down before reset
+    window.nodeYLimit = 800;
     window.newNodeOffsetX = 0;
     window.newNodeOffsetY = 0;
-    window.newNodeOffsetStep = 5; // pixels to offset each new node
+    window.newNodeOffsetStep = 5;
     window.newNodeCounter = 0;
     window.newNodeOffsetLimit = 10;
 
@@ -135,14 +133,12 @@
     window.FE_flowvars = [];
     window.FE_global_vars = [];
 
-    // Placement tracker: will be reset on each page load and flow load
-    window.nodeStartMargin = 40; // margin from right/top
-    window.nodeYIncrement = 64; // how much to move down each node
-    window.nodeYLimit = 400;    // how far to go down before new column (will be updated at runtime)
-    window.nextNodeCol = 0;     // track column (rightmost = 0)
-    window.nextNodeIndex = 0;   // tracks # added in current col
+    window.nodeStartMargin = 40;
+    window.nodeYIncrement = 64;
+    window.nodeYLimit = 400;
+    window.nextNodeCol = 0;
+    window.nextNodeIndex = 0;
 
-    // --- Undo/Redo History ---
     window.undoStack = [];
     window.redoStack = [];
 
@@ -160,10 +156,9 @@
 
     function doUndo() {
       logAction("doUndo button clicked.");
-      if (window.undoStack.length < 2) return; // must have at least one previous
+      if (window.undoStack.length < 2) return;
       const current = window.undoStack.pop();
       window.redoStack.push(current);
-      // Restore previous
       const prev = window.undoStack[window.undoStack.length-1];
       if (prev) {
         restoreFlowFromJson(prev);
@@ -181,10 +176,8 @@
       }
     }
 
-    // Helper: restore flow
     async function restoreFlowFromJson(jsonStr) {
       try {
-        // Make sure devices are loaded first
         if (!window.devices || !window.devices.length) {
           if (typeof fetchDevicesFromApp === "function") {
             window.devices = await fetchDevicesFromApp();
@@ -205,20 +198,15 @@
         const flow = JSON.parse(jsonStr);
         if (editor && typeof editor.import === "function") {
           editor.import(flow);
-          // Patch device labels and consistency
           patchFlowWithDeviceLabels(flow, window.devices);
 
-          // Update all tiles
           if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
             Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
           }
 
-          // --- PATCH: force field sync after import/undo ---
           setTimeout(() => {
-            // 1. Always pick a node to edit
             let selected = editor.selected_id;
             if (!selected) {
-              // If nothing selected, pick the first node in the flow (if any)
               const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
                 ? Object.keys(editor.drawflow.Home.data)
                 : [];
@@ -228,7 +216,6 @@
               }
             }
             if (selected) {
-              // Always refresh the editor panel to match current node data
               window.renderEditor(editor.getNodeFromId(selected));
             } else {
               document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
@@ -251,7 +238,6 @@
       }
     }
 
-    // ---- CENTRALIZED CREDENTIAL CHECK ----
     function hubitatCredentialsAreValid(logIfMissing = false) {
       const appId = document.getElementById("hubitatAppId")?.value?.trim();
       const token = document.getElementById("hubitatToken")?.value?.trim();
@@ -262,7 +248,6 @@
       return true;
     }
 
-    // ---- WARNING BANNER LOGIC ----
     function showHubitatWarning(show) {
       let warn = document.getElementById("hubitatWarnBanner");
       if (!warn) {
@@ -275,14 +260,12 @@
       warn.style.display = show ? "block" : "none";
     }
 
-    // ---- BUTTONS DISABLE LOGIC ----
     function updateHubitatButtonStates() {
       const valid = hubitatCredentialsAreValid();
       const buttonIds = [
         "loadDevices", 
         "loadFlowFromHubitatDropdown", 
         "sendFlow"
-        // Add other button IDs that need disabling here if any
       ];
       buttonIds.forEach(id => {
         const btn = document.getElementById(id);
@@ -294,22 +277,16 @@
     document.getElementById("hubitatToken").addEventListener("input", updateHubitatButtonStates);
     window.addEventListener("DOMContentLoaded", updateHubitatButtonStates);
 
-    // ---- OPTIONAL: CLEAR DEVICES/FLOW IF CREDS MISSING ----
     function clearUiIfCredentialsMissing() {
       if (!hubitatCredentialsAreValid()) {
-        // Optional: Clear device/flow UI, or gray out editor
-        // For example:
         if (typeof window.devices !== "undefined") window.devices = [];
         if (editor && editor.clear) editor.clear();
-        // Or clear device/flow-related UI
       }
     }
     document.getElementById("hubitatAppId").addEventListener("input", clearUiIfCredentialsMissing);
     document.getElementById("hubitatToken").addEventListener("input", clearUiIfCredentialsMissing);
 
-    // ---- OPTIONAL: VALIDATE FORMAT ----
     function validateHubitatInputFormat() {
-      // You can make this more robust if your tokens/appIds have a known format
       const appId = document.getElementById("hubitatAppId")?.value?.trim();
       const token = document.getElementById("hubitatToken")?.value?.trim();
       if (appId && !/^[a-zA-Z0-9]+$/.test(appId)) {
@@ -328,7 +305,7 @@
     document.getElementById("hubitatToken").addEventListener("input", validateHubitatInputFormat);
 
     window.addEventListener("DOMContentLoaded", function() {
-      setTimeout(updateHubitatButtonStates, 350); // For autofill
+      setTimeout(updateHubitatButtonStates, 350);
     });
       
     function logAction(msg, type = "info") {
@@ -344,7 +321,6 @@
       if (!container) return;
       let html = "";
 
-      // --- Global Variables ---
       let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
       if (globals.length) {
         html += `<div style="color:#eee;margin-bottom:3px;"><b>Global Variables</b></div>`;
@@ -356,7 +332,6 @@
         });
       }
 
-      // --- Flow Variables ---
       if (window.FE_flowvars && Array.isArray(window.FE_flowvars) && window.FE_flowvars.length) {
         html += `<div style="color:#eee;margin:10px 0 3px 0;"><b>Flow Variables</b></div>`;
         window.FE_flowvars.forEach(v => {
@@ -374,7 +349,6 @@
       container.innerHTML = html;
     }
 
-    // --- Auto-load FE_global_vars.json ---
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
       try {
         if (typeof fetchHubitatVarFileContent === "function") {
@@ -392,7 +366,6 @@
               }
             }
             
-            // --- PARSE AND STORE DIRECTLY ---
             let parsed = [];
             try { 
               parsed = JSON.parse(txt);
@@ -417,13 +390,11 @@
               }
             }
 
-            // --- FORCE RE-RENDER IF NODE EDITOR OPEN ---
             if (editor && editor.selected_id) {
               const node = editor.getNodeFromId(editor.selected_id);
               if (node) renderEditor(node);
             }
           } else {
-            // --- FILE MISSING: CREATE EMPTY ---
             const emptyGlobals = [];
             window.FE_global_vars = emptyGlobals;
             window.FE_global_var_names = [];
@@ -440,21 +411,18 @@
         }
       } catch (e) {
         logAction("Error loading FE_global_vars.json (continuing): " + e, "error");
-        // Fallback: set arrays to empty
         window.FE_global_vars = [];
         window.FE_global_var_names = [];
       }
       renderVariableInspector();
     }
-    // --- END Auto-load FE_global_vars.json ---
-
-    // ---- Time device for time/day-of-week conditions
+ 
     const TIME_DEVICE = {
       id: "__time__",
       label: "Time",
       name: "Time",
       attributes: {
-        currentTime: "", // "HH:mm"
+        currentTime: "",
         timeOfDay: ["sunrise", "sunset"],
         dayOfWeek: [
           "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
@@ -463,22 +431,18 @@
       commands: []
     };
 
-    // --- Time‐device picker helper (sunrise/sunset, day-of-week, current time) ---
     function buildTimeDevicePicker(pickerDiv, node) {
       const devs = node.data.deviceIds || [];
       if (devs.length !== 1 || node.data.deviceId !== "__time__") return false;
 
-      // 0) Clear out any previous controls
       pickerDiv.innerHTML = "";
 
-      // If no condition selected yet, default to Time of Day
       if (!node.data.attribute) {
         node.data.attribute  = "timeOfDay";
         node.data.comparator = "";
         node.data.value      = "";
       }
 
-      // 1) Attribute selector
       pickerDiv.appendChild(Object.assign(document.createElement("label"), {
         textContent: "Condition",
         style: "display:block;margin-bottom:4px"
@@ -497,18 +461,14 @@
         attrSelect.appendChild(opt);
       });
       attrSelect.onchange = () => {
-        // update model
         node.data.attribute  = attrSelect.value;
         node.data.comparator = "";
         node.data.value      = "";
         editor.updateNodeDataFromId(node.id, node.data);
-
-        // rebuild the picker controls
         buildTimeDevicePicker(pickerDiv, node);
       };
       pickerDiv.appendChild(attrSelect);
 
-      // 2) Comparator selector
       pickerDiv.appendChild(Object.assign(document.createElement("label"), {
         textContent: "Comparator",
         style: "display:block;margin-bottom:4px"
@@ -526,15 +486,11 @@
         node.data.comparator = cmpSelect.value;
         node.data.value      = "";
         editor.updateNodeDataFromId(node.id, node.data);
-
-        // only need to rebuild the value control
         buildTimeDevicePicker(pickerDiv, node);
       };
       pickerDiv.appendChild(cmpSelect);
 
-      // 3) Value control based on attribute
       if (node.data.attribute === "timeOfDay") {
-        // Sunrise/Sunset dropdown
         const todSelect = document.createElement("select");
         todSelect.style = "display:block;margin-bottom:12px";
         ["sunrise", "sunset"].forEach(tod => {
@@ -566,9 +522,7 @@
           editor.updateNodeDataFromId(node.id, node.data);
         };
         pickerDiv.appendChild(offsetInput);
-        // ---- END PATCH ----
       } else if (node.data.attribute === "dayOfWeek") {
-        // Day of Week dropdown
         const dowSelect = document.createElement("select");
         dowSelect.style = "display:block;margin-bottom:12px";
         ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
@@ -576,23 +530,19 @@
             const opt = document.createElement("option");
             opt.value = day;
             opt.textContent = day;
-            // allow for array or single value
             if (Array.isArray(node.data.value) ? node.data.value.includes(day) : node.data.value === day) opt.selected = true;
             dowSelect.appendChild(opt);
         });
         dowSelect.multiple = true;
         dowSelect.size = 7;
         dowSelect.onchange = () => {
-          // Collect all selected days
           const selected = Array.from(dowSelect.selectedOptions).map(opt => opt.value);
           node.data.value = selected;
           editor.updateNodeDataFromId(node.id, node.data);
         };
         pickerDiv.appendChild(dowSelect);
       } else if (node.data.attribute === "currentTime") {
-        // --- CURRENT TIME: single or between picker ---
         if (node.data.comparator === "between") {
-          // two time inputs for “between”
           const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
             ? node.data.value
             : ["", ""];
@@ -620,7 +570,6 @@
           pickerDiv.appendChild(endInput);
 
         } else {
-          // single time input
           const timeInput = document.createElement("input");
           timeInput.type  = "time";
           timeInput.value = node.data.value || "";
@@ -643,7 +592,6 @@
       commands: []
     };
 
-    // Add Variable virtual device for Conditions only
     const VARIABLE_DEVICE = {
       id: "__variable__",
       label: "Variable",
@@ -654,14 +602,12 @@
     const devs = Array.isArray(window.devices) ? window.devices : [];
     let conditionDevices = [...devs];
 
-    // Only add Variable for Conditions
     conditionDevices.unshift(VARIABLE_DEVICE);
 
     function isValidFlowName(flowName) {
       return /^[a-zA-Z0-9_-]+$/.test(flowName);
     }
 
-    // --- Here comes the nodeTileHtml function ---
     function nodeTileHtml(type, data, nodeId) {
       function getCurrentValue(deviceId, attr) {
         const devs = window.devices || [];
@@ -833,14 +779,12 @@
 
           let currentStr = "";
           if (data.deviceId === "__time__" && attribute === "currentTime") {
-            // show the actual current time
             const now = new Date();
             const hh  = String(now.getHours()).padStart(2, "0");
             const mm  = String(now.getMinutes()).padStart(2, "0");
             currentStr = `<div class="current-value">current time: ${hh}:${mm}</div>`;
           }
           else if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
-            // normal device-status line
             currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
           }
 
@@ -5368,22 +5312,37 @@
           const scale = Math.min(scaleX, scaleY);
 
           const ctx = document.getElementById(CANVAS_ID).getContext('2d');
-          ctx.clearRect(0,0,W,H);
+          ctx.clearRect(0, 0, W, H);
 
-          // Draw connections as lines
-          ctx.save();
-          ctx.strokeStyle = "#888";
-          ctx.globalAlpha = 0.85;
-          ctx.lineWidth = 1.2;
+          // Draw connections
           nodes.forEach(([id, n]) => {
             Object.values(n.outputs || {}).forEach(out => {
               (out.connections || []).forEach(conn => {
                 const target = data[conn.node];
                 if (!target) return;
+
                 const x1 = Math.round((n.pos_x - minX + 80) * scale);
                 const y1 = Math.round((n.pos_y - minY + 35) * scale);
                 const x2 = Math.round((target.pos_x - minX + 80) * scale);
                 const y2 = Math.round((target.pos_y - minY + 35) * scale);
+
+                // Find the real DOM path element
+                const pathEl = document.querySelector(
+                  `.connection.node_out_node-${id}.node_in_node-${conn.node} .main-path,
+                  .connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
+                );
+
+                // Style based on whether it's highlighted upstream
+                if (pathEl && pathEl.classList.contains('highlighted')) {
+                  ctx.strokeStyle = "limegreen";
+                  ctx.globalAlpha  = 1;
+                  ctx.lineWidth    = 2;
+                } else {
+                  ctx.strokeStyle = "#888";
+                  ctx.globalAlpha  = 0.85;
+                  ctx.lineWidth    = 1.2;
+                }
+
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.bezierCurveTo(
@@ -5395,22 +5354,30 @@
               });
             });
           });
-          ctx.restore();
 
-          // Draw nodes with real color, border, label
+          // Draw nodes with real color, border, label, and flow-path highlights
           nodes.forEach(([id, n]) => {
             const x = Math.round((n.pos_x - minX) * scale);
             const y = Math.round((n.pos_y - minY) * scale);
             const w = Math.max(30, Math.round(120 * scale));
-            const h = Math.max(18, Math.round(48 * scale));
+            const h = Math.max(18, Math.round(48  * scale));
 
-            const { bg, border, txt } = getNodeStyleAndLabel(id, n);
+            // grab base style & label
+            let { bg, border, txt } = getNodeStyleAndLabel(id, n);
 
+            // if this node is in the active flow-path, force green
+            const nodeEl = document.getElementById('node-' + id);
+            if (nodeEl && nodeEl.classList.contains('flow-path')) {
+              bg     = 'limegreen';
+              border = 'limegreen';
+            }
+
+            // draw the box
             ctx.save();
             ctx.globalAlpha = 0.93;
-            ctx.fillStyle = bg;
+            ctx.fillStyle   = bg;
             ctx.strokeStyle = border;
-            ctx.lineWidth = 1.8;
+            ctx.lineWidth   = 1.8;
             ctx.beginPath();
             ctx.moveTo(x+4, y);
             ctx.lineTo(x+w-4, y);
@@ -5433,9 +5400,9 @@
             if (isSelected) {
               ctx.save();
               ctx.shadowColor = "#00fff7";
-              ctx.shadowBlur = 10;
+              ctx.shadowBlur  = 10;
               ctx.strokeStyle = "#00fff7";
-              ctx.lineWidth = 4;
+              ctx.lineWidth   = 4;
               ctx.globalAlpha = 0.92;
               ctx.beginPath();
               ctx.moveTo(x+4, y);
@@ -5452,11 +5419,12 @@
               ctx.restore();
             }
 
+            // Draw label
             ctx.save();
-            ctx.font = `bold ${Math.max(9, Math.round(h/2.3))}px sans-serif`;
-            ctx.fillStyle = "#181d20";
-            ctx.globalAlpha = 1.0;
-            ctx.textAlign = "center";
+            ctx.font         = `bold ${Math.max(9, Math.round(h / 2.3))}px sans-serif`;
+            ctx.fillStyle    = "#181d20";
+            ctx.globalAlpha  = 1.0;
+            ctx.textAlign    = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(txt, x + w/2, y + h/2);
             ctx.restore();
@@ -5471,23 +5439,23 @@
               const match = transform.match(/matrix\(([^)]+)\)/);
               if (match) {
                 const parts = match[1].split(',');
-                scaleDF = parseFloat(parts[0]);
-                translateX = parseFloat(parts[4]);
-                translateY = parseFloat(parts[5]);
+                scaleDF      = parseFloat(parts[0]);
+                translateX   = parseFloat(parts[4]);
+                translateY   = parseFloat(parts[5]);
               }
             }
-            const rect = document.getElementById('drawflow').getBoundingClientRect();
-            const flowW = rect.width, flowH = rect.height;
-            const visX = (-translateX) / scaleDF;
-            const visY = (-translateY) / scaleDF;
-            const vx = (visX - minX) * scale;
-            const vy = (visY - minY) * scale;
-            const vw = flowW / scaleDF * scale;
-            const vh = flowH / scaleDF * scale;
+            const rect   = document.getElementById('drawflow').getBoundingClientRect();
+            const flowW  = rect.width, flowH = rect.height;
+            const visX   = (-translateX) / scaleDF;
+            const visY   = (-translateY) / scaleDF;
+            const vx     = (visX - minX) * scale;
+            const vy     = (visY - minY) * scale;
+            const vw     = flowW / scaleDF * scale;
+            const vh     = flowH / scaleDF * scale;
             ctx.save();
             ctx.strokeStyle = "#f4e43a";
             ctx.globalAlpha = 0.9;
-            ctx.lineWidth = 2;
+            ctx.lineWidth   = 2;
             ctx.strokeRect(vx, vy, vw, vh);
             ctx.restore();
           }
