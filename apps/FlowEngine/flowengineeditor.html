@@ -550,7 +550,6 @@
         };
         pickerDiv.appendChild(todSelect);
 
-        // ---- ADD THIS BLOCK ----
         const offsetLabel = document.createElement("label");
         offsetLabel.textContent = "Offset (minutes)";
         offsetLabel.style.display = "block";
@@ -590,19 +589,49 @@
           editor.updateNodeDataFromId(node.id, node.data);
         };
         pickerDiv.appendChild(dowSelect);
-      } else {
-        // Current Time input
-        const timeInput = document.createElement("input");
-        timeInput.type  = "time";
-        timeInput.value = node.data.value || "";
-        timeInput.style = "display:block;margin-bottom:12px";
-        timeInput.onchange = () => {
-          node.data.value = timeInput.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-        };
-        pickerDiv.appendChild(timeInput);
-      }
+      } else if (node.data.attribute === "currentTime") {
+        // --- CURRENT TIME: single or between picker ---
+        if (node.data.comparator === "between") {
+          // two time inputs for “between”
+          const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
+            ? node.data.value
+            : ["", ""];
+          
+          const startInput = document.createElement("input");
+          startInput.type = "time";
+          startInput.value = startVal;
+          startInput.style = "display:block; margin-bottom:4px;";
+          startInput.onchange = () => {
+            const [, currEnd] = node.data.value || ["", ""];
+            node.data.value = [startInput.value, currEnd];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(startInput);
 
+          const endInput = document.createElement("input");
+          endInput.type = "time";
+          endInput.value = endVal;
+          endInput.style = "display:block; margin-bottom:12px;";
+          endInput.onchange = () => {
+            const [currStart] = node.data.value || ["", ""];
+            node.data.value = [currStart, endInput.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(endInput);
+
+        } else {
+          // single time input
+          const timeInput = document.createElement("input");
+          timeInput.type  = "time";
+          timeInput.value = node.data.value || "";
+          timeInput.style = "display:block; margin-bottom:12px;";
+          timeInput.onchange = () => {
+            node.data.value = timeInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(timeInput);
+        }
+      }
       return true;
     }
 
@@ -802,10 +831,18 @@
           value = '(' + data.value + ')';
         }
 
-        let currentStr = "";
-        if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
-          currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
-        }
+          let currentStr = "";
+          if (data.deviceId === "__time__" && attribute === "currentTime") {
+            // show the actual current time
+            const now = new Date();
+            const hh  = String(now.getHours()).padStart(2, "0");
+            const mm  = String(now.getMinutes()).padStart(2, "0");
+            currentStr = `<div class="current-value">current time: ${hh}:${mm}</div>`;
+          }
+          else if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
+            // normal device-status line
+            currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
+          }
 
         let forMinutesStr = '';
         if (
@@ -910,9 +947,18 @@
         const devs = window.devices || [];
         const dev = devs.find(d => d.id == data.deviceId);
         let currentStr = "";
-        if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
+        if (data.deviceId === "__time__" && attribute === "currentTime") {
+          // show the actual current time
+          const now = new Date();
+          const hh  = String(now.getHours()).padStart(2, "0");
+          const mm  = String(now.getMinutes()).padStart(2, "0");
+          currentStr = `<div class="current-value">current time: ${hh}:${mm}</div>`;
+        }
+        else if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
+          // normal device-status line
           currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
         }
+
         // For (minutes) display if set
         let forMinutesStr = '';
         if (
@@ -3031,7 +3077,6 @@
                   editor.updateNodeDataFromId(node.id, node.data);
                 };
                 pickerDiv.appendChild(offsetInput);
-                // ---- END PATCH ----
               } else if (node.data.attribute === "dayOfWeek") {
                 // Day of Week dropdown
                 const dowSelect = document.createElement("select");
@@ -3054,20 +3099,50 @@
                   editor.updateNodeDataFromId(node.id, node.data);
                 };
                 pickerDiv.appendChild(dowSelect);
-              } else {
-                // Current Time input
-                const timeInput = document.createElement("input");
-                timeInput.type  = "time";
-                timeInput.value = node.data.value || "";
-                timeInput.style = "display:block;margin-bottom:12px";
-                timeInput.onchange = () => {
-                  node.data.value = timeInput.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                };
-                pickerDiv.appendChild(timeInput);
-              }
+              } else if (node.data.attribute === "currentTime") {
+                // --- CURRENT TIME: single or between picker ---
+                if (node.data.comparator === "between") {
+                  // two time inputs for “between”
+                  const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
+                    ? node.data.value
+                    : ["", ""];
+                  
+                  const startInput = document.createElement("input");
+                  startInput.type = "time";
+                  startInput.value = startVal;
+                  startInput.style = "display:block; margin-bottom:4px;";
+                  startInput.onchange = () => {
+                    const [, currEnd] = node.data.value || ["", ""];
+                    node.data.value = [startInput.value, currEnd];
+                    editor.updateNodeDataFromId(node.id, node.data);
+                  };
+                  pickerDiv.appendChild(startInput);
 
-              return;  // skip the normal attribute/comparator/value builder
+                  const endInput = document.createElement("input");
+                  endInput.type = "time";
+                  endInput.value = endVal;
+                  endInput.style = "display:block; margin-bottom:12px;";
+                  endInput.onchange = () => {
+                    const [currStart] = node.data.value || ["", ""];
+                    node.data.value = [currStart, endInput.value];
+                    editor.updateNodeDataFromId(node.id, node.data);
+                  };
+                  pickerDiv.appendChild(endInput);
+
+                } else {
+                  // single time input
+                  const timeInput = document.createElement("input");
+                  timeInput.type  = "time";
+                  timeInput.value = node.data.value || "";
+                  timeInput.style = "display:block; margin-bottom:12px;";
+                  timeInput.onchange = () => {
+                    node.data.value = timeInput.value;
+                    editor.updateNodeDataFromId(node.id, node.data);
+                  };
+                  pickerDiv.appendChild(timeInput);
+                }
+              }
+              return;
             }
             
             // --- Standard device attribute pickers ---
@@ -4654,6 +4729,42 @@
               };
               menuDiv.appendChild(unlockBtn);
             }
+
+            // --- Save Subflow ---
+            const saveSubflowBtn = document.createElement('div');
+            saveSubflowBtn.textContent = "Save Subflow";
+            saveSubflowBtn.style.cursor = 'pointer';
+            saveSubflowBtn.style.padding = '6px 12px';
+            saveSubflowBtn.onmouseenter = () => saveSubflowBtn.style.background = "#555";
+            saveSubflowBtn.onmouseleave = () => saveSubflowBtn.style.background = "transparent";
+            saveSubflowBtn.onclick = async () => {
+              // Grab base flow name
+              const baseName = document.getElementById("flowName").value.trim();
+              if (!baseName) {
+                alert("Please enter a Flow Name.");
+                return;
+              }
+              // Prefix with 'subflow_' if not already
+              const subflowName = baseName.startsWith("subflow_")
+                ? baseName
+                : "subflow_" + baseName;
+
+              // Export the entire flow
+              const full = editor.export();
+              // Include any local variables
+              if (window.flowVars && window.flowVars.getLocalVars) {
+                full.variables = window.flowVars.getLocalVars();
+              }
+              // Build payload with the new flowName at top
+              const payload = { flowName: subflowName, ...full };
+
+              // Upload exactly like Save Flow
+              await uploadToHubitatFile(subflowName + ".json", JSON.stringify(payload, null, 2));  // uses your existing uploader :contentReference[oaicite:1]{index=1}
+              markFlowNeedsSave(false);
+              logAction(`Sent subflow "${subflowName}" to Hubitat File Manager.`, "success");
+              menuDiv.remove();
+            };
+            menuDiv.appendChild(saveSubflowBtn);
 
             document.body.appendChild(menuDiv);
 
