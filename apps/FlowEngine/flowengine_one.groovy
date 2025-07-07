@@ -141,47 +141,25 @@ def apiForceReload() {
     render contentType: "application/json", data: '{"result":"App reloaded (updated() called)"}'
 }
 
-def recheckAllTriggers(fname) {
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    dataNodes.each { id, node ->
-        if (node.name == "eventTrigger") {
-            def attr = node.data.attribute
-            def expectedValue = node.data.value
-            def comparator = node.data.comparator
-            def devIds = []
-            if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds
-            else if (node.data.deviceId) devIds = [node.data.deviceId]
-
-            // Variable trigger
-            if (node.data.deviceId == "__variable__" && node.data.varName) {
-                def varName = node.data.varName
-                def globalVars = flowObj.globalVars ?: []
-                def curValue = globalVars.find { it.name == varName }?.value
-                // Use your existing comparator logic
-                if (evaluateComparator(curValue, expectedValue, comparator)) {
-                    def evt = [name: varName, value: curValue]
-                    evaluateNode(fname, id, evt)
+def recheckAllTriggers() {
+    state.activeFlows?.each { fname, flowObj ->
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
+        dataNodes.each { id, node ->
+            if (node.name == "eventTrigger" && node.data.deviceId == "__time__") {
+                def attr         = node.data.attribute
+                def expected     = node.data.value
+                def comparator   = node.data.comparator
+                def curValue
+                if (attr == "currentTime") {
+                    curValue = new Date().format("HH:mm", location.timeZone)
+                } else if (attr == "dayOfWeek") {
+                    curValue = new Date().format("EEEE", location.timeZone)
+                } else {
+                    return
                 }
-            }
-            // Mode trigger
-            else if (node.data.deviceId == "__mode__") {
-                def curMode = location.mode
-                if (evaluateComparator(curMode, expectedValue, comparator)) {
-                    def evt = [name: "mode", value: curMode]
-                    evaluateNode(fname, id, evt)
-                }
-            }
-            // Device trigger
-            else if (devIds && attr) {
-                devIds.each { devId ->
-                    def device = getDeviceById(devId)
-                    def curValue = device?.currentValue(attr)
-                    if (evaluateComparator(curValue, expectedValue, comparator)) {
-                        def evt = [name: attr, value: curValue, device: device]
-                        evaluateNode(fname, id, evt)
-                    }
+                if (evaluateComparator(curValue, expected, comparator)) {
+                    // Fire just this node
+                    evaluateNode(fname, id, [ name: attr, value: curValue ])
                 }
             }
         }
@@ -254,75 +232,94 @@ def apiTestFlow() {
     }
     // Don't error if nodeId is blank, but prefer to require it for accuracy
 
-    // --- Build simulated event ---
-    def evt = [name: "apiTestFlow", value: value]
-	log.info "[apiTestFlow] evt: ${evt}"
-    if (value in ["double", "doubletap", "double-tap"]) {
-        evt.value = "on"
-        evt.name = "pushed"
-        evt.descriptionText = "Switch was doubleTapped"
-        evt.data = "2"
-        evt.pattern = "double"
-    } else if (value in ["triple", "tripletap", "triple-tap"]) {
-        evt.value = "on"
-        evt.name = "pushed"
-        evt.descriptionText = "Switch was tripleTapped"
-        evt.data = "3"
-        evt.pattern = "triple"
-    } else if (value in ["hold", "held"]) {
-        evt.value = "held"
-        evt.name = "held"
-        evt.descriptionText = "Switch was held"
-        evt.data = "1"
-        evt.pattern = "holdPerSecond"
-    } else if (value.isInteger() && value.toInteger() >= 1 && value.toInteger() <= 10) {
-		def tapCount = value.toInteger()
-		evt.value = "on"
-		evt.name = "pushed"
-		evt.descriptionText = "Switch was tapped ${tapCount}x"
-		evt.data = "${tapCount}"
-		switch (tapCount) {
-			case 1: evt.pattern = "single"; break
-			case 2: evt.pattern = "double"; break
-			case 3: evt.pattern = "triple"; break
-			case 4..10: evt.pattern = "x${tapCount}"; break
+    // --- Build simulated event for both clickPattern AND time triggers ---
+	def evt = [:]
+	if (nodeId) {
+		// look up this trigger node’s settings
+		def node        = state.activeFlows[fname]?.flow?.drawflow?.Home?.data[nodeId]
+		def patternType = node?.data?.clickPattern
+		def deviceId    = node?.data?.deviceId
+		def attr        = node?.data?.attribute
+
+		if (deviceId == "__time__") {
+			// --- Time triggers ---
+			if (attr in ["sunrise","sunset"]) {
+				// simulate a sunrise/sunset event
+				evt.name            = attr
+				evt.value           = attr
+				evt.descriptionText = "Time event: ${attr}"
+				evt.data            = attr
+				evt.pattern         = attr
+			}
+			else if (attr == "currentTime" && (value ==~ /\d{2}:\d{2}/)) {
+				// simulate currentTime compare
+				evt.name            = "currentTime"
+				evt.value           = value
+				evt.descriptionText = "Current time is ${value}"
+				evt.data            = value
+				evt.pattern         = "currentTime"
+			}
+			else if (attr == "dayOfWeek") {
+				// simulate dayOfWeek compare (value should be full weekday name)
+				evt.name            = "dayOfWeek"
+				evt.value           = value.capitalize()
+				evt.descriptionText = "Day of week is ${evt.value}"
+				evt.data            = evt.value
+				evt.pattern         = "dayOfWeek"
+			}
+			else {
+				// fallback if user enters something unexpected
+				evt.name            = attr
+				evt.value           = value
+				evt.descriptionText = "Time event: ${value}"
+				evt.data            = value
+				evt.pattern         = attr
+			}
+		}
+		else if (patternType == "taps" && value.isInteger()) {
+			// --- Multi-taps ---
+			int tapCount = value.toInteger()
+			evt.name            = "pushed"
+			evt.value           = "${tapCount}"
+			evt.descriptionText = "Switch was tapped ${tapCount}x"
+			evt.data            = "${tapCount}"
+			evt.pattern         = "taps"
+		}
+		else if (patternType == "holdPerSecond" && value.isInteger()) {
+			// --- Hold per second ---
+			int sec = value.toInteger()
+			evt.name            = "held"
+			evt.value           = "held"
+			evt.descriptionText = "Switch was held ${sec} sec"
+			evt.data            = "${sec}"
+			evt.pattern         = "holdPerSecond"
+		}
+		else {
+			// --- Fallback for any other text/value triggers ---
+			evt.name            = "pushed"
+			evt.value           = value
+			evt.descriptionText = "Switch event: ${value}"
+			evt.data            = value
+			evt.pattern         = patternType ?: value
+		}
+	} else {
+		// legacy: no nodeId → generic test event
+		evt = [ name: "apiTestFlow", value: value ]
+	}
+
+	// log exactly what’s being passed into evaluateNode()
+	log.info "[apiTestFlow] evt.name:${evt.name} | evt.value:${evt.value} | evt.descriptionText:${evt.descriptionText} | evt.data:${evt.data} | evt.pattern:${evt.pattern}"
+
+	// --- Route to the specific node or all triggers ---
+	if (nodeId) {
+		evaluateNode(fname, nodeId, evt)
+	} else {
+		state.activeFlows[fname]?.flow?.drawflow?.Home?.data?.each { id, node ->
+			if (node.name == "eventTrigger") {
+				evaluateNode(fname, id, evt)
+			}
 		}
 	}
-	log.info "[apiTestFlow] evt.value: ${evt.value} | evt.name: ${evt.name} | evt.descriptionText: ${evt.descriptionText} | evt.data: ${evt.data} | evt.pattern: ${evt.pattern}"
-
-    // --- Route only to the specific node ---
-    if (nodeId) {
-		log.warn "Found nodeId: ${nodeId} going to evaluateNode(${fname}, ${nodeId}, ${evt})"
-        evaluateNode(fname, nodeId, evt)
-    } else {
-        // Fallback: run all eventTriggers if nodeId is missing (legacy support)
-        log.warn "[${fname}] No nodeId provided for apiTestFlow, running all eventTrigger nodes"
-        def flow = state.activeFlows[fname]?.flow
-        flow?.drawflow?.Home?.data?.each { id, node ->
-            if (node.name == "eventTrigger") {
-				def expectedValue = node.data.value
-				def expectedPattern = node.data.clickPattern
-				def eventValue = (evt instanceof Map) ? evt.value : evt?.value
-				def eventPattern = (evt instanceof Map) ? evt.pattern : null
-
-				// Strict value match (if set)
-				if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-					flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-					return
-				}
-				// Strict pattern match (if set)
-				if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-					flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-					return
-				}
-
-				// If matches, proceed as normal
-				evaluateNode(fname, id, [name: "apiRunFlow", value: value, pattern: eventPattern])
-				if(!triggered) triggered = 0
-				triggered++
-			}
-        }
-    }
     render contentType: "application/json", data: '{"result":"Test triggered"}'
 }
 
@@ -573,33 +570,83 @@ String resolveVars(fname, str) {
     return out
 }
 
-// ---- Flow Triggers ----
-def subscribeToTriggers(fname) {
-    def flowObj = state.activeFlows[fname]
-    if(!flowObj?.flow) return
-    def flow = flowObj.flow
-    def dataNodes = flow.drawflow?.Home?.data ?: [:]
+/**
+ * Subscribe all eventTrigger and schedule nodes for a given flow.
+ */
+def subscribeToTriggers(String fname) {
+    def flowObj   = state.activeFlows[fname]
+    if (!flowObj?.flow) return
 
-    dataNodes.each { id, node ->
-        if (node.name == "eventTrigger" || node.name == "schedule") {
-            if (node.name == "schedule") {
-                // add if you use
-            } else if (node.data.deviceId == "__time__") {
-                // add if you use
-            } else if (node.data.deviceId == "__mode__") {
-                subscribe(location, "mode", { evt -> handleEvent(evt, fname) })
-            } else {
-                def devIds = []
-                if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds
-                else if (node.data.deviceId) devIds = [node.data.deviceId]
-                def attr = node.data.attribute
-                devIds.each { devId ->
-                    def device = getDeviceById(devId)
-                    if(device && attr) {
-                        subscribe(device, attr, "genericDeviceHandler")
+    // Grab all nodes in this flow
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+
+    dataNodes.each { nodeId, node ->
+        switch(node.name) {
+            case "eventTrigger":
+                // — Mode triggers —
+                if (node.data.deviceId == "__mode__") {
+                    subscribe(location, "mode") { evt ->
+                        handleEvent(evt, fname)
                     }
                 }
-            }
+                // — Virtual Time device —
+                else if (node.data.deviceId == "__time__") {
+                    def attr = node.data.attribute
+                    // real sunrise/sunset events
+                    if (attr in ["sunrise", "sunset"]) {
+                        subscribe(location, attr) { evt ->
+                            handleEvent(evt, fname)
+                        }
+                    }
+                    // poll currentTime & dayOfWeek every minute
+                    runEvery1Minute("recheckAllTriggers")
+                }
+                // — Physical device triggers —
+                else {
+                    def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+                                 node.data.deviceIds : [ node.data.deviceId ]
+                    devIds.each { devId ->
+                        def device = getDeviceById(devId)
+                        if (device) {
+                            subscribe(device, node.data.attribute, "genericDeviceHandler")
+                        }
+                    }
+                }
+                break
+
+            case "schedule":
+                // — Cron expression subscription —
+                if (node.data.cron) {
+                    schedule(node.data.cron) {
+                        handleEvent(
+                            [ name: "schedule",
+                              value: node.data.cron,
+                              data: node.data ],
+                            fname
+                        )
+                    }
+                }
+                // — RepeatDays + HH:mm subscription —
+                if (node.data.repeatDays instanceof List && node.data.time) {
+                    node.data.repeatDays.each { day ->
+                        def (h, m) = node.data.time.tokenize(":")
+                        def dow     = day[0..2].toUpperCase()
+                        def cronExp = "0 ${m} ${h} ? * ${dow}"
+                        schedule(cronExp) {
+                            handleEvent(
+                                [ name: "schedule",
+                                  value: node.data.time,
+                                  data: node.data ],
+                                fname
+                            )
+                        }
+                    }
+                }
+                break
+
+            default:
+                // any other node types are ignored here
+                break
         }
     }
 }
