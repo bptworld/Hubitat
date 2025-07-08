@@ -1960,10 +1960,15 @@
           };
           el.appendChild(attrSelect);
 
-          // ——— Click Pattern for Push Events ———
-          if (node.data.attribute === "pushed") {
+          // Click Pattern if needed
+          if (
+            node.data.attribute === "switch" ||
+            node.data.attribute === "pushed" ||
+            node.data.attribute === "button" ||
+            node.data.attribute === "held"
+          ) {
             const clickPatternLabel = document.createElement("label");
-            clickPatternLabel.textContent = "Tap Type";
+            clickPatternLabel.textContent = "Click Pattern";
             clickPatternLabel.style.display = "block";
             el.appendChild(clickPatternLabel);
 
@@ -1971,11 +1976,12 @@
             clickPatternSelect.style.display = "block";
             clickPatternSelect.style.marginBottom = "12px";
             clickPatternSelect.innerHTML = `
-              <option value="taps">Taps</option>
+              <option value="single">Single</option>
+              <option value="double">Double</option>
+              <option value="triple">Triple</option>
               <option value="holdPerSecond">Hold (per second)</option>
             `;
-            // default to "taps" so the value field becomes your tap‐count
-            clickPatternSelect.value = node.data.clickPattern || "taps";
+            clickPatternSelect.value = node.data.clickPattern || "single";
             clickPatternSelect.onchange = () => {
               node.data.clickPattern = clickPatternSelect.value;
               editor.updateNodeDataFromId(node.id, node.data);
@@ -1985,7 +1991,7 @@
             el.appendChild(clickPatternSelect);
 
             if (!node.data.clickPattern) {
-              node.data.clickPattern = "taps";
+              node.data.clickPattern = "single";
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             }
