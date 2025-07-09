@@ -131,9 +131,111 @@ mappings {
     path("/getModes")        { action: [POST: "exportModesToFile"] }
     path("/activeFlows")     { action: [GET: "apiActiveFlows"] }
 	path("/forceReload") 	 { action: [POST: "apiForceReload" ] }
+	path("/selectFlow") 	 { action: [POST: "apiSelectFlow"] }
+	path("/deselectFlow") 	 { action: [POST: "apiDeselectFlow"] }
+	path("/selectFlowLog") 	 { action: [POST: "apiSelectFlowLogging"] }
+	path("/deselectFlowLog") { action: [POST: "apiDeselectFlowLogging"] }
+	path("/settings") 		 { action: [GET: "apiGetSettings"] }
 }
 
 // --- HANDLERS ---
+
+def apiGetSettings() {
+    def keys = ["perFlowLogEnabled", "logEnable", "flowFiles"]
+    def out = [:]
+    keys.each { out[it] = settings[it] }
+    render contentType: "application/json", data: JsonOutput.toJson(out)
+}
+
+def apiSelectFlow() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+
+    // Ensure json list is populated
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    if (!validOptions.contains(fname)) {
+		flowLog(fname, "Stopped - Flow file not found", "error")
+        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
+        return
+    }
+
+    def existing = settings?.flowFiles ?: []
+    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
+
+    // Force-save using app.updateSetting with correct enum options
+    app.updateSetting("flowFiles", [type: "enum", value: newList])
+
+    // Optional: Reinitialize the app to activate the flow
+    updated()
+	flowLog(fname, "File has been selected and enabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Flow selected and enabled in app"}'
+}
+
+def apiDeselectFlow() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+	
+    if (!fname) {
+        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
+        return
+    }
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    def existing = settings?.flowFiles ?: []
+    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+
+    app.updateSetting("flowFiles", [type: "enum", value: newList])
+    updated()
+	flowLog(fname, "File has been de-selected and disabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Flow deselected in app"}'
+}
+
+def apiSelectFlowLogging() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+
+    // Ensure json list is populated
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    if (!validOptions.contains(fname)) {
+		flowLog(fname, "Stopped - Flow file not found", "error")
+        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
+        return
+    }
+
+    def existing = settings?.perFlowLogEnabled ?: []
+    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
+
+    // Force-save using app.updateSetting with correct enum options
+    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
+
+    // Optional: Reinitialize the app to activate the flow
+    updated()
+	flowLog(fname, "Logging has been enabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Logging enabled in app"}'
+}
+
+def apiDeselectFlowLogging() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+	
+    if (!fname) {
+        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
+        return
+    }
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    def existing = settings?.perFlowLogEnabled ?: []
+    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+
+    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
+    updated()
+	flowLog(fname, "Logging has been disabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Logging disabled in app"}'
+}
 
 def apiForceReload() {
 	flowLog(fname, "In apiForceReload", "debug")
