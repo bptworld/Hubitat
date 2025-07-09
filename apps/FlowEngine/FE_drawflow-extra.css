@@ -1,7 +1,14 @@
 body { background: #191919; color: #e6e6e6; }
 html { margin:0; padding:0; height:100%; font-family:sans-serif; }
 #main { display:flex; height:calc(100vh - 100px); }
-#controls { padding: 16px; background: #222; border-bottom: 1px solid #333; }
+#headline { padding: 5px; background: #222; }
+#controls { padding: 5px; background: #222; }
+#nodeControls { padding: 5px; background: #222; }
+
+.inline-div {
+  display: inline-block;
+  text-align: center
+}
 
 :root {
   --image-brightness: 1;
