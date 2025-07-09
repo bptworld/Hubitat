@@ -10,13 +10,21 @@
   <script src="FE_flowvars.js"></script>
 </head>
 <body>
-  <button id="toggleToolbarBtn"
-    style="position:absolute;top:8px;right:12px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
-  ▲ Hide Toolbar
-  </button>
+  <div id="headline">
+    <div>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.003</small>
+      <button id="toggleToolbarBtn"
+      style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
+    ▲ Hide Toolbar
+      </button>
+      <button id="toggleToolbar2Btn"
+      style="position:absolute;top:8px;right:15px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
+    ▲ Hide Node Controls
+      </button>
+    </div>
+  </div>
   <div id="controls">
     <div style="margin-bottom:5px;">
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.002</small><br>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:75px; margin-left:6px;">
       <button id="loadDevices" title="Load all devices from Hubitat">Load Devices</button>
@@ -32,28 +40,46 @@
       <button id="undoBtn" title="Undo last change">Undo</button>
       <button id="redoBtn" title="Redo">Redo</button>
       <b> | </b>
+      <div class="inline-div">
+        <small>Flow in Hubitat</small><br>
+        <button id="selectFlowInAppBtn" title="Select and Enable Flow in the Hubitat app">Activate</button>
+        <button id="deselectFlowInAppBtn" title="Unselect this Flow in the Hubitat app">Deactivate</button>
+      </div>
+      <b> | </b>
+      <div class="inline-div">
+        <small>Logging in Hubitat</small><br>
+        <button id="enableLogInAppBtn" title="Enable Logging in the Hubitat app">Enable</button>
+        <button id="disableLogInAppBtn" title="Disable Logging in the Hubitat app">Disable</button>
+      </div>
+      <b> | </b>
       <button id="screenshotFlowBtn">Screenshot Flow</button>
       <button id="exportAnonFlow" title="Export flow for sharing">Export Flow</button>
-    </div>
-    <div style="margin-bottom:5px;">
+      <b> | </b>
       <button id="bgImageBtn" type="button">Select Background Image</button>
       <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
       <b> | </b>
-      <label for="gridBrightnessSlider">Background Brightness</label>
-      <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
+      <div class="inline-div">
+        <small><label for="gridBrightnessSlider">Background Brightness</label></small><br>
+        <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
+      </div>
       <b> | </b>
       <label style="user-select:none;">
         <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
         Snap to grid
       </label>
-      <b> | </b>Align: 
-      <button id="alignLeftBtn"  title="Align Left"> Left</button>
-      <button id="alignRightBtn" title="Align Right"> Right</button>
-      <button id="alignTopBtn"   title="Align Top"> Top</button>
-      <button id="alignBottomBtn" title="Align Bottom"> Bottom</button>
-      <button id="alignCenterBtn"   title="Align Center"> Center</button>
-      <button id="alignMiddleBtn"   title="Align Middle"> Middle</button>
+      <b> | </b>
+      <div class="inline-div">
+        <small>Align selected Nodes</small><br>
+        <button id="alignLeftBtn"  title="Align Left"> Left</button>
+        <button id="alignRightBtn" title="Align Right"> Right</button>
+        <button id="alignTopBtn"   title="Align Top"> Top</button>
+        <button id="alignBottomBtn" title="Align Bottom"> Bottom</button>
+        <button id="alignCenterBtn"   title="Align Center"> Center</button>
+        <button id="alignMiddleBtn"   title="Align Middle"> Middle</button>
+      </div>
     </div>
+  </div>
+  <div id="nodeControls">
     <div style="margin-bottom:5px;">
       <button id="addTrigger" title="Add an Event Trigger node">Add Event Trigger</button>
       <button id="addSchedule" title="Add a Schedule node">Add Schedule</button>
@@ -3372,6 +3398,9 @@
           }
           markFlowNeedsSave(false);
           logAction("Started a new flow (all nodes cleared).");
+          const appId = document.getElementById("hubitatAppId").value.trim();
+          const token = document.getElementById("hubitatToken").value.trim();
+          checkIfFlowIsInUse("new", appId, token);
         }
         await autoLoadGlobalVarsFromHubitat();
       };
@@ -4194,49 +4223,62 @@
           .then(list => {
             const inUse = list.filter(x => x.flowName === flowFileName + ".json");
             const statusDiv = document.getElementById("flowTestStatus");
+
             if (inUse.length) {
-              // Show input and button for testing
-              statusDiv.innerHTML = `
-                <input id="testFlowInput" type="text" placeholder="Test value..." style="padding:7px 9px;border-radius:5px;border:1px solid #aaa;font-size:15px;width:160px;margin-right:8px;">
-                <button id="testFlowBtn" style="background:#1b9b1b;color:#fff;border:none;padding:7px 18px;border-radius:5px;cursor:pointer;font-size:15px;margin-right:18px;">
-                  ▶️ Test the Flow
-                </button><br>
-                <small>To test this Flow, click on the Trigger device to test. Then enter a value above and click the Test button. Value examples: on/off/open/closed/doubletap/tripletap/etc.</small>
-              `;
+              // Check if logging is enabled for this flow
+              fetch(`/apps/api/${appId}/settings?access_token=${token}`)
+                .then(r => r.json())
+                .then(settings => {
+                  const loggingEnabled =
+                    Array.isArray(settings?.perFlowLogEnabled) &&
+                    settings.perFlowLogEnabled.includes(flowFileName + ".json");
 
-              document.getElementById("testFlowBtn").onclick = function() {
-                const testValue = document.getElementById("testFlowInput").value || "Manual/Test";
-                const nodeId = editor && editor.selected_id ? editor.selected_id : "";
+                  statusDiv.innerHTML = `
+                    <small>Flow is Active in Hubitat</small> | 
+                    ${loggingEnabled ? "<small>Logging is Enabled</small><br>" : "<small>Logging is Disabled</small><br>"}
+                    <input id="testFlowInput" type="text" placeholder="Test value..." style="padding:7px 9px;border-radius:5px;border:1px solid #aaa;font-size:15px;width:160px;margin-right:8px;">
+                    <button id="testFlowBtn" style="background:#1b9b1b;color:#fff;border:none;padding:7px 18px;border-radius:5px;cursor:pointer;font-size:15px;margin-right:18px;">
+                      ▶️ Test the Flow
+                    </button><br>
+                    <small>To test this Flow, click on the Trigger device to test. Then enter a value and click the Test button. Value examples: on/off/open/closed/1/5/etc.</small>
+                  `;
 
-                // --- Guarantee the flowFileName has .json ---
-                let fname = flowFileName || "";
-                if (!fname.endsWith(".json")) fname += ".json";
+                  document.getElementById("testFlowBtn").onclick = function () {
+                    const testValue = document.getElementById("testFlowInput").value || "Manual/Test";
+                    const nodeId = editor && editor.selected_id ? editor.selected_id : "";
 
-                console.log("nodeId:", nodeId)
-                fetch(`/apps/api/${appId}/testFlow?flow=${encodeURIComponent(fname)}&nodeId=${encodeURIComponent(nodeId)}&value=${encodeURIComponent(testValue)}&access_token=${token}`, { method: "POST" })
-                  .then(async r => {
-                    const text = await r.text();
-                    try {
-                      const json = JSON.parse(text);
-                      logAction(`Test sent to nodeId=${nodeId}: value="${testValue}". Result: ${json.result || "OK"}`, "success");
-                      alert("✅ Flow test sent!\nResult: " + (json.result || "OK"));
-                    } catch(e) {
-                      logAction("Test failed, response: " + text, "error");
-                      alert("Failed to trigger flow. Server response was:\n\n" + text);
-                    }
-                  })
-                  .catch(e => {
-                    logAction("Test failed, fetch error: " + e, "error");
-                    alert("Failed to trigger flow: " + e);
-                  });
-              };
+                    let fname = flowFileName || "";
+                    if (!fname.endsWith(".json")) fname += ".json";
+
+                    fetch(
+                      `/apps/api/${appId}/testFlow?flow=${encodeURIComponent(fname)}&nodeId=${encodeURIComponent(
+                        nodeId
+                      )}&value=${encodeURIComponent(testValue)}&access_token=${token}`,
+                      { method: "POST" }
+                    )
+                      .then(async (r) => {
+                        const text = await r.text();
+                        try {
+                          const json = JSON.parse(text);
+                          logAction(`Test sent to nodeId=${nodeId}: value="${testValue}". Result: ${json.result || "OK"}`, "success");
+                          alert("✅ Flow test sent!\nResult: " + (json.result || "OK"));
+                        } catch (e) {
+                          logAction("Test failed, response: " + text, "error");
+                          alert("Failed to trigger flow. Server response was:\n\n" + text);
+                        }
+                      })
+                      .catch((e) => {
+                        logAction("Test failed, fetch error: " + e, "error");
+                        alert("Failed to trigger flow: " + e);
+                      });
+                  };
+                });
             } else {
-              statusDiv.innerHTML = `<span style="color:#b00;font-weight:600;">Selcet this JSON in the Flow Engine app within Hubitat to enable Testing</span>`;
+              statusDiv.innerHTML = `<span style="color:#b00;font-weight:600;">Activate Flow in Hubitat to enable Testing</span>`;
             }
           })
-          .catch(e => {
-            document.getElementById("flowTestStatus").innerHTML =
-              `<span style="color:#b00;">Failed to check flow status.</span>`;
+          .catch((e) => {
+            document.getElementById("flowTestStatus").innerHTML = `<span style="color:#b00;">Failed to check flow status.</span>`;
             console.error("Failed to fetch active flows:", e);
           });
       }
@@ -5300,6 +5342,17 @@
         };
       });
 
+      document.addEventListener("DOMContentLoaded", function() {
+        const toolbar2 = document.getElementById("nodeControls");
+        const toggleBtn2 = document.getElementById("toggleToolbar2Btn");
+        let toolbarVisible2 = true;
+        toggleBtn2.onclick = function() {
+          toolbarVisible2 = !toolbarVisible2;
+          toolbar2.style.display = toolbarVisible2 ? "" : "none";
+          toggleBtn2.innerHTML = toolbarVisible2 ? "▲ Hide Node Controls" : "▼ Show Node Controls";
+        };
+      });
+
       // Align Left: Use the left X of the first selected node
       document.getElementById("alignLeftBtn").onclick = function() {
         const sel = Array.from(window._multiSelectedNodes || []);
@@ -5462,6 +5515,114 @@
               if (editorPanel) editorPanel.innerHTML = "Click a node to edit";
             }
           });
+        }
+      });
+
+      document.getElementById("selectFlowInAppBtn").addEventListener("click", async () => {
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const flowName = document.getElementById("flowName").value.trim();
+
+        if (!token || !appId || !flowName) {
+          logAction("Missing token, App ID, or Flow Name", "error");
+          return;
+        }
+
+        const url = `/apps/api/${appId}/selectFlow?access_token=${token}`;
+        const body = JSON.stringify({ flow: flowName });
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body
+          });
+          const result = await res.json();
+          logAction("✅ Flow selected in app: " + (result.result || JSON.stringify(result)));
+          checkIfFlowIsInUse(flowName, appId, token);
+        } catch (e) {
+          logAction("❌ Failed to select flow in app: " + e, "error");
+        }
+      });
+
+      document.getElementById("deselectFlowInAppBtn").addEventListener("click", async () => {
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const flowName = document.getElementById("flowName").value.trim();
+
+        if (!token || !appId || !flowName) {
+          logAction("Missing token, App ID, or Flow Name", "error");
+          return;
+        }
+
+        const url = `/apps/api/${appId}/deselectFlow?access_token=${token}`;
+        const body = JSON.stringify({ flow: flowName });
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body
+          });
+          const result = await res.json();
+          logAction("✅ Flow deactivated: " + (result.result || JSON.stringify(result)));
+          checkIfFlowIsInUse(flowName, appId, token);
+        } catch (e) {
+          logAction("❌ Failed to deactivate flow: " + e, "error");
+        }
+      });
+
+      document.getElementById("enableLogInAppBtn").addEventListener("click", async () => {
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const flowName = document.getElementById("flowName").value.trim();
+
+        if (!token || !appId || !flowName) {
+          logAction("Missing token, App ID, or Flow Name", "error");
+          return;
+        }
+
+        const url = `/apps/api/${appId}/selectFlowLog?access_token=${token}`;
+        const body = JSON.stringify({ flow: flowName });
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body
+          });
+          const result = await res.json();
+          logAction("✅ Flow Log Enabled in app: " + (result.result || JSON.stringify(result)));
+          checkIfFlowIsInUse(flowName, appId, token);
+        } catch (e) {
+          logAction("❌ Failed to enable flow log in app: " + e, "error");
+        }
+      });
+
+      document.getElementById("disableLogInAppBtn").addEventListener("click", async () => {
+        const token = document.getElementById("hubitatToken").value.trim();
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const flowName = document.getElementById("flowName").value.trim();
+
+        if (!token || !appId || !flowName) {
+          logAction("Missing token, App ID, or Flow Name", "error");
+          return;
+        }
+
+        const url = `/apps/api/${appId}/deselectFlowLog?access_token=${token}`;
+        const body = JSON.stringify({ flow: flowName });
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body
+          });
+          const result = await res.json();
+          logAction("✅ Flow Log disabled: " + (result.result || JSON.stringify(result)));
+          checkIfFlowIsInUse(flowName, appId, token);
+        } catch (e) {
+          logAction("❌ Failed to disable flow log: " + e, "error");
         }
       });
 
