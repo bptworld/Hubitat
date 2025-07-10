@@ -136,9 +136,34 @@ mappings {
 	path("/selectFlowLog") 	 { action: [POST: "apiSelectFlowLogging"] }
 	path("/deselectFlowLog") { action: [POST: "apiDeselectFlowLogging"] }
 	path("/settings") 		 { action: [GET: "apiGetSettings"] }
+	path("/deleteFile") 	 { action: [GET: "apiDeleteFlow", DELETE: "apiDeleteFlow"] }
 }
 
 // --- HANDLERS ---
+
+def apiDeleteFlow() {
+    log.info "apiDeleteFlow()"
+    // Read the filename from the query string: ?name=FlowName.json
+    def fname = params.name
+    if (!fname) {
+        render status: 400, contentType: "application/json",
+               data: '{"error":"Missing file name"}'
+        return
+    }
+    // Ensure it ends in .json
+    if (!fname.toLowerCase().endsWith('.json')) {
+        fname += '.json'
+    }
+    log.info "Deleting file: ${fname}"
+    deleteHubFile(fname)
+
+    // Re-initialize so settings.flowFiles removes it, if needed
+    updated()
+    flowLog(fname, "File has been deleted from File Manager", "info")
+
+    render contentType: "application/json",
+           data: groovy.json.JsonOutput.toJson([result: "File deleted"])
+}
 
 def apiGetSettings() {
     def keys = ["perFlowLogEnabled", "logEnable", "flowFiles"]
