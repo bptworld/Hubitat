@@ -12,7 +12,15 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.005</small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.006 - </small>
+      <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
+      <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
+      <select id="hubitatFileDropdown"
+        style="width:300px; display:inline-block;"
+        title="Pick a flow to load…">
+        <option value="">Loading…</option>
+      </select>
+      <input  id="flowName" placeholder="Flow Name" style="width:300px; font-weight:bold; font-size:14px; margin-left:6px;">
       <button id="toggleToolbarBtn"
       style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
     ▲ Hide Toolbar
@@ -24,21 +32,18 @@
     </div>
   </div>
   <div id="controls">
-    <div style="margin-bottom:5px;">
-      <input id="hubitatToken" placeholder="Token" style="width:50px; margin-left:6px;">
-      <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
+    <div style="margin-bottom:5px;"></div>
       <button id="loadDevices" title="Load all devices from Hubitat">Reload Devices</button>
-      <button id="loadFlowFromHubitatDropdown" title="Load a saved flow from Hubitat">Load Flow</button>
-      <select id="hubitatFileDropdown" style="width:260px;display:none;"></select>
-      <button id="sendFlow" title="Save current flow to Hubitat">Save Flow</button>
-      <button id="saveAsFlow" title="Save current flow under a new name">Save As</button>
-      <button id="renameFlow" title="Rename current flow and file">Rename</button>
-      <button id="deleteFlowAppBtn" title="Delete current Flow from Hubitat">Delete</button>
-      <input  id="flowName" placeholder="Flow Name" style="width:200px; font-weight:bold; font-size:16px;">
-      <button id="newFlow" title="Start a new flow from scratch">New Flow</button>
       <b> | </b>
-      <button id="undoBtn" title="Undo last change">Undo</button>
-      <button id="redoBtn" title="Redo">Redo</button>
+      <div class="inline-div">
+        <small>Flow Options</small><br>
+        <button id="sendFlow" title="Save current flow to Hubitat">Save</button>
+        <button id="saveAsFlow" title="Save current flow under a new name">Save As</button>
+        <button id="exportAnonFlow" title="Export a clean flow for sharing">Export</button>
+        <button id="renameFlow" title="Rename current flow and file">Rename</button>
+        <button id="deleteFlowAppBtn" title="Delete current Flow from Hubitat">Delete</button>
+        <button id="newFlow" title="Start a new flow from scratch">New</button>
+      </div>
       <b> | </b>
       <div class="inline-div">
         <small>Flow in Hubitat</small><br>
@@ -53,7 +58,6 @@
       </div>
       <b> | </b>
       <button id="screenshotFlowBtn">Screenshot Flow</button>
-      <button id="exportAnonFlow" title="Export flow for sharing">Export Flow</button>
       <b> | </b>
       <button id="bgImageBtn" type="button">Select Background Image</button>
       <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
@@ -77,6 +81,10 @@
         <button id="alignCenterBtn"   title="Align Center"> Center</button>
         <button id="alignMiddleBtn"   title="Align Middle"> Middle</button>
       </div>
+      <b> | </b>
+      <button id="undoBtn" title="Undo last change">Undo</button>
+      <button id="redoBtn" title="Redo">Redo</button>
+      <b> | </b>
     </div>
   </div>
   <div id="nodeControls">
@@ -3452,110 +3460,53 @@
         }
       }
 
-      document.getElementById("loadFlowFromHubitatDropdown").onclick = async function() {
-        // Prompt if unsaved changes
-        const saveBtn = document.getElementById('sendFlow');
-        if (saveBtn && saveBtn.classList.contains('need-save')) {
-          const proceed = confirm("You have unsaved changes to your Flow. Continue and lose changes?");
-          if (!proceed) {
-            return; // User cancelled
-          }
-          markFlowNeedsSave(false);
-        }
-
+      // — Auto-load Hubitat flows into the dropdown on page load —
+      window.addEventListener("DOMContentLoaded", async () => {
         if (!hubitatCredentialsAreValid(true)) return;
-        const button = document.getElementById("loadFlowFromHubitatDropdown");
-        const dropdown = document.getElementById("hubitatFileDropdown");
 
-        button.style.display = "none";
+        const dropdown = document.getElementById("hubitatFileDropdown");
         dropdown.style.display = "inline-block";
-        dropdown.innerHTML = "<option>Loading...</option>";
+        dropdown.innerHTML = "<option>Loading…</option>";
 
         let files = [];
         try {
           files = await fetchHubitatFiles();
         } catch (err) {
-          dropdown.innerHTML = "<option>Failed to load files</option>";
-          logAction("Error loading file list: " + (err.message || err), "error");
-          setTimeout(() => {
-            dropdown.style.display = "none";
-            button.style.display = "inline-block";
-          }, 1500);
+          dropdown.innerHTML = "<option>Failed to load flows</option>";
+          console.error("Error fetching flow list:", err);
           return;
         }
 
-        dropdown.innerHTML = "";
-        if (!files || !files.length) {
+        if (!files.length) {
           dropdown.innerHTML = "<option>No .json files found</option>";
-          setTimeout(() => {
-            dropdown.style.display = "none";
-            button.style.display = "inline-block";
-          }, 1500);
-          return;
+        } else {
+          dropdown.innerHTML = "<option value=''>Pick a flow…</option>";
+          files.forEach(f => {
+            const opt = document.createElement("option");
+            opt.value   = f;
+            opt.textContent = f;
+            dropdown.appendChild(opt);
+          });
         }
-        dropdown.innerHTML = "<option value=''>Pick a flow file…</option>";
-        files.forEach(f => {
-          const opt = document.createElement("option");
-          opt.value = f;
-          opt.textContent = f;
-          dropdown.appendChild(opt);
-        });
 
+        // wire up selection
         dropdown.onchange = async function() {
-          const appId = document.getElementById("hubitatAppId")?.value?.trim();
-          const token = document.getElementById("hubitatToken")?.value?.trim();
-          const fileName = dropdown.value?.trim();
-
-          if (!fileName) {
-            alert("Please select a flow file.");
-            return;
-          }
-
-          // Prompt again for unsaved changes
-          const saveBtn = document.getElementById('sendFlow');
-          if (saveBtn && saveBtn.classList.contains('need-save')) {
-            const proceed = confirm("You have unsaved changes to your Flow. Continue and lose changes?");
-            if (!proceed) {
-              dropdown.value = "";
-              return;
-            }
-          }
-
-          logAction("Loading from Hubitat File Manager: " + fileName + " ...");
-
+          const fileName = dropdown.value.trim();
+          if (!fileName) return alert("Please select a flow file.");
+          // (then reuse your existing fetchHubitatFileContent + import logic here…)
           try {
             const data = await fetchHubitatFileContent(fileName);
-            if (!data || typeof data !== "object") throw new Error("Invalid file data");
-
             editor.import(data);
-            if (data.flowName && document.getElementById("flowName")) {
-              document.getElementById("flowName").value = data.flowName;
-            }
-
-            window.newNodeOffsetX = 0;
-            window.newNodeOffsetY = 0;
-            checkIfFlowIsInUse(data.flowName, appId, token);
-            setTimeout(() => zoomDrawflowToFit(40), 250);
-            setTimeout(() => {
-              if (editor && typeof editor.updateConnectionNodes === "function") {
-                editor.updateConnectionNodes('all');
-              }
-            }, 80);
-
-            if (editor && typeof editor.export === "function") {
-              window.undoStack = [JSON.stringify(editor.export())];
-              window.redoStack = [];
-            }
+            document.getElementById("flowName").value = data.flowName || "";
+            zoomDrawflowToFit(40);
+            markFlowNeedsSave(false);
+            logAction(`Loaded “${fileName}” from Hubitat.`,"success");
           } catch (e) {
-            alert("❌ Failed to load file: " + (e.message || e));
-            logAction("Error loading from Hubitat File Manager: " + (e.message || e), "error");
+            alert("❌ Failed to load: " + e.message);
+            logAction("Error loading file: " + e,"error");
           }
-
-          dropdown.style.display = "none";
-          button.style.display = "inline-block";
-          dropdown.value = "";
         };
-      };
+      });
 
       async function fetchDevicesFromApp() {
         const appId = document.getElementById("hubitatAppId").value.trim();
@@ -3650,6 +3601,19 @@
         };
 
         await uploadToHubitatFile(flowName + ".json", JSON.stringify(out, null, 2));
+
+        // — UPDATE dropdown on Save —
+        const dropdown = document.getElementById("hubitatFileDropdown");
+        if (dropdown && dropdown.style.display !== "none") {
+          const filename = flowName + ".json";
+          if (![...dropdown.options].some(o => o.value === filename)) {
+            const opt = document.createElement("option");
+            opt.value = filename;
+            opt.textContent = filename;
+            dropdown.appendChild(opt);
+          }
+          dropdown.value = filename;
+        }
         markFlowNeedsSave(false);
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
@@ -3901,7 +3865,9 @@
 
             // If the clicked node isn't in the current selection, bail out
             if (!window._multiSelectedNodes.has(nodeId)) {
-              return;
+              window._multiSelectedNodes.clear();
+              window._multiSelectedNodes.add(nodeId);
+              updateMultiSelectUI();
             }
 
             // Remove existing menu
@@ -4032,54 +3998,53 @@
                 menuDiv.remove();
               };
               menuDiv.appendChild(unlockBtn);
+
+              // --- Save Subflow ---
+              const saveSubflowBtn = document.createElement('div');
+              saveSubflowBtn.textContent = "Save Subflow";
+              saveSubflowBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              saveSubflowBtn.onmouseenter = () => saveSubflowBtn.style.background = "#555";
+              saveSubflowBtn.onmouseleave = () => saveSubflowBtn.style.background = "transparent";
+              saveSubflowBtn.onclick = async () => {
+                // Base flow name as default
+                const baseName = document.getElementById("flowName").value.trim();
+                if (!baseName) {
+                  alert("Please enter a Flow Name.");
+                  return;
+                }
+
+                // Prompt for subflow name, defaulting to subflow_<baseName>
+                const defaultName = baseName.startsWith("subflow_")
+                  ? baseName
+                  : "subflow_" + baseName;
+                let subflowName = prompt("Enter subflow name:", defaultName);
+                if (!subflowName) {
+                  return; // user cancelled
+                }
+
+                // Inline sanitize
+                subflowName = subflowName
+                  .replace(/\s+/g, "_")
+                  .replace(/[^a-zA-Z0-9_\-]/g, "")
+                  .replace(/_{2,}/g, "_")
+                  .replace(/^_+|_+$/g, "");
+
+                // Export full flow and include variables
+                const full = editor.export();
+                if (window.flowVars?.getLocalVars) {
+                  full.variables = flowVars.getLocalVars();
+                }
+
+                // Upload subflow under the chosen name
+                const payload = { flowName: subflowName, ...full };
+                await uploadToHubitatFile(subflowName + ".json", JSON.stringify(payload, null, 2));
+
+                markFlowNeedsSave(false);
+                logAction(`Sent subflow "${subflowName}" to Hubitat File Manager.`, "success");
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(saveSubflowBtn);
             }
-
-            // --- Save Subflow ---
-            const saveSubflowBtn = document.createElement('div');
-            saveSubflowBtn.textContent = "Save Subflow";
-            saveSubflowBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-            saveSubflowBtn.onmouseenter = () => saveSubflowBtn.style.background = "#555";
-            saveSubflowBtn.onmouseleave = () => saveSubflowBtn.style.background = "transparent";
-            saveSubflowBtn.onclick = async () => {
-              // Base flow name as default
-              const baseName = document.getElementById("flowName").value.trim();
-              if (!baseName) {
-                alert("Please enter a Flow Name.");
-                return;
-              }
-
-              // Prompt for subflow name, defaulting to subflow_<baseName>
-              const defaultName = baseName.startsWith("subflow_")
-                ? baseName
-                : "subflow_" + baseName;
-              let subflowName = prompt("Enter subflow name:", defaultName);
-              if (!subflowName) {
-                return; // user cancelled
-              }
-
-              // Inline sanitize
-              subflowName = subflowName
-                .replace(/\s+/g, "_")
-                .replace(/[^a-zA-Z0-9_\-]/g, "")
-                .replace(/_{2,}/g, "_")
-                .replace(/^_+|_+$/g, "");
-
-              // Export full flow and include variables
-              const full = editor.export();
-              if (window.flowVars?.getLocalVars) {
-                full.variables = flowVars.getLocalVars();
-              }
-
-              // Upload subflow under the chosen name
-              const payload = { flowName: subflowName, ...full };
-              await uploadToHubitatFile(subflowName + ".json", JSON.stringify(payload, null, 2));
-
-              markFlowNeedsSave(false);
-              logAction(`Sent subflow "${subflowName}" to Hubitat File Manager.`, "success");
-              menuDiv.remove();
-            };
-            menuDiv.appendChild(saveSubflowBtn);
-
             document.body.appendChild(menuDiv);
 
             // Auto-remove menu on outside click
@@ -5563,40 +5528,62 @@
       });
 
       document.getElementById("saveAsFlow").onclick = async () => {
-        if (!hubitatCredentialsAreValid(true) || !editor?.export) return;
+        // 1) Validate credentials & editor
+        if (!hubitatCredentialsAreValid(true) || typeof editor?.export !== "function") {
+          return;
+        }
 
-        // 1) Ask for the new name
+        // 2) Ask for the new name
         const flowNameEl = document.getElementById("flowName");
         const current    = flowNameEl.value.trim();
         let   name       = prompt("Save flow as:", current);
         if (!name) return;  // user cancelled
 
-        // 2) Inline sanitize (optional, but recommended)
+        // 3) Sanitize the new name (underscores, letters, numbers, dashes only)
         name = name
           .replace(/\s+/g, "_")
           .replace(/[^a-zA-Z0-9_\-]/g, "")
           .replace(/_{2,}/g, "_")
           .replace(/^_+|_+$/g, "");
 
-        // 3) Export the flow and **overwrite** its flowName
+        // 4) Export the flow JSON and overwrite its flowName
         const data = editor.export();
-        data.flowName = name;    // ← THIS is the crucial line to update the JSON
-
-        // 4) Include any variables
+        data.flowName = name;
         if (window.flowVars?.getLocalVars) {
           data.variables = flowVars.getLocalVars();
         }
 
         // 5) Upload under the new filename
-        await uploadToHubitatFile(
-          name + ".json",
-          JSON.stringify(data, null, 2)
-        );
+        await uploadToHubitatFile(name + ".json", JSON.stringify(data, null, 2));
 
         // 6) Reflect it immediately in the UI
         flowNameEl.value = name;
-        document.title = `Flow Engine Editor — ${name}`;
-        document.querySelector("#headline b").innerText = name;
+        const filename = name + ".json";
+
+        // — Rebuild dropdown locally and select the new file —
+        const dropdown = document.getElementById("hubitatFileDropdown");
+        if (dropdown && dropdown.style.display !== "none") {
+          // a) Ensure the new filename is present
+          if (![...dropdown.options].some(o => o.value === filename)) {
+            const opt = document.createElement("option");
+            opt.value       = filename;
+            opt.textContent = filename;
+            dropdown.appendChild(opt);
+          }
+
+          // b) Gather, sort, and re-render
+          const sorted = Array.from(dropdown.options)
+            .map(o => o.value)
+            .filter(v => v)  // remove any empty/placeholder entries
+            .sort((a, b) => a.localeCompare(b));
+          dropdown.innerHTML = sorted
+            .map(f => `<option value="${f}">${f}</option>`)
+            .join("");
+
+          // c) Finally, select the just-saved file
+          dropdown.value = filename;
+        }
+
         markFlowNeedsSave(false);
         logAction(`Saved flow as "${name}" to Hubitat File Manager.`, "success");
       };
@@ -5630,20 +5617,17 @@
           }
           logAction(`✅ Deleted "${fileName}" from Hubitat File Manager.`, "success");
 
-          // 5) Clear flow-name input and dropdown option
+          // 5) Clear flow-name input
           document.getElementById("flowName").value = "";
-          const dd = document.getElementById("hubitatFileDropdown");
-          if (dd.style.display !== "none") {
-            Array.from(dd.options).forEach(opt => {
-              if (opt.value === fileName) opt.remove();
-            });
+
+          // 6) Reset dropdown to default prompt
+          const dropdown = document.getElementById("hubitatFileDropdown");
+          if (dropdown && dropdown.style.display !== "none") {
+            dropdown.innerHTML = `<option value="">Pick a Flow…</option>`;
+            dropdown.value = "";
           }
 
-          // 6) Clear the workspace like New Flow does:
-          //    • clear canvas
-          //    • reset editor pane
-          //    • reset undo/redo stacks
-          //    • clear “need-save” flag
+          // 7) Clear the workspace (canvas, editor pane, undo/redo, save-flag)
           editor.clear();
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
           if (editor && typeof editor.export === "function") {
@@ -5653,7 +5637,7 @@
           markFlowNeedsSave(false);
           logAction("Cleared workspace after deletion.", "info");
 
-          // 7) Reset flow-in-use tracking & reload globals
+          // 8) Reset “Flow in use” state and reload any globals
           checkIfFlowIsInUse("new", appId, token);
           await autoLoadGlobalVarsFromHubitat();
 
@@ -5704,11 +5688,38 @@
 
         // 7) Reflect the change in the UI
         flowNameEl.value = newName;
-        document.title = `Flow Engine Editor — ${newName}`;
-        const headerEl = document.querySelector("#headline b");
-        if (headerEl) {
-          headerEl.innerText = newName;
+        const oldFilename = oldName + ".json";
+        const newFilename = newName + ".json";
+
+        const dropdown = document.getElementById("hubitatFileDropdown");
+        if (dropdown && dropdown.style.display !== "none") {
+          // Remove the old filename option
+          Array.from(dropdown.options).forEach(opt => {
+            if (opt.value === oldFilename) opt.remove();
+          });
+
+          // Ensure the new filename is present
+          if (![...dropdown.options].some(o => o.value === newFilename)) {
+            const opt = document.createElement("option");
+            opt.value       = newFilename;
+            opt.textContent = newFilename;
+            dropdown.appendChild(opt);
+          }
+
+          // Rebuild the <select> in sorted order
+          const sorted = Array.from(dropdown.options)
+            .map(o => o.value)
+            .filter(v => v)  // drop any empty entries
+            .sort((a, b) => a.localeCompare(b));
+
+          dropdown.innerHTML = sorted
+            .map(f => `<option value="${f}">${f}</option>`)
+            .join("");
+
+          // Select the renamed file
+          dropdown.value = newFilename;
         }
+
         markFlowNeedsSave(false);
         logAction(`Renamed "${oldName}" → "${newName}" in Hubitat File Manager.`, "success");
       };
