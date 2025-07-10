@@ -142,7 +142,6 @@ mappings {
 // --- HANDLERS ---
 
 def apiDeleteFlow() {
-    log.info "apiDeleteFlow()"
     // Read the filename from the query string: ?name=FlowName.json
     def fname = params.name
     if (!fname) {
@@ -154,7 +153,6 @@ def apiDeleteFlow() {
     if (!fname.toLowerCase().endsWith('.json')) {
         fname += '.json'
     }
-    log.info "Deleting file: ${fname}"
     deleteHubFile(fname)
 
     // Re-initialize so settings.flowFiles removes it, if needed
