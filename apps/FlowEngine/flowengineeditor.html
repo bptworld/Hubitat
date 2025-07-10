@@ -12,7 +12,7 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.004</small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.005</small>
       <button id="toggleToolbarBtn"
       style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
     ▲ Hide Toolbar
@@ -4541,40 +4541,30 @@
         const flowArea = document.getElementById("drawflow");
         if (!flowArea) return alert("Flow area not found!");
 
-        // 1) hide the bg-image so it doesn’t show twice
+        // 1) Hide the background image so it doesn't show twice
         const bgImg = document.getElementById("drawflow-bg-image");
-        let prevDisplay = "";
-        if (bgImg) {
-          prevDisplay = bgImg.style.display;
-          bgImg.style.display = "none";
-        }
+        const prevDisplay = bgImg?.style.display;
+        if (bgImg) bgImg.style.display = "none";
 
-        // 2) give the browser a tick to reflow
+        // 2) Wait a frame for the hide to take effect
         setTimeout(() => {
           html2canvas(flowArea, {
             backgroundColor: null,  // preserve transparency
-            useCORS: true
+            useCORS:       true,
+            allowTaint:    true,    // ensure canvas content is captured
+            scale:         1         // keeps Windows output at 1× for consistency
           }).then(canvas => {
-            // 3) restore the bg-image
+            // 3) Restore the background image
             if (bgImg) bgImg.style.display = prevDisplay;
 
-            // 4) grab the actual Drawflow connections canvas
-            const connCanvas = document.querySelector(".connection-canvas");
-            if (connCanvas) {
-              const ctx = canvas.getContext("2d");
-              // draw the connections exactly over the nodes
-              ctx.drawImage(
-                connCanvas,
-                0, 0, connCanvas.width, connCanvas.height,
-                0, 0, canvas.width, canvas.height
-              );
-            }
-
-            // 5) download the merged image
+            // 4) Download the result
             const link = document.createElement("a");
             link.download = (document.getElementById("flowName").value || "flow") + "_screenshot.png";
             link.href = canvas.toDataURL();
             link.click();
+          }).catch(err => {
+            console.error("Screenshot failed:", err);
+            alert("❌ Screenshot failed: " + err);
           });
         }, 50);
       };
