@@ -127,7 +127,7 @@ button:hover { background: #02c258; }
 .drawflow-node .outputs .output[data-name="true"] { background: #27ae60; }
 
 .drawflow .drawflow-node {
-  background: #5d2ef8 !important;
+  background: #85848a !important;
   border: 2.2px solid #0cb56d !important;
   color: #000 !important;
   opacity: 1 !important;
@@ -150,7 +150,7 @@ button:hover { background: #02c258; }
   opacity: 1 !important;
 }
 .drawflow-node.device {
-  background: #68f389 !important;
+  background: #01a8fb !important;
   border: 2.2px solid #0cb56d !important;
   color: #000 !important;
   opacity: 1 !important;
@@ -162,7 +162,7 @@ button:hover { background: #02c258; }
   opacity: 1 !important;
 }
 .drawflow-node.notification {
-  background: #01a8fb !important;
+  background: #462bf9 !important;
   border: 2.2px solid #0cb56d !important;
   color: #000 !important;
   opacity: 1 !important;
@@ -305,4 +305,9 @@ button:hover { background: #02c258; }
 #drawflow.image-bg {
   opacity: 1 !important;
   background-image: none !important;
+}
+
+/* hide the flowName immediately after the file-picker dropdown */
+#hubitatFileDropdown + span#flowName {
+  display: none !important;
 }
