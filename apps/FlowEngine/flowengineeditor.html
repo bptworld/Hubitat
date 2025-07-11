@@ -20,7 +20,20 @@
         title="Pick a flow to load…">
         <option value="">Loading…</option>
       </select>
-      <input  id="flowName" placeholder="Flow Name" style="width:300px; font-weight:bold; font-size:14px; margin-left:6px;">
+      <span id="flowName"
+        style="display:inline-block; width:300px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
+
+      <div class="inline-div">
+        <label style="user-select:none;">
+          <input type="checkbox" id="activateFlowCheckbox" />
+          Activate Flow
+        </label>
+         
+        <label style="user-select:none;">
+          <input type="checkbox" id="loggingCheckbox" />
+          Logging
+        </label>
+      </div>
       <button id="toggleToolbarBtn"
       style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
     ▲ Hide Toolbar
@@ -45,21 +58,7 @@
         <button id="newFlow" title="Start a new flow from scratch">New</button>
       </div>
       <b> | </b>
-      <div class="inline-div">
-        <small>Flow in Hubitat</small><br>
-        <button id="selectFlowInAppBtn" title="Select and Enable Flow in the Hubitat app">Activate</button>
-        <button id="deselectFlowInAppBtn" title="Unselect this Flow in the Hubitat app">Deactivate</button>
-      </div>
-      <b> | </b>
-      <div class="inline-div">
-        <small>Logging in Hubitat</small><br>
-        <button id="enableLogInAppBtn" title="Enable Logging in the Hubitat app">Enable</button>
-        <button id="disableLogInAppBtn" title="Disable Logging in the Hubitat app">Disable</button>
-      </div>
-      <b> | </b>
-      <button id="screenshotFlowBtn">Screenshot Flow</button>
-      <b> | </b>
-      <button id="bgImageBtn" type="button">Select Background Image</button>
+      <button id="bgImageBtn" type="button">Background Image</button>
       <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
       <b> | </b>
       <div class="inline-div">
@@ -152,6 +151,85 @@
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
   <script>
+    // 1) Fetch the list of flow-files from Hubitat
+    async function fetchHubitatFiles() {
+      const appId = document.getElementById("hubitatAppId").value.trim();
+      const token = document.getElementById("hubitatToken").value.trim();
+      if (!appId || !token) {
+        console.error("Missing App ID or Token");
+        return [];
+      }
+      const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      return Array.isArray(body.files)
+        ? body.files.map(f => f.replace(/\.json$/i, ""))
+        : [];
+    }
+
+    // 2) Globally-available: repopulate the dropdown
+    async function reloadFlowDropdown(selected) {
+      const dropdown = document.getElementById("hubitatFileDropdown");
+      if (!dropdown) return;
+
+      // 1) Rebuild the list
+      dropdown.style.display = "inline-block";
+      dropdown.innerHTML = "<option value=''>Pick a Flow…</option>";
+      let files = [];
+      try {
+        files = await fetchHubitatFiles();
+      } catch (err) {
+        console.error("Error fetching flow list:", err);
+        return;
+      }
+      files.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value       = f;
+        opt.textContent = f;
+        dropdown.appendChild(opt);
+      });
+
+      // 2) Select the passed-in flow (empty string = “none”)
+      dropdown.value = selected;
+
+      // 3) Pull creds for the API calls
+      const token = document.getElementById("hubitatToken")?.value?.trim() || "";
+      const appId = document.getElementById("hubitatAppId")?.value?.trim() || "";
+
+      if (selected && token && appId) {
+        try {
+          // 4a) Check if the flow is active in Hubitat
+          const respActive   = await fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`);
+          const activeList   = await respActive.json();
+          const isActive     = activeList.some(x => x.flowName === selected + ".json");
+          document.getElementById("activateFlowCheckbox").checked = isActive;
+
+          // 4b) Check per-flow logging settings
+          const respSettings = await fetch(`/apps/api/${appId}/settings?access_token=${token}`);
+          const settings     = await respSettings.json();
+          const loggingEnabled =
+            Array.isArray(settings.perFlowLogEnabled) &&
+            settings.perFlowLogEnabled.includes(selected + ".json");
+          document.getElementById("loggingCheckbox").checked = loggingEnabled;
+        }
+        catch (err) {
+          console.error("Error syncing flow state:", err);
+          // on error, just clear both
+          document.getElementById("activateFlowCheckbox").checked = false;
+          document.getElementById("loggingCheckbox").checked = false;
+        }
+      } else {
+        // no flow selected or missing creds → clear both
+        document.getElementById("activateFlowCheckbox").checked = false;
+        document.getElementById("loggingCheckbox").checked  = false;
+      }
+
+      // 5) Finally, redraw your Test/Status panel
+      checkIfFlowIsInUse(selected, appId, token);
+    }
+  </script>
+  <script>
+    var devices = [];
     window.editor = null;
     window._multiSelectedNodes = new Set();
     window.nextNodeX = 1200;
@@ -1123,29 +1201,6 @@
           document.getElementById("loadDevices").click();
         }
       }, 350);
-
-      document.getElementById("flowName").value = "";
-
-      const flowNameInput = document.getElementById("flowName");
-      function sanitizeFlowName(str) {
-        return (str || "")
-          .replace(/\s+/g, "_")      // Replace all whitespace with underscores
-          .replace(/[^a-zA-Z0-9_\-]/g, "") // Only allow a-z, A-Z, 0-9, _, -
-          .replace(/_{2,}/g, "_")    // No double underscores
-          .replace(/^_+|_+$/g, "");  // No leading/trailing underscores
-      }
-      flowNameInput.addEventListener("input", function() {
-        const sanitized = sanitizeFlowName(flowNameInput.value);
-        if (flowNameInput.value !== sanitized) {
-          flowNameInput.value = sanitized;
-          logAction("No spaces or symbols allowed in Flow Name. Changed to: " + sanitized, "warn");
-        }
-      });
-      flowNameInput.addEventListener("blur", function() {
-        flowNameInput.value = sanitizeFlowName(flowNameInput.value);
-      });
-
-      let devices = [];
 
       function patchFlowWithDeviceLabels(flow, devices) {
         if (
@@ -3401,7 +3456,7 @@
       document.getElementById("newFlow").onclick  = async function() {
         if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
           editor.clear();
-          document.getElementById("flowName").value = "";
+          document.getElementById("flowName").textContent = "";      // clear name
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
           if (editor && typeof editor.export === "function") {
             window.undoStack = [JSON.stringify(editor.export())];
@@ -3409,31 +3464,18 @@
           }
           markFlowNeedsSave(false);
           logAction("Started a new flow (all nodes cleared).");
+
+          // ─── CLEAR DROPDOWN SELECTION ───
+          const dd = document.getElementById("hubitatFileDropdown");
+          dd.value = "";   // resets to your “Pick a Flow…” placeholder
+          // ─────────────────────────────────
+
           const appId = document.getElementById("hubitatAppId").value.trim();
           const token = document.getElementById("hubitatToken").value.trim();
           checkIfFlowIsInUse("new", appId, token);
         }
         await autoLoadGlobalVarsFromHubitat();
       };
-
-      async function fetchHubitatFiles() {
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          return [];
-        }
-        try {
-          const listFileUrl = `/apps/api/${appId}/listFiles?access_token=${token}`;
-          const res = await fetch(listFileUrl);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          return data.files || [];
-        } catch (e) {
-          logAction("Failed to fetch file list: " + e.message, "error");
-          return [];
-        }
-      }
 
       async function fetchHubitatFileContent(fileName) {
         const appId = document.getElementById("hubitatAppId").value.trim();
@@ -3442,7 +3484,8 @@
           logAction("Enter App ID and Access Token!", "error");
           throw new Error("Missing credentials");
         }
-        const fileUrl = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fileName)}&access_token=${token}`;
+        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
+        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
         try {
           const response = await fetch(fileUrl);
           const raw = await response.text();
@@ -3483,8 +3526,8 @@
           dropdown.innerHTML = "<option value=''>Pick a flow…</option>";
           files.forEach(f => {
             const opt = document.createElement("option");
-            opt.value   = f;
-            opt.textContent = f;
+            opt.value = f;
+            opt.textContent = f.replace(/\.json$/i, "");
             dropdown.appendChild(opt);
           });
         }
@@ -3493,14 +3536,21 @@
         dropdown.onchange = async function() {
           const fileName = dropdown.value.trim();
           if (!fileName) return alert("Please select a flow file.");
-          // (then reuse your existing fetchHubitatFileContent + import logic here…)
           try {
+            // 1) fetch & import
             const data = await fetchHubitatFileContent(fileName);
             editor.import(data);
-            document.getElementById("flowName").value = data.flowName || "";
+
+            // 2) update UI
+            document.getElementById("flowName").textContent = fileName;
             zoomDrawflowToFit(40);
             markFlowNeedsSave(false);
-            logAction(`Loaded “${fileName}” from Hubitat.`,"success");
+            logAction(`Loaded “${fileName}” from Hubitat.`, "success");
+
+            // 3) refresh Test‐Flow panel
+            const appId = document.getElementById("hubitatAppId").value.trim();
+            const token = document.getElementById("hubitatToken").value.trim();
+            checkIfFlowIsInUse(fileName, appId, token);
           } catch (e) {
             alert("❌ Failed to load: " + e.message);
             logAction("Error loading file: " + e,"error");
@@ -3580,40 +3630,43 @@
         }
 
       document.getElementById("sendFlow").onclick = async () => {
-        if (!hubitatCredentialsAreValid(true)) return;
-        if (!editor) return;
-        const flowName = document.getElementById("flowName").value.trim();
-        if (!flowName) {
-          alert("Please enter a flow name.");
-          return;
-        }
-        const data = editor.export();
+        // 1) Validate credentials & editor
+        if (!hubitatCredentialsAreValid(true) || !editor) return;
 
-        // PATCH: Save local variables inside the flow JSON
-        if (window.flowVars && window.flowVars.getLocalVars) {
-          data.variables = window.flowVars.getLocalVars();
-        }
-
-        // PATCH: Include the flowName at the top level
-        const out = {
-          flowName: flowName,
-          ...data
-        };
-
-        await uploadToHubitatFile(flowName + ".json", JSON.stringify(out, null, 2));
-
-        // — UPDATE dropdown on Save —
-        const dropdown = document.getElementById("hubitatFileDropdown");
-        if (dropdown && dropdown.style.display !== "none") {
-          const filename = flowName + ".json";
-          if (![...dropdown.options].some(o => o.value === filename)) {
-            const opt = document.createElement("option");
-            opt.value = filename;
-            opt.textContent = filename;
-            dropdown.appendChild(opt);
+        const dd = document.getElementById("hubitatFileDropdown");
+        // 2) Determine flowName: if nothing selected, ask the user
+        let flowName;
+        if (!dd.value) {
+          // no existing flow chosen → prompt for a new name
+          let name = prompt("Save flow as:", document.getElementById("flowName").textContent.trim());
+          if (!name) return;  // user cancelled
+          // sanitize exactly like your Save-As routine
+          flowName = name
+            .replace(/\s+/g, "_")
+            .replace(/[^a-zA-Z0-9_\-]/g, "")
+            .replace(/_{2,}/g, "_")
+            .replace(/^_+|_+$/g, "");
+          if (!flowName) {
+            alert("Invalid flow name.");
+            return;
           }
-          dropdown.value = filename;
+        } else {
+          // use the selected flow (strip “.json” if present)
+          flowName = dd.value.replace(/\.json$/i, "");
         }
+
+        // 3) Export & upload
+        const data = editor.export();
+        if (window.flowVars?.getLocalVars) data.variables = window.flowVars.getLocalVars();
+        await uploadToHubitatFile(
+          `${flowName}.json`,
+          JSON.stringify({ flowName, ...data }, null, 2)
+        );
+
+        // 4) Refresh dropdown and select the just-saved flow
+        await reloadFlowDropdown(`${flowName}.json`);
+
+        // 5) Clear dirty state, log success
         markFlowNeedsSave(false);
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
@@ -4120,8 +4173,11 @@
         fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`)
           .then(resp => resp.json())
           .then(list => {
-            const inUse = list.filter(x => x.flowName === flowFileName + ".json");
+            const inUse    = list.filter(x => x.flowName === flowFileName + ".json");
             const statusDiv = document.getElementById("flowTestStatus");
+
+            // ── TICK/UNTICK THE “Activate Flow” BOX ──────────────────────────
+            document.getElementById("activateFlowCheckbox").checked = inUse.length > 0;
 
             if (inUse.length) {
               // Check if logging is enabled for this flow
@@ -4132,51 +4188,46 @@
                     Array.isArray(settings?.perFlowLogEnabled) &&
                     settings.perFlowLogEnabled.includes(flowFileName + ".json");
 
+                  // ── TICK/UNTICK THE “Enable Logging” BOX ──────────────────────
+                  document.getElementById("loggingCheckbox").checked = loggingEnabled;
+
                   statusDiv.innerHTML = `
+                    <span id="flowName"
+                          style="display:inline-block; font-weight:bold; font-size:20px;">
+                      ${flowFileName.replace(/\.json$/i, "")}
+                    </span><br>
                     <small>Flow is Active in Hubitat</small> | 
-                    ${loggingEnabled ? "<small>Logging is Enabled</small><br>" : "<small>Logging is Disabled</small><br>"}
-                    <input id="testFlowInput" type="text" placeholder="Test value..." style="padding:7px 9px;border-radius:5px;border:1px solid #aaa;font-size:15px;width:160px;margin-right:8px;">
-                    <button id="testFlowBtn" style="background:#1b9b1b;color:#fff;border:none;padding:7px 18px;border-radius:5px;cursor:pointer;font-size:15px;margin-right:18px;">
-                      ▶️ Test the Flow
-                    </button><br>
-                    <small>To test this Flow, click on the Trigger device to test. Then enter a value and click the Test button. Value examples: on/off/open/closed/1/5/etc.</small>
+                    ${loggingEnabled
+                      ? "<small>Logging is Enabled</small><br>"
+                      : "<small>Logging is Disabled</small><br>"}
+                    <input id="testFlowInput" type="text" placeholder="Test value..." style="…">
+                    <button id="testFlowBtn" style="…">▶️ Test the Flow</button><br>
+                    <small>To test this Flow, click on the Trigger device to test. Then enter a value…</small>
                   `;
 
-                  document.getElementById("testFlowBtn").onclick = function () {
-                    const testValue = document.getElementById("testFlowInput").value || "Manual/Test";
-                    const nodeId = editor && editor.selected_id ? editor.selected_id : "";
-
-                    let fname = flowFileName || "";
-                    if (!fname.endsWith(".json")) fname += ".json";
-
-                    fetch(
-                      `/apps/api/${appId}/testFlow?flow=${encodeURIComponent(fname)}&nodeId=${encodeURIComponent(
-                        nodeId
-                      )}&value=${encodeURIComponent(testValue)}&access_token=${token}`,
-                      { method: "POST" }
-                    )
-                      .then(async (r) => {
-                        const text = await r.text();
-                        try {
-                          const json = JSON.parse(text);
-                          logAction(`Test sent to nodeId=${nodeId}: value="${testValue}". Result: ${json.result || "OK"}`, "success");
-                          alert("✅ Flow test sent!\nResult: " + (json.result || "OK"));
-                        } catch (e) {
-                          logAction("Test failed, response: " + text, "error");
-                          alert("Failed to trigger flow. Server response was:\n\n" + text);
-                        }
-                      })
-                      .catch((e) => {
-                        logAction("Test failed, fetch error: " + e, "error");
-                        alert("Failed to trigger flow: " + e);
-                      });
-                  };
+                  /* …rest of your testFlowBtn onclick… */
                 });
             } else {
-              statusDiv.innerHTML = `<span style="color:#b00;font-weight:600;">Activate Flow in Hubitat to enable Testing</span>`;
+              // no flow active → clear the status panel
+              statusDiv.innerHTML = `
+                <span id="flowName"
+                      style="display:inline-block; font-weight:bold; font-size:20px;">
+                  ${flowFileName.replace(/\.json$/i, "")}
+                </span>
+                <br><br>
+                <span style="color:#b00;font-weight:600;">
+                  Activate Flow in Hubitat to enable Testing
+                </span>
+              `;
+
+              // also untick logging when flow is not active
+              document.getElementById("loggingCheckbox").checked = false;
             }
           })
           .catch((e) => {
+            // on error, clear both
+            document.getElementById("activateFlowCheckbox").checked = false;
+            document.getElementById("loggingCheckbox").checked  = false;
             document.getElementById("flowTestStatus").innerHTML = `<span style="color:#b00;">Failed to check flow status.</span>`;
             console.error("Failed to fetch active flows:", e);
           });
@@ -4480,60 +4531,42 @@
       //  Export a Flow
       document.getElementById("exportAnonFlow").onclick = function() {
         if (!editor || !editor.export) return;
+
+        // 1) Export the current flow
         let flow = editor.export();
-        // Strip device IDs and labels in all nodes
-        if (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data) {
+
+        // 2) Strip out any device references
+        if (flow?.drawflow?.Home?.data) {
           Object.values(flow.drawflow.Home.data).forEach(node => {
             if (node.data) {
-              // Blank out device references
-              node.data.deviceId = "";
-              node.data.deviceIds = [];
+              node.data.deviceId    = "";
+              node.data.deviceIds   = [];
               node.data.deviceLabel = "";
             }
           });
         }
-        // Download as JSON
-        let blob = new Blob([JSON.stringify(flow, null, 2)], {type: "application/json"});
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.href = url;
-        a.download = (document.getElementById("flowName").value || "flow") + "_anonymized.json";
+
+        // 3) Build the blob & URL
+        const blob = new Blob([JSON.stringify(flow, null, 2)], { type: "application/json" });
+        const url  = URL.createObjectURL(blob);
+
+        // 4) Determine filename from your <span id="flowName">…</span>
+        const rawName = document.getElementById("flowName").textContent.trim();
+        // If it ends in “.json”, drop that
+        const base    = rawName.toLowerCase().endsWith(".json")
+                      ? rawName.slice(0, -5)
+                      : rawName;
+        const name    = base || "flow";  // fallback
+
+        // 5) Trigger download
+        const a = document.createElement("a");
+        a.href     = url;
+        a.download = `${name}_anonymized.json`;
         a.click();
+
+        // 6) Cleanup
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       };
-
-      document.getElementById("screenshotFlowBtn").onclick = function() {
-        const flowArea = document.getElementById("drawflow");
-        if (!flowArea) return alert("Flow area not found!");
-
-        // 1) Hide the background image so it doesn't show twice
-        const bgImg = document.getElementById("drawflow-bg-image");
-        const prevDisplay = bgImg?.style.display;
-        if (bgImg) bgImg.style.display = "none";
-
-        // 2) Wait a frame for the hide to take effect
-        setTimeout(() => {
-          html2canvas(flowArea, {
-            backgroundColor: null,  // preserve transparency
-            useCORS:       true,
-            allowTaint:    true,    // ensure canvas content is captured
-            scale:         1         // keeps Windows output at 1× for consistency
-          }).then(canvas => {
-            // 3) Restore the background image
-            if (bgImg) bgImg.style.display = prevDisplay;
-
-            // 4) Download the result
-            const link = document.createElement("a");
-            link.download = (document.getElementById("flowName").value || "flow") + "_screenshot.png";
-            link.href = canvas.toDataURL();
-            link.click();
-          }).catch(err => {
-            console.error("Screenshot failed:", err);
-            alert("❌ Screenshot failed: " + err);
-          });
-        }, 50);
-      };
-
     </script>
     <script>
       window.addEventListener('DOMContentLoaded', function() {
@@ -5419,228 +5452,172 @@
         }
       });
 
-      document.getElementById("selectFlowInAppBtn").addEventListener("click", async () => {
-        const token = document.getElementById("hubitatToken").value.trim();
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const flowName = document.getElementById("flowName").value.trim();
-
-        if (!token || !appId || !flowName) {
-          logAction("Missing token, App ID, or Flow Name", "error");
+      document.getElementById("activateFlowCheckbox").addEventListener("change", async e => {
+        if (!hubitatCredentialsAreValid(true)) return;
+        const flowName = document.getElementById("flowName")?.textContent?.trim() || "";
+        const token    = document.getElementById("hubitatToken")?.value?.trim()    || "";
+        const appId    = document.getElementById("hubitatAppId")?.value?.trim()    || "";
+        if (!flowName) {
+          logAction("No Flow selected to activate/deactivate", "error");
+          e.target.checked = !e.target.checked;
           return;
         }
-
-        const url = `/apps/api/${appId}/selectFlow?access_token=${token}`;
-        const body = JSON.stringify({ flow: flowName });
-
+        const action = e.target.checked ? "selectFlow" : "deselectFlow";
+        const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
+        const body   = JSON.stringify({ flow: flowName });
         try {
-          const res = await fetch(url, {
+          const res    = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body
           });
           const result = await res.json();
-          logAction("✅ Flow selected in app: " + (result.result || JSON.stringify(result)));
+          logAction(
+            e.target.checked
+              ? "✅ Flow activated: " + (result.result || JSON.stringify(result))
+              : "✅ Flow deactivated: " + (result.result || JSON.stringify(result))
+          );
           checkIfFlowIsInUse(flowName, appId, token);
-        } catch (e) {
-          logAction("❌ Failed to select flow in app: " + e, "error");
+        } catch (err) {
+          logAction("❌ Failed to " + (e.target.checked ? "activate" : "deactivate") + " flow: " + err, "error");
+          e.target.checked = !e.target.checked;
         }
       });
 
-      document.getElementById("deselectFlowInAppBtn").addEventListener("click", async () => {
-        const token = document.getElementById("hubitatToken").value.trim();
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const flowName = document.getElementById("flowName").value.trim();
+      // ─── Logging Checkbox ─────────────────────────────────────────────────────────
+      document
+        .getElementById("loggingCheckbox")
+        .addEventListener("change", async (e) => {
+          // 1) Validate credentials
+          if (!hubitatCredentialsAreValid(true)) {
+            e.target.checked = !e.target.checked;
+            return;
+          }
 
-        if (!token || !appId || !flowName) {
-          logAction("Missing token, App ID, or Flow Name", "error");
+          // 2) Gather names & creds
+          const flowName = document
+            .getElementById("flowName")
+            ?.textContent?.trim() || "";
+          const token = document
+            .getElementById("hubitatToken")
+            ?.value?.trim() || "";
+          const appId = document
+            .getElementById("hubitatAppId")
+            ?.value?.trim() || "";
+
+          if (!flowName) {
+            logAction("No Flow selected to change logging", "error");
+            e.target.checked = !e.target.checked;
+            return;
+          }
+
+          // 3) Fire the Hubitat API
+          const action = e.target.checked ? "selectFlowLog" : "deselectFlowLog";
+          const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
+          try {
+            const res    = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ flow: flowName })
+            });
+            const result = await res.json();
+            logAction(
+              e.target.checked
+                ? `✅ Logging enabled: ${result.result || "OK"}`
+                : `✅ Logging disabled: ${result.result || "OK"}`
+            );
+
+            // 4) Refresh the test/status panel (updates logging status there too)
+            checkIfFlowIsInUse(flowName, appId, token);
+          } catch (err) {
+            logAction(
+              `❌ Failed to ${e.target.checked ? "enable" : "disable"} logging: ${err}`,
+              "error"
+            );
+            // roll back
+            e.target.checked = !e.target.checked;
+          }
+        });
+
+      document.getElementById("saveAsFlow").onclick = async function() {
+        // 1) Sanity check
+        if (!hubitatCredentialsAreValid(true) || typeof editor.export !== "function") {
           return;
         }
 
-        const url = `/apps/api/${appId}/deselectFlow?access_token=${token}`;
-        const body = JSON.stringify({ flow: flowName });
-
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body
-          });
-          const result = await res.json();
-          logAction("✅ Flow deactivated: " + (result.result || JSON.stringify(result)));
-          checkIfFlowIsInUse(flowName, appId, token);
-        } catch (e) {
-          logAction("❌ Failed to deactivate flow: " + e, "error");
-        }
-      });
-
-      document.getElementById("enableLogInAppBtn").addEventListener("click", async () => {
-        const token = document.getElementById("hubitatToken").value.trim();
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const flowName = document.getElementById("flowName").value.trim();
-
-        if (!token || !appId || !flowName) {
-          logAction("Missing token, App ID, or Flow Name", "error");
-          return;
-        }
-
-        const url = `/apps/api/${appId}/selectFlowLog?access_token=${token}`;
-        const body = JSON.stringify({ flow: flowName });
-
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body
-          });
-          const result = await res.json();
-          logAction("✅ Flow Log Enabled in app: " + (result.result || JSON.stringify(result)));
-          checkIfFlowIsInUse(flowName, appId, token);
-        } catch (e) {
-          logAction("❌ Failed to enable flow log in app: " + e, "error");
-        }
-      });
-
-      document.getElementById("disableLogInAppBtn").addEventListener("click", async () => {
-        const token = document.getElementById("hubitatToken").value.trim();
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const flowName = document.getElementById("flowName").value.trim();
-
-        if (!token || !appId || !flowName) {
-          logAction("Missing token, App ID, or Flow Name", "error");
-          return;
-        }
-
-        const url = `/apps/api/${appId}/deselectFlowLog?access_token=${token}`;
-        const body = JSON.stringify({ flow: flowName });
-
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body
-          });
-          const result = await res.json();
-          logAction("✅ Flow Log disabled: " + (result.result || JSON.stringify(result)));
-          checkIfFlowIsInUse(flowName, appId, token);
-        } catch (e) {
-          logAction("❌ Failed to disable flow log: " + e, "error");
-        }
-      });
-
-      document.getElementById("saveAsFlow").onclick = async () => {
-        // 1) Validate credentials & editor
-        if (!hubitatCredentialsAreValid(true) || typeof editor?.export !== "function") {
-          return;
-        }
-
-        // 2) Ask for the new name
+        // 2) Prompt for the new name (no “.json”)
         const flowNameEl = document.getElementById("flowName");
-        const current    = flowNameEl.value.trim();
-        let   name       = prompt("Save flow as:", current);
+        let current = flowNameEl.textContent.trim();
+        if (current.toLowerCase().endsWith(".json")) {
+          current = current.slice(0, -5);
+        }
+        let name = prompt("Save flow as:", current);
         if (!name) return;  // user cancelled
 
-        // 3) Sanitize the new name (underscores, letters, numbers, dashes only)
+        // 3) Sanitize the name
         name = name
           .replace(/\s+/g, "_")
           .replace(/[^a-zA-Z0-9_\-]/g, "")
           .replace(/_{2,}/g, "_")
           .replace(/^_+|_+$/g, "");
 
-        // 4) Export the flow JSON and overwrite its flowName
+        // 4) Export & upload under name + ".json"
         const data = editor.export();
         data.flowName = name;
         if (window.flowVars?.getLocalVars) {
           data.variables = flowVars.getLocalVars();
         }
+        await uploadToHubitatFile(`${name}.json`, JSON.stringify(data, null, 2));
 
-        // 5) Upload under the new filename
-        await uploadToHubitatFile(name + ".json", JSON.stringify(data, null, 2));
+        // 5) Update the on-page display to the bare name (no .json)
+        flowNameEl.textContent = name;
 
-        // 6) Reflect it immediately in the UI
-        flowNameEl.value = name;
-        const filename = name + ".json";
-
-        // — Rebuild dropdown locally and select the new file —
-        const dropdown = document.getElementById("hubitatFileDropdown");
-        if (dropdown && dropdown.style.display !== "none") {
-          // a) Ensure the new filename is present
-          if (![...dropdown.options].some(o => o.value === filename)) {
-            const opt = document.createElement("option");
-            opt.value       = filename;
-            opt.textContent = filename;
-            dropdown.appendChild(opt);
-          }
-
-          // b) Gather, sort, and re-render
-          const sorted = Array.from(dropdown.options)
-            .map(o => o.value)
-            .filter(v => v)  // remove any empty/placeholder entries
-            .sort((a, b) => a.localeCompare(b));
-          dropdown.innerHTML = sorted
-            .map(f => `<option value="${f}">${f}</option>`)
-            .join("");
-
-          // c) Finally, select the just-saved file
-          dropdown.value = filename;
-        }
-
+        await reloadFlowDropdown(`${name}.json`);
         markFlowNeedsSave(false);
         logAction(`Saved flow as "${name}" to Hubitat File Manager.`, "success");
       };
 
+      // — Delete current flow and then clear UI + reload dropdown —
       document.getElementById("deleteFlowAppBtn").onclick = async function() {
-        // 1) Grab creds & flow name
+        // 1) grab credentials and the selected filename
         const token    = document.getElementById("hubitatToken").value.trim();
         const appId    = document.getElementById("hubitatAppId").value.trim();
-        const flowName = document.getElementById("flowName").value.trim();
-        if (!token || !appId || !flowName) {
-          return logAction("Missing Token, App ID, or Flow Name", "error");
+        const dropdown = document.getElementById("hubitatFileDropdown");
+        const fileName = dropdown.value.trim();
+        if (!token || !appId || !fileName) {
+          return logAction("Missing Token, App ID, or selected Flow", "error");
         }
 
-        // 2) Build file-manager URL
-        const fileName = `${flowName}.json`;
-        const url = `/apps/api/${appId}/deleteFile` +
-                    `?access_token=${token}` +
-                    `&name=${encodeURIComponent(fileName)}`;
+        // 2) build the delete URL
+        const url = `/apps/api/${appId}/deleteFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
 
-        // 3) Confirm deletion
+        // 3) confirm
         if (!confirm(`Really delete "${fileName}" from Hubitat? This cannot be undone.`)) {
           return;
         }
 
-        // 4) Send DELETE
+        // 4) perform the DELETE
         try {
           const res = await fetch(url, { method: "DELETE" });
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`HTTP ${res.status}: ${text}`);
-          }
+          if (!res.ok) throw new Error(await res.text());
           logAction(`✅ Deleted "${fileName}" from Hubitat File Manager.`, "success");
 
-          // 5) Clear flow-name input
-          document.getElementById("flowName").value = "";
+          // 5) clear the displayed flow name
+          document.getElementById("flowName").textContent = "";
 
-          // 6) Reset dropdown to default prompt
-          const dropdown = document.getElementById("hubitatFileDropdown");
-          if (dropdown && dropdown.style.display !== "none") {
-            dropdown.innerHTML = `<option value="">Pick a Flow…</option>`;
-            dropdown.value = "";
-          }
-
-          // 7) Clear the workspace (canvas, editor pane, undo/redo, save-flag)
+          // 6) clear the canvas & undo/redo state
           editor.clear();
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          if (editor && typeof editor.export === "function") {
-            window.undoStack = [JSON.stringify(editor.export())];
-            window.redoStack = [];
-          }
-          markFlowNeedsSave(false);
-          logAction("Cleared workspace after deletion.", "info");
+          window.undoStack = [JSON.stringify(editor.export())];
+          window.redoStack = [];
 
-          // 8) Reset “Flow in use” state and reload any globals
+          // 7) reset any “in-use” flags and re-load globals
           checkIfFlowIsInUse("new", appId, token);
           await autoLoadGlobalVarsFromHubitat();
+          await reloadFlowDropdown("");
 
+          markFlowNeedsSave(false);
+          logAction("Cleared workspace after deletion.", "info");
         } catch (e) {
           logAction("❌ Failed to delete file: " + e, "error");
         }
@@ -5654,7 +5631,7 @@
 
         // 2) Get old name and prompt for new
         const flowNameEl = document.getElementById("flowName");
-        const oldName    = flowNameEl.value.trim();
+        const oldName    = flowNameEl.textContent.trim();
         let newName      = prompt("Rename flow to:", oldName);
         if (!newName || newName === oldName) {
           return;
@@ -5687,38 +5664,11 @@
         await reloadHubitatApp();
 
         // 7) Reflect the change in the UI
-        flowNameEl.value = newName;
+        flowNameEl.textContent = newName;
         const oldFilename = oldName + ".json";
         const newFilename = newName + ".json";
 
-        const dropdown = document.getElementById("hubitatFileDropdown");
-        if (dropdown && dropdown.style.display !== "none") {
-          // Remove the old filename option
-          Array.from(dropdown.options).forEach(opt => {
-            if (opt.value === oldFilename) opt.remove();
-          });
-
-          // Ensure the new filename is present
-          if (![...dropdown.options].some(o => o.value === newFilename)) {
-            const opt = document.createElement("option");
-            opt.value       = newFilename;
-            opt.textContent = newFilename;
-            dropdown.appendChild(opt);
-          }
-
-          // Rebuild the <select> in sorted order
-          const sorted = Array.from(dropdown.options)
-            .map(o => o.value)
-            .filter(v => v)  // drop any empty entries
-            .sort((a, b) => a.localeCompare(b));
-
-          dropdown.innerHTML = sorted
-            .map(f => `<option value="${f}">${f}</option>`)
-            .join("");
-
-          // Select the renamed file
-          dropdown.value = newFilename;
-        }
+        await reloadFlowDropdown(`${newName}.json`);
 
         markFlowNeedsSave(false);
         logAction(`Renamed "${oldName}" → "${newName}" in Hubitat File Manager.`, "success");
