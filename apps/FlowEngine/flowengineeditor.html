@@ -12,7 +12,7 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.008 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.009 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -4392,18 +4392,45 @@
                       alert("Please enter a test value.");
                       return;
                     }
+
+                    // Grab the selected flow name (add .json if missing)
+                    const dropdown = document.getElementById("hubitatFileDropdown");
+                    const fl       = dropdown.value.trim();
+                    const flow     = fl.endsWith(".json") ? fl : fl + ".json";
+                    logAction("flow:" + flow, "info");
+                    if (!flow) {
+                      alert("Please select a flow to test.");
+                      return;
+                    }
+
                     try {
+                      // Build form-encoded body instead of JSON
+                      const form = new URLSearchParams();
+                      form.append("flow", flow);
+                      form.append("value", val);
+
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`,
                         {
                           method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ flowName: flowFileName + ".json", value: val })
+                          headers: {
+                            "Content-Type": "application/x-www-form-urlencoded"
+                          },
+                          body: form.toString()
                         }
                       );
-                      const result = await res.json();
+
+                      // Read the response as text and fallback gracefully
+                      const text = await res.text();
+                      let parsed;
+                      try {
+                        parsed = text ? JSON.parse(text) : {};
+                      } catch (_) {
+                        parsed = { result: text };
+                      }
+
                       logAction(
-                        `▶️ Test flow "${flowFileName}": ${result.result || JSON.stringify(result)}`,
+                        `▶️ Test flow "${flow}": ${parsed.result || JSON.stringify(parsed)}`,
                         "info"
                       );
                     } catch (err) {
