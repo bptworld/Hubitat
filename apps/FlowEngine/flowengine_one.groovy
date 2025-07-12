@@ -1155,18 +1155,65 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 		
 		case "repeat":
 			flowLog(fname, "In evaluateNode - repeat", "debug")
-			def nodeIdStr = "${nodeId}"
-			def repeatMax = (node.data.repeatMax ?: 1) as Integer
+			// flowObj is already declared in this scope; just initialize its repeatCounts map:
 			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
-			def count = (flowObj.repeatCounts[nodeIdStr] ?: 0) as Integer
 
-			if (count <= repeatMax) {
-				flowObj.repeatCounts[nodeIdStr] = count + 1
-				flowLog(fname, "Repeat node: ${count+1} of ${repeatMax}", "info")
-				// Re-check all triggers as if they might be eligible to fire
-				recheckAllTriggers(fname)
-			} else {
-				flowLog(fname, "Repeat node: maximum repeats reached (${repeatMax}), not repeating.", "info")
+			// Pull the repeat mode ("count" or "until")
+			def mode = node.data.repeatMode ?: "count"
+
+			if (mode == "count") {
+				// —— COUNT mode ——
+				def repeatMax = (node.data.repeatMax ?: 1) as Integer
+				def count     = (flowObj.repeatCounts[nodeId.toString()] ?: 0) as Integer
+
+				if (count < repeatMax) {
+					flowObj.repeatCounts[nodeId.toString()] = count + 1
+					flowLog(fname, "Repeat node (count): iteration ${count+1} of ${repeatMax}", "info")
+					// loop back
+					recheckAllTriggers(fname)
+				} else {
+					flowLog(fname, "Repeat node (count): reached ${repeatMax}, moving on.", "info")
+					flowObj.repeatCounts[nodeId.toString()] = 0
+					// fire downstream once
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}
+			}
+			else if (mode == "until") {
+				// —— UNTIL mode ——
+				def devIds = []
+				if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+					devIds = node.data.deviceIds
+				} else if (node.data.deviceId) {
+					devIds = [node.data.deviceId]
+				}
+				def attr       = node.data.attribute
+				def comparator = node.data.comparator
+				def expected   = resolveVars(fname, node.data.value)
+
+				// Determine currentValue
+				def currentValue = null
+				if (evt?.name == attr && evt.value != null) {
+					currentValue = evt.value
+				} else if (devIds && devIds[0]) {
+					currentValue = getDeviceById(devIds[0])?.currentValue(attr)
+				}
+
+				// Evaluate the condition
+				def passes = evaluateComparator(currentValue, expected, comparator)
+				if (!passes) {
+					flowLog(fname, "Repeat node (until): condition not met (${attr} ${comparator} ${expected}), looping.", "info")
+					recheckAllTriggers(fname)
+				} else {
+					flowLog(fname, "Repeat node (until): condition met, moving on.", "info")
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}
+			}
+			else {
+				log.warn "Unknown repeatMode ‘${mode}’ in Repeat node – skipping."
 			}
 			break
 
