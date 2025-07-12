@@ -1594,28 +1594,24 @@
         el.appendChild(attrSel);
 
         // 6) Comparator picker
-        const lblC = document.createElement("label");
-        lblC.textContent = "Comparator";
-        lblC.style.display = "block";
-        el.appendChild(lblC);
-
-        const comparators = ["==","!=","<","<=",">",">=","between"];
+        const comparators = ["==", "!=", "<", "<=", ">", ">=", "between", "changes"];
         const compLabels   = {
-          "==": "equals",
-          "!=": "not equal",
-          "<": "<",
-          "<=": "≤",
-          ">": ">",
-          ">=": "≥",
-          "between": "between"
+          "==":      "equals",
+          "!=":      "not equal",
+          "<":       "<",
+          "<=":      "≤",
+          ">":       ">",
+          ">=":      "≥",
+          "between": "between",
+          "changes": "changes"
         };
 
         const compSel = document.createElement("select");
         compSel.style = "display:block;margin-bottom:12px";
         compSel.innerHTML = `<option value="">(none)</option>` +
           comparators.map(c =>
-            `<option value="${c}">${compLabels[c]}</option>`
-          ).join("");
+            `<option value="${c}">${compLabels[c] || c}</option>`
+          ).join('');
         compSel.value = node.data.comparator || "";
         compSel.onchange = () => {
           node.data.comparator = compSel.value;
