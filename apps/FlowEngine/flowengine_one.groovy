@@ -1417,7 +1417,6 @@ private void saveGlobalVarsToFile(List globals) {
     def json     = JsonOutput.toJson(globals)
     // uploadHubFile is the Hubitat helper that writes to /local/
     uploadHubFile(flowFile, json.getBytes("UTF-8"))
-    log.debug "Persisted global variables (${globals.size()}) to ${flowFile}"
 }
 
 // --- Comparators ---
