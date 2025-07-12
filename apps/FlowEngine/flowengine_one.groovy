@@ -643,17 +643,27 @@ def loadVariables(fname) {
     }
 }
 
-def getGlobalVars(fname) {
+private void getGlobalVars(String fname) {
     def flowObj = state.activeFlows[fname]
     flowObj.globalVars = []
     try {
+        // Fetch the JSON file from Hubitat’s local HTTP server
         def uri = "http://127.0.0.1:8080/local/FE_global_vars.json"
-        httpGet([uri: uri, contentType: "text/html; charset=UTF-8"]) { resp ->
-            def jsonStr = resp.data?.text
-            if (!jsonStr) return
-            flowObj.globalVars = new JsonSlurper().parseText(jsonStr)
+        httpGet([ uri: uri, contentType: "application/json" ]) { resp ->
+            if (resp.status == 200) {
+                // Hubitat will parse JSON for you into a List/Map
+                if (resp.data instanceof List) {
+                    flowObj.globalVars = resp.data
+                } else {
+                    // fallback just in case
+                    flowObj.globalVars = new JsonSlurper().parseText(resp.data.toString())
+                }
+            } else {
+                log.warn "getGlobalVars: unexpected HTTP ${resp.status}"
+            }
         }
     } catch (e) {
+        log.warn "In getGlobalVars - Unable to retrieve Global Variables", e
         flowObj.globalVars = []
     }
 }
@@ -966,28 +976,49 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 
         case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
-            def devIds = []
-            if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds
-            else if (node.data.deviceId) devIds = [node.data.deviceId]
-            def attr = node.data.attribute
-            def passes = false
-            def currentValue
-            if (evt && evt.name == attr && evt.value != null) {
-                currentValue = evt.value
-            } else if (devIds && devIds[0]) {
-                def device = getDeviceById(devIds[0])
-                currentValue = device?.currentValue(attr)
-            } else {
-                currentValue = null
-            }
-            passes = evaluateComparator(currentValue, resolveVars(fname, node.data.value), node.data.comparator)
-            node.outputs?.output_1?.connections?.each { conn ->
-                if (passes) evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            node.outputs?.output_2?.connections?.each { conn ->
-                if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            return passes
+
+			// 1) Collect all targeted device IDs (or single deviceId)
+			def devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds
+			} else if (node.data.deviceId) {
+				devIds = [node.data.deviceId]
+			}
+
+			// 2) Pull attribute, comparator, expected value, and chosen logic (and/or)
+			def attr     = node.data.attribute
+			def expected = resolveVars(fname, node.data.value)
+			def cmp      = node.data.comparator
+			def logicOp  = (node.data.logic as String) ?: "and"
+
+			// 3) Evaluate each device
+			def results = devIds.collect { id ->
+				def current
+				if (evt && evt.name == attr && evt.value != null) {
+					// event-triggered value
+					current = evt.value
+				} else {
+					// live device state
+					def device = getDeviceById(id)
+					current = device?.currentValue(attr)
+				}
+				evaluateComparator(current, expected, cmp)
+			}
+
+			// 4) Combine per-device results using AND or OR
+			def passes = (logicOp == "or")
+						 ? results.any { it }
+						 : results.every { it }
+
+			// 5) Dispatch to the true/false outputs
+			node.outputs?.output_1?.connections?.each { conn ->
+				if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			node.outputs?.output_2?.connections?.each { conn ->
+				if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
+			}
+
+			return passes
 
         case "AND":
 			flowLog(fname, "In evaluateNode - AND", "debug")
@@ -1137,17 +1168,48 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 
         case "notMatchingVar":
 			flowLog(fname, "In evaluateNode - notMatchingVar", "debug")
-            def varName = resolveVars(fname, node.data.varName)
-            def varValue = resolveVars(fname, node.data.varValue)
-            def actual = flowObj.vars?.get(varName) ?: ""
-            def passes = actual != varValue
-            node.outputs?.output_1?.connections?.each { conn ->
-                if (passes) evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            node.outputs?.output_2?.connections?.each { conn ->
-                if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            return passes
+			// 1) Gather the device IDs for this node
+			def devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds
+			} else if (node.data.deviceId) {
+				devIds = [node.data.deviceId]
+			}
+
+			// 2) Pull out the attribute, comparator and expected value
+			def attr       = node.data.attribute
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+
+			// 3) Find all devices whose currentValue(attr) does NOT pass
+			def notMatching = devIds.findAll { id ->
+				def device = getDeviceById(id)
+				def current = device?.currentValue(attr)
+				!evaluateComparator(current, expected, comparator)
+			}
+
+			// 4) Turn that list into a label string
+			def labels = notMatching.collect { id ->
+				def d = getDeviceById(id)
+				d ? (d.displayName ?: d.name ?: id) : id
+			}
+			def storeVal = labels.join(",")
+
+			// 5) Determine your output-variable name
+			def varName = resolveVars(fname, node.data.outputVar)
+
+			// 6) Save into FE_global_vars.json
+			setVariable(fname, varName, storeVal)
+
+			// 7) Branch just like a condition node
+			def passes = !notMatching.isEmpty()
+			node.outputs?.output_1?.connections?.each { conn ->
+				if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			node.outputs?.output_2?.connections?.each { conn ->
+				if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			return passes
 
 		case "doNothing":
 			flowLog(fname, "In evaluateNode - doNothing", "debug")
@@ -1322,40 +1384,40 @@ def getVarValue(fname, vname) {
     return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
 }
 
-def setVariable(fname, varName, varValue) {
-	flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
+def setVariable(String fname, String varName, String varValue) {
+    flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
     def flowObj = state.activeFlows[fname]
+
+    // 1) Load existing globals from disk
     getGlobalVars(fname)
-    def updatedGlobal = false
-    def updatedLocal = false
-    flowObj.flowVars = flowObj.flowVars ?: []
     flowObj.globalVars = flowObj.globalVars ?: []
-    flowObj.globalVars.each { v ->
-        if (v.name == varName) {
-            v.value = varValue
-            updatedGlobal = true
-        }
+
+    // 2) Update or append this variable in the global list
+    def existing = flowObj.globalVars.find { it.name == varName }
+    if (existing) {
+        existing.value = varValue
+        flowLog(fname, "Updating existing global var '${varName}' to '${varValue}'", "debug")
+    } else {
+        flowObj.globalVars << [ name: varName, value: varValue ]
+        flowLog(fname, "Adding new global var '${varName}' = '${varValue}'", "debug")
     }
-    flowObj.flowVars.each { v ->
-        if (v.name == varName) {
-            v.value = varValue
-            updatedLocal = true
-        }
-    }
-    if (!updatedGlobal && !updatedLocal) {
-        flowObj.flowVars << [name: varName, value: varValue]
-        updatedLocal = true
-    }
-    flowObj.vars = flowObj.vars ?: [:]
+
+    // 3) Persist globals back to FE_global_vars.json
+    saveGlobalVarsToFile(flowObj.globalVars)
+
+    // 4) Mirror into your in-memory maps so runtime can use it immediately
+    flowObj.vars   = flowObj.vars   ?: [:]
     flowObj.varCtx = flowObj.varCtx ?: [:]
-    flowObj.vars[varName] = varValue
+    flowObj.vars[varName]   = varValue
     flowObj.varCtx[varName] = varValue
 }
 
-def saveGlobalVarsToFile(globals) {
-	flowLog(fname, "In saveGlobalVarsToFile - globals: ${globals}", "debug")
+private void saveGlobalVarsToFile(List globals) {
     def flowFile = "FE_global_vars.json"
-    def fData = groovy.json.JsonOutput.toJson(globals)
+    def json     = JsonOutput.toJson(globals)
+    // uploadHubFile is the Hubitat helper that writes to /local/
+    uploadHubFile(flowFile, json.getBytes("UTF-8"))
+    log.debug "Persisted global variables (${globals.size()}) to ${flowFile}"
 }
 
 // --- Comparators ---
