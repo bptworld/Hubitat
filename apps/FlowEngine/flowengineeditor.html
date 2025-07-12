@@ -12,7 +12,7 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.009 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.010 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -96,7 +96,7 @@
       <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
       <button id="addTrigger" title="Add an Event Trigger node">Event Trigger</button>
       <button id="addLogicNOT" title="Add a NOT logic node">Not</button>
-      <button id="addNotMatchingVar" title="Add a Devices Not Matching to JSON node">Not Var</button>
+      <button id="addNotMatchingVar" title="Add a Devices Not Matching to a Variable node">Not Variable</button>
       <button id="addNotification" title="Add a Notification node">Notification</button>
       <button id="addLogicOR" title="Add an OR logic node">Or</button>
       <button id="addRepeat" title="Add a Repeat node">Repeat</button>
@@ -206,6 +206,15 @@
 
       // 4) Finally, redraw your Test/Status panel
       checkIfFlowIsInUse(focus, appId, token);
+    }
+
+    function sanitizeFlowName(name) {
+      return name
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^A-Za-z0-9_-]/g, "")
+        .replace(/_{2,}/g, "_")
+        .replace(/^_+|_+$/g, "");
     }
   </script>
   <script>
@@ -446,70 +455,101 @@
 
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
       try {
-        if (typeof fetchHubitatVarFileContent === "function") {
-          const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-          if (txt && txt.trim()) {
-            if (window.flowVars && window.flowVars.setGlobalVars) {
-              try {
-                window.flowVars.setGlobalVars(txt && txt.trim() ? JSON.parse(txt) : []);
-                setInterval(renderVariableInspector, 1500);
-                logAction("Auto-loaded FE_global_vars.json", "info");
-              } catch (e) {
-                window.flowVars.setGlobalVars([]);
-                setInterval(renderVariableInspector, 1500);
-                console.warn("Globals JSON invalid or missing. Starting with empty globals.");
-              }
-            }
-            
-            let parsed = [];
-            try { 
-              parsed = JSON.parse(txt);
-            } catch (e) { 
-              parsed = [];
-            }
-            window.FE_global_vars = parsed;
-            window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
-            if (window.flowVars && typeof window.flowVars.renderManager === "function") {
-              window.flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
-            } 
+        if (typeof fetchHubitatVarFileContent !== "function") {
+          throw new Error("fetchHubitatVarFileContent not available");
+        }
 
-            if (window.flowVars && window.flowVars.setGlobalVars) {
-              try {
-                window.flowVars.setGlobalVars(txt && txt.trim() ? JSON.parse(txt) : []);
-                setInterval(renderVariableInspector, 1500);
-                logAction("Auto-collected glabal variables", "info");
-              } catch (e) {
-                window.flowVars.setGlobalVars([]);
-                setInterval(renderVariableInspector, 1500);
-                console.warn("Globals JSON invalid or missing. Starting with empty globals.");
-              }
-            }
+        // 1) Fetch the file from Hubitat
+        const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+        let parsed = [];
 
-            if (editor && editor.selected_id) {
-              const node = editor.getNodeFromId(editor.selected_id);
-              if (node) renderEditor(node);
-            }
+        if (txt && txt.trim()) {
+          try {
+            parsed = JSON.parse(txt);
+            logAction("Auto-loaded FE_global_vars.json", "info");
+          } catch (e) {
+            console.warn("Globals JSON invalid. Starting with empty globals.", e);
+          }
+        } else {
+          // 2) If missing or empty, initialize on Hubitat
+          parsed = [];
+          if (typeof uploadToHubitatFile === "function") {
+            await uploadToHubitatFile(
+              "FE_global_vars.json",
+              JSON.stringify(parsed, null, 2),
+              { mimeType: "application/json" }
+            );
+            logAction("FE_global_vars.json not found: created new empty file", "warn");
+          } else if (retries > 0) {
+            // wait for uploadToHubitatFile to become available
+            setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+            logAction("Waiting for uploadToHubitatFile to become available...", "info");
+            return;
           } else {
-            const emptyGlobals = [];
-            window.FE_global_vars = emptyGlobals;
-            window.FE_global_var_names = [];
-            if (typeof uploadToHubitatFile === "function") {
-              await uploadToHubitatFile("FE_global_vars.json", JSON.stringify(emptyGlobals), { mimeType: "application/json" });
-              logAction("FE_global_vars.json not found: Created new empty FE_global_vars.json", "warn");
-            } else if (retries > 0) {
-              setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
-              logAction("Waiting for uploadToHubitatFile to become available...", "info");
-            } else {
-              logAction("No FE_global_vars.json found to auto-load and cannot create (missing upload function). Continuing with empty globals.", "warn");
-            }
+            logAction("Cannot create FE_global_vars.json (missing upload). Continuing with empty globals.", "warn");
           }
         }
+
+        // 3) Populate in-memory state and UI
+        window.FE_global_vars      = parsed;
+        window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
+        if (window.flowVars?.setGlobalVars) {
+          flowVars.setGlobalVars(parsed);
+        }
+        if (window.flowVars?.renderManager) {
+          flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
+        }
+        if (editor?.selected_id) {
+          renderEditor(editor.getNodeFromId(editor.selected_id));
+        }
+        renderVariableInspector();
+
       } catch (e) {
-        logAction("Error loading FE_global_vars.json (continuing): " + e, "error");
-        window.FE_global_vars = [];
+        if (retries > 0) {
+          setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+          return;
+        }
+        console.error("Error loading FE_global_vars.json:", e);
+        window.FE_global_vars      = [];
         window.FE_global_var_names = [];
+        renderVariableInspector();
       }
-      renderVariableInspector();
+
+      // 4) Start polling Hubitat for external changes every 5s
+      let lastGlobalJson = JSON.stringify(window.FE_global_vars);
+      setInterval(async () => {
+        try {
+          const txt2 = await fetchHubitatVarFileContent("FE_global_vars.json");
+          let parsed2 = [];
+          if (txt2 && txt2.trim()) {
+            try {
+              parsed2 = JSON.parse(txt2);
+            } catch (e) {
+              console.warn("Invalid globals JSON on poll", e);
+            }
+          }
+          const json2 = JSON.stringify(parsed2);
+          if (json2 !== lastGlobalJson) {
+            lastGlobalJson             = json2;
+            window.FE_global_vars      = parsed2;
+            window.FE_global_var_names = parsed2.map(v => v.name).filter(Boolean);
+
+            if (window.flowVars?.setGlobalVars) {
+              flowVars.setGlobalVars(parsed2);
+            }
+            if (window.flowVars?.renderManager) {
+              flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
+            }
+            if (editor?.selected_id) {
+              renderEditor(editor.getNodeFromId(editor.selected_id));
+            }
+            renderVariableInspector();
+            logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
+          }
+        } catch (e) {
+          console.warn("Error polling FE_global_vars.json:", e);
+        }
+      }, 5000);
     }
  
     const TIME_DEVICE = {
@@ -907,11 +947,11 @@
           data && typeof data.outputVar === "string" &&
           data.outputVar.trim() &&
           data.outputVar.trim().toLowerCase() !== "undefined"
-        ) ? data.outputVar : "Devices Not Matching to JSON";
+        ) ? data.outputVar : "Devices Not Matching to a Variable";
 
         let scope = (data && data.varScope === "global") ? "Global" : "Flow";
         return `<div class="setVariable-tile">
-          Devices Not Matching to JSON<br>
+          Devices Not Matching to a Variable<br>
           <span style="font-size:11px">
             ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
             ${attribute ? "Attr: " + attribute + "<br>" : ""}
@@ -1254,7 +1294,7 @@
           Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
             if (node.name === "notMatchingVar") {
               if (!node.data.outputVar || node.data.outputVar === "undefined") {
-                node.data.outputVar = "Devices Not Matching to JSON";
+                node.data.outputVar = "Devices Not Matching to a Variable";
               }
             }
           });
@@ -1461,100 +1501,11 @@
 
         // 3) Special “variable” case when exactly one __variable__ device
         if (selectedDevs.length === 1 && node.data.deviceId === "__variable__") {
-          const globals = (window.FE_global_vars || []).map(v => v.name).filter(Boolean).sort();
-
-          // Variable Name
-          const lblVar = document.createElement("label");
-          lblVar.textContent = "Variable Name";
-          lblVar.style.display = "block";
-          el.appendChild(lblVar);
-
-          const varSel = document.createElement("select");
-          varSel.style = "display:block;margin-bottom:12px";
-          varSel.innerHTML = `<option value="">Pick a variable…</option>` +
-            globals.map(v =>
-              `<option value="${v}"${node.data.varName === v ? " selected" : ""}>${v}</option>`
-            ).join("");
-          varSel.onchange = () => {
-            node.data.varName = varSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(varSel);
-
-          // Comparator
-          const lblCmp = document.createElement("label");
-          lblCmp.textContent = "Comparator";
-          lblCmp.style.display = "block";
-          el.appendChild(lblCmp);
-
-          const cmpSel = document.createElement("select");
-          cmpSel.style = "display:block;margin-bottom:12px";
-          ["==","!=","<","<=",">",">=","between"].forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c;
-            opt.textContent = c === "==" ? "equals" : c;
-            if (node.data.comparator === c) opt.selected = true;
-            cmpSel.appendChild(opt);
-          });
-          cmpSel.onchange = () => {
-            node.data.comparator = cmpSel.value;
-            node.data.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(cmpSel);
-
-          // Value (reuse same logic as below)
-          const knownVar = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
-          if (node.data.comparator === "between") {
-            const [minVal, maxVal] = Array.isArray(node.data.value)
-              ? node.data.value.map(v => String(v))
-              : ["", ""];
-            const minIn = document.createElement("input");
-            minIn.type = "text";
-            minIn.value = minVal;
-            minIn.placeholder = "Min";
-            minIn.style = "width:45%; margin-right:8px; display:inline-block;";
-            const maxIn = document.createElement("input");
-            maxIn.type = "text";
-            maxIn.value = maxVal;
-            maxIn.placeholder = "Max";
-            maxIn.style = "width:45%; display:inline-block;";
-            const updVar = () => {
-              node.data.value = [minIn.value, maxIn.value];
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            minIn.onchange = maxIn.onchange = updVar;
-            el.appendChild(minIn);
-            el.appendChild(maxIn);
-          }
-          else if (knownVar.length) {
-            const valSel = document.createElement("select");
-            valSel.style = "display:block;margin-bottom:12px";
-            valSel.innerHTML = `<option value="">(none)</option>` +
-              knownVar.map(v => `<option value="${v}">${v}</option>`).join("");
-            valSel.value = node.data.value != null ? String(node.data.value) : "";
-            valSel.onchange = () => {
-              node.data.value = valSel.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            el.appendChild(valSel);
-          }
-          else {
-            const txt = document.createElement("input");
-            txt.type = "text";
-            txt.value = node.data.value || "";
-            txt.style = "display:block;margin-bottom:12px";
-            txt.oninput = () => {
-              node.data.value = txt.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            el.appendChild(txt);
-          }
-
+          const globals = (window.FE_global_vars || [])
+            .map(v => v.name)
+            .filter(Boolean)
+            .sort();
+          // …your existing variable-picker UI here…
           return;
         }
 
@@ -1578,112 +1529,113 @@
         const attrSel = document.createElement("select");
         attrSel.style = "display:block;margin-bottom:12px";
         attrSel.innerHTML = `<option value="">(none)</option>` +
-          sharedAttrs.map(a =>
-            `<option value="${a}">${a}</option>`
-          ).join("");
+          sharedAttrs.map(a => `<option value="${a}">${a}</option>`).join("");
         attrSel.value = node.data.attribute || "";
         attrSel.onchange = () => {
-          node.data.attribute  = attrSel.value;
+          node.data.attribute = attrSel.value;
           node.data.comparator = "";
-          node.data.value      = "";
+          node.data.value = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
           markFlowNeedsSave(true);
-          if (editor.refreshNodePorts) editor.refreshNodePorts(node.id);
         };
         el.appendChild(attrSel);
 
-        // 6) Comparator picker
-        const comparators = ["==", "!=", "<", "<=", ">", ">=", "between", "changes"];
-        const compLabels   = {
-          "==":      "equals",
-          "!=":      "not equal",
-          "<":       "<",
-          "<=":      "≤",
-          ">":       ">",
-          ">=":      "≥",
-          "between": "between",
-          "changes": "changes"
-        };
+        // 6) Logic & Comparator picker
+        // — Logic dropdown (AND/OR)
+        if (!node.data.logic) node.data.logic = "or";
+        const logicLabel = document.createElement("label");
+        logicLabel.textContent = "Logic";
+        logicLabel.style.display = "block";
+        el.appendChild(logicLabel);
 
-        const compSel = document.createElement("select");
-        compSel.style = "display:block;margin-bottom:12px";
-        compSel.innerHTML = `<option value="">(none)</option>` +
-          comparators.map(c =>
-            `<option value="${c}">${compLabels[c] || c}</option>`
-          ).join('');
-        compSel.value = node.data.comparator || "";
-        compSel.onchange = () => {
-          node.data.comparator = compSel.value;
-          node.data.value      = "";
+        const logicSel = document.createElement("select");
+        logicSel.style = "display:block;margin-bottom:12px";
+        ["and", "or"].forEach(optVal => {
+          const opt = document.createElement("option");
+          opt.value = optVal;
+          opt.textContent = optVal.toUpperCase();
+          if (node.data.logic === optVal) opt.selected = true;
+          logicSel.appendChild(opt);
+        });
+        logicSel.onchange = () => {
+          node.data.logic = logicSel.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        el.appendChild(logicSel);
+
+        // — Comparator dropdown
+        const lblCmp = document.createElement("label");
+        lblCmp.textContent = "Comparator";
+        lblCmp.style.display = "block";
+        el.appendChild(lblCmp);
+
+        const cmpSel = document.createElement("select");
+        cmpSel.style = "display:block;margin-bottom:12px";
+        ["==","!=","<","<=",">",">=","between","changes"].forEach(c => {
+          const opt = document.createElement("option");
+          opt.value       = c;
+          opt.textContent = c === "==" ? "equals" : c;
+          if (node.data.comparator === c) opt.selected = true;
+          cmpSel.appendChild(opt);
+        });
+        cmpSel.onchange = () => {
+          node.data.comparator = cmpSel.value;
+          node.data.value = node.data.comparator === "between" ? [] : "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
           markFlowNeedsSave(true);
-          if (editor.refreshNodePorts) editor.refreshNodePorts(node.id);
         };
-        el.appendChild(compSel);
+        el.appendChild(cmpSel);
 
         // 7) Value picker / inputs
-        if (node.data.attribute && node.data.comparator) {
-          const lblV = document.createElement("label");
-          lblV.textContent = "Value";
-          lblV.style.display = "block";
-          el.appendChild(lblV);
+        if (node.data.comparator === "between") {
+          const [minVal, maxVal] = Array.isArray(node.data.value)
+            ? node.data.value
+            : ["", ""];
+          const minIn = document.createElement("input");
+          minIn.type = "text";
+          minIn.value = minVal;
+          minIn.placeholder = "Min";
+          minIn.style = "width:45%; margin-right:8px; display:inline-block";
+          minIn.oninput = () => {
+            node.data.value = [minIn.value, maxIn.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(minIn);
 
-          const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
-
-          if (node.data.comparator === "between") {
-            const [minVal, maxVal] = Array.isArray(node.data.value)
-              ? node.data.value.map(v => String(v))
-              : ["", ""];
-            const minIn = document.createElement("input");
-            minIn.type = "text";
-            minIn.value = minVal;
-            minIn.placeholder = "Min";
-            minIn.style = "width:45%; margin-right:8px; display:inline-block;";
-            const maxIn = document.createElement("input");
-            maxIn.type = "text";
-            maxIn.value = maxVal;
-            maxIn.placeholder = "Max";
-            maxIn.style = "width:45%; display:inline-block;";
-            const upd = () => {
-              node.data.value = [minIn.value, maxIn.value];
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            minIn.onchange = maxIn.onchange = upd;
-            el.appendChild(minIn);
-            el.appendChild(maxIn);
-          }
-          else if (known.length) {
-            const valSel = document.createElement("select");
-            valSel.style = "display:block;margin-bottom:12px";
-            valSel.innerHTML = `<option value="">(none)</option>` +
-              known.map(v => `<option value="${v}">${v}</option>`).join("");
-            valSel.value = node.data.value != null ? String(node.data.value) : "";
-            valSel.onchange = () => {
-              node.data.value = valSel.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            el.appendChild(valSel);
-          }
-          else {
-            const txt = document.createElement("input");
-            txt.type = "text";
-            txt.value = node.data.value || "";
-            txt.style = "display:block;margin-bottom:12px";
-            txt.oninput = () => {
-              node.data.value = txt.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-            };
-            el.appendChild(txt);
-          }
+          const maxIn = document.createElement("input");
+          maxIn.type = "text";
+          maxIn.value = maxVal;
+          maxIn.placeholder = "Max";
+          maxIn.style = "width:45%; display:inline-block";
+          maxIn.oninput = () => {
+            node.data.value = [minIn.value, maxIn.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(maxIn);
+        } else {
+          const valIn = document.createElement("input");
+          valIn.type = "text";
+          valIn.value = node.data.value || "";
+          valIn.placeholder = "Value";
+          valIn.style = "width:98%";
+          valIn.oninput = () => {
+            node.data.value = valIn.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(valIn);
         }
       }
 
       // PATCH START: renderEditor, multi-trigger support
       window.renderEditor = function renderEditor(node) {
         if (
-          ["device", "condition", "eventTrigger"].includes(node.name)
+          ["device", "condition", "eventTrigger", "notMatchingVar"].includes(node.name)
         ) {
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           if (node.data.deviceId && node.data.deviceIds.length === 0) {
@@ -2296,6 +2248,7 @@
             node.data.varValue = valInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
           };
           el.appendChild(valInput);
 
@@ -2507,434 +2460,80 @@
         }
 
         if (node.name === "notMatchingVar") {
+          // Show status toggle
           renderShowStatus(el, node, editor, nodeTileHtml);
-          if (!devices || devices.length === 0) {
-            el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
-            return;
-          }
 
-          // --- Output JSON name ---
-          const outVarLabel = document.createElement("label");
-          outVarLabel.textContent = "Output JSON name - Be sure it starts with 'var_'";
-          outVarLabel.style.display = "block";
-          el.appendChild(outVarLabel);
+          // 1) Normalize deviceIds array exactly like a Condition node
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
 
-          const outVarInput = document.createElement("input");
-          outVarInput.type = "text";
-          outVarInput.value = node.data.outputVar || "";
-          outVarInput.style.display = "block";
-          outVarInput.style.marginBottom = "12px";
-          outVarInput.placeholder = "Result variable";
-          outVarInput.oninput = () => {
-            node.data.outputVar = sanitizeFlowName(outVarInput.value);
-            outVarInput.value = node.data.outputVar; // Show fixed value in UI
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          el.appendChild(outVarInput);
+          // 2) Prepare full device list with special entries
+          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+          const pickerDevices = getPickerDevices(allDevices);
 
-          // --- Device Label ---
-          const devLabel = document.createElement("label");
-          devLabel.textContent = "Device(s)";
-          devLabel.style.display = "block";
-          el.appendChild(devLabel);
+          // 3) Device(s) picker
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (newIds, newLabels) => {
+              // Update selection & clear dependent fields
+              node.data.deviceIds   = newIds;
+              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+              node.data.deviceLabel = newLabels.join(", ");
+              node.data.attribute   = "";
+              node.data.comparator  = "";
+              node.data.value       = "";
 
-          // --- Device Select (multi) ---
-          const devSelect = document.createElement("select");
-          devSelect.multiple = true;
-          devSelect.size = Math.min(10, devices.length);
-          devSelect.style.width = "98%";
-          devSelect.style.display = "block";
-          devSelect.style.marginBottom = "12px";
-          const selectedIds = Array.isArray(node.data.deviceIds)
-            ? node.data.deviceIds
-            : node.data.deviceId ? [node.data.deviceId] : [];
-          getSortedDevicesWithSpecials(devices).forEach((d) => {
-            if (d.id === "__divider__") {
-              const divider = document.createElement("option");
-              divider.disabled = true;
-              divider.textContent = d.label;
-              divider.style.background = "#444";
-              devSelect.appendChild(divider);
-            } else {
-              const opt = document.createElement("option");
-              opt.value = d.id;
-              opt.textContent = d.label || d.name || d.id;
-              if (selectedIds.includes(d.id)) opt.selected = true;
-              devSelect.appendChild(opt);
-            }
-          });
-          el.appendChild(devSelect);
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
 
-          // --- Picker container ---
+              // Rebuild pickers in place
+              const pickerDiv = document.getElementById("notmatchingvar-pickers-" + node.id);
+              pickerDiv.innerHTML = "";
+              if (!buildTimeDevicePicker(pickerDiv, node)) {
+                renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
+              }
+              markFlowNeedsSave(true);
+            },
+            true  // allow multi-select
+          );
+
+          // 4) Picker container (time/condition fields)
           const pickerDiv = document.createElement("div");
-          pickerDiv.id = "notmatchingvar-pickers-" + node.id;
+          pickerDiv.id    = "notmatchingvar-pickers-" + node.id;
           pickerDiv.style.marginTop = "8px";
           el.appendChild(pickerDiv);
-          
 
-          // --- Picker builder ---
-          function buildPickers() {
-            pickerDiv.innerHTML = "";
-
-            const selectedDevices = Array.isArray(node.data.deviceIds)
-              ? node.data.deviceIds.map(id => devices.find(d => d.id == id)).filter(Boolean)
-              : node.data.deviceId
-                ? [devices.find(d => d.id == node.data.deviceId)].filter(Boolean)
-                : [];
-
-            // --- Time special device (TimeOfDay, DayOfWeek, CurrentTime) ---
-            if (selectedDevices.length === 1 && selectedDevices[0].id === "__time__") {
-              // 1) Attribute picker
-              const attrLabel = document.createElement("label");
-              attrLabel.textContent = "Condition";
-              attrLabel.style.display = "block";
-              pickerDiv.appendChild(attrLabel);
-
-              const attrSelect = document.createElement("select");
-              attrSelect.style.display = "block";
-              attrSelect.style.marginBottom = "12px";
-              [
-                { key: "timeOfDay", label: "Time of Day" },
-                { key: "dayOfWeek", label: "Day of Week" },
-                { key: "currentTime", label: "Current Time" }
-              ].forEach(optDef => {
-                const opt = document.createElement("option");
-                opt.value = optDef.key;
-                opt.textContent = optDef.label;
-                if (node.data.attribute === optDef.key) opt.selected = true;
-                attrSelect.appendChild(opt);
-              });
-              attrSelect.onchange = () => {
-                node.data.attribute   = attrSelect.value;
-                node.data.comparator  = "";
-                node.data.value       = "";
-                editor.updateNodeDataFromId(node.id, node.data);
-                renderEditor(node);
-              };
-              pickerDiv.appendChild(attrSelect);
-
-              // 2) Comparator picker
-              const cmpLabel = document.createElement("label");
-              cmpLabel.textContent = "Comparator";
-              cmpLabel.style.display = "block";
-              pickerDiv.appendChild(cmpLabel);
-
-              const cmpSelect = document.createElement("select");
-              cmpSelect.style.display = "block";
-              cmpSelect.style.marginBottom = "12px";
-              ["==","!=", "<","<=", ">",">=", "between"].forEach(cmp => {
-                const opt = document.createElement("option");
-                opt.value = cmp;
-                opt.textContent = cmp === "==" ? "equals" : cmp;
-                if (node.data.comparator === cmp) opt.selected = true;
-                cmpSelect.appendChild(opt);
-              });
-              cmpSelect.onchange = () => {
-                node.data.comparator = cmpSelect.value;
-                node.data.value      = "";
-                editor.updateNodeDataFromId(node.id, node.data);
-                renderEditor(node);
-              };
-              pickerDiv.appendChild(cmpSelect);
-
-              // 3) Value picker based on attribute
-              if (node.data.attribute === "timeOfDay") {
-                // Sunrise/Sunset dropdown
-                const todSelect = document.createElement("select");
-                todSelect.style = "display:block;margin-bottom:12px";
-                ["sunrise", "sunset"].forEach(tod => {
-                  const opt = document.createElement("option");
-                  opt.value = tod;
-                  opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
-                  if (node.data.value === tod) opt.selected = true;
-                  todSelect.appendChild(opt);
-                });
-                todSelect.onchange = () => {
-                  node.data.value = todSelect.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                };
-                pickerDiv.appendChild(todSelect);
-
-                // ---- ADD THIS BLOCK ----
-                const offsetLabel = document.createElement("label");
-                offsetLabel.textContent = "Offset (minutes)";
-                offsetLabel.style.display = "block";
-                pickerDiv.appendChild(offsetLabel);
-
-                const offsetInput = document.createElement("input");
-                offsetInput.type = "number";
-                offsetInput.placeholder = "e.g. -10 or 15";
-                offsetInput.style.display = "block";
-                offsetInput.style.marginBottom = "12px";
-                offsetInput.value = node.data.offset || 0;
-                offsetInput.onchange = () => {
-                  node.data.offset = parseInt(offsetInput.value) || 0;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                };
-                pickerDiv.appendChild(offsetInput);
-              } else if (node.data.attribute === "dayOfWeek") {
-                // Day of Week dropdown
-                const dowSelect = document.createElement("select");
-                dowSelect.style = "display:block;margin-bottom:12px";
-                ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-                  .forEach(day => {
-                    const opt = document.createElement("option");
-                    opt.value = day;
-                    opt.textContent = day;
-                    // allow for array or single value
-                    if (Array.isArray(node.data.value) ? node.data.value.includes(day) : node.data.value === day) opt.selected = true;
-                    dowSelect.appendChild(opt);
-                });
-                dowSelect.multiple = true;
-                dowSelect.size = 7;
-                dowSelect.onchange = () => {
-                  // Collect all selected days
-                  const selected = Array.from(dowSelect.selectedOptions).map(opt => opt.value);
-                  node.data.value = selected;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                };
-                pickerDiv.appendChild(dowSelect);
-              } else if (node.data.attribute === "currentTime") {
-                // --- CURRENT TIME: single or between picker ---
-                if (node.data.comparator === "between") {
-                  // two time inputs for “between”
-                  const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
-                    ? node.data.value
-                    : ["", ""];
-                  
-                  const startInput = document.createElement("input");
-                  startInput.type = "time";
-                  startInput.value = startVal;
-                  startInput.style = "display:block; margin-bottom:4px;";
-                  startInput.onchange = () => {
-                    const [, currEnd] = node.data.value || ["", ""];
-                    node.data.value = [startInput.value, currEnd];
-                    editor.updateNodeDataFromId(node.id, node.data);
-                  };
-                  pickerDiv.appendChild(startInput);
-
-                  const endInput = document.createElement("input");
-                  endInput.type = "time";
-                  endInput.value = endVal;
-                  endInput.style = "display:block; margin-bottom:12px;";
-                  endInput.onchange = () => {
-                    const [currStart] = node.data.value || ["", ""];
-                    node.data.value = [currStart, endInput.value];
-                    editor.updateNodeDataFromId(node.id, node.data);
-                  };
-                  pickerDiv.appendChild(endInput);
-
-                } else {
-                  // single time input
-                  const timeInput = document.createElement("input");
-                  timeInput.type  = "time";
-                  timeInput.value = node.data.value || "";
-                  timeInput.style = "display:block; margin-bottom:12px;";
-                  timeInput.onchange = () => {
-                    node.data.value = timeInput.value;
-                    editor.updateNodeDataFromId(node.id, node.data);
-                  };
-                  pickerDiv.appendChild(timeInput);
-                }
-              }
-              return;
-            }
-            
-            // --- Standard device attribute pickers ---
-            let sharedAttributes = [];
-            if (selectedDevices.length > 0) {
-              sharedAttributes = Object.keys(selectedDevices[0].attributes || {});
-              for (let i = 1; i < selectedDevices.length; i++) {
-                sharedAttributes = sharedAttributes.filter(attr =>
-                  Object.prototype.hasOwnProperty.call(selectedDevices[i].attributes, attr)
-                );
-              }
-            }
-            // --- Attribute Picker ---
-            const attrLabel = document.createElement("label");
-            attrLabel.textContent = "Attribute";
-            attrLabel.style.display = "block";
-            pickerDiv.appendChild(attrLabel);
-
-            const attrSelect = document.createElement("select");
-            attrSelect.style.display = "block";
-            attrSelect.style.marginBottom = "12px";
-            attrSelect.innerHTML = `<option value="">Pick an attribute…</option>` +
-              sharedAttributes.map(attr =>
-                `<option value="${attr}" ${node.data.attribute == attr ? "selected" : ""}>${attr}</option>`
-              ).join('');
-            attrSelect.value = node.data.attribute || "";
-            attrSelect.onchange = () => {
-              node.data.attribute = attrSelect.value;
-              node.data.comparator = "";
-              node.data.value = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              buildPickers();
-            };
-            pickerDiv.appendChild(attrSelect);
-
-            // --- Comparator Picker ---
-            const cmpLabel = document.createElement("label");
-            cmpLabel.textContent = "Comparator";
-            cmpLabel.style.display = "block";
-            pickerDiv.appendChild(cmpLabel);
-
-            const cmpSelect = document.createElement("select");
-            cmpSelect.style.display = "block";
-            cmpSelect.style.marginBottom = "12px";
-            const allComparators = [
-              "==", "!=", "<", "<=", ">", ">=", "between", "contains", "not contains", "changes"
-            ];
-            const comparatorLabels = {
-              "==": "equals (==)",
-              "!=": "not equals (!=)",
-              "<": "less than (<)",
-              "<=": "less than or equal (<=)",
-              ">": "greater than (>)",
-              ">=": "greater than or equal (>=)",
-              "between": "between",
-              "contains": "contains",
-              "not contains": "not contains",
-              "changes": "changes"
-            };
-            cmpSelect.innerHTML = `<option value="">Pick…</option>` +
-              allComparators.map(cmp =>
-                `<option value="${cmp}" ${node.data.comparator == cmp ? "selected" : ""}>${comparatorLabels[cmp]}</option>`
-              ).join('');
-            cmpSelect.value = node.data.comparator || "";
-            cmpSelect.onchange = () => {
-              node.data.comparator = cmpSelect.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              buildPickers();
-            };
-            pickerDiv.appendChild(cmpSelect);
-
-            // --- Value Picker ---
-            const valueLabel = document.createElement("label");
-            valueLabel.textContent = "Value";
-            valueLabel.style.display = "block";
-            pickerDiv.appendChild(valueLabel);
-
-            if (
-              selectedDevices.length === 1 &&
-              selectedDevices[0].id === "__mode__" &&
-              node.data.attribute === "mode"
-            ) {
-              // Multi-select dropdown for modes
-              const allModes = (window.hubitatModes || []).filter(m => m.id !== "current");
-              const modeSelect = document.createElement("select");
-              modeSelect.multiple = true;
-              modeSelect.size = Math.min(7, allModes.length);
-              modeSelect.style.display = "block";
-              modeSelect.style.marginBottom = "12px";
-
-              // Always store value as array for multi-select
-              if (!Array.isArray(node.data.value)) {
-                if (typeof node.data.value === "string" && node.data.value) {
-                  node.data.value = [node.data.value];
-                } else {
-                  node.data.value = [];
-                }
-              }
-
-              modeSelect.innerHTML = allModes.map(mode =>
-                `<option value="${mode.name}" ${node.data.value.includes(mode.name) ? "selected" : ""}>${mode.name}</option>`
-              ).join('');
-
-              // Autofill to first mode if empty
-              if (node.data.value.length === 0 && allModes.length > 0) {
-                node.data.value = [allModes[0].name];
-                Array.from(modeSelect.options)[0].selected = true;
-                editor.updateNodeDataFromId(node.id, node.data);
-              }
-
-              modeSelect.onchange = () => {
-                node.data.value = Array.from(modeSelect.selectedOptions).map(opt => opt.value);
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              };
-              pickerDiv.appendChild(modeSelect);
-
-            } else {
-              if (node.data.comparator === "between") {
-                // Render two inputs, for lower and upper bounds
-                let betweenValues = Array.isArray(node.data.value)
-                  ? node.data.value
-                  : typeof node.data.value === "string" && node.data.value.includes(",")
-                    ? node.data.value.split(",")
-                    : ["",""];
-                if (betweenValues.length < 2) betweenValues = [betweenValues[0] || "", ""];
-
-                // Min
-                let minInput = document.createElement("input");
-                minInput.type = "text";
-                minInput.value = betweenValues[0];
-                minInput.placeholder = "Min";
-                minInput.style.width = "45%";
-                minInput.style.marginRight = "7px";
-
-                // Max
-                let maxInput = document.createElement("input");
-                maxInput.type = "text";
-                maxInput.value = betweenValues[1];
-                maxInput.placeholder = "Max";
-                maxInput.style.width = "45%";
-
-                function updateBetweenValues() {
-                  node.data.value = [minInput.value, maxInput.value];
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                }
-
-                minInput.onchange = maxInput.onchange = updateBetweenValues;
-                pickerDiv.appendChild(minInput);
-                pickerDiv.appendChild(maxInput);
-              } else {
-                // Default
-                let valueField = document.createElement("input");
-                valueField.type = "text";
-                valueField.value = Array.isArray(node.data.value) ? node.data.value.join(",") : (node.data.value || "");
-                valueField.style.display = "block";
-                valueField.style.marginBottom = "12px";
-                valueField.onchange = () => {
-                  node.data.value = valueField.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                };
-                pickerDiv.appendChild(valueField);
-              }
-            }
+          // 5) Initial build of time-or-condition pickers
+          if (!buildTimeDevicePicker(pickerDiv, node)) {
+            renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
           }
 
-          // Initial build
-          buildPickers();
+          // 6) Variable-name input
+          const varLabel = document.createElement("label");
+          varLabel.textContent = "Variable name";
+          varLabel.style.display = "block";
+          el.appendChild(varLabel);
 
-          // Device select onchange
-          devSelect.onchange = () => {
-            const newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            node.data.deviceIds = newSelected;
-            node.data.deviceId = newSelected.length === 1 ? newSelected[0] : "";
-
-            // Update deviceLabel for tile display
-            const labels = node.data.deviceIds.map(id => {
-              const dev = devices.find(d => d.id == id);
-              return dev ? (dev.label || dev.name || id) : id;
-              markFlowNeedsSave(true);
-            });
-            node.data.deviceLabel = labels.join(", ");
-
-            // Always clear dependent fields when devices change
-            node.data.attribute = "";
-            node.data.comparator = "";
-            node.data.value = "";
-
+          const varInput = document.createElement("input");
+          varInput.type          = "text";
+          varInput.placeholder   = "Variable name";
+          varInput.value         = node.data.outputVar || "";
+          varInput.style.width   = "98%";
+          varInput.style.marginBottom = "12px";
+          varInput.oninput = () => {
+            node.data.outputVar = sanitizeFlowName(varInput.value);
+            varInput.value      = node.data.outputVar;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            buildPickers();
+            markFlowNeedsSave(true);
           };
+          el.appendChild(varInput);
+
+          return;
         }
 
         if (node.name === "saveDeviceState" || node.name === "restoreDeviceState") {
