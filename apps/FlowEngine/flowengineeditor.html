@@ -12,7 +12,7 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.007 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.008 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -66,24 +66,20 @@
         <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
       </div>
       <b> | </b>
-      <label style="user-select:none;">
-        <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
-        Snap to grid
-      </label>
-      <b> | </b>
       <div class="inline-div">
-        <small>Align selected Nodes</small><br>
-        <button id="alignLeftBtn"  title="Align Left"> Left</button>
-        <button id="alignRightBtn" title="Align Right"> Right</button>
-        <button id="alignTopBtn"   title="Align Top"> Top</button>
-        <button id="alignBottomBtn" title="Align Bottom"> Bottom</button>
-        <button id="alignCenterBtn"   title="Align Center"> Center</button>
-        <button id="alignMiddleBtn"   title="Align Middle"> Middle</button>
+        <small>Align selected Nodes and/or </small>
+        <label style="user-select:none;">
+          <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
+          <small></small>Snap to grid</small>
+        </label>
+        <br>
+        <button id="alignLeftBtn"  title="Align Left">Left</button>
+        <button id="alignRightBtn" title="Align Right">Right</button>
+        <button id="alignTopBtn"   title="Align Top">Top</button>
+        <button id="alignBottomBtn" title="Align Bottom">Bottom</button>
+        <button id="alignCenterBtn"   title="Align Center">Center</button>
+        <button id="alignMiddleBtn"   title="Align Middle">Middle</button>
       </div>
-      <b> | </b>
-      <button id="undoBtn" title="Undo last change">Undo</button>
-      <button id="redoBtn" title="Redo">Redo</button>
-      <b> | </b>
     </div>
   </div>
   <div id="nodeControls">
@@ -108,6 +104,10 @@
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
       <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
       <button id="addSetVariable" title="Add a Set Variable node">Set Variable</button>
+      <b> | </b>
+      <button id="undoBtn" title="Undo last change">Undo</button>
+      <button id="redoBtn" title="Redo">Redo</button>
+      <b> | </b>
     </div>
   </div>
   <div id="main">
@@ -122,9 +122,16 @@
       <div id="nodeEditor">Right Click a node to edit</div>
       <div><small>Use 'ctrl-click' to select multiple Devices</small></div>
       <div><hr></div>
-      <div id="variableInspector" style="margin-top:16px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:12px 10px 8px 10px; min-height:80px; max-height:260px; overflow:auto;">
-        <div style="font-size:15px;font-weight:bold;margin-bottom:6px;">Variable Inspector</div>
-        <div id="variableInspectorContent" style="font-size:13px;"></div>
+      <div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+        <div id="variableInspectorHeader"
+            style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
+          <span id="variableInspectorArrow"
+                style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Variable Inspector
+        </div>
+        <div id="variableInspectorContent"
+            style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
+        </div>
       </div>
       <div><hr></div>
       <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
@@ -190,42 +197,15 @@
       });
 
       // 2) Select the passed-in flow (empty string = “none”)
-      dropdown.value = selected;
+      const focus = selected.replace(/\.json$/i, "")
+      dropdown.value = focus;
 
       // 3) Pull creds for the API calls
       const token = document.getElementById("hubitatToken")?.value?.trim() || "";
       const appId = document.getElementById("hubitatAppId")?.value?.trim() || "";
 
-      if (selected && token && appId) {
-        try {
-          // 4a) Check if the flow is active in Hubitat
-          const respActive   = await fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`);
-          const activeList   = await respActive.json();
-          const isActive     = activeList.some(x => x.flowName === selected + ".json");
-          document.getElementById("activateFlowCheckbox").checked = isActive;
-
-          // 4b) Check per-flow logging settings
-          const respSettings = await fetch(`/apps/api/${appId}/settings?access_token=${token}`);
-          const settings     = await respSettings.json();
-          const loggingEnabled =
-            Array.isArray(settings.perFlowLogEnabled) &&
-            settings.perFlowLogEnabled.includes(selected + ".json");
-          document.getElementById("loggingCheckbox").checked = loggingEnabled;
-        }
-        catch (err) {
-          console.error("Error syncing flow state:", err);
-          // on error, just clear both
-          document.getElementById("activateFlowCheckbox").checked = false;
-          document.getElementById("loggingCheckbox").checked = false;
-        }
-      } else {
-        // no flow selected or missing creds → clear both
-        document.getElementById("activateFlowCheckbox").checked = false;
-        document.getElementById("loggingCheckbox").checked  = false;
-      }
-
-      // 5) Finally, redraw your Test/Status panel
-      checkIfFlowIsInUse(selected, appId, token);
+      // 4) Finally, redraw your Test/Status panel
+      checkIfFlowIsInUse(focus, appId, token);
     }
   </script>
   <script>
@@ -834,11 +814,6 @@
         return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
-      if (t === "repeat") {
-        let label = data && data.delayMin ? `Repeat ${data.delayMin} min` : "Repeat";
-        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-
       if (t === "savedevicestate") {
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
         return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
@@ -873,6 +848,32 @@
             ${time ? "Time: " + time : ""}
           </span>
           ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
+        </div>`;
+      }
+
+      if (t === "repeat") {
+        const lockedIcon = data.locked
+          ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>`
+          : "";
+
+        let description;
+        if (data.repeatMode === "until") {
+          const deviceLabel = data.deviceLabel || "Device";
+          const attr        = data.attribute   || "Attribute";
+          const comp        = data.comparator  || "==";
+          const val         = data.value       || "Value";
+          description = `Until ${deviceLabel} ${attr} ${comp} ${val}`;
+        } else {
+          const max = data.repeatMax || 1;
+          description = `Max ${max} time${max !== 1 ? "s" : ""}`;
+        }
+
+        return `<div class="repeat-tile" style="position:relative;">
+          Repeat<br>
+          <span style="font-size:11px">
+            ${description}
+          </span>
+          ${lockedIcon}
         </div>`;
       }
 
@@ -998,57 +999,90 @@
       </div>`;
     }
 
-      // --- MULTI DEVICE TILE PATCH ---
-      if (type === "device") {
-        let isSelected = false;
-        if (editor && editor.selected_id && nodeId) {
-          if (editor.selected_id == nodeId) isSelected = true;
-        }
-        let tileClass = "device-tile" + (isSelected ? " selected" : "");
+    if (t === "device") {
+      // Selected state & base classes
+      const isSelected = editor && editor.selected_id === nodeId;
+      const tileClass  = "device-tile" + (isSelected ? " selected" : "");
 
-        // Show Location Mode tile (not colored)
-        if (data.deviceId === "__mode__") {
-          let value = "";
-          if (Array.isArray(data.value)) value = data.value.join(", ");
-          else value = data.value || "";
-          return `<div>
-            <b>Location Mode</b><br>
-            <span style="font-size:11px">${data.command || ""} (${value})<br><hr></span>
-          </div>`;
-        }
-        let label = data.deviceLabel ||
-          (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId);
-        if (!label) label = "<i>Pick device(s)…</i>";
-        let cmd = data.command || "";
-        let val = data.value ? `(${data.value})` : "";
+      // Label, command, and optional value
+      const label = data.deviceLabel
+        || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
+        || "<i>Pick device(s)…</i>";
+      const cmd   = data.command || "";
+      const val   = data.value   ? `(${data.value})` : "";
 
+      // Only build status once a command is chosen
+      let statusHtml = "";
+      if (cmd) {
+        // Define command→attribute mapping
+        const cmdAttrMap = {
+          on: ["switch"], off: ["switch"], toggle: ["switch"],
+          setLevel: ["level"], startLevelChange: ["level"], stopLevelChange: ["level"],
+          setColor: ["hue","saturation","color"]
+          // add more mappings as needed
+        };
+
+        // Determine which attributes to show
         const devs = window.devices || [];
-        let allAttrVals = "";
-        if (Array.isArray(data.deviceIds) && data.attribute) {
-          allAttrVals = data.deviceIds.map(id => {
-            const dev = devs.find(d => d.id == id);
-            if (!dev || !dev.attributes || dev.attributes[data.attribute] === undefined) return "";
-            return `<div class="current-value">current ${data.attribute}: ${dev.attributes[data.attribute]}</div>`;
-          }).join("");
-        } else if (data.deviceId && data.attribute) {
-          const dev = devs.find(d => d.id == data.deviceId);
-          if (dev && dev.attributes && dev.attributes[data.attribute] !== undefined) {
-            allAttrVals = `<div class="current-value">current ${data.attribute}: ${dev.attributes[data.attribute]}</div>`;
-          }
-        }
+        let attrsToShow = data.attribute
+          ? [data.attribute]
+          : (cmdAttrMap[cmd] || []);
 
-        let colorPreview = "";
-        if (cmd === "setColor" && data.color) {
-          colorPreview = `<div style="margin-top:4px;width:30px;height:14px;border-radius:5px;background:${data.color};border:1px solid #555;display:inline-block;"></div>`;
-        }
+        // Build HTML for each device
+        const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
+          ? data.deviceIds
+          : [data.deviceId];
 
-        return `<div class="${tileClass}">Action<br>
-          <span style="font-size:11px">${label} ${cmd} ${val}<br><hr></span>
-          ${(data.showStatus !== false) ? allAttrVals : ""}
-          ${colorPreview}
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
+        ids.forEach(id => {
+          const dev = devs.find(d => d.id == id);
+          if (!dev?.attributes) return;
+
+          // fallback to all if neither explicit nor mapped
+          const list = attrsToShow.length
+            ? attrsToShow
+            : Object.keys(dev.attributes);
+
+          list.forEach(attr => {
+            const v = dev.attributes[attr];
+            if (v != null) {
+              statusHtml += `<div class="current-value">${attr}: ${v}</div>`;
+            }
+          });
+        });
       }
+
+      // Color preview (unchanged)
+      let colorPreview = "";
+      if (cmd.toLowerCase() === "setcolor" && data.color) {
+        colorPreview = `
+          <div style="
+            margin-top:4px;
+            width:30px; height:14px;
+            border-radius:5px;
+            background:${data.color};
+            border:1px solid #555;
+            display:inline-block;
+          "></div>`;
+      }
+
+      // Render the tile
+      return `<div class="${tileClass}">
+        Action<br>
+        <span style="font-size:11px">
+          ${label} ${cmd} ${val}<br><hr>
+        </span>
+        ${statusHtml}
+        ${colorPreview}
+        ${data.locked
+          ? `<div style="
+              position:absolute;
+              top:6px; right:8px;
+              font-size:18px; color:#fa2b2b;"
+              title="Locked">&#128274;</div>`
+          : ""
+        }
+      </div>`;
+    }
 
       // Fallback for normal eventTrigger or condition (non-Time)
       if (type === "eventTrigger" || type === "condition") {
@@ -1116,6 +1150,16 @@
       if (editor && typeof editor.updateNodeHtmlFromId === "function") {
         editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
       }
+    }
+
+    function updateMultiSelectUI() {
+      document.querySelectorAll('.drawflow-node').forEach(el => {
+        el.classList.remove('selected-multi');
+        const nodeId = el.id.replace(/^node-/, '');
+        if (window._multiSelectedNodes?.has(nodeId)) {
+          el.classList.add('selected-multi');
+        }
+      });
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -1946,6 +1990,7 @@
         // CONDITION NODE
         // ************************************
         if (node.name === "condition") {
+          renderShowStatus(el, node, editor, nodeTileHtml);
           // 1) Normalize data array
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
@@ -2061,34 +2106,165 @@
           return;
         }
 
-        
         if (node.name === "repeat") {
+          renderShowStatus(el, node, editor, nodeTileHtml);
           el.innerHTML = "<b>Repeat Node</b><hr>";
 
-          // Max repeats input
-          const label = document.createElement("label");
-          label.textContent = "Max repeats:";
-          label.style.display = "block";
-          el.appendChild(label);
+          // ── MODE SELECTOR ──────────────────────────────────────────────
+          const modeLabel = document.createElement("label");
+          modeLabel.textContent = "Repeat mode:";
+          modeLabel.style.display = "block";
+          el.appendChild(modeLabel);
 
-          const maxInput = document.createElement("input");
-          maxInput.type = "number";
-          maxInput.min = 1;
-          maxInput.max = 100;
-          maxInput.value = node.data.repeatMax || 1;
-          maxInput.style.width = "60px";
-          maxInput.onchange = () => {
-            node.data.repeatMax = parseInt(maxInput.value, 10) || 1;
+          const countRadio = document.createElement("input");
+          countRadio.type = "radio";
+          countRadio.name = "repeatMode";
+          countRadio.value = "count";
+          countRadio.id = `repeatModeCount-${node.id}`;
+          el.appendChild(countRadio);
+          const countLabel = document.createElement("label");
+          countLabel.htmlFor = countRadio.id;
+          countLabel.textContent = "Max repeats";
+          countLabel.style.margin = "0 12px 0 4px";
+          el.appendChild(countLabel);
+
+          const untilRadio = document.createElement("input");
+          untilRadio.type = "radio";
+          untilRadio.name = "repeatMode";
+          untilRadio.value = "until";
+          untilRadio.id = `repeatModeUntil-${node.id}`;
+          el.appendChild(untilRadio);
+          const untilLabel = document.createElement("label");
+          untilLabel.htmlFor = untilRadio.id;
+          untilLabel.textContent = "Until this happens";
+          el.appendChild(untilLabel);
+
+          // ── Container for mode-specific UI ─────────────────────────────
+          const modeDiv = document.createElement("div");
+          modeDiv.style.marginTop = "8px";
+          el.appendChild(modeDiv);
+
+          // ── RENDER COUNT MODE ───────────────────────────────────────────
+          function renderCount() {
+            modeDiv.innerHTML = "";
+            const lbl = document.createElement("label");
+            lbl.textContent = "Max repeats:";
+            lbl.style.display = "block";
+            modeDiv.appendChild(lbl);
+
+            const inp = document.createElement("input");
+            inp.type = "number";
+            inp.min = 1;
+            inp.max = 100;
+            inp.value = node.data.repeatMax || 1;
+            inp.style.width = "60px";
+            inp.onchange = () => {
+              node.data.repeatMax = parseInt(inp.value, 10) || 1;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            };
+            modeDiv.appendChild(inp);
+          }
+
+          // ── RENDER UNTIL MODE ───────────────────────────────────────────
+          function renderUntil() {
+            modeDiv.innerHTML = "";
+
+            // Device(s) picker
+            const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+            const pickerDevices = getPickerDevices(allDevices);
+
+            // ── DEVICE(S) PICKER ──
+            renderDevicePickerSection(
+              el,
+              node,
+              pickerDevices,
+              (newIds, newLabels) => {
+                // update selection
+                node.data.deviceIds   = newIds;
+                node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+                node.data.deviceLabel = newLabels.join(", ");
+                // clear previous fields
+                node.data.attribute   = "";
+                node.data.comparator  = "";
+                node.data.value       = "";
+
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(
+                  node.id,
+                  nodeTileHtml(node.name, node.data, node.id)
+                );
+
+                // 3) Rebuild only the condition pickers in place
+                const pickerDiv = document.getElementById("condition-pickers-" + node.id);
+                pickerDiv.innerHTML = "";
+                if (!buildTimeDevicePicker(pickerDiv, node)) {
+                  renderConditionDeviceFields(
+                    pickerDiv,
+                    node,
+                    pickerDevices,
+                    editor,
+                    nodeTileHtml
+                  );
+                }
+                markFlowNeedsSave(true);
+              },
+              true // multi-select
+            );
+
+            // ── PICKER CONTAINER ──
+            const pickerDiv = document.createElement("div");
+            pickerDiv.id    = "condition-pickers-" + node.id;
+            pickerDiv.style.marginTop = "8px";
+            el.appendChild(pickerDiv);
+
+            // 4) Initial build of time-or-condition fields
+            if (buildTimeDevicePicker(pickerDiv, node)) {
+              return;
+            }
+            renderConditionDeviceFields(
+              pickerDiv,
+              node,
+              pickerDevices,
+              editor,
+              nodeTileHtml
+            );
+            return;
+          }
+
+          // ── INITIALIZE & HOOK EVENTS ────────────────────────────────────
+          const initialMode = node.data.repeatMode === "until" ? "until" : "count";
+          countRadio.checked = initialMode === "count";
+          untilRadio.checked = initialMode === "until";
+          node.data.repeatMode = initialMode;
+
+          countRadio.onchange = () => {
+            node.data.repeatMode = "count";
             editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            renderCount();
             markFlowNeedsSave(true);
           };
-          el.appendChild(maxInput);
+
+          untilRadio.onchange = () => {
+            node.data.repeatMode = "until";
+            editor.updateNodeDataFromId(node.id, node.data);
+            renderUntil();
+            markFlowNeedsSave(true);
+          };
+
+          // Render the chosen panel
+          if (initialMode === "until") {
+            renderUntil();
+          } else {
+            renderCount();
+          }
 
           return;
         }
 
         if (node.name === "setVariable") {
+          renderShowStatus(el, node, editor, nodeTileHtml);
           el.innerHTML = "<b>Set Variable</b><br><br>";
 
           // Variable Name
@@ -2335,6 +2511,7 @@
         }
 
         if (node.name === "notMatchingVar") {
+          renderShowStatus(el, node, editor, nodeTileHtml);
           if (!devices || devices.length === 0) {
             el.innerHTML = "<div style='color:#eec150; margin-bottom:10px;'>No devices loaded!<br>Click 'Load Devices' at the top.</div>";
             return;
@@ -2359,26 +2536,6 @@
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
           };
           el.appendChild(outVarInput);
-
-          // --- Show/Hide tick box (showStatus) ---
-          let showStatus = true;
-          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
-          const showStatusDiv = document.createElement("div");
-          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
-          const showStatusCheckbox = document.createElement("input");
-          showStatusCheckbox.type = "checkbox";
-          showStatusCheckbox.checked = showStatus;
-          showStatusCheckbox.onchange = () => {
-            node.data.showStatus = showStatusCheckbox.checked;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          showStatusDiv.appendChild(showStatusCheckbox);
-          const showStatusLbl = document.createElement("label");
-          showStatusLbl.textContent = "Show status";
-          showStatusLbl.style.margin = "0";
-          showStatusDiv.appendChild(showStatusLbl);
-          el.appendChild(showStatusDiv);
 
           // --- Device Label ---
           const devLabel = document.createElement("label");
@@ -3161,47 +3318,56 @@
       };
 
       document.getElementById("addDevice").onclick = () => {
-        logAction("addAction button clicked.");
+        logAction("addDevice button clicked.");
+
+        // 1) Compute the next X/Y (with your existing offset variables)
         const { x, y } = getTopLeftOnScreenCoords();
+
+        // 2) Add the Device-Action node at that spot
         editor.addNode(
-          "device", 1, 1, x, y, "device", 
-          { deviceId: "", attribute: "", command: "", value: "" },
-          nodeTileHtml("device", { deviceId: "", command: "", value: "" })
+          "device",      // node type
+          1,             // inputs
+          1,             // outputs
+          x, y,          // position
+          "device",      // CSS class
+          {
+            deviceId: "",
+            attribute: "",
+            command: "",
+            value: ""
+          },
+          nodeTileHtml(
+            "device",
+            { deviceId: "", attribute: "", command: "", value: "" }
+          )
         );
-        // --- PATCH: set data-node-type on new device node
-        setTimeout(() => {
-          const nodeEls = document.querySelectorAll('.drawflow-node');
-          nodeEls.forEach(el => {
-            const id = el.id.replace('node-', '');
-            if (editor.getNodeFromId && editor.getNodeFromId(id)) {
-              const node = editor.getNodeFromId(id);
-              if (node && node.name === "device") {
-                el.setAttribute('data-node-type', 'device');
-              }
-              if (node && node.name === "condition") {
-                el.setAttribute('data-node-type', 'condition');
-              }
-              if (node && node.name === "eventTrigger") {
-                el.setAttribute('data-node-type', 'eventTrigger');
-              }
-            }
-          });
-        }, 100);
-        markFlowNeedsSave(true);
-        // Increment offset for next node
+
+        // 3) Increment your per-click offsets exactly like the others
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
         if (window.newNodeCounter >= window.newNodeOffsetLimit) {
           window.newNodeOffsetX = 0;
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+
+        // 4) Re-apply your data-node-type attribute after draw
+        setTimeout(() => {
+          document.querySelectorAll('.drawflow-node').forEach(el => {
+            const id = el.id.replace('node-', '');
+            const node = editor.getNodeFromId(id);
+            if (node && node.name === "device") {
+              el.setAttribute('data-node-type', 'device');
+            }
+          });
+        }, 100);
+
+        // 5) Final bookkeeping
+        markFlowNeedsSave(true);
         attachNodeClickHandlers();
         updateNodeSelectionUI();
-        logAction("addAction finished.");
+        logAction("addDevice finished.");
       };
 
       document.getElementById("addCondition").onclick = () => {
@@ -3903,6 +4069,22 @@
             arrow.style.transform = open ? "rotate(0deg)" : "rotate(-90deg)";
           };
         }
+
+        // Variable Inspector toggle
+        const invHeader  = document.getElementById("variableInspectorHeader");
+        const invContent = document.getElementById("variableInspectorContent");
+        const invArrow   = document.getElementById("variableInspectorArrow");
+        let invOpen = false;
+
+        if (invHeader && invContent && invArrow) {
+          invContent.style.display = "none";
+          invArrow.style.transform = "rotate(-90deg)";
+          invHeader.onclick = function() {
+            invOpen = !invOpen;
+            invContent.style.display = invOpen ? "" : "none";
+            invArrow.style.transform = invOpen ? "rotate(0deg)" : "rotate(-90deg)";
+          };
+        }
       });
 
       setInterval(() => {
@@ -4200,12 +4382,38 @@
                     ${loggingEnabled
                       ? "<small>Logging is Enabled</small><br>"
                       : "<small>Logging is Disabled</small><br>"}
-                    <input id="testFlowInput" type="text" placeholder="Test value..." style="…">
-                    <button id="testFlowBtn" style="…">▶️ Test the Flow</button><br>
+                    <input id="testFlowInput" type="text" placeholder="Test value..." style="margin:4px 0;">
+                    <button id="testFlowBtn" style="margin-left:4px;">▶️ Test the Flow</button><br>
                     <small>To test this Flow, click on the Trigger device to test. Then enter a value…</small>
                   `;
 
-                  /* …rest of your testFlowBtn onclick… */
+                  // ── TEST-FLOW BUTTON HANDLER ───────────────────────────────────
+                  const testInput = document.getElementById("testFlowInput");
+                  const testBtn   = document.getElementById("testFlowBtn");
+                  testBtn.onclick = async () => {
+                    const val = testInput.value.trim();
+                    if (!val) {
+                      alert("Please enter a test value.");
+                      return;
+                    }
+                    try {
+                      const res = await fetch(
+                        `/apps/api/${appId}/testFlow?access_token=${token}`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ flowName: flowFileName + ".json", value: val })
+                        }
+                      );
+                      const result = await res.json();
+                      logAction(
+                        `▶️ Test flow "${flowFileName}": ${result.result || JSON.stringify(result)}`,
+                        "info"
+                      );
+                    } catch (err) {
+                      logAction("❌ Failed to test flow: " + err, "error");
+                    }
+                  };
                 });
             } else {
               // no flow active → clear the status panel
@@ -4228,7 +4436,8 @@
             // on error, clear both
             document.getElementById("activateFlowCheckbox").checked = false;
             document.getElementById("loggingCheckbox").checked  = false;
-            document.getElementById("flowTestStatus").innerHTML = `<span style="color:#b00;">Failed to check flow status.</span>`;
+            document.getElementById("flowTestStatus").innerHTML =
+              `<span style="color:#b00;">Failed to check flow status.</span>`;
             console.error("Failed to fetch active flows:", e);
           });
       }
@@ -4946,16 +5155,6 @@
       window.addEventListener('DOMContentLoaded', function() {
         window._multiSelectedNodes = new Set();
         let dragStart = null, dragMoving = false;
-
-        function updateMultiSelectUI() {
-          document.querySelectorAll('.drawflow-node').forEach(el => {
-            el.classList.remove('selected-multi');
-            const nodeId = el.id.replace('node-', '');
-            if (window._multiSelectedNodes.has(nodeId)) {
-              el.classList.add('selected-multi');
-            }
-          });
-        }
 
         function attachNodeListeners() {
           document.querySelectorAll('.drawflow-node').forEach(el => {
