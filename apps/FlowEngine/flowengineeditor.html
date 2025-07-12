@@ -544,7 +544,7 @@
               renderEditor(editor.getNodeFromId(editor.selected_id));
             }
             renderVariableInspector();
-            logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
+            //logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
           }
         } catch (e) {
           console.warn("Error polling FE_global_vars.json:", e);
@@ -1122,68 +1122,7 @@
           : ""
         }
       </div>`;
-    }
-
-      // Fallback for normal eventTrigger or condition (non-Time)
-      if (type === "eventTrigger" || type === "condition") {
-        let isSelected = false;
-        if (editor && editor.selected_id && nodeId) {
-          if (editor.selected_id == nodeId) isSelected = true;
-        }
-        if(type === "condition") {
-          let tileClass = "condition-tile" + (isSelected ? " selected" : "");
-        }
-        if(type === "eventTrigger") {
-          let tileClass = "eventTrigger-tile" + (isSelected ? " selected" : "");
-        }
-
-        let label = (data.deviceLabel || data.deviceId || '');
-        let attribute = data.attribute || '';
-        let comparator = data.comparator || '';
-        let value = "";
-        if (data.comparator === "between" && Array.isArray(data.value)) {
-          value = `(${data.value[0]} to ${data.value[1]})`;
-        } else if (data.value) {
-          value = '(' + data.value + ')';
-        }
-
-        // Show current value for the selected attribute, with "current [attribute]: [value]" style
-        const devs = window.devices || [];
-        const dev = devs.find(d => d.id == data.deviceId);
-        let currentStr = "";
-        if (data.deviceId === "__time__" && attribute === "currentTime") {
-          // show the actual current time
-          const now = new Date();
-          const hh  = String(now.getHours()).padStart(2, "0");
-          const mm  = String(now.getMinutes()).padStart(2, "0");
-          currentStr = `<div class="current-value">current time: ${hh}:${mm}</div>`;
-        }
-        else if (dev && dev.attributes && attribute && dev.attributes[attribute] !== undefined) {
-          // normal device-status line
-          currentStr = `<div class="current-value">current ${attribute}: ${dev.attributes[attribute]}</div>`;
-        }
-
-        // For (minutes) display if set
-        let forMinutesStr = '';
-        if (
-            type === "eventTrigger" &&
-            data.sustainedMin &&
-            Number(data.sustainedMin) > 0
-        ) {
-            forMinutesStr = `<div class="current-value" style="color:#eec150">For ${data.sustainedMin} min</div>`;
-        }
-
-        return `<div class="${tileClass}">
-          ${type === "eventTrigger" ? "Event Trigger" : "Condition"}<br>
-          <span style="font-size:11px">
-          ${label} ${attribute} ${comparator} ${value}<br><hr>
-          </span>
-          ${forMinutesStr}
-          ${clickPattern}
-          ${(data.showStatus !== false) ? currentStr : ""}
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
+     }
     }
 
     function updateTileHtml(node) {
@@ -4926,79 +4865,6 @@
       }
 
       // *******************************************
-      
-      function alignNodes(direction) {
-        if (!window.editor || !window.editor.drawflow || !window.editor.drawflow.drawflow || !window.editor.drawflow.drawflow.Home) return;
-        const data = window.editor.drawflow.drawflow.Home.data;
-        const ids = getMultiSelectedNodeIds();
-        if (ids.length < 2) return;
-
-        const nodes = ids.map(id => ({ id, node: data[id] }));
-        if (nodes.some(n => !n.node)) return;
-
-        // Use the first selected node as the anchor
-        const anchor = nodes[0].node;
-
-        switch (direction) {
-          case "left": {
-            const alignTo = anchor.pos_x;
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo, n.node.pos_y));
-            break;
-          }
-          case "right": {
-            const alignTo = anchor.pos_x + 160; // node width
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), alignTo - 160, n.node.pos_y));
-            break;
-          }
-          case "top": {
-            const alignTo = anchor.pos_y;
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo));
-            break;
-          }
-          case "bottom": {
-            const alignTo = anchor.pos_y + 60; // node height
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, alignTo - 60));
-            break;
-          }
-          case "center": {
-            // Center X of anchor node
-            const anchorCenterX = anchor.pos_x + 160 / 2;
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), anchorCenterX - 160 / 2, n.node.pos_y));
-            break;
-          }
-          case "middle": {
-            // Center Y of anchor node
-            const anchorCenterY = anchor.pos_y + 60 / 2;
-            nodes.forEach(n => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, anchorCenterY - 60 / 2));
-            break;
-          }
-          case "distributeH": {
-            // Sort nodes by X, evenly space between anchor and last node
-            const sorted = [...nodes];
-            // Use anchor as left, last node as right
-            const left = anchor.pos_x;
-            const right = sorted[sorted.length - 1].node.pos_x;
-            const step = (sorted.length > 1) ? (right - left) / (sorted.length - 1) : 0;
-            sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), Math.round(left + i * step), n.node.pos_y));
-            break;
-          }
-          case "distributeV": {
-            // Sort nodes by Y, evenly space between anchor and last node
-            const sorted = [...nodes];
-            const top = anchor.pos_y;
-            const bottom = sorted[sorted.length - 1].node.pos_y;
-            const step = (sorted.length > 1) ? (bottom - top) / (sorted.length - 1) : 0;
-            sorted.forEach((n, i) => window.editor.moveNodeTo(Number(n.id), n.node.pos_x, Math.round(top + i * step)));
-            break;
-          }
-        }
-        if (window.editor && typeof window.editor.updateConnectionNodes === "function") {
-          window.editor.updateConnectionNodes();
-        }
-        if (typeof markFlowNeedsSave === "function") {
-          markFlowNeedsSave(true);
-        }
-      }
 
       function deleteSelectedNodes() {
         if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
