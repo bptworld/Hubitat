@@ -291,6 +291,12 @@ def recheckAllTriggers() {
     }
 }
 
+private void checkAllVariableTriggers() {
+    state.activeFlows.each { fname, flowObj ->
+        checkVariableTriggers(fname)
+    }
+}
+
 def apiRunFlow() {
     // Expects: { "flow": "filename.json", ... }
     def json = request?.JSON
@@ -795,40 +801,46 @@ def genericDeviceHandler(evt) {
     }
 }
 
-def scheduleVariablePolling(fname) {
+private void scheduleVariablePolling(String fname) {
     def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
+
     def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    def hasVarTrig = dataNodes.any { id, node ->
-        node?.name == "eventTrigger" && (
-            node.data?.deviceId == "__variable__" ||
-            (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__")
-        )
+    def hasVarTrigger = dataNodes.values().any { node ->
+        node.name == "eventTrigger" &&
+        node.data?.deviceId == "__variable__"
     }
-    if(hasVarTrig) runEvery5Seconds("checkVariableTriggers_${fname}")
+
+    if (hasVarTrigger && !state._variablePollingScheduled) {
+        runEvery5Seconds("checkAllVariableTriggers")
+        state._variablePollingScheduled = true
+    }
 }
 
 // ---- Variable trigger polling and tap/hold clear helpers ----
-def checkVariableTriggers_BPTW_FLOW(fname) {
+private void checkVariableTriggers(String fname) {
     def flowObj = state.activeFlows[fname]
-    def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
-        node?.name == "eventTrigger" &&
-        (node.data?.deviceId == "__variable__" ||
-         (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
-    }
-    if (!nodes) return
+    if (!flowObj?.flow) return
+
+    // 1) Load latest globals
     getGlobalVars(fname)
-    def globals = flowObj.globalVars ?: []
-    def globalMap = [:]
-    globals.each { v -> globalMap[v.name] = v.value }
-    nodes.each { id, node ->
-        def varName = node.data?.varName
+    def globalMap = (flowObj.globalVars ?: []).collectEntries { [(it.name): it.value] }
+
+    // 2) Find all __variable__ triggers
+    def variableNodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
+        node.name == "eventTrigger" &&
+        node.data?.deviceId == "__variable__"
+    }
+
+    // 3) Fire when the value changes
+    variableNodes.each { id, node ->
+        def varName     = node.data.variableName
         if (!varName) return
-        def curValue = globalMap[varName]
-        def lastValue = flowObj.lastVarValues[varName]
-        if (curValue != lastValue) {
-            flowObj.lastVarValues[varName] = curValue
-            evaluateNode(fname, id, [name: varName, value: curValue])
+        def currentValue = globalMap[varName]
+        def lastValue    = flowObj.lastVarValues[varName]
+        if (currentValue != lastValue) {
+            flowObj.lastVarValues[varName] = currentValue
+            evaluateNode(fname, id, [ name: varName, value: currentValue ])
         }
     }
 }
@@ -950,75 +962,82 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     switch (node.name) {
         case "eventTrigger":
 			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
-			// ---- Strict matching added here ----
-			def expectedValue = node.data.value
+
+			// —— Handle variable triggers first
+			if (node.data.deviceId == "__variable__") {
+				def varName   = node.data.variableName
+				def curValue  = state.activeFlows[fname]?.varCtx?.get(varName)
+				def expected  = resolveVars(fname, node.data.value)
+				if (evaluateComparator(curValue, expected, node.data.comparator)) {
+					node.outputs.output_1.connections.each { conn ->
+						evaluateNode(fname, conn.node, null, null, visited)
+					}
+				}
+				flowLog(fname, "In evaluateNode - eventTrigger - varName: ${varName} - curValue: ${curValue} - expected: ${expected}", "debug")
+				return
+			}
+
+			// —— Fall back to your existing mode/time/device trigger logic ——
+			def expectedValue   = resolveVars(fname, node.data.value)
 			def expectedPattern = node.data.clickPattern
-			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
-			def eventPattern = (evt instanceof Map) ? evt.pattern : null
+			def eventValue      = (evt instanceof Map) ? evt.value : evt?.value
+			def eventPattern    = (evt instanceof Map) ? evt.pattern : null
 
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return // STOP! Value didn't match
-			}
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return // STOP! Pattern didn't match
-			}
-			// ---- END strict matching ----
+			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) return
+			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) return
 
-			def passes = true
-			node.outputs?.each { outName, outObj ->
+			node.outputs?.each { _, outObj ->
 				outObj.connections?.each { conn ->
-					if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+					evaluateNode(fname, conn.node, evt, null, visited)
 				}
 			}
+			flowLog(fname, "In evaluateNode - eventTrigger - expectedValue: ${expectedValue} - expectedPattern: ${expectedPattern} - eventValue: ${eventValue} - eventPattern: ${eventPattern}", "debug")
 			break
 
         case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
 
-			// 1) Collect all targeted device IDs (or single deviceId)
-			def devIds = []
-			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-				devIds = node.data.deviceIds
-			} else if (node.data.deviceId) {
-				devIds = [node.data.deviceId]
-			}
-
-			// 2) Pull attribute, comparator, expected value, and chosen logic (and/or)
-			def attr     = node.data.attribute
-			def expected = resolveVars(fname, node.data.value)
-			def cmp      = node.data.comparator
-			def logicOp  = (node.data.logic as String) ?: "and"
-
-			// 3) Evaluate each device
-			def results = devIds.collect { id ->
-				def current
-				if (evt && evt.name == attr && evt.value != null) {
-					// event-triggered value
-					current = evt.value
+			// —— Variable-based condition
+			if (node.data.deviceId == "__variable__") {
+				def varName   = node.data.variableName
+				def curValue  = state.activeFlows[fname]?.varCtx?.get(varName)
+				def expected  = resolveVars(fname, node.data.value)
+				def passes    = evaluateComparator(curValue, expected, node.data.comparator)
+				if (passes) {
+					node.outputs.output_1.connections.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
 				} else {
-					// live device state
-					def device = getDeviceById(id)
-					current = device?.currentValue(attr)
+					node.outputs.output_2.connections.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
 				}
-				evaluateComparator(current, expected, cmp)
+				flowLog(fname, "In evaluateNode - condition - varName: ${varName} - curValue: ${curValue} - expected: ${expected} - passes: ${passes}", "debug")
+				return passes
 			}
 
-			// 4) Combine per-device results using AND or OR
-			def passes = (logicOp == "or")
-						 ? results.any { it }
-						 : results.every { it }
-
-			// 5) Dispatch to the true/false outputs
-			node.outputs?.output_1?.connections?.each { conn ->
-				if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+			// —— Existing device-based condition logic ——
+			def devIds = node.data.deviceIds instanceof List && node.data.deviceIds ? node.data.deviceIds : [ node.data.deviceId ]
+			def attr   = node.data.attribute
+			def curVal
+			if (evt && evt.name == attr && evt.value != null) {
+				curVal = evt.value
+			} else {
+				def dev = getDeviceById(devIds[0])
+				curVal = dev?.currentValue(attr)
 			}
-			node.outputs?.output_2?.connections?.each { conn ->
-				if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
+			def physPasses = evaluateComparator(curVal, resolveVars(fname, node.data.value), node.data.comparator)
+			if (physPasses) {
+				node.outputs.output_1.connections.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			} else {
+				node.outputs.output_2.connections.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
 			}
-
-			return passes
+			flowLog(fname, "In evaluateNode - condition - devIds: ${devIds} - attr: ${attr} - curVal: ${curVal} - physPasses: ${physPasses}", "debug")
+			return physPasses
 
         case "AND":
 			flowLog(fname, "In evaluateNode - AND", "debug")
