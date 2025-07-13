@@ -12,7 +12,7 @@
 <body>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.012 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.013 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -985,45 +985,46 @@
         </div>`;
       }
 
-      // ---- Custom rendering for Condition or Event Trigger ----
+      // ---- Combined rendering for Event Trigger & Condition ----
       if (type === "eventTrigger" || type === "condition") {
         const isCondition = type === "condition";
         const tileClass = (isCondition ? "condition-tile" : "trigger-tile") +
-          ((editor.selected_id == nodeId) ? " selected" : "");
+          (editor.selected_id == nodeId ? " selected" : "");
 
-        // build comparator/value text (fallback to "==")
+        // Comparator and value text (default “==”)
         const comp = data.comparator || "==";
-        const val =
-          comp === "between" && Array.isArray(data.value)
-            ? `(${data.value[0]} to ${data.value[1]})`
-            : (data.value ? `(${data.value})` : "");
+        let valText = "";
+        if (comp === "between" && Array.isArray(data.value)) {
+          valText = ` (${data.value[0]} to ${data.value[1]})`;
+        } else if (data.value !== undefined && data.value !== "") {
+          valText = ` ${data.value}`;
+        }
 
-        // main label text
+        // Main label: variable vs. real device
         let mainText;
         if (data.deviceId === "__variable__") {
-          mainText = `${data.variableName || "<no var>"} ${comp} ${val}`;
+          mainText = `${data.variableName || "<no var>"} ${comp}${valText}`;
         } else {
           const dev = (window.devices || []).find(d => d.id == data.deviceId);
           const devLabel = dev ? (dev.label || dev.name) : (data.deviceLabel || data.deviceId);
-          mainText = `${devLabel} ${data.attribute || ""} ${comp} ${val}`;
+          mainText = `${devLabel} ${data.attribute || ""} ${comp}${valText}`;
         }
 
-        // — inject current-status if this is a real device & attribute chosen —
+        // Current-status line (only for real devices when attribute chosen and Show Status enabled)
         let statusHtml = "";
-        if (data.deviceId !== "__variable__" && data.attribute) {
-          const current = getCurrentValue(data.deviceId, data.attribute);
-          if (current !== "" && current !== undefined) {
-            statusHtml = `<div class="current-value">${data.attribute}: ${current}</div>`;
-          }
+        const current = getCurrentValue(data.deviceId, data.attribute);
+        if (current !== undefined && current !== "") {
+          statusHtml = `<div class="current-value">${data.attribute}: ${current}</div>`;
         }
 
-        // — locked-icon if needed —
+        // Click-pattern indicator (only for triggers)
+        const clickHtml = !isCondition && data.clickPattern
+          ? `<div class="click-pattern">${data.clickPattern}</div>`
+          : "";
+
+        // Locked padlock
         const lockedHtml = data.locked
-          ? `<div style="
-              position:absolute;
-              top:6px;right:8px;
-              font-size:18px;color:#fa2b2b;"
-              title="Locked">&#128274;</div>`
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
           : "";
 
         return `
@@ -1033,68 +1034,59 @@
               ${mainText}<br><hr>
             </span>
             ${statusHtml}
+            ${clickHtml}
             ${lockedHtml}
-          </div>
-        `;
+          </div>`;
       }
 
-    if (t === "device") {
-      // Selected state & base classes
-      const isSelected = editor && editor.selected_id === nodeId;
-      const tileClass  = "device-tile" + (isSelected ? " selected" : "");
+      if (t === "device") {
+        // Selected state & base classes
+        const isSelected = editor && editor.selected_id === nodeId;
+        const tileClass  = "device-tile" + (isSelected ? " selected" : "");
 
-      // Label, command, and optional value
-      const label = data.deviceLabel
-        || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
-        || "<i>Pick device(s)…</i>";
-      const cmd   = data.command || "";
-      const val   = data.value   ? `(${data.value})` : "";
+        // Label, command, and optional value
+        const label = data.deviceLabel
+          || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
+          || "<i>Pick device(s)…</i>";
+        const cmd   = data.command || "";
+        const val   = data.value ? `(${data.value})` : "";
 
-      // Only build status once a command is chosen
-      let statusHtml = "";
-      if (cmd) {
-        // Define command→attribute mapping
-        const cmdAttrMap = {
-          on: ["switch"], off: ["switch"], toggle: ["switch"],
-          setLevel: ["level"], startLevelChange: ["level"], stopLevelChange: ["level"],
-          setColor: ["hue","saturation","color"]
-          // add more mappings as needed
-        };
+        // Only build status for the attribute matching the command
+        let statusHtml = "";
+        if (cmd) {
+          const cmdAttrMap = {
+            on:               ["switch"],
+            off:              ["switch"],
+            toggle:           ["switch"],
+            setLevel:         ["level"],
+            startLevelChange: ["level"],
+            stopLevelChange:  ["level"],
+            setColor:         ["color"],
+            lock:             ["lock"],
+            unlock:           ["lock"]
+          };
+          const attrsToShow = cmdAttrMap[cmd] || [];
+          const devs        = window.devices || [];
+          const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
+            ? data.deviceIds
+            : [data.deviceId];
 
-        // Determine which attributes to show
-        const devs = window.devices || [];
-        let attrsToShow = data.attribute
-          ? [data.attribute]
-          : (cmdAttrMap[cmd] || []);
-
-        // Build HTML for each device
-        const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
-          ? data.deviceIds
-          : [data.deviceId];
-
-        ids.forEach(id => {
-          const dev = devs.find(d => d.id == id);
-          if (!dev?.attributes) return;
-
-          // fallback to all if neither explicit nor mapped
-          const list = attrsToShow.length
-            ? attrsToShow
-            : Object.keys(dev.attributes);
-
-          list.forEach(attr => {
-            const v = dev.attributes[attr];
-            if (v != null) {
-              statusHtml += `<div class="current-value">${attr}: ${v}</div>`;
-            }
+          ids.forEach(id => {
+            const dev = devs.find(d => d.id == id);
+            if (!dev?.attributes) return;
+            attrsToShow.forEach(attr => {
+              const v = dev.attributes[attr];
+              if (v != null) {
+                statusHtml += `<div class="current-value">${attr}: ${v}</div>`;
+              }
+            });
           });
-        });
-      }
+        }
 
-      // Color preview (unchanged)
-      let colorPreview = "";
-      if (cmd.toLowerCase() === "setcolor" && data.color) {
-        colorPreview = `
-          <div style="
+        // Color preview (unchanged)
+        let colorPreview = "";
+        if (cmd.toLowerCase() === "setcolor" && data.color) {
+          colorPreview = `<div style="
             margin-top:4px;
             width:30px; height:14px;
             border-radius:5px;
@@ -1102,26 +1094,24 @@
             border:1px solid #555;
             display:inline-block;
           "></div>`;
-      }
-
-      // Render the tile
-      return `<div class="${tileClass}">
-        Action<br>
-        <span style="font-size:11px">
-          ${label} ${cmd || '–'} ${val}<br><hr>
-        </span>
-        ${statusHtml}
-        ${colorPreview}
-        ${data.locked
-          ? `<div style="
-              position:absolute;
-              top:6px; right:8px;
-              font-size:18px; color:#fa2b2b;"
-              title="Locked">&#128274;</div>`
-          : ""
         }
-      </div>`;
-     }
+
+        // Locked icon
+        const lockedHtml = data.locked
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : "";
+
+        // Render the tile (–– placeholders when empty)
+        return `<div class="${tileClass}">
+          Action<br>
+          <span style="font-size:11px">
+            ${label} ${cmd || '–'} ${val || '–'}<br><hr>
+          </span>
+          ${statusHtml}
+          ${colorPreview}
+          ${lockedHtml}
+        </div>`;
+      }
     }
 
     function updateTileHtml(node) {
@@ -1260,31 +1250,31 @@
       }
 
       const ATTRIBUTE_KNOWN_VALUES = {
-        "contact":        ["open", "closed"],
-        "switch":         ["on", "off"],
-        "door":           ["open", "closed", "unknown"],
-        "lock":           ["locked", "unlocked", "unknown"],
-        "motion":         ["active", "inactive"],
-        "presence":       ["present", "not present"],
-        "water":          ["wet", "dry"],
-        "smoke":          ["clear", "detected", "tested"],
-        "carbonMonoxide": ["clear", "detected", "tested"],
-        "acceleration":   ["active", "inactive"],
-        "tamper":         ["clear", "detected"],
-        "shade":          ["open", "closed", "partially open", "unknown"],
-        "windowShade":    ["open", "closed", "partially open", "unknown"],
+        "contact":        ["(none)", "open", "closed"],
+        "switch":         ["(none)", "on", "off"],
+        "door":           ["(none)", "open", "closed", "unknown"],
+        "lock":           ["(none)", "locked", "unlocked", "unknown"],
+        "motion":         ["(none)", "active", "inactive"],
+        "presence":       ["(none)", "present", "not present"],
+        "water":          ["(none)", "wet", "dry"],
+        "smoke":          ["(none)", "clear", "detected", "tested"],
+        "carbonMonoxide": ["(none)", "clear", "detected", "tested"],
+        "acceleration":   ["(none)", "active", "inactive"],
+        "tamper":         ["(none)", "clear", "detected"],
+        "shade":          ["(none)", "open", "closed", "partially open", "unknown"],
+        "windowShade":    ["(none)", "open", "closed", "partially open", "unknown"],
         "thermostatMode": [
-          "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
+          "(none)", "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
         ],
         "thermostatOperatingState": [
-          "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
+          "(none)", "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
         ],
         "thermostatFanMode": [
-          "auto", "on", "circulate"
+          "(none)", "auto", "on", "circulate"
         ],
-        "alarm":          ["off", "strobe", "siren", "both"],
-        "valve":          ["open", "closed"],
-        "button":         ["pushed", "held", "doubleTapped", "released"],
+        "alarm":          ["(none)", "off", "strobe", "siren", "both"],
+        "valve":          ["(none)", "open", "closed"],
+        "button":         ["(none)", "pushed", "held", "doubleTapped", "released"],
         "temperature":    [],
         "humidity":       [],
         "illuminance":    [],
@@ -1603,34 +1593,63 @@
         el.appendChild(cmpSel);
 
         // 7) Value picker / inputs
-        if (node.data.comparator === "between") {
+        const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
+        if (known.length) {
+          // dropdown of known values
+          const valSel = document.createElement("select");
+          valSel.style.width = "100%";
+          known.forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v;
+            opt.textContent = v;
+            if (node.data.value === v) opt.selected = true;
+            valSel.appendChild(opt);
+          });
+          valSel.onchange = () => {
+            node.data.value = valSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(
+              node.id,
+              nodeTileHtml(node.name, node.data, node.id)
+            );
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(valSel);
+
+        } else if (node.data.comparator === "between") {
+          // two-input “between” UI
           const [minVal, maxVal] = Array.isArray(node.data.value)
             ? node.data.value
             : ["", ""];
           const minIn = document.createElement("input");
-          minIn.type = "text";
-          minIn.value = minVal;
-          minIn.placeholder = "Min";
-          minIn.style = "width:45%; margin-right:8px; display:inline-block";
-          minIn.oninput = () => {
-            node.data.value = [minIn.value, maxIn.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(minIn);
-
           const maxIn = document.createElement("input");
-          maxIn.type = "text";
+
+          minIn.type = maxIn.type = "text";
+          minIn.value = minVal;
           maxIn.value = maxVal;
+          minIn.placeholder = "Min";
           maxIn.placeholder = "Max";
+          minIn.style = "width:45%; margin-right:8px; display:inline-block";
           maxIn.style = "width:45%; display:inline-block";
-          maxIn.oninput = () => {
+
+          const updateBetween = () => {
             node.data.value = [minIn.value, maxIn.value];
             editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(
+              node.id,
+              nodeTileHtml(node.name, node.data, node.id)
+            );
             markFlowNeedsSave(true);
           };
+
+          minIn.oninput = updateBetween;
+          maxIn.oninput = updateBetween;
+
+          el.appendChild(minIn);
           el.appendChild(maxIn);
+
         } else {
+          // free-form text input
           const valIn = document.createElement("input");
           valIn.type = "text";
           valIn.value = node.data.value || "";
@@ -1639,6 +1658,10 @@
           valIn.oninput = () => {
             node.data.value = valIn.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(
+              node.id,
+              nodeTileHtml(node.name, node.data, node.id)
+            );
             markFlowNeedsSave(true);
           };
           el.appendChild(valIn);
@@ -1666,27 +1689,6 @@
         // ************************************
         // --- SHARED HELPERS ---
         // ***********************************
-        function renderShowStatus(el, node, editor, nodeTileHtml) {
-          let showStatus = true;
-          if (typeof node.data.showStatus === "boolean") showStatus = node.data.showStatus;
-          const showStatusDiv = document.createElement("div");
-          showStatusDiv.style = "margin-bottom: 8px; display:flex; align-items:center; gap:5px;";
-          const showStatusCheckbox = document.createElement("input");
-          showStatusCheckbox.type = "checkbox";
-          showStatusCheckbox.checked = showStatus;
-          showStatusCheckbox.onchange = () => {
-            node.data.showStatus = showStatusCheckbox.checked;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-          };
-          showStatusDiv.appendChild(showStatusCheckbox);
-          const showStatusLbl = document.createElement("label");
-          showStatusLbl.textContent = "Show status";
-          showStatusLbl.style.margin = "0";
-          showStatusDiv.appendChild(showStatusLbl);
-          el.appendChild(showStatusDiv);
-        }
-
         function getPickerDevices(devices) {
           const homeLoc = devices.find(d => d.id === "__mode__");
           const timeDev = devices.find(d => d.id === "__time__");
@@ -1725,9 +1727,6 @@
         // DEVICE NODE (Action)
         // ************************************
         if (node.name === "device") {
-          // 1) Show/hide status checkbox
-          renderShowStatus(el, node, editor, nodeTileHtml);
-
           // 2) Normalize deviceIds / deviceId
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
@@ -1877,9 +1876,6 @@
         // EVENT TRIGGER NODE
         // ************************************
         if (node.name === "eventTrigger") {
-          // 1) Show/hide status checkbox
-          renderShowStatus(el, node, editor, nodeTileHtml);
-
           // 2) Normalize device data
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
@@ -1951,7 +1947,6 @@
         // CONDITION NODE
         // ************************************
         if (node.name === "condition") {
-          renderShowStatus(el, node, editor, nodeTileHtml);
           // 1) Normalize data array
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
@@ -2068,7 +2063,6 @@
         }
 
         if (node.name === "repeat") {
-          renderShowStatus(el, node, editor, nodeTileHtml);
           el.innerHTML = "<b>Repeat Node</b><hr>";
 
           // ── MODE SELECTOR ──────────────────────────────────────────────
@@ -2225,7 +2219,6 @@
         }
 
         if (node.name === "setVariable") {
-          renderShowStatus(el, node, editor, nodeTileHtml);
           el.innerHTML = "<b>Set Variable</b><br><br>";
 
           // Variable Name
@@ -2473,9 +2466,6 @@
         }
 
         if (node.name === "notMatchingVar") {
-          // Show status toggle
-          renderShowStatus(el, node, editor, nodeTileHtml);
-
           // 1) Normalize deviceIds array exactly like a Condition node
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
@@ -2670,11 +2660,11 @@
           };
           el.appendChild(msgInput);
 
-         const wildcardMsg = document.createElement("div");
-         wildcardMsg.style.fontSize = "13px";
-         wildcardMsg.style.marginTop = "7px";
-         wildcardMsg.style.color = "#b7cdfd";
-         wildcardMsg.innerHTML =
+        const wildcardMsg = document.createElement("div");
+        wildcardMsg.style.fontSize = "13px";
+        wildcardMsg.style.marginTop = "7px";
+        wildcardMsg.style.color = "#b7cdfd";
+        wildcardMsg.innerHTML =
           '<b><u>Wildcards:</b></u><br>' +
           '<b>{device}</b> -	Event device name/label<br>' +
           '<b>{value}</b> -	Event value<br>' +
@@ -2760,6 +2750,7 @@
         }
       });
     }
+
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
         editor.moveNodeTo = function(nodeId, x, y) {
@@ -3544,7 +3535,7 @@
       }
     }
 
-   // --- ONLY highlight the last-executed flow's path ---
+    // --- ONLY highlight the last-executed flow's path ---
 
     // === Helper: Get and save Hubitat IP ===
     function getHubitatIP() {
