@@ -270,20 +270,28 @@ def recheckAllTriggers() {
     state.activeFlows?.each { fname, flowObj ->
         def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
         dataNodes.each { id, node ->
-            if (node.name == "eventTrigger" && node.data.deviceId == "__time__") {
-                def attr         = node.data.attribute
-                def expected     = node.data.value
-                def comparator   = node.data.comparator
+            // only handle minute-polling triggers, skip sunrise/sunset
+            if (node.name == "eventTrigger"
+                && node.data.deviceId == "__time__"
+                && !(node.data.attribute in ["sunrise","sunset"]) ) {
+
+                def attr       = node.data.attribute
+                def expected   = node.data.value
+                def comparator = node.data.comparator
                 def curValue
+
                 if (attr == "currentTime") {
                     curValue = new Date().format("HH:mm", location.timeZone)
-                } else if (attr == "dayOfWeek") {
+                }
+                else if (attr == "dayOfWeek") {
                     curValue = new Date().format("EEEE", location.timeZone)
-                } else {
+                }
+                else {
                     return
                 }
+
                 if (evaluateComparator(curValue, expected, comparator)) {
-                    // Fire just this node
+                    // Fire this trigger node
                     evaluateNode(fname, id, [ name: attr, value: curValue ])
                 }
             }
@@ -730,18 +738,37 @@ def subscribeToTriggers(String fname) {
                         handleEvent(evt, fname)
                     }
                 }
-                // — Virtual Time device —
-                else if (node.data.deviceId == "__time__") {
-                    def attr = node.data.attribute
-                    // real sunrise/sunset events
-                    if (attr in ["sunrise", "sunset"]) {
-                        subscribe(location, attr) { evt ->
-                            handleEvent(evt, fname)
-                        }
-                    }
-                    // poll currentTime & dayOfWeek every minute
-                    runEvery1Minute("recheckAllTriggers")
-                }
+                // — Virtual Time device (sunrise/sunset with offset, or minute‐polling) —
+				else if (node.data.deviceId == "__time__") {
+					def attr = node.data.attribute
+
+					if (attr in ["sunrise","sunset"]) {
+						// calculate today’s sunrise/sunset with the user‐specified offset
+						def off   = (node.data.offset ?: 0) as Integer
+						def times = getSunriseAndSunset([sunriseOffset: off, sunsetOffset: off])
+						def dt    = (attr == "sunrise") ? times.sunrise : times.sunset
+
+						if (dt) {
+							// fire exactly once at the offset time
+							runOnce(dt, {
+								handleEvent(
+									[ name : attr,
+									  value: attr,
+									  data : node.data ],
+									fname
+								)
+							})
+						}
+						// re‐schedule this method at midnight so tomorrow’s times get recalculated
+						schedule("0 0 0 * * ?", {
+							subscribeToTriggers(fname)
+						})
+					}
+					else {
+						// fallback: minute‐based polling only for currentTime/dayOfWeek
+						runEvery1Minute("recheckAllTriggers")
+					}
+				}
                 // — Physical device triggers —
                 else {
                     def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
