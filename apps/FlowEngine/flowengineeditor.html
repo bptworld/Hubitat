@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.015 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.016 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -135,12 +135,15 @@
       <button id="addCondition" title="Add a Condition node">Condition</button>
       <button id="addDevice" title="Action (Device)">Action</button>
       <b> | </b>
+      <button id="addLogicAND" title="And">And</button>
       <button id="addComment" title="Comment/Note">Comment</button>
       <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
       <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
       <button id="addDeviceToVar" title="Add a Devices to a Variable node">Devices to Variable</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
+      <button id="addLogicNOT" title="Add a NOT logic node">Not</button>
       <button id="addNotification" title="Add a Notification node">Notification</button>
+      <button id="addLogicOR" title="Add an OR logic node">Or</button>
       <button id="addRepeat" title="Add a Repeat node">Repeat</button>
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
@@ -199,202 +202,6 @@
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
-  <script>
-    // ── MINIMAP UTILITIES ────────────────────────────────────────────────────────
-    const W = 240, H = 140;
-    const MINIMAP_ID  = 'minimap-container';
-    const CANVAS_ID   = 'minimap-canvas';
-    const STORAGE_KEY = 'fe_minimap_pos';
-
-    // Show & position container
-    const container = document.getElementById(MINIMAP_ID);
-    container.style.display  = 'block';
-    container.style.position = 'fixed';
-
-    // Restore saved position
-    (function restoreMinimapPosition() {
-      try {
-        const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (pos?.left != null && pos?.top != null) {
-          container.style.left   = pos.left  + 'px';
-          container.style.top    = pos.top   + 'px';
-          container.style.right  = 'auto';
-          container.style.bottom = 'auto';
-        } else {
-          container.style.right  = '28px';
-          container.style.bottom = '24px';
-        }
-      } catch {
-        container.style.right  = '28px';
-        container.style.bottom = '24px';
-      }
-    })();
-
-    // Drag logic
-    let dragState = { active:false, sx:0, sy:0, ox:0, oy:0 };
-    container.addEventListener('mousedown', e => {
-      if ([MINIMAP_ID, CANVAS_ID].includes(e.target.id)) {
-        dragState.active = true;
-        dragState.sx = e.clientX; dragState.sy = e.clientY;
-        const r = container.getBoundingClientRect();
-        dragState.ox = r.left; dragState.oy = r.top;
-        container.style.transition = 'none';
-      }
-    });
-    document.addEventListener('mousemove', e => {
-      if (!dragState.active) return;
-      const dx = e.clientX - dragState.sx;
-      const dy = e.clientY - dragState.sy;
-      const nx = dragState.ox + dx, ny = dragState.oy + dy;
-      container.style.left   = nx + 'px';
-      container.style.top    = ny + 'px';
-      container.style.right  = 'auto';
-      container.style.bottom = 'auto';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: nx, top: ny }));
-    });
-    document.addEventListener('mouseup', () => {
-      if (!dragState.active) return;
-      dragState.active = false;
-      container.style.transition = '';
-      const r = container.getBoundingClientRect();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: r.left, top: r.top }));
-    });
-
-    // Helper to grab node box styles & first-line label
-    function getNodeStyleAndLabel(id, n) {
-      const el = document.getElementById('node-' + id);
-      let bg = '#3ad688', border = '#222', txt = '';
-      if (el) {
-        const comp = window.getComputedStyle(el);
-        bg     = comp.backgroundColor || bg;
-        border = comp.borderColor     || border;
-        const tile = el.querySelector(
-          '.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div'
-        );
-        if (tile) {
-          txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
-        } else {
-          txt = el.textContent.trim().split('\n')[0].substring(0, 6);
-        }
-      } else if (n.data && n.data.label) {
-        txt = n.data.label.substring(0, 6);
-      } else if (n.name) {
-        txt = n.name.substring(0, 6);
-      } else {
-        txt = id;
-      }
-      return { bg, border, txt };
-    }
-
-    // Draw the minimap (connections, nodes, viewport)
-    window.renderMinimap = function() {
-      const df = window.editor?.drawflow?.drawflow;
-      if (!df?.Home?.data) return;
-      const data    = df.Home.data;
-      const entries = Object.entries(data);
-      if (!entries.length) return;
-
-      // Compute flow bounds
-      let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-      entries.forEach(([_,n]) => {
-        minX = Math.min(minX, n.pos_x);
-        minY = Math.min(minY, n.pos_y);
-        maxX = Math.max(maxX, n.pos_x + 170);
-        maxY = Math.max(maxY, n.pos_y +  80);
-      });
-      minX -= 40; minY -= 40; maxX += 40; maxY += 40;
-      const scale = Math.min(W/(maxX-minX), H/(maxY-minY));
-
-      const ctx = document.getElementById(CANVAS_ID).getContext('2d');
-      ctx.clearRect(0,0,W,H);
-
-      // Connections
-      entries.forEach(([id,n]) => {
-        Object.values(n.outputs||{}).forEach(out => {
-          (out.connections||[]).forEach(conn => {
-            const tgt = data[conn.node];
-            if (!tgt) return;
-            const x1 = (n.pos_x - minX + 80)*scale;
-            const y1 = (n.pos_y - minY + 35)*scale;
-            const x2 = (tgt.pos_x - minX + 80)*scale;
-            const y2 = (tgt.pos_y - minY + 35)*scale;
-            const pathEl = document.querySelector(
-              `.connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
-            );
-            const hilite = pathEl?.classList.contains('highlighted');
-            ctx.strokeStyle = hilite ? 'limegreen' : '#888';
-            ctx.globalAlpha = hilite ? 1 : 0.85;
-            ctx.lineWidth   = hilite ? 2 : 1.2;
-            ctx.beginPath();
-            ctx.moveTo(x1,y1);
-            ctx.bezierCurveTo(x1+32,y1, x2-32,y2, x2,y2);
-            ctx.stroke();
-          });
-        });
-      });
-
-      // Nodes & labels
-      entries.forEach(([id,n]) => {
-        const x = (n.pos_x - minX)*scale;
-        const y = (n.pos_y - minY)*scale;
-        const w = 170 * scale, h = 80 * scale;
-        let { bg, border, txt } = getNodeStyleAndLabel(id, n);
-        const el = document.getElementById('node-' + id);
-        if (el?.classList.contains('flow-path')) {
-          bg = 'limegreen'; border = 'limegreen';
-        }
-        ctx.save();
-        ctx.fillStyle   = bg;
-        ctx.strokeStyle = border;
-        ctx.lineWidth   = 1;
-        ctx.globalAlpha = 0.6;
-        ctx.fillRect(x,y,w,h);
-        ctx.strokeRect(x,y,w,h);
-        ctx.restore();
-        ctx.save();
-        ctx.font         = `bold ${Math.max(9, Math.round(h/2.3))}px sans-serif`;
-        ctx.fillStyle    = "#181d20";
-        ctx.textAlign    = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(txt, x + w/2, y + h/2);
-        ctx.restore();
-      });
-
-      // Viewport rectangle
-      const precanvas = document.querySelector('.drawflow');
-      if (precanvas) {
-        const t = getComputedStyle(precanvas).transform;
-        let m = [1,0,0,1,0,0];
-        if (t !== 'none') {
-          const parts = t.match(/matrix\(([^)]+)\)/)[1].split(',');
-          m = parts.map(parseFloat);
-        }
-        const [scaleDF,, , , tx, ty] = m;
-        const rect = document.getElementById('drawflow').getBoundingClientRect();
-        const visX = -tx/scaleDF, visY = -ty/scaleDF;
-        const vx   = (visX - minX)*scale, vy = (visY - minY)*scale;
-        const vw   = (rect.width/scaleDF)*scale, vh = (rect.height/scaleDF)*scale;
-        ctx.save();
-        ctx.strokeStyle = "#f4e43a";
-        ctx.globalAlpha = 0.9;
-        ctx.lineWidth   = 2;
-        ctx.strokeRect(vx, vy, vw, vh);
-        ctx.restore();
-      }
-    };
-
-    // Subscribe minimap redraw to Drawflow events
-    window.hookMinimapEvents = function() {
-      if (!window.editor) return;
-      [
-        'nodeMoved','nodeCreated','nodeRemoved',
-        'connectionCreated','connectionRemoved',
-        'import','zoom'
-      ].forEach(evt => window.editor.on(evt, window.renderMinimap));
-      setInterval(window.renderMinimap, 2000);
-    };
-    // ───────────────────────────────────────────────────────────────────────────────
-  </script>
   <script>
     // 1) Fetch the list of flow-files from Hubitat
     async function fetchHubitatFiles() {
@@ -705,13 +512,13 @@
           // transient error, retry
           return setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
         }
-        logAction("Error fetching FE_global_vars.json – aborting globals load", "error");
+        //logAction("Error fetching FE_global_vars.json – aborting globals load", "error");
         return;
       }
 
       // 2) if not found or empty, skip globals entirely
       if (!txt || !txt.trim()) {
-        logAction("FE_global_vars.json not found – skipping globals load", "warn");
+        //logAction("FE_global_vars.json not found – skipping globals load", "warn");
         return;
       }
 
@@ -855,38 +662,115 @@
       pickerDiv.appendChild(cmpSelect);
 
       if (node.data.attribute === "timeOfDay") {
-        const todSelect = document.createElement("select");
-        todSelect.style = "display:block;margin-bottom:12px";
-        ["sunrise", "sunset"].forEach(tod => {
-          const opt = document.createElement("option");
-          opt.value = tod;
-          opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
-          if (node.data.value === tod) opt.selected = true;
-          todSelect.appendChild(opt);
-        });
-        todSelect.onchange = () => {
-          node.data.value = todSelect.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-        };
-        pickerDiv.appendChild(todSelect);
+        // ── If comparator is “between”, show Sunrise/Sunset range picker ──
+        if (node.data.comparator === "between") {
+          // ensure node.data.value is an array [start, end]
+          if (!Array.isArray(node.data.value)) {
+            node.data.value = ["sunrise", "sunset"];
+          }
+          const [startVal, endVal] = node.data.value;
 
-        const offsetLabel = document.createElement("label");
-        offsetLabel.textContent = "Offset (minutes)";
-        offsetLabel.style.display = "block";
-        pickerDiv.appendChild(offsetLabel);
+          // ── Start selector (Sunrise / Sunset)
+          const startSelect = document.createElement("select");
+          startSelect.style = "display:block;margin-bottom:8px";
+          ["sunrise", "sunset"].forEach(optVal => {
+            const opt = document.createElement("option");
+            opt.value = optVal;
+            opt.textContent = optVal.charAt(0).toUpperCase() + optVal.slice(1);
+            if (startVal === optVal) opt.selected = true;
+            startSelect.appendChild(opt);
+          });
+          startSelect.onchange = () => {
+            node.data.value[0] = startSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(startSelect);
 
-        const offsetInput = document.createElement("input");
-        offsetInput.type = "number";
-        offsetInput.placeholder = "e.g. -10 or 15";
-        offsetInput.style.display = "block";
-        offsetInput.style.marginBottom = "12px";
-        offsetInput.value = node.data.offset || 0;
-        offsetInput.onchange = () => {
-          node.data.offset = parseInt(offsetInput.value) || 0;
-          editor.updateNodeDataFromId(node.id, node.data);
-        };
-        pickerDiv.appendChild(offsetInput);
-      } else if (node.data.attribute === "dayOfWeek") {
+          // ── End selector (Sunrise / Sunset / Certain Time…)
+          const endSelect = document.createElement("select");
+          endSelect.style = "display:block;margin-bottom:8px";
+          [
+            { v: "sunrise", label: "Sunrise" },
+            { v: "sunset",  label: "Sunset" },
+            { v: "custom",  label: "Certain Time…" }
+          ].forEach(def => {
+            const opt = document.createElement("option");
+            opt.value = def.v;
+            opt.textContent = def.label;
+            if (
+              endVal === def.v ||
+              (def.v === "custom" && !["sunrise", "sunset"].includes(endVal))
+            ) {
+              opt.selected = true;
+            }
+            endSelect.appendChild(opt);
+          });
+          endSelect.onchange = () => {
+            if (endSelect.value === "custom") {
+              // keep existing custom or default to noon
+              node.data.value[1] =
+                !["sunrise", "sunset"].includes(node.data.value[1])
+                  ? node.data.value[1]
+                  : "12:00";
+            } else {
+              node.data.value[1] = endSelect.value;
+            }
+            editor.updateNodeDataFromId(node.id, node.data);
+            buildTimeDevicePicker(pickerDiv, node); // re-render so time input shows/hides
+          };
+          pickerDiv.appendChild(endSelect);
+
+          // ── If “Certain Time” chosen, show a time input ──
+          if (
+            node.data.value[1] === "custom" ||
+            !["sunrise", "sunset"].includes(node.data.value[1])
+          ) {
+            const timeInput = document.createElement("input");
+            timeInput.type = "time";
+            timeInput.value = node.data.value[1];
+            timeInput.style = "display:block;margin-bottom:12px";
+            timeInput.onchange = () => {
+              node.data.value[1] = timeInput.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+            };
+            pickerDiv.appendChild(timeInput);
+          }
+        }
+        // ── Otherwise, just a single Sunrise/Sunset selector + offset ──
+        else {
+          const todSelect = document.createElement("select");
+          todSelect.style = "display:block;margin-bottom:12px";
+          ["sunrise", "sunset"].forEach(tod => {
+            const opt = document.createElement("option");
+            opt.value = tod;
+            opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
+            if (node.data.value === tod) opt.selected = true;
+            todSelect.appendChild(opt);
+          });
+          todSelect.onchange = () => {
+            node.data.value = todSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(todSelect);
+
+          const offsetLabel = document.createElement("label");
+          offsetLabel.textContent = "Offset (minutes)";
+          offsetLabel.style.display = "block";
+          pickerDiv.appendChild(offsetLabel);
+
+          const offsetInput = document.createElement("input");
+          offsetInput.type = "number";
+          offsetInput.placeholder = "e.g. -10 or 15";
+          offsetInput.style = "display:block;margin-bottom:12px";
+          offsetInput.value = node.data.offset || 0;
+          offsetInput.onchange = () => {
+            node.data.offset = parseInt(offsetInput.value, 10) || 0;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(offsetInput);
+        }
+      }
+      else if (node.data.attribute === "dayOfWeek") {
         const dowSelect = document.createElement("select");
         dowSelect.style = "display:block;margin-bottom:12px";
         ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
@@ -894,30 +778,34 @@
             const opt = document.createElement("option");
             opt.value = day;
             opt.textContent = day;
-            if (Array.isArray(node.data.value) ? node.data.value.includes(day) : node.data.value === day) opt.selected = true;
+            if (
+              Array.isArray(node.data.value)
+                ? node.data.value.includes(day)
+                : node.data.value === day
+            ) {
+              opt.selected = true;
+            }
             dowSelect.appendChild(opt);
-        });
+          });
         dowSelect.multiple = true;
         dowSelect.size = 7;
         dowSelect.onchange = () => {
-          const selected = Array.from(dowSelect.selectedOptions).map(opt => opt.value);
-          node.data.value = selected;
+          node.data.value = Array.from(dowSelect.selectedOptions).map(o => o.value);
           editor.updateNodeDataFromId(node.id, node.data);
         };
         pickerDiv.appendChild(dowSelect);
-      } else if (node.data.attribute === "currentTime") {
+      }
+      else if (node.data.attribute === "currentTime") {
         if (node.data.comparator === "between") {
           const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
             ? node.data.value
             : ["", ""];
-          
           const startInput = document.createElement("input");
           startInput.type = "time";
           startInput.value = startVal;
-          startInput.style = "display:block; margin-bottom:4px;";
+          startInput.style = "display:block;margin-bottom:4px";
           startInput.onchange = () => {
-            const [, currEnd] = node.data.value || ["", ""];
-            node.data.value = [startInput.value, currEnd];
+            node.data.value = [startInput.value, node.data.value[1] || ""];
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(startInput);
@@ -925,19 +813,18 @@
           const endInput = document.createElement("input");
           endInput.type = "time";
           endInput.value = endVal;
-          endInput.style = "display:block; margin-bottom:12px;";
+          endInput.style = "display:block;margin-bottom:12px";
           endInput.onchange = () => {
-            const [currStart] = node.data.value || ["", ""];
-            node.data.value = [currStart, endInput.value];
+            node.data.value = [node.data.value[0] || "", endInput.value];
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(endInput);
-
-        } else {
+        }
+        else {
           const timeInput = document.createElement("input");
           timeInput.type  = "time";
           timeInput.value = node.data.value || "";
-          timeInput.style = "display:block; margin-bottom:12px;";
+          timeInput.style = "display:block;margin-bottom:12px";
           timeInput.onchange = () => {
             node.data.value = timeInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
@@ -945,6 +832,7 @@
           pickerDiv.appendChild(timeInput);
         }
       }
+
       return true;
     }
 
@@ -1316,7 +1204,7 @@
         return `<div class="${tileClass}">
           Action<br>
           <span style="font-size:11px">
-            ${label} ${cmd || '–'} ${val || '–'}<br><hr>
+            ${label} ${cmd || ''} ${val || ''}<br><hr>
           </span>
           ${statusHtml}
           ${colorPreview}
@@ -2940,6 +2828,9 @@
             }
           }
         }
+        if (typeof renderMinimap === 'function') {
+          renderMinimap();
+        }
         return;
       }
       
@@ -3348,6 +3239,54 @@
         logAction("addNotification finished.");
       };
 
+      document.getElementById("addLogicAND").onclick = () => {
+        const { x, y } = getTopLeftOnScreenCoords();
+        markFlowNeedsSave(true);
+        editor.addNode("AND", 1, 2, x, y, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+      };
+
+      document.getElementById("addLogicOR").onclick = () => {
+        const { x, y } = getTopLeftOnScreenCoords();
+        markFlowNeedsSave(true);
+        editor.addNode("OR", 1, 2, x, y, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+      };
+
+      document.getElementById("addLogicNOT").onclick = () => {
+        const { x, y } = getTopLeftOnScreenCoords();
+        markFlowNeedsSave(true);
+        editor.addNode("NOT", 1, 2, x, y, "NOT", {}, nodeTileHtml("NOT", {}), undefined, { outputs: ["true", "false"] });
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+      };
+
       document.getElementById("addDoNothing").onclick = () => {
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
@@ -3496,10 +3435,6 @@
 
             // 2) patch in device labels (for Action/Condition tiles)
             patchFlowWithDeviceLabels(data, window.devices);
-
-            // 3) initialize & draw the minimap
-            hookMinimapEvents();
-            renderMinimap();
 
             // 4) update the Flow Name display and zoom to fit
             document.getElementById("flowName").textContent = fileName;
@@ -4193,7 +4128,11 @@
                             style="background:#1b9b1b; color:#fff; border:none; padding:7px 18px; border-radius:5px; cursor:pointer; font-size:15px; margin-right:18px;">
                       ▶️ Test
                     </button><br>
-                    <small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
+                    <label style="margin-left:8px; font-size:13px;">
+                      <input type="checkbox" id="dryRunCheckbox" />
+                      Dry Run
+                    </label>
+                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
                   `;
 
                   // ── TEST-FLOW BUTTON HANDLER ────────────────────────────────
@@ -4222,6 +4161,7 @@
                       const form = new URLSearchParams();
                       form.append("flow", flow);
                       form.append("value", val);
+                      form.append("dryRun", dryRun ? "true" : "false");
 
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`,
@@ -4347,6 +4287,9 @@
           const el = document.querySelector(`.drawflow-node[data-id="${id}"]`);
           if (el) el.classList.add('flow-path');
         });
+        if (typeof renderMinimap === 'function') {
+          renderMinimap();
+        }
       }
 
       function highlightFlowPathDelayed(run, delayMs = 100) {
@@ -4637,6 +4580,332 @@
         });
       }
 
+      window.addEventListener('DOMContentLoaded', function() {
+        const W = 240, H = 140;
+        const MINIMAP_ID = 'minimap-container';
+        const CANVAS_ID = 'minimap-canvas';
+        const STORAGE_KEY = "fe_minimap_pos";
+
+        // Show minimap on load
+        const container = document.getElementById(MINIMAP_ID);
+        container.style.display = '';
+
+        // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
+        let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+        // Load position from storage (if any)
+        function restoreMinimapPosition() {
+          try {
+            const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (pos && typeof pos.left === "number" && typeof pos.top === "number") {
+              container.style.left = pos.left + "px";
+              container.style.top = pos.top + "px";
+              container.style.right = "auto";
+              container.style.bottom = "auto";
+            } else {
+              container.style.right = "28px";
+              container.style.bottom = "24px";
+            }
+          } catch(e) {
+            // fallback
+            container.style.right = "28px";
+            container.style.bottom = "24px";
+          }
+        }
+        restoreMinimapPosition();
+
+        container.addEventListener('mousedown', function(e) {
+          // Only drag if clicking the container or canvas, not the inner label
+          if (e.target.id !== MINIMAP_ID && e.target.id !== CANVAS_ID) return;
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          const rect = container.getBoundingClientRect();
+          origX = rect.left;
+          origY = rect.top;
+          container.style.transition = "none";
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const newLeft = origX + dx;
+          const newTop = origY + dy;
+          container.style.left = newLeft + "px";
+          container.style.top = newTop + "px";
+          container.style.right = "auto";
+          container.style.bottom = "auto";
+          // Save live while dragging
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: newLeft, top: newTop }));
+        });
+
+        document.addEventListener('mouseup', function() {
+          if (isDragging) {
+            isDragging = false;
+            container.style.transition = "";
+            // Save one more time in case of final position
+            const rect = container.getBoundingClientRect();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
+          }
+        });
+
+        // Set initial left/top if not set
+        container.style.position = "fixed";
+        if (!container.style.left && !container.style.top) {
+          container.style.right = "28px";
+          container.style.bottom = "24px";
+        }
+
+        // ---- REALISTIC MINIMAP DRAWING ----
+
+        function getNodeStyleAndLabel(id, n) {
+          const el = document.getElementById('node-' + id);
+          let bg = '#3ad688', border = '#222', txt = '';
+          if (el) {
+            const comp = window.getComputedStyle(el);
+            bg = comp.backgroundColor || bg;
+            border = comp.borderColor || border;
+            // Use best label from tile
+            const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
+            if (tile) {
+              txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
+            } else {
+              txt = el.textContent.trim().split('\n')[0].substring(0, 6);
+            }
+          } else if (n.data && n.data.label) {
+            txt = n.data.label.substring(0, 6);
+          } else if (n.name) {
+            txt = n.name.substring(0, 6);
+          } else {
+            txt = id;
+          }
+          return { bg, border, txt };
+        }
+
+        function renderMinimap() {
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !df.Home.data) return;
+          const data = df.Home.data;
+          const nodes = Object.entries(data);
+
+          if (!nodes.length) return;
+
+          // Compute bounding box
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(([id, n]) => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale = Math.min(scaleX, scaleY);
+
+          const ctx = document.getElementById(CANVAS_ID).getContext('2d');
+          ctx.clearRect(0, 0, W, H);
+
+          // Draw connections
+          nodes.forEach(([id, n]) => {
+            Object.values(n.outputs || {}).forEach(out => {
+              (out.connections || []).forEach(conn => {
+                const target = data[conn.node];
+                if (!target) return;
+
+                const x1 = Math.round((n.pos_x - minX + 80) * scale);
+                const y1 = Math.round((n.pos_y - minY + 35) * scale);
+                const x2 = Math.round((target.pos_x - minX + 80) * scale);
+                const y2 = Math.round((target.pos_y - minY + 35) * scale);
+
+                // Find the real DOM path element
+                const pathEl = document.querySelector(
+                  `.connection.node_out_node-${id}.node_in_node-${conn.node} .main-path,
+                  .connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
+                );
+
+                // Style based on whether it's highlighted upstream
+                if (pathEl && pathEl.classList.contains('highlighted')) {
+                  ctx.strokeStyle = "limegreen";
+                  ctx.globalAlpha  = 1;
+                  ctx.lineWidth    = 2;
+                } else {
+                  ctx.strokeStyle = "#888";
+                  ctx.globalAlpha  = 0.85;
+                  ctx.lineWidth    = 1.2;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.bezierCurveTo(
+                  x1 + 32, y1,
+                  x2 - 32, y2,
+                  x2, y2
+                );
+                ctx.stroke();
+              });
+            });
+          });
+
+          // Draw nodes with real color, border, label, and flow-path highlights
+          nodes.forEach(([id, n]) => {
+            const x = Math.round((n.pos_x - minX) * scale);
+            const y = Math.round((n.pos_y - minY) * scale);
+            const w = Math.max(30, Math.round(120 * scale));
+            const h = Math.max(18, Math.round(48  * scale));
+
+            // grab base style & label
+            let { bg, border, txt } = getNodeStyleAndLabel(id, n);
+
+            // if this node is in the active flow-path, force green
+            const nodeEl = document.getElementById('node-' + id);
+            if (nodeEl && nodeEl.classList.contains('flow-path')) {
+              bg     = 'limegreen';
+              border = 'limegreen';
+            }
+
+            // draw the box
+            ctx.save();
+            ctx.globalAlpha = 0.93;
+            ctx.fillStyle   = bg;
+            ctx.strokeStyle = border;
+            ctx.lineWidth   = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(x+4, y);
+            ctx.lineTo(x+w-4, y);
+            ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+            ctx.lineTo(x+w, y+h-4);
+            ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+            ctx.lineTo(x+4, y+h);
+            ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+            ctx.lineTo(x, y+4);
+            ctx.quadraticCurveTo(x, y, x+4, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Highlight selected node(s)
+            const isSelected =
+              (window._multiSelectedNodes && window._multiSelectedNodes.has(String(id))) ||
+              (editor.selected_id && String(editor.selected_id) === String(id));
+            if (isSelected) {
+              ctx.save();
+              ctx.shadowColor = "#00fff7";
+              ctx.shadowBlur  = 10;
+              ctx.strokeStyle = "#00fff7";
+              ctx.lineWidth   = 4;
+              ctx.globalAlpha = 0.92;
+              ctx.beginPath();
+              ctx.moveTo(x+4, y);
+              ctx.lineTo(x+w-4, y);
+              ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+              ctx.lineTo(x+w, y+h-4);
+              ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+              ctx.lineTo(x+4, y+h);
+              ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+              ctx.lineTo(x, y+4);
+              ctx.quadraticCurveTo(x, y, x+4, y);
+              ctx.closePath();
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // Draw label
+            ctx.save();
+            ctx.font         = `bold ${Math.max(9, Math.round(h / 2.3))}px sans-serif`;
+            ctx.fillStyle    = "#181d20";
+            ctx.globalAlpha  = 1.0;
+            ctx.textAlign    = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(txt, x + w/2, y + h/2);
+            ctx.restore();
+          });
+
+          // Draw viewport rectangle
+          const precanvas = document.querySelector('.drawflow');
+          if (precanvas) {
+            const transform = window.getComputedStyle(precanvas).transform;
+            let translateX = 0, translateY = 0, scaleDF = 1;
+            if (transform && transform !== "none") {
+              const match = transform.match(/matrix\(([^)]+)\)/);
+              if (match) {
+                const parts = match[1].split(',');
+                scaleDF      = parseFloat(parts[0]);
+                translateX   = parseFloat(parts[4]);
+                translateY   = parseFloat(parts[5]);
+              }
+            }
+            const rect   = document.getElementById('drawflow').getBoundingClientRect();
+            const flowW  = rect.width, flowH = rect.height;
+            const visX   = (-translateX) / scaleDF;
+            const visY   = (-translateY) / scaleDF;
+            const vx     = (visX - minX) * scale;
+            const vy     = (visY - minY) * scale;
+            const vw     = flowW / scaleDF * scale;
+            const vh     = flowH / scaleDF * scale;
+            ctx.save();
+            ctx.strokeStyle = "#f4e43a";
+            ctx.globalAlpha = 0.9;
+            ctx.lineWidth   = 2;
+            ctx.strokeRect(vx, vy, vw, vh);
+            ctx.restore();
+          }
+        }
+
+        function hookMinimapEvents() {
+          if (!window.editor) return;
+          window.editor.on('nodeMoved', renderMinimap);
+          window.editor.on('nodeCreated', renderMinimap);
+          window.editor.on('nodeRemoved', renderMinimap);
+          window.editor.on('connectionCreated', renderMinimap);
+          window.editor.on('connectionRemoved', renderMinimap);
+          window.editor.on('import', renderMinimap);
+          window.editor.on('zoom', renderMinimap);
+          setInterval(renderMinimap, 2000);
+        }
+
+        document.getElementById(CANVAS_ID).addEventListener('click', function(e){
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !df.Home.data) return;
+          const data = df.Home.data;
+          const nodes = Object.values(data);
+          if (!nodes.length) return;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(n => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale = Math.min(scaleX, scaleY);
+          const x = e.offsetX / scale + minX;
+          const y = e.offsetY / scale + minY;
+          const precanvas = document.querySelector('.drawflow');
+          if (precanvas) {
+            let scaleDF = 1;
+            const transform = window.getComputedStyle(precanvas).transform;
+            if (transform && transform !== "none") {
+              const match = transform.match(/matrix\(([^)]+)\)/);
+              if (match) scaleDF = parseFloat(match[1].split(',')[0]);
+            }
+            const main = document.getElementById('drawflow');
+            const rect = main.getBoundingClientRect();
+            const targetX = -(x - rect.width/2/scaleDF) * scaleDF;
+            const targetY = -(y - rect.height/2/scaleDF) * scaleDF;
+            precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
+          }
+        });
+
+        hookMinimapEvents();
+        setTimeout(renderMinimap, 1000);
+      });
+
       // *********************************************
       // Multi-select Node
       window.addEventListener('DOMContentLoaded', function() {
@@ -4740,8 +5009,6 @@
             });
           });
         }
-
-
         let animationFrame = null;
 
         document.addEventListener('mousemove', function(e){
@@ -5101,7 +5368,7 @@
           logAction(
             newState
               ? "✅ Flow activated: " + (result.result || JSON.stringify(result))
-              : "✅ Flow deactivated: " + (result.result || JSON.stringify(result))
+              : "❎ Flow deactivated: " + (result.result || JSON.stringify(result))
           );
           checkIfFlowIsInUse(flowName, appId, token);
         } catch (err) {
@@ -5146,7 +5413,7 @@
           const result = await res.json();
           logAction(
             isEnabled
-              ? `✅ Logging disabled: ${result.result || "OK"}`
+              ? `❎ Logging disabled: ${result.result || "OK"}`
               : `✅ Logging enabled: ${result.result || "OK"}`,
             "info"
           );
@@ -5300,6 +5567,62 @@
         logAction(`Renamed "${oldName}" → "${newName}" in Hubitat File Manager.`, "success");
       };
 
+      // ── AUTO-SHOW & RESTORE ───────────────────────────────────────
+      window.addEventListener('load', function() {
+        const mm = document.getElementById('minimap-container');
+        if (!mm) return console.error('❌ minimap-container not found');
+        // restore last pos or default
+        try {
+          const pos = JSON.parse(localStorage.getItem('fe_minimap_pos'));
+          if (pos && pos.left != null && pos.top != null) {
+            mm.style.left = pos.left + 'px';
+            mm.style.top  = pos.top  + 'px';
+          }
+        } catch(_){}  
+        mm.style.display = 'block';
+        // re-render if available
+        if (typeof renderMinimap === 'function') renderMinimap();
+      });
+
+      // ── DRAG & PERSIST POSITION ───────────────────────────────────
+      (function enableMinimapDrag() {
+        const mm = document.getElementById('minimap-container');
+        if (!mm) return;
+        let dragging = false,
+            start   = { x: 0, y: 0 },
+            origin  = { x: 0, y: 0 };
+
+        mm.addEventListener('mousedown', e => {
+          dragging      = true;
+          start.x       = e.clientX;
+          start.y       = e.clientY;
+          origin.x      = mm.offsetLeft;
+          origin.y      = mm.offsetTop;
+          mm.style.cursor = 'move';
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', e => {
+          if (!dragging) return;
+          const dx = e.clientX - start.x;
+          const dy = e.clientY - start.y;
+          mm.style.left = origin.x + dx + 'px';
+          mm.style.top  = origin.y + dy + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (!dragging) return;
+          dragging = false;
+          mm.style.cursor = 'pointer';
+          // save new position
+          localStorage.setItem('fe_minimap_pos',
+            JSON.stringify({
+              left: mm.offsetLeft,
+              top:  mm.offsetTop
+            })
+          );
+        });
+      })();
     </script>
 </body>
 </html>
