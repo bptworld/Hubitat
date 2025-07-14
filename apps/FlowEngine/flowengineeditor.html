@@ -946,6 +946,15 @@
       if (t === "donothing") {
         return `<div class="logic-node">Do Nothing<${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}/div>`;
       }
+      if (t === "and") {
+        return `<div class="logic-node">AND${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
+      }
+      if (t === "or") {
+        return `<div class="logic-node">OR${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
+      }
+      if (t === "not") {
+        return `<div class="logic-node">NOT${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
+      }
       if (t === "delay") {
         let label = "Delay";
         if (typeof data.ms === "number" && !isNaN(data.ms)) {
