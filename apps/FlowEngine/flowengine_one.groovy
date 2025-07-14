@@ -62,6 +62,23 @@ def mainPage() {
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
 				paragraph "<hr>"
 				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
+				paragraph "<hr>"
+				paragraph "I've been having an issue with the app OAuth changing on it's own.  If this happens to you, you'll need to update your OAuth token and add the appId and Token in the Editor. Once you have use the toggle below, click 'Done' and come back into the app to see your new token. AT THIS POINT DO NOT HIT 'DONE'.  CLICK ON ANYTHING OUTSIDE OF THE APP - DEVICES, APPS, SETTINGS, ANYTHING.  JUST DON'T HIT 'DONE'."
+				
+				input "updateOAuth", "bool", title: "Do you need to update OAuth?", submitOnChange:true
+				if(updateOAuth) {
+					input "areYouSureOAuth", "bool", title: "Are you sure?", submitOnChange:true
+					if(areYouSureOAuth) {
+						createAccessToken()
+						state.appId = app.id
+						state.token = state.accessToken
+						pauseExecution(1000)
+						changed = true
+						app.updateSetting("updateOAuth",[value:"false",type:"bool"])
+						app.updateSetting("areYouSureOAuth",[value:"false",type:"bool"])
+					}
+				}
+				paragraph "<hr>"
 			}
 			
             section(getFormat("header-green", " Select Flow Files to Enable")) {
@@ -144,16 +161,20 @@ mappings {
 def handleLocationTimeEvent(evt) {
     log.debug "Sun event: ${evt.name}@${evt.date}"
     state.activeFlows.each { fname, flowObj ->
-        // find any eventTrigger nodes in this flow that want this sunrise/sunset
-        def matches = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
+        def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+        def matches = dataNodes.findAll { id, node ->
             node.name == "eventTrigger" &&
+            node.data.deviceId == "__time__" &&
             node.data.attribute == "timeOfDay" &&
-            node.data.value == evt.name
+            (
+              node.data.comparator == "between"
+                ? (node.data.value instanceof List && node.data.value[0] == evt.name)
+                : (node.data.value == evt.name)
+            )
         }
-        if (matches) {
-            matches.each { id, node ->
-                handleEvent(evt, fname)
-            }
+
+        matches.each { id, node ->
+            handleEvent(evt, fname)
         }
     }
 }
@@ -358,6 +379,7 @@ def apiTestFlow() {
 	def fname = json?.flow
 	def nodeId = json?.nodeId
 	def value = (json?.value ?: "Test Triggered").toString().toLowerCase()
+	def dryRun = (json?.dryRun == "true")
 	
 	def scrubbedParams = params.clone()
 	scrubbedParams.remove('access_token')
@@ -373,7 +395,7 @@ def apiTestFlow() {
         return
     }
     // Don't error if nodeId is blank, but prefer to require it for accuracy
-
+	state.testDryRun = dryRun
     // --- Build simulated event for both clickPattern AND time triggers ---
 	def evt = [:]
 	if (nodeId) {
@@ -462,6 +484,7 @@ def apiTestFlow() {
 			}
 		}
 	}
+	state.testDryRun = false
     render contentType: "application/json", data: '{"result":"Test triggered"}'
 }
 
@@ -1020,55 +1043,99 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			break
 
+		case "AND":
+			flowLog(fname, "In evaluateNode - AND", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "OR":
+			flowLog(fname, "In evaluateNode - OR", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "NOT":
+			flowLog(fname, "In evaluateNode - NOT", "debug")
+            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
+            def result = !evaluateNode(fname, input, evt, null, visited)
+            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
+            return result
+		
         case "device":
-			flowLog(fname, "In evaluateNode - device", "debug")
-            def devIds = []
-            if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
-            else if (node.data.deviceIds) devIds = [node.data.deviceIds]
-            else if (node.data.deviceId) devIds = [node.data.deviceId]
-            def cmd = resolveVars(fname, node.data.command)
-            def val = resolveVars(fname, node.data.value)
-				if(cmd =="toggle") {
-					flowLog(fname, "In evaluateNode - toggle", "debug")
-					devIds.each { devId ->
-						def device = getDeviceById(devId)
-						if (device && device.hasCommand("on") && device.hasCommand("off")) {
-							def currentVal = device.currentValue("switch")
+			flowLog(fname, "In evaluateNode - device (dryRun=${state.testDryRun})", "debug")
+			// collect device IDs
+			def devIds = []
+			if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
+			else if (node.data.deviceIds)          devIds = [node.data.deviceIds]
+			else if (node.data.deviceId)           devIds = [node.data.deviceId]
+
+			def cmd = resolveVars(fname, node.data.command)
+			def val = resolveVars(fname, node.data.value)
+
+			if (cmd == "toggle") {
+				flowLog(fname, "In evaluateNode - toggle (dryRun=${state.testDryRun})", "debug")
+				devIds.each { devId ->
+					def device = getDeviceById(devId)
+					if (device && device.hasCommand("on") && device.hasCommand("off")) {
+						def currentVal = device.currentValue("switch")
+						if (!state.testDryRun) {
 							if (currentVal == "on") {
 								device.off()
 							} else {
 								device.on()
 							}
 						} else {
-							flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
+							flowLog(fname,
+								"DRY RUN: would toggle device ${devId} (current state: ${currentVal})",
+								"info")
 						}
+					} else {
+						flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
 					}
-					node.outputs?.output_1?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				} else {
-					devIds.each { devId ->
-						def device = getDeviceById(devId)
-						if (device && cmd) {
+				}
+				// continue downstream
+				node.outputs?.output_1?.connections?.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			} else {
+				devIds.each { devId ->
+					def device = getDeviceById(devId)
+					if (device && cmd) {
+						if (!state.testDryRun) {
 							if (val != null && val != "") {
 								device."${cmd}"(val)
 							} else {
 								device."${cmd}"()
 							}
+						} else {
+							flowLog(fname,
+								"DRY RUN: would run ${cmd} on device ${devId}" +
+								(val ? " with value '${val}'" : ""),
+								"info")
 						}
 					}
-					node.outputs?.output_1?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				}		
+				}
+				// continue downstream
+				node.outputs?.output_1?.connections?.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			}
 			return
 
         case "notification":
-			flowLog(fname, "In evaluateNode - notification", "debug")
-            sendNotification(fname, node.data, evt)
+			flowLog(fname, "In evaluateNode - notification (dryRun=${state.testDryRun})", "debug")
+			if (!state.testDryRun) {
+            	sendNotification(fname, node.data, evt)
+			} else {
+				flowLog(fname, "DRY RUN: would have sent notification", "info")
+			}
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
-            }
+			}
             break
 
         case "delayMin":
@@ -1090,16 +1157,22 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "setVariable":
-            def varName = resolveVars(fname, node.data.varName)
-            def varValue = resolveVars(fname, node.data.varValue)
-            setVariable(fname, varName, varValue)
+			flowLog(fname, "In evaluateNode - setVariable (dryRun=${state.testDryRun})", "debug")
+			def varName = resolveVars(fname, node.data.varName)
+			def varValue = resolveVars(fname, node.data.varValue)
+			if (!state.testDryRun) {
+				setVariable(fname, varName, varValue)
+			} else {
+				flowLog(fname, "DRY RUN: would have set Variable - ${varName} - ${varValue}", "info")
+			}
+				
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
 
         case "saveDeviceState":
-			flowLog(fname, "In evaluateNode - saveDeviceState", "debug")
+			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${state.testDryRun})", "debug")
             def devId = node.data.deviceId
             if (devId) {
                 def device = getDeviceById(devId)
@@ -1111,8 +1184,12 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
                             if (val != null) devState[attr.name] = val
                         } catch (e) {}
                     }
-                    flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
-                    flowObj.savedDeviceStates[devId] = devState
+					if (!state.testDryRun) {
+                    	flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
+                    	flowObj.savedDeviceStates[devId] = devState
+					} else {
+						flowLog(fname, "DRY RUN: would have Saved State", "info")
+					}
                 }
             }
             node.outputs?.output_1?.connections?.each { conn ->
@@ -1121,70 +1198,78 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "restoreDeviceState":
-			flowLog(fname, "In evaluateNode - restoreDeviceState", "debug")
-            def devId = node.data.deviceId
-            if (devId) {
-                def device = getDeviceById(devId)
-                def devState = flowObj.savedDeviceStates?.get(devId)
-                if (device && devState) {
-                    devState.each { attrName, attrValue ->
-                        try {
-                            def cmd = "set${attrName.capitalize()}"
-                            if (device.hasCommand(cmd)) {
-                                device."${cmd}"(attrValue)
-                            } else if (attrName == "switch" && device.hasCommand(attrValue)) {
-                                device."${attrValue}"()
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
+			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${state.testDryRun})", "debug")
+			if (!state.testDryRun) {
+				def devId = node.data.deviceId
+				if (devId) {
+					def device = getDeviceById(devId)
+					def devState = flowObj.savedDeviceStates?.get(devId)
+					if (device && devState) {
+						devState.each { attrName, attrValue ->
+							try {
+								def cmd = "set${attrName.capitalize()}"
+								if (device.hasCommand(cmd)) {
+									device."${cmd}"(attrValue)
+								} else if (attrName == "switch" && device.hasCommand(attrValue)) {
+									device."${attrValue}"()
+								}
+							} catch (e) {}		
+						}
+					}
+				}
+			} else {
+				flowLog(fname, "DRY RUN: would have Restored Device State", "info")
+			}
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
 
         case "notMatchingVar":
-			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
-			// 1) Resolve variable name
-			def varName = resolveVars(fname, node.data.varName)
-			// 2) Gather device IDs
-			def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-						  node.data.deviceIds :
-						  (node.data.deviceId ? [node.data.deviceId] : [])
-			// 3) Filter devices by the “Not” condition
-			def attr       = node.data.attribute
-			def comparator = node.data.comparator
-			def expected   = resolveVars(fname, node.data.value)
-			def newLines   = []
-			devIds.each { devId ->
-				def device = getDeviceById(devId)
-				if (device) {
-					def curVal = device.currentValue(attr)
-					// only include when **NOT** matching
-					if (!evaluateComparator(curVal, expected, comparator)) {
-						def name = device.displayName ?: device.name
-						newLines << "${name}:${curVal}"
+			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append}) (dryRun=${state.testDryRun})", "debug")
+			if (!state.testDryRun) {
+				// 1) Resolve variable name
+				def varName = resolveVars(fname, node.data.varName)
+				// 2) Gather device IDs
+				def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+							  node.data.deviceIds :
+							  (node.data.deviceId ? [node.data.deviceId] : [])
+				// 3) Filter devices by the “Not” condition
+				def attr       = node.data.attribute
+				def comparator = node.data.comparator
+				def expected   = resolveVars(fname, node.data.value)
+				def newLines   = []
+				devIds.each { devId ->
+					def device = getDeviceById(devId)
+					if (device) {
+						def curVal = device.currentValue(attr)
+						// only include when **NOT** matching
+						if (!evaluateComparator(curVal, expected, comparator)) {
+							def name = device.displayName ?: device.name
+							newLines << "${name}:${curVal}"
+						}
 					}
 				}
-			}
-			// 4) Merge or overwrite
-			def appendMode = node.data.append as Boolean
-			def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
-			def lines      = existing ? existing.split('\n') as List : []
-			if (appendMode) {
-				newLines.each { nl ->
-					def id = nl.split(':')[0]
-					def idx = lines.findIndexOf { it.split(':')[0] == id }
-					if (idx >= 0) lines[idx] = nl else lines << nl
+				// 4) Merge or overwrite
+				def appendMode = node.data.append as Boolean
+				def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
+				def lines      = existing ? existing.split('\n') as List : []
+				if (appendMode) {
+					newLines.each { nl ->
+						def id = nl.split(':')[0]
+						def idx = lines.findIndexOf { it.split(':')[0] == id }
+						if (idx >= 0) lines[idx] = nl else lines << nl
+					}
+				} else {
+					lines = newLines
 				}
+				// 5) Save back into in-memory vars
+				flowObj.vars = flowObj.vars ?: [:]
+				flowObj.vars[varName] = lines.join('\n')
+				flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
 			} else {
-				lines = newLines
+				flowLog(fname, "DRY RUN: would have Saved Devices to Variable", "info")
 			}
-			// 5) Save back into in-memory vars
-			flowObj.vars = flowObj.vars ?: [:]
-			flowObj.vars[varName] = lines.join('\n')
-			flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
 			// 6) Continue downstream (only “true” path used here)
 			node.outputs?.output_1?.connections?.each { conn ->
 				evaluateNode(fname, conn.node, evt, null, visited)
@@ -1192,11 +1277,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			return
 
 		case "doNothing":
-			flowLog(fname, "In evaluateNode - doNothing", "debug")
+			flowLog(fname, "In evaluateNode - doNothing (dryRun=${state.testDryRun})", "debug")
 			break
 		
 		case "repeat":
-			flowLog(fname, "In evaluateNode - repeat", "debug")
+			flowLog(fname, "In evaluateNode - repeat (dryRun=${state.testDryRun})", "debug")
 			// flowObj is already declared in this scope; just initialize its repeatCounts map:
 			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
 
