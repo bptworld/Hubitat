@@ -63,7 +63,7 @@ def mainPage() {
 				paragraph "<hr>"
 				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
 				paragraph "<hr>"
-				paragraph "I've been having an issue with the app OAuth changing on it's own.  If this happens to you, you'll need to update your OAuth token and add the appId and Token in the Editor. Once you have use the toggle below, click 'Done' and come back into the app to see your new token. AT THIS POINT DO NOT HIT 'DONE'.  CLICK ON ANYTHING OUTSIDE OF THE APP - DEVICES, APPS, SETTINGS, ANYTHING.  JUST DON'T HIT 'DONE'."
+				paragraph "I've been having an issue with the app OAuth changing on it's own.  If this happens to you, you'll need to update your OAuth token and add the appId and Token in the Editor. If this happens to you, use the toggle below, then click 'Done' and come back into the app to see your new token. AT THIS POINT DO NOT HIT 'DONE'.  CLICK ON ANYTHING OUTSIDE OF THE APP - DEVICES, APPS, SETTINGS, ANYTHING.  JUST DON'T HIT 'DONE'."
 				
 				input "updateOAuth", "bool", title: "Do you need to update OAuth?", submitOnChange:true
 				if(updateOAuth) {
