@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.016 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.017 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -5342,101 +5342,106 @@
       });
 
       document.getElementById("activateFlowButton").addEventListener("click", async () => {
-        const button = document.getElementById("activateFlowButton");
-        const isActivated = button.textContent === "Activated";
-        const flowName = document.getElementById("flowName")?.textContent?.trim() || "";
-        const token = document.getElementById("hubitatToken")?.value?.trim() || "";
-        const appId = document.getElementById("hubitatAppId")?.value?.trim() || "";
+        const button       = document.getElementById("activateFlowButton");
+        const flowDropdown = document.getElementById("hubitatFileDropdown");
+        const flowName     = flowDropdown?.value?.trim() || "";
+        const token        = document.getElementById("hubitatToken")?.value.trim()  || "";
+        const appId        = document.getElementById("hubitatAppId")?.value.trim()  || "";
 
+        // 1) Validate inputs
         if (!hubitatCredentialsAreValid(true)) {
           logAction("Missing App ID or Token", "error");
           return;
         }
-
         if (!flowName) {
           logAction("No Flow selected to activate/deactivate", "error");
           return;
         }
 
-        // Toggle button state
-        const newState = !isActivated;
-        button.textContent = newState ? "Activated" : "Deactivated";
-        button.style.backgroundColor = newState ? "#4CAF50" : "#808080";
+        // 2) Decide endpoint
+        const isActive = button.textContent.trim() === "Activated";
+        const action   = isActive ? "deselectFlow" : "selectFlow";
+        const url      = `/apps/api/${appId}/${action}?access_token=${token}`;
 
-        const action = newState ? "selectFlow" : "deselectFlow";
-        const url = `/apps/api/${appId}/${action}?access_token=${token}`;
-        const body = JSON.stringify({ flow: flowName });
-
+        // 3) Disable to prevent double‐clicks
+        button.disabled = true;
         try {
-          const res = await fetch(url, {
-            method: "POST",
+          // ── Send the flow name in the POST body ──
+          const response = await fetch(url, {
+            method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body
+            body:    JSON.stringify({ flow: flowName })
           });
-          const result = await res.json();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          }
+          const result = await response.json();
+
+          // 4) Log success
           logAction(
-            newState
-              ? "✅ Flow activated: " + (result.result || JSON.stringify(result))
-              : "❎ Flow deactivated: " + (result.result || JSON.stringify(result))
+            isActive
+              ? `❎ Flow deactivated: ${result.result || JSON.stringify(result)}`
+              : `✅ Flow activated:   ${result.result || JSON.stringify(result)}`,
+            "info"
           );
-          checkIfFlowIsInUse(flowName, appId, token);
+
+          // 5) Refresh UI state
+          await checkIfFlowIsInUse(flowName, appId, token);
         } catch (err) {
-          logAction(
-            `❌ Failed to ${newState ? "activate" : "deactivate"} flow: ${err}`,
-            "error"
-          );
-          // Revert button state on error
-          button.textContent = isActivated ? "Activated" : "Deactivated";
-          button.style.backgroundColor = isActivated ? "#4CAF50" : "#808080";
+          logAction(`❌ Toggle failed: ${err}`, "error");
+        } finally {
+          button.disabled = false;
         }
       });
 
       // ── Logging Button Click Handler ─────────────────────────────────────────────
       document.getElementById("loggingButton").addEventListener("click", async () => {
-        const btn       = document.getElementById("loggingButton");
-        const isEnabled = btn.textContent === "Logging Enabled";
-        const flowName  = document.getElementById("flowName")?.textContent.trim() || "";
-        const token     = document.getElementById("hubitatToken")?.value.trim()  || "";
-        const appId     = document.getElementById("hubitatAppId")?.value.trim()  || "";
+        const btn      = document.getElementById("loggingButton");
+        const flowName = document.getElementById("hubitatFileDropdown").value.trim();
+        const token    = document.getElementById("hubitatToken").value.trim();
+        const appId    = document.getElementById("hubitatAppId").value.trim();
 
-        // 1) Credentials & flow name check
+        // 1) Validate credentials & selection
         if (!hubitatCredentialsAreValid(true)) return;
         if (!flowName) {
           logAction("No Flow selected to change logging", "error");
           return;
         }
 
-        // 2) Optimistic UI toggle
-        btn.textContent = isEnabled ? "Logging Disabled" : "Logging Enabled";
-        btn.style.backgroundColor = isEnabled ? "#808080" : "#4CAF50";
+        // 2) Determine desired action
+        const isEnabled = btn.textContent.trim() === "Logging Enabled";
+        const action    = isEnabled ? "deselectFlowLog" : "selectFlowLog";
+        const url       = `/apps/api/${appId}/${action}?access_token=${token}`;
 
-        // 3) Call Hubitat API
-        const action = isEnabled ? "deselectFlowLog" : "selectFlowLog";
-        const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
+        // 3) Disable button to prevent double‑clicks
+        btn.disabled = true;
         try {
-          const res    = await fetch(url, {
+          // 4) Call Hubitat API with JSON body
+          const response = await fetch(url, {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ flow: flowName })
           });
-          const result = await res.json();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          }
+          const result = await response.json();
+
+          // 5) Log success
           logAction(
             isEnabled
               ? `❎ Logging disabled: ${result.result || "OK"}`
-              : `✅ Logging enabled: ${result.result || "OK"}`,
+              : `✅ Logging enabled:   ${result.result || "OK"}`,
             "info"
           );
 
-          // 4) Refresh status panel (will re-sync button state too)
-          checkIfFlowIsInUse(flowName, appId, token);
+          // 6) Re‑sync both buttons’ state
+          await checkIfFlowIsInUse(flowName, appId, token);
         } catch (err) {
-          logAction(
-            `❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`,
-            "error"
-          );
-          // Roll back UI
-          btn.textContent = isEnabled ? "Logging Enabled" : "Logging Disabled";
-          btn.style.backgroundColor = isEnabled ? "#4CAF50" : "#808080";
+          logAction(`❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`, "error");
+        } finally {
+          // 7) Re‑enable button
+          btn.disabled = false;
         }
       });
 
