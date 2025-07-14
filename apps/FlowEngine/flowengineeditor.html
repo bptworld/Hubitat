@@ -3,6 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <title>Flow Engine Editor</title>
+  <!-- ── BLOCKING Hubitat Credentials Prompt & Validation ── -->
+  <script>
+    (async function ensureHubitatCredentials() {
+      // 1) Load saved or prompt until we have non-empty values
+      let appId = localStorage.getItem('hubitatAppId') || '';
+      let token = localStorage.getItem('hubitatToken') || '';
+      while (!appId) {
+        appId = prompt('Enter your Hubitat App ID (from the One app):');
+      }
+      while (!token) {
+        token = prompt('Enter your Hubitat Access Token (from the One app):');
+      }
+
+      // 2) Save and pre-fill the inputs when they exist
+      localStorage.setItem('hubitatAppId', appId.trim());
+      localStorage.setItem('hubitatToken', token.trim());
+      document.addEventListener('DOMContentLoaded', () => {
+        const a = document.getElementById('hubitatAppId');
+        const t = document.getElementById('hubitatToken');
+        if (a) a.value = appId.trim();
+        if (t) t.value = token.trim();
+      });
+
+      // 3) Test the credentials by calling listFiles once
+      try {
+        const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
+        if (!res.ok) throw new Error();
+      } catch (e) {
+        // Bad App ID or Token: clear and restart
+        localStorage.removeItem('hubitatAppId');
+        localStorage.removeItem('hubitatToken');
+        alert('Hubitat credentials invalid. You will be prompted again.');
+        location.reload();
+        return;
+      }
+      // If we reach here, credentials are good and parsing continues…
+    })();
+  </script>
+
   <link rel="stylesheet" href="FE_drawflow-css.min.css">
   <link rel="stylesheet" href="FE_drawflow-extra.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
@@ -10,9 +49,15 @@
   <script src="FE_flowvars.js"></script>
 </head>
 <body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('hubitatAppId').value = window.hubitatAppId;
+      document.getElementById('hubitatToken').value = window.hubitatToken;
+    });
+  </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.014 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.015 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -21,18 +66,17 @@
         <option value="">Loading…</option>
       </select>
       <span id="flowName"
-        style="display:inline-block; width:300px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
+        style="display:inline-block; width:300px; font-weight:bold; font-size:14px; vertical-align:middle;"></span>
 
       <div class="inline-div">
-        <label style="user-select:none;">
-          <input type="checkbox" id="activateFlowCheckbox" />
-          Activate Flow
-        </label>
-         
-        <label style="user-select:none;">
-          <input type="checkbox" id="loggingCheckbox" />
-          Logging
-        </label>
+        <button id="activateFlowButton"
+          style="font-size:14px; padding:3px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          Deactivated
+        </button>
+        <button id="loggingButton"
+          style="font-size:14px; padding:3px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          Logging Disabled
+        </button>
       </div>
       <button id="toggleToolbarBtn"
       style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
@@ -91,15 +135,12 @@
       <button id="addCondition" title="Add a Condition node">Condition</button>
       <button id="addDevice" title="Action (Device)">Action</button>
       <b> | </b>
-      <button id="addLogicAND" title="And">And</button>
       <button id="addComment" title="Comment/Note">Comment</button>
       <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
       <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
+      <button id="addDeviceToVar" title="Add a Devices to a Variable node">Devices to Variable</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
-      <button id="addLogicNOT" title="Add a NOT logic node">Not</button>
-      <button id="addNotMatchingVar" title="Add a Devices Not Matching to a Variable node">Not Variable</button>
       <button id="addNotification" title="Add a Notification node">Notification</button>
-      <button id="addLogicOR" title="Add an OR logic node">Or</button>
       <button id="addRepeat" title="Add a Repeat node">Repeat</button>
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
@@ -159,6 +200,202 @@
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
   <script>
+    // ── MINIMAP UTILITIES ────────────────────────────────────────────────────────
+    const W = 240, H = 140;
+    const MINIMAP_ID  = 'minimap-container';
+    const CANVAS_ID   = 'minimap-canvas';
+    const STORAGE_KEY = 'fe_minimap_pos';
+
+    // Show & position container
+    const container = document.getElementById(MINIMAP_ID);
+    container.style.display  = 'block';
+    container.style.position = 'fixed';
+
+    // Restore saved position
+    (function restoreMinimapPosition() {
+      try {
+        const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (pos?.left != null && pos?.top != null) {
+          container.style.left   = pos.left  + 'px';
+          container.style.top    = pos.top   + 'px';
+          container.style.right  = 'auto';
+          container.style.bottom = 'auto';
+        } else {
+          container.style.right  = '28px';
+          container.style.bottom = '24px';
+        }
+      } catch {
+        container.style.right  = '28px';
+        container.style.bottom = '24px';
+      }
+    })();
+
+    // Drag logic
+    let dragState = { active:false, sx:0, sy:0, ox:0, oy:0 };
+    container.addEventListener('mousedown', e => {
+      if ([MINIMAP_ID, CANVAS_ID].includes(e.target.id)) {
+        dragState.active = true;
+        dragState.sx = e.clientX; dragState.sy = e.clientY;
+        const r = container.getBoundingClientRect();
+        dragState.ox = r.left; dragState.oy = r.top;
+        container.style.transition = 'none';
+      }
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragState.active) return;
+      const dx = e.clientX - dragState.sx;
+      const dy = e.clientY - dragState.sy;
+      const nx = dragState.ox + dx, ny = dragState.oy + dy;
+      container.style.left   = nx + 'px';
+      container.style.top    = ny + 'px';
+      container.style.right  = 'auto';
+      container.style.bottom = 'auto';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: nx, top: ny }));
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragState.active) return;
+      dragState.active = false;
+      container.style.transition = '';
+      const r = container.getBoundingClientRect();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: r.left, top: r.top }));
+    });
+
+    // Helper to grab node box styles & first-line label
+    function getNodeStyleAndLabel(id, n) {
+      const el = document.getElementById('node-' + id);
+      let bg = '#3ad688', border = '#222', txt = '';
+      if (el) {
+        const comp = window.getComputedStyle(el);
+        bg     = comp.backgroundColor || bg;
+        border = comp.borderColor     || border;
+        const tile = el.querySelector(
+          '.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div'
+        );
+        if (tile) {
+          txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
+        } else {
+          txt = el.textContent.trim().split('\n')[0].substring(0, 6);
+        }
+      } else if (n.data && n.data.label) {
+        txt = n.data.label.substring(0, 6);
+      } else if (n.name) {
+        txt = n.name.substring(0, 6);
+      } else {
+        txt = id;
+      }
+      return { bg, border, txt };
+    }
+
+    // Draw the minimap (connections, nodes, viewport)
+    window.renderMinimap = function() {
+      const df = window.editor?.drawflow?.drawflow;
+      if (!df?.Home?.data) return;
+      const data    = df.Home.data;
+      const entries = Object.entries(data);
+      if (!entries.length) return;
+
+      // Compute flow bounds
+      let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+      entries.forEach(([_,n]) => {
+        minX = Math.min(minX, n.pos_x);
+        minY = Math.min(minY, n.pos_y);
+        maxX = Math.max(maxX, n.pos_x + 170);
+        maxY = Math.max(maxY, n.pos_y +  80);
+      });
+      minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+      const scale = Math.min(W/(maxX-minX), H/(maxY-minY));
+
+      const ctx = document.getElementById(CANVAS_ID).getContext('2d');
+      ctx.clearRect(0,0,W,H);
+
+      // Connections
+      entries.forEach(([id,n]) => {
+        Object.values(n.outputs||{}).forEach(out => {
+          (out.connections||[]).forEach(conn => {
+            const tgt = data[conn.node];
+            if (!tgt) return;
+            const x1 = (n.pos_x - minX + 80)*scale;
+            const y1 = (n.pos_y - minY + 35)*scale;
+            const x2 = (tgt.pos_x - minX + 80)*scale;
+            const y2 = (tgt.pos_y - minY + 35)*scale;
+            const pathEl = document.querySelector(
+              `.connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
+            );
+            const hilite = pathEl?.classList.contains('highlighted');
+            ctx.strokeStyle = hilite ? 'limegreen' : '#888';
+            ctx.globalAlpha = hilite ? 1 : 0.85;
+            ctx.lineWidth   = hilite ? 2 : 1.2;
+            ctx.beginPath();
+            ctx.moveTo(x1,y1);
+            ctx.bezierCurveTo(x1+32,y1, x2-32,y2, x2,y2);
+            ctx.stroke();
+          });
+        });
+      });
+
+      // Nodes & labels
+      entries.forEach(([id,n]) => {
+        const x = (n.pos_x - minX)*scale;
+        const y = (n.pos_y - minY)*scale;
+        const w = 170 * scale, h = 80 * scale;
+        let { bg, border, txt } = getNodeStyleAndLabel(id, n);
+        const el = document.getElementById('node-' + id);
+        if (el?.classList.contains('flow-path')) {
+          bg = 'limegreen'; border = 'limegreen';
+        }
+        ctx.save();
+        ctx.fillStyle   = bg;
+        ctx.strokeStyle = border;
+        ctx.lineWidth   = 1;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(x,y,w,h);
+        ctx.strokeRect(x,y,w,h);
+        ctx.restore();
+        ctx.save();
+        ctx.font         = `bold ${Math.max(9, Math.round(h/2.3))}px sans-serif`;
+        ctx.fillStyle    = "#181d20";
+        ctx.textAlign    = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(txt, x + w/2, y + h/2);
+        ctx.restore();
+      });
+
+      // Viewport rectangle
+      const precanvas = document.querySelector('.drawflow');
+      if (precanvas) {
+        const t = getComputedStyle(precanvas).transform;
+        let m = [1,0,0,1,0,0];
+        if (t !== 'none') {
+          const parts = t.match(/matrix\(([^)]+)\)/)[1].split(',');
+          m = parts.map(parseFloat);
+        }
+        const [scaleDF,, , , tx, ty] = m;
+        const rect = document.getElementById('drawflow').getBoundingClientRect();
+        const visX = -tx/scaleDF, visY = -ty/scaleDF;
+        const vx   = (visX - minX)*scale, vy = (visY - minY)*scale;
+        const vw   = (rect.width/scaleDF)*scale, vh = (rect.height/scaleDF)*scale;
+        ctx.save();
+        ctx.strokeStyle = "#f4e43a";
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth   = 2;
+        ctx.strokeRect(vx, vy, vw, vh);
+        ctx.restore();
+      }
+    };
+
+    // Subscribe minimap redraw to Drawflow events
+    window.hookMinimapEvents = function() {
+      if (!window.editor) return;
+      [
+        'nodeMoved','nodeCreated','nodeRemoved',
+        'connectionCreated','connectionRemoved',
+        'import','zoom'
+      ].forEach(evt => window.editor.on(evt, window.renderMinimap));
+      setInterval(window.renderMinimap, 2000);
+    };
+    // ───────────────────────────────────────────────────────────────────────────────
+  </script>
+  <script>
     // 1) Fetch the list of flow-files from Hubitat
     async function fetchHubitatFiles() {
       const appId = document.getElementById("hubitatAppId").value.trim();
@@ -217,8 +454,7 @@
         .replace(/_{2,}/g, "_")
         .replace(/^_+|_+$/g, "");
     }
-  </script>
-  <script>
+ 
     var devices = [];
     window.editor = null;
     window._multiSelectedNodes = new Set();
@@ -246,7 +482,7 @@
 
     window.undoStack = [];
     window.redoStack = [];
-
+    
     function pushUndoState() {
       if (!editor || !editor.export) {
         return;
@@ -455,81 +691,70 @@
     }
 
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
-      try {
-        if (typeof fetchHubitatVarFileContent !== "function") {
-          throw new Error("fetchHubitatVarFileContent not available");
-        }
-
-        // 1) Fetch the file from Hubitat
-        const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-        let parsed = [];
-
-        if (txt && txt.trim()) {
-          try {
-            parsed = JSON.parse(txt);
-            logAction("Auto-loaded FE_global_vars.json", "info");
-          } catch (e) {
-            console.warn("Globals JSON invalid. Starting with empty globals.", e);
-          }
-        } else {
-          // 2) If missing or empty, initialize on Hubitat
-          parsed = [];
-          if (typeof uploadToHubitatFile === "function") {
-            await uploadToHubitatFile(
-              "FE_global_vars.json",
-              JSON.stringify(parsed, null, 2),
-              { mimeType: "application/json" }
-            );
-            logAction("FE_global_vars.json not found: created new empty file", "warn");
-          } else if (retries > 0) {
-            // wait for uploadToHubitatFile to become available
-            setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
-            logAction("Waiting for uploadToHubitatFile to become available...", "info");
-            return;
-          } else {
-            logAction("Cannot create FE_global_vars.json (missing upload). Continuing with empty globals.", "warn");
-          }
-        }
-
-        // 3) Populate in-memory state and UI
-        window.FE_global_vars      = parsed;
-        window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
-        if (window.flowVars?.setGlobalVars) {
-          flowVars.setGlobalVars(parsed);
-        }
-        if (window.flowVars?.renderManager) {
-          flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
-        }
-        if (editor?.selected_id) {
-          renderEditor(editor.getNodeFromId(editor.selected_id));
-        }
-        renderVariableInspector();
-
-      } catch (e) {
-        if (retries > 0) {
-          setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
-          return;
-        }
-        console.error("Error loading FE_global_vars.json:", e);
-        window.FE_global_vars      = [];
-        window.FE_global_var_names = [];
-        renderVariableInspector();
+      // 0) sanity check
+      if (typeof fetchHubitatVarFileContent !== "function") {
+        throw new Error("fetchHubitatVarFileContent not available");
       }
 
-      // 4) Start polling Hubitat for external changes every 5s
-      let lastGlobalJson = JSON.stringify(window.FE_global_vars);
+      // 1) fetch the file
+      let txt;
+      try {
+        txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+      } catch (e) {
+        if (retries > 0) {
+          // transient error, retry
+          return setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+        }
+        logAction("Error fetching FE_global_vars.json – aborting globals load", "error");
+        return;
+      }
+
+      // 2) if not found or empty, skip globals entirely
+      if (!txt || !txt.trim()) {
+        logAction("FE_global_vars.json not found – skipping globals load", "warn");
+        return;
+      }
+
+      // 3) parse (or abort on invalid JSON)
+      let parsed;
+      try {
+        parsed = JSON.parse(txt);
+        logAction("Auto-loaded FE_global_vars.json", "info");
+      } catch (e) {
+        console.warn("FE_global_vars.json is invalid JSON – aborting globals load", e);
+        return;
+      }
+
+      // 4) populate in-memory state and UI
+      window.FE_global_vars      = parsed;
+      window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
+
+      if (window.flowVars?.setGlobalVars) {
+        flowVars.setGlobalVars(parsed);
+      }
+      if (window.flowVars?.renderManager) {
+        flowVars.renderManager(
+          document.getElementById("variableManager"),
+          { globalVars: true }
+        );
+      }
+      if (editor?.selected_id) {
+        renderEditor(editor.getNodeFromId(editor.selected_id));
+      }
+      renderVariableInspector();
+
+      // 5) start polling only because we have a valid file
+      let lastGlobalJson = JSON.stringify(parsed);
       setInterval(async () => {
         try {
           const txt2 = await fetchHubitatVarFileContent("FE_global_vars.json");
-          let parsed2 = [];
-          if (txt2 && txt2.trim()) {
-            try {
-              parsed2 = JSON.parse(txt2);
-            } catch (e) {
-              console.warn("Invalid globals JSON on poll", e);
-            }
+          if (!txt2 || !txt2.trim()) {
+            // user deleted the file externally – stop polling
+            logAction("FE_global_vars.json removed – stopping globals poll", "warn");
+            return;
           }
-          const json2 = JSON.stringify(parsed2);
+          const parsed2 = JSON.parse(txt2);
+          const json2   = JSON.stringify(parsed2);
           if (json2 !== lastGlobalJson) {
             lastGlobalJson             = json2;
             window.FE_global_vars      = parsed2;
@@ -539,16 +764,19 @@
               flowVars.setGlobalVars(parsed2);
             }
             if (window.flowVars?.renderManager) {
-              flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
+              flowVars.renderManager(
+                document.getElementById("variableManager"),
+                { globalVars: true }
+              );
             }
             if (editor?.selected_id) {
               renderEditor(editor.getNodeFromId(editor.selected_id));
             }
             renderVariableInspector();
-            //logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
+            logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
           }
         } catch (e) {
-          console.warn("Error polling FE_global_vars.json:", e);
+          console.warn("Error polling FE_global_vars.json – poll aborted", e);
         }
       }, 5000);
     }
@@ -830,15 +1058,6 @@
       if (t === "donothing") {
         return `<div class="logic-node">Do Nothing<${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}/div>`;
       }
-      if (t === "and") {
-        return `<div class="logic-node">AND${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "or") {
-        return `<div class="logic-node">OR${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "not") {
-        return `<div class="logic-node">NOT${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
       if (t === "delay") {
         let label = "Delay";
         if (typeof data.ms === "number" && !isNaN(data.ms)) {
@@ -931,36 +1150,28 @@
       }
 
       if (t === "notmatchingvar") {
-        let devLabel = "";
-        try {
-          if (data && data.deviceIds && Array.isArray(data.deviceIds) && data.deviceIds.length) {
-            const devs = window.devices || [];
-            devLabel = data.deviceIds.map(id => {
-              const dev = devs.find(d => d.id == id);
-              return dev ? (dev.label || dev.name || id) : id;
-            }).join(", ");
-          }
-        } catch (e) { devLabel = ""; }
-        let attribute = (data && typeof data.attribute === "string" && data.attribute !== "undefined") ? data.attribute : "";
-        let value = (data && typeof data.value === "string" && data.value !== "undefined") ? data.value : "";
+        const devLabel = "";
+        const attribute = "";
+        const value = "";
+        const outputVar = (data.outputVar && data.outputVar.trim().toLowerCase() !== "undefined")
+          ? data.outputVar
+          : "Devices to a Variable";
+        const scope = data.varScope === "global" ? "Global" : "Flow";
+        const mode  = data.append ? "Append" : "Overwrite";
 
-        let outputVar = (
-          data && typeof data.outputVar === "string" &&
-          data.outputVar.trim() &&
-          data.outputVar.trim().toLowerCase() !== "undefined"
-        ) ? data.outputVar : "Devices Not Matching to a Variable";
-
-        let scope = (data && data.varScope === "global") ? "Global" : "Flow";
         return `<div class="setVariable-tile">
-          Devices Not Matching to a Variable<br>
+          Devices to a Variable<br>
           <span style="font-size:11px">
             ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
             ${attribute ? "Attr: " + attribute + "<br>" : ""}
-            ${value ? "Not: " + value + "<br>" : ""}
+            ${value     ? "Not:  " + value     + "<br>" : ""}
             <hr>
-            <b>Output variable / file name:</b> ${outputVar}<br><b>Attr Type:</b> ${scope}
+            <b>Output variable / file name:</b> ${outputVar}<br>
+            <b>Attr Type:</b> ${scope}<br>
+            <b>Save Mode:</b> ${mode}
           </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
+          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;
+              font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
         </div>`;
       }
 
@@ -1215,36 +1426,34 @@
       }, 350);
 
       function patchFlowWithDeviceLabels(flow, devices) {
-        if (
-          flow && flow.drawflow && flow.drawflow.drawflow &&
-          flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data
-        ) {
-          Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
-            if (node.name === "notMatchingVar") {
-              if (!node.data.outputVar || node.data.outputVar === "undefined") {
-                node.data.outputVar = "Devices Not Matching to a Variable";
-              }
-            }
-          });
-        }
-        if (!flow) flow = {};
-        if (!flow.drawflow) flow.drawflow = {};
-        if (!flow.drawflow.drawflow) flow.drawflow.drawflow = {};
-        if (!flow.drawflow.drawflow.Home) flow.drawflow.drawflow.Home = { data: {} };
-        if (!flow.drawflow.drawflow.Home.data) flow.drawflow.drawflow.Home.data = {}; 
+        // Support both new and legacy JSON paths
+        const dataNodes =
+          (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data)
+            ? flow.drawflow.Home.data
+            : (flow && flow.drawflow && flow.drawflow.drawflow &&
+              flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data)
+              ? flow.drawflow.drawflow.Home.data
+              : {};
 
-        Object.values(flow.drawflow.drawflow.Home.data).forEach(node => {
-          if (
-            ["device", "condition", "eventTrigger"].includes(node.name) &&
-            node.data &&
-            node.data.deviceId
-          ) {
-            let dev = devices.find(d => d.id == node.data.deviceId);
-            if (dev) {
-              node.data.deviceLabel = dev.label || dev.name || node.data.deviceId;
-            } else {
-              node.data.deviceLabel = node.data.deviceId;
+        // Ensure "notMatchingVar" nodes get a default outputVar label
+        Object.values(dataNodes).forEach(node => {
+          const name = (node.name || "").toLowerCase();
+          if (name === "notmatchingvar") {
+            if (!node.data.outputVar || node.data.outputVar === "undefined") {
+              node.data.outputVar = "Devices to a Variable";
             }
+          }
+        });
+
+        // Tag any device-based node with its human-readable label
+        Object.values(dataNodes).forEach(node => {
+          const type = (node.name || "").toLowerCase();
+          if (["device", "condition", "eventtrigger"].includes(type) &&
+              node.data && node.data.deviceId) {
+            const dev = devices.find(d => d.id == node.data.deviceId);
+            node.data.deviceLabel = dev
+              ? (dev.label || dev.name)
+              : node.data.deviceId;
           }
         });
       }
@@ -2226,19 +2435,35 @@
           varLabel.textContent = "Variable Name";
           el.appendChild(varLabel);
 
-          const varInput = document.createElement("input");
-          varInput.type = "text";
-          varInput.placeholder = "Enter variable name";
-          varInput.value = node.data.varName || "";
-          varInput.style.width = "98%";
-          varInput.oninput = () => {
-            // Reuse the same sanitizer as flow name
-            node.data.varName = sanitizeFlowName(varInput.value);
-            varInput.value = node.data.varName; // Show fixed value in UI
+          // dropdown of existing variables
+          const varSelect = document.createElement("select");
+          varSelect.style.width = "98%";
+
+          // gather flow & global var names
+          const flowVarNames   = (window.FE_flowvars   || []).map(v => v.name);
+          const globalVarNames = window.FE_global_var_names || [];
+          const allVarNames    = Array.from(new Set([...flowVarNames, ...globalVarNames]));
+
+          // build options
+          allVarNames.forEach(name => {
+            const opt = document.createElement("option");
+            opt.value       = name;
+            opt.textContent = name;
+            if (node.data.varName === name) opt.selected = true;
+            varSelect.appendChild(opt);
+          });
+
+          varSelect.onchange = () => {
+            node.data.varName = varSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            editor.updateNodeHtmlFromId(
+              node.id,
+              nodeTileHtml(node.name, node.data, node.id)
+            );
+            markFlowNeedsSave(true);
           };
-          el.appendChild(varInput);
+
+          el.appendChild(varSelect);
 
           // Value
           const valLabel = document.createElement("label");
@@ -2466,75 +2691,81 @@
         }
 
         if (node.name === "notMatchingVar") {
-          // 1) Normalize deviceIds array exactly like a Condition node
+          // 1) Normalize deviceIds
           if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
           node.data.deviceId = node.data.deviceIds.length === 1
             ? node.data.deviceIds[0]
             : "";
 
-          // 2) Prepare full device list with special entries
+          // 2) Device picker section (unchanged) …
           const allDevices    = Array.isArray(window.devices) ? window.devices : [];
           const pickerDevices = getPickerDevices(allDevices);
-
-          // 3) Device(s) picker
           renderDevicePickerSection(
             el,
             node,
             pickerDevices,
             (newIds, newLabels) => {
-              // Update selection & clear dependent fields
               node.data.deviceIds   = newIds;
               node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
               node.data.deviceLabel = newLabels.join(", ");
-              node.data.attribute   = "";
-              node.data.comparator  = "";
+              node.data.attribute   =
+              node.data.comparator  =
               node.data.value       = "";
-
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-
-              // Rebuild pickers in place
-              const pickerDiv = document.getElementById("notmatchingvar-pickers-" + node.id);
-              pickerDiv.innerHTML = "";
-              if (!buildTimeDevicePicker(pickerDiv, node)) {
-                renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
+              const pickDiv = document.getElementById("notmatchingvar-pickers-" + node.id);
+              pickDiv.innerHTML = "";
+              if (!buildTimeDevicePicker(pickDiv, node)) {
+                renderConditionDeviceFields(pickDiv, node, pickerDevices, editor, nodeTileHtml);
               }
               markFlowNeedsSave(true);
             },
-            true  // allow multi-select
+            true
           );
 
-          // 4) Picker container (time/condition fields)
+          // 3) Picker container (unchanged) …
           const pickerDiv = document.createElement("div");
           pickerDiv.id    = "notmatchingvar-pickers-" + node.id;
           pickerDiv.style.marginTop = "8px";
           el.appendChild(pickerDiv);
-
-          // 5) Initial build of time-or-condition pickers
           if (!buildTimeDevicePicker(pickerDiv, node)) {
             renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
           }
 
-          // 6) Variable-name input
-          const varLabel = document.createElement("label");
-          varLabel.textContent = "Variable name";
-          varLabel.style.display = "block";
-          el.appendChild(varLabel);
-
-          const varInput = document.createElement("input");
-          varInput.type          = "text";
-          varInput.placeholder   = "Variable name";
-          varInput.value         = node.data.outputVar || "";
-          varInput.style.width   = "98%";
-          varInput.style.marginBottom = "12px";
-          varInput.oninput = () => {
-            node.data.outputVar = sanitizeFlowName(varInput.value);
-            varInput.value      = node.data.outputVar;
+          // 4) Variable Name dropdown (with “(none)”)
+          el.insertAdjacentHTML("beforeend", `
+            <label>Variable Name</label>
+            <select id="varName_${node.id}" style="width:98%; margin-bottom:12px;">
+              <option value="" ${!node.data.varName ? "selected" : ""}>(none)</option>
+              ${(Array.from(new Set([
+                  ...(window.FE_flowvars   || []).map(v => v.name),
+                  ...(window.FE_global_var_names || [])
+                ])).map(n => `
+                  <option value="${n}" ${node.data.varName === n ? "selected" : ""}>${n}</option>
+                `).join(""))}
+            </select>
+          `);
+          document.getElementById(`varName_${node.id}`).onchange = e => {
+            node.data.varName = e.target.value;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             markFlowNeedsSave(true);
           };
-          el.appendChild(varInput);
+
+          // 5) Save Mode dropdown
+          el.insertAdjacentHTML("beforeend", `
+            <label>Save Mode</label>
+            <select id="saveMode_${node.id}" style="width:98%; margin-bottom:12px;">
+              <option value="overwrite" ${!node.data.append ? "selected" : ""}>Overwrite</option>
+              <option value="append"    ${ node.data.append ? "selected" : ""}>Append</option>
+            </select>
+          `);
+          document.getElementById(`saveMode_${node.id}`).onchange = e => {
+            node.data.append = e.target.value === "append";
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
 
           return;
         }
@@ -2665,15 +2896,17 @@
         wildcardMsg.style.marginTop = "7px";
         wildcardMsg.style.color = "#b7cdfd";
         wildcardMsg.innerHTML =
-          '<b><u>Wildcards:</b></u><br>' +
-          '<b>{device}</b> -	Event device name/label<br>' +
-          '<b>{value}</b> -	Event value<br>' +
-          '<b>{text}</b> -	Event description or text<br>' +
-          '<b>{time24}</b> -	Event time (24-hour, e.g. 14:32)<br>' +
-          '<b>{time12}</b> -	Event time (12-hour, e.g. 3:00 pm)<br>' +
-          '<b>{date}</b> -	Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
-          '<b>{now}</b> -	Current system date & time (now)<br>' +
-          '<span style="color:#eee;">Example: The {device} is {value} at {time12} on {date}</span>';
+          '<b><u>Wildcards:</u></b><br>' +
+          '<b>{device}</b> – Event device name/label<br>' +
+          '<b>{value}</b> – Event value<br>' +
+          '<b>{text}</b> – Event description or text<br>' +
+          '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
+          '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
+          '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
+          '<b>{now}</b> – Current system date & time (now)<br>' +
+          '<b>{variableName}</b> – Selected variable name<br>' +
+          '<b>{variableValue}</b> – Selected variable value<br>' +
+          '<span style="color:#eee;">Example: {variableName} = {variableValue} at {time12} on {date}</span>';
         el.appendChild(wildcardMsg);
 
           return;
@@ -2822,7 +3055,7 @@
       document.getElementById("redoBtn").onclick = doRedo;
 
       document.getElementById("addRepeat").onclick = function() {
-        logAction("addNotMatchingVar button clicked.");
+        logAction("addDeviceToVar button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("repeat", 1, 0, x, y, "repeat",
           {}, nodeTileHtml("repeat", {}),
@@ -2834,10 +3067,10 @@
         window.newNodeCounter++;
       };
     
-      document.getElementById("addNotMatchingVar").onclick = function () {
-        logAction("addNotMatchingVar button clicked.");
+      document.getElementById("addDeviceToVar").onclick = function () {
+        logAction("addDeviceToVar button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("notMatchingVar", 1, 1, x, y, "notMatchingVar", {
+        editor.addNode("notMatchingVar", 1, 2, x, y, "notMatchingVar", {
             deviceIds: [], attribute: "", value: "", varScope: "flow"}
         ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
         markFlowNeedsSave(true);
@@ -2852,7 +3085,7 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
-        logAction("addNotMatchingVar finished.");
+        logAction("addDeviceToVar finished.");
       };
 
       // --- Save Device State ---
@@ -3115,54 +3348,6 @@
         logAction("addNotification finished.");
       };
 
-      document.getElementById("addLogicAND").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("AND", 1, 2, x, y, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addLogicOR").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("OR", 1, 2, x, y, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addLogicNOT").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("NOT", 1, 2, x, y, "NOT", {}, nodeTileHtml("NOT", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
       document.getElementById("addDoNothing").onclick = () => {
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
@@ -3274,7 +3459,7 @@
 
         const dropdown = document.getElementById("hubitatFileDropdown");
         dropdown.style.display = "inline-block";
-        dropdown.innerHTML = "<option>Loading…</option>";
+        dropdown.innerHTML     = "<option>Loading…</option>";
 
         let files = [];
         try {
@@ -3291,34 +3476,44 @@
           dropdown.innerHTML = "<option value=''>Pick a flow…</option>";
           files.forEach(f => {
             const opt = document.createElement("option");
-            opt.value = f;
+            opt.value       = f;
             opt.textContent = f.replace(/\.json$/i, "");
             dropdown.appendChild(opt);
           });
         }
 
-        // wire up selection
+        // ─── wire up selection ───────────────────────────────────────────────
         dropdown.onchange = async function() {
           const fileName = dropdown.value.trim();
-          if (!fileName) return alert("Please select a flow file.");
+          if (!fileName) {
+            alert("Please select a flow file.");
+            return;
+          }
           try {
-            // 1) fetch & import
+            // 1) fetch & import the flow JSON
             const data = await fetchHubitatFileContent(fileName);
             editor.import(data);
 
-            // 2) update UI
+            // 2) patch in device labels (for Action/Condition tiles)
+            patchFlowWithDeviceLabels(data, window.devices);
+
+            // 3) initialize & draw the minimap
+            hookMinimapEvents();
+            renderMinimap();
+
+            // 4) update the Flow Name display and zoom to fit
             document.getElementById("flowName").textContent = fileName;
             zoomDrawflowToFit(40);
             markFlowNeedsSave(false);
             logAction(`Loaded “${fileName}” from Hubitat.`, "success");
 
-            // 3) refresh Test‐Flow panel
+            // 5) refresh the Test-Flow status panel
             const appId = document.getElementById("hubitatAppId").value.trim();
             const token = document.getElementById("hubitatToken").value.trim();
             checkIfFlowIsInUse(fileName, appId, token);
           } catch (e) {
             alert("❌ Failed to load: " + e.message);
-            logAction("Error loading file: " + e,"error");
+            logAction("Error loading file: " + e, "error");
           }
         };
       });
@@ -3954,14 +4149,22 @@
         fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`)
           .then(resp => resp.json())
           .then(list => {
-            const inUse    = list.filter(x => x.flowName === flowFileName + ".json");
-            const statusDiv = document.getElementById("flowTestStatus");
+            const inUse       = list.filter(x => x.flowName === flowFileName + ".json");
+            const statusDiv   = document.getElementById("flowTestStatus");
+            const activateBtn = document.getElementById("activateFlowButton");
+            const logBtn      = document.getElementById("loggingButton");
 
-            // ── TICK/UNTICK THE “Activate Flow” BOX ──────────────────────────
-            document.getElementById("activateFlowCheckbox").checked = inUse.length > 0;
+            // ── Update the “Activate Flow” button state ────────────────────
+            if (inUse.length > 0) {
+              activateBtn.textContent = "Activated";
+              activateBtn.style.backgroundColor = "#4CAF50";  // Green
+            } else {
+              activateBtn.textContent = "Deactivated";
+              activateBtn.style.backgroundColor = "#808080";  // Grey
+            }
 
-            if (inUse.length) {
-              // Check if logging is enabled for this flow
+            if (inUse.length > 0) {
+              // Flow is active: check if logging is enabled
               fetch(`/apps/api/${appId}/settings?access_token=${token}`)
                 .then(r => r.json())
                 .then(settings => {
@@ -3969,24 +4172,31 @@
                     Array.isArray(settings?.perFlowLogEnabled) &&
                     settings.perFlowLogEnabled.includes(flowFileName + ".json");
 
-                  // ── TICK/UNTICK THE “Enable Logging” BOX ──────────────────────
-                  document.getElementById("loggingCheckbox").checked = loggingEnabled;
+                  // ── Update the “Logging” button ────────────────────────────
+                  logBtn.textContent = loggingEnabled ? "Logging Enabled" : "Logging Disabled";
+                  logBtn.style.backgroundColor = loggingEnabled ? "#4CAF50" : "#808080";
 
+                  // ── Build the status panel UI ───────────────────────────────
                   statusDiv.innerHTML = `
                     <span id="flowName"
                           style="display:inline-block; font-weight:bold; font-size:20px;">
                       ${flowFileName.replace(/\.json$/i, "")}
                     </span><br>
-                    <small>Flow is Active in Hubitat</small> | 
+                    <small>Flow is Active in Hubitat</small> |
                     ${loggingEnabled
                       ? "<small>Logging is Enabled</small><br>"
                       : "<small>Logging is Disabled</small><br>"}
-                    <input id="testFlowInput" type="text" placeholder="Test value..." style="margin:4px 0;">
-                    <button id="testFlowBtn" style="margin-left:4px;">▶️ Test the Flow</button><br>
-                    <small>To test this Flow, click on the Trigger device to test. Then enter a value…</small>
+                    <input id="testFlowInput" type="text"
+                          placeholder="Test value..."
+                          style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:15px; width:160px; margin-right:8px;">
+                    <button id="testFlowBtn"
+                            style="background:#1b9b1b; color:#fff; border:none; padding:7px 18px; border-radius:5px; cursor:pointer; font-size:15px; margin-right:18px;">
+                      ▶️ Test
+                    </button><br>
+                    <small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
                   `;
 
-                  // ── TEST-FLOW BUTTON HANDLER ───────────────────────────────────
+                  // ── TEST-FLOW BUTTON HANDLER ────────────────────────────────
                   const testInput = document.getElementById("testFlowInput");
                   const testBtn   = document.getElementById("testFlowBtn");
                   testBtn.onclick = async () => {
@@ -3996,10 +4206,11 @@
                       return;
                     }
 
-                    // Grab the selected flow name (add .json if missing)
+                    // Ensure flowName ends with .json
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     const fl       = dropdown.value.trim();
                     const flow     = fl.endsWith(".json") ? fl : fl + ".json";
+
                     logAction("flow:" + flow, "info");
                     if (!flow) {
                       alert("Please select a flow to test.");
@@ -4007,7 +4218,7 @@
                     }
 
                     try {
-                      // Build form-encoded body instead of JSON
+                      // Use form-encoded body
                       const form = new URLSearchParams();
                       form.append("flow", flow);
                       form.append("value", val);
@@ -4016,85 +4227,61 @@
                         `/apps/api/${appId}/testFlow?access_token=${token}`,
                         {
                           method: "POST",
-                          headers: {
-                            "Content-Type": "application/x-www-form-urlencoded"
-                          },
+                          headers: { "Content-Type": "application/x-www-form-urlencoded" },
                           body: form.toString()
                         }
                       );
 
-                      // Read the response as text and fallback gracefully
                       const text = await res.text();
                       let parsed;
                       try {
                         parsed = text ? JSON.parse(text) : {};
-                      } catch (_) {
+                      } catch {
                         parsed = { result: text };
                       }
 
                       logAction(
-                        `▶️ Test flow "${flow}": ${parsed.result || JSON.stringify(parsed)}`,
+                        `▶️ Test flow "${flow}": ${parsed.result || JSON.stringify(parsed)}`, 
                         "info"
                       );
                     } catch (err) {
                       logAction("❌ Failed to test flow: " + err, "error");
                     }
                   };
+                })
+                .catch(err => {
+                  console.error("Error fetching logging settings:", err);
+                  logBtn.textContent = "Logging Disabled";
+                  logBtn.style.backgroundColor = "#808080";
                 });
             } else {
-              // no flow active → clear the status panel
+              // No flow active → clear status panel & reset logging button
               statusDiv.innerHTML = `
                 <span id="flowName"
                       style="display:inline-block; font-weight:bold; font-size:20px;">
                   ${flowFileName.replace(/\.json$/i, "")}
                 </span>
                 <br><br>
-                <span style="color:#b00;font-weight:600;">
+                <span style="color:#b00; font-weight:600;">
                   Activate Flow in Hubitat to enable Testing
                 </span>
               `;
-
-              // also untick logging when flow is not active
-              document.getElementById("loggingCheckbox").checked = false;
+              logBtn.textContent = "Logging Disabled";
+              logBtn.style.backgroundColor = "#808080";
             }
           })
-          .catch((e) => {
-            // on error, clear both
-            document.getElementById("activateFlowCheckbox").checked = false;
-            document.getElementById("loggingCheckbox").checked  = false;
+          .catch(e => {
+            // On error, revert to safe defaults
+            const activateBtn = document.getElementById("activateFlowButton");
+            const logBtn      = document.getElementById("loggingButton");
+            activateBtn.textContent = "Deactivated";
+            activateBtn.style.backgroundColor = "#808080";
+            logBtn.textContent      = "Logging Disabled";
+            logBtn.style.backgroundColor = "#808080";
             document.getElementById("flowTestStatus").innerHTML =
               `<span style="color:#b00;">Failed to check flow status.</span>`;
             console.error("Failed to fetch active flows:", e);
           });
-      }
-
-      function updateDrawflowBottomLine() {
-        const df = document.getElementById("drawflow");
-        const bl = document.getElementById("drawflow-bottomline");
-        if (!df || !bl) return;
-        bl.style.top = (df.offsetHeight - 1) + "px";
-      }
-      window.addEventListener('resize', updateDrawflowBottomLine);
-      document.addEventListener('DOMContentLoaded', updateDrawflowBottomLine);
-
-      document.getElementById("clearLogBtn").onclick = function() {
-        const logBox = document.getElementById("logBox");
-        if (logBox) {
-          logBox.innerHTML = "Logs:<br>";
-        }
-      };
-
-      function placeNewNode(type, inputs, outputs, data, html) {
-        // Place at the current tracked spot
-        editor.addNode(type, inputs, outputs, window.nextNodeX, window.nextNodeY, type, data, html);
-
-        // Move down for next node
-        window.nextNodeY += window.nodeYIncrement;
-        if (window.nextNodeY > window.nodeYLimit) {
-          window.nextNodeY = window.nodeStartY;
-          window.nextNodeX -= 180; // New column left
-          if (window.nextNodeX < 50) window.nextNodeX = window.nodeStartX; // Reset if too far
-        }
       }
 
       function getNextNodePosition() {
@@ -4289,7 +4476,7 @@
               node.outputs = { "output_1": { connections: [] } };
               fix = true;
             }
-          } else if (t === 'condition' || t === 'not' || t === 'and' || t === 'or') {
+          } else if (t === 'condition' || t === 'not' || t === 'and' || t === 'or' || t === 'notmatchingvar') {
             // 1 input, 2 outputs
             if (Object.keys(node.inputs).length !== 1) {
               node.inputs = { "input_1": { connections: [] } };
@@ -4404,332 +4591,6 @@
       };
     </script>
     <script>
-      window.addEventListener('DOMContentLoaded', function() {
-        const W = 240, H = 140;
-        const MINIMAP_ID = 'minimap-container';
-        const CANVAS_ID = 'minimap-canvas';
-        const STORAGE_KEY = "fe_minimap_pos";
-
-        // Show minimap on load
-        const container = document.getElementById(MINIMAP_ID);
-        container.style.display = '';
-
-        // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
-        let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
-
-        // Load position from storage (if any)
-        function restoreMinimapPosition() {
-          try {
-            const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (pos && typeof pos.left === "number" && typeof pos.top === "number") {
-              container.style.left = pos.left + "px";
-              container.style.top = pos.top + "px";
-              container.style.right = "auto";
-              container.style.bottom = "auto";
-            } else {
-              container.style.right = "28px";
-              container.style.bottom = "24px";
-            }
-          } catch(e) {
-            // fallback
-            container.style.right = "28px";
-            container.style.bottom = "24px";
-          }
-        }
-        restoreMinimapPosition();
-
-        container.addEventListener('mousedown', function(e) {
-          // Only drag if clicking the container or canvas, not the inner label
-          if (e.target.id !== MINIMAP_ID && e.target.id !== CANVAS_ID) return;
-          isDragging = true;
-          startX = e.clientX;
-          startY = e.clientY;
-          const rect = container.getBoundingClientRect();
-          origX = rect.left;
-          origY = rect.top;
-          container.style.transition = "none";
-          e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', function(e) {
-          if (!isDragging) return;
-          const dx = e.clientX - startX;
-          const dy = e.clientY - startY;
-          const newLeft = origX + dx;
-          const newTop = origY + dy;
-          container.style.left = newLeft + "px";
-          container.style.top = newTop + "px";
-          container.style.right = "auto";
-          container.style.bottom = "auto";
-          // Save live while dragging
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: newLeft, top: newTop }));
-        });
-
-        document.addEventListener('mouseup', function() {
-          if (isDragging) {
-            isDragging = false;
-            container.style.transition = "";
-            // Save one more time in case of final position
-            const rect = container.getBoundingClientRect();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
-          }
-        });
-
-        // Set initial left/top if not set
-        container.style.position = "fixed";
-        if (!container.style.left && !container.style.top) {
-          container.style.right = "28px";
-          container.style.bottom = "24px";
-        }
-
-        // ---- REALISTIC MINIMAP DRAWING ----
-
-        function getNodeStyleAndLabel(id, n) {
-          const el = document.getElementById('node-' + id);
-          let bg = '#3ad688', border = '#222', txt = '';
-          if (el) {
-            const comp = window.getComputedStyle(el);
-            bg = comp.backgroundColor || bg;
-            border = comp.borderColor || border;
-            // Use best label from tile
-            const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
-            if (tile) {
-              txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
-            } else {
-              txt = el.textContent.trim().split('\n')[0].substring(0, 6);
-            }
-          } else if (n.data && n.data.label) {
-            txt = n.data.label.substring(0, 6);
-          } else if (n.name) {
-            txt = n.name.substring(0, 6);
-          } else {
-            txt = id;
-          }
-          return { bg, border, txt };
-        }
-
-        function renderMinimap() {
-          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
-          const nodes = Object.entries(data);
-
-          if (!nodes.length) return;
-
-          // Compute bounding box
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          nodes.forEach(([id, n]) => {
-            minX = Math.min(minX, n.pos_x);
-            minY = Math.min(minY, n.pos_y);
-            maxX = Math.max(maxX, n.pos_x + 170);
-            maxY = Math.max(maxY, n.pos_y + 80);
-          });
-          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
-          const scaleX = W / Math.max(1, maxX - minX);
-          const scaleY = H / Math.max(1, maxY - minY);
-          const scale = Math.min(scaleX, scaleY);
-
-          const ctx = document.getElementById(CANVAS_ID).getContext('2d');
-          ctx.clearRect(0, 0, W, H);
-
-          // Draw connections
-          nodes.forEach(([id, n]) => {
-            Object.values(n.outputs || {}).forEach(out => {
-              (out.connections || []).forEach(conn => {
-                const target = data[conn.node];
-                if (!target) return;
-
-                const x1 = Math.round((n.pos_x - minX + 80) * scale);
-                const y1 = Math.round((n.pos_y - minY + 35) * scale);
-                const x2 = Math.round((target.pos_x - minX + 80) * scale);
-                const y2 = Math.round((target.pos_y - minY + 35) * scale);
-
-                // Find the real DOM path element
-                const pathEl = document.querySelector(
-                  `.connection.node_out_node-${id}.node_in_node-${conn.node} .main-path,
-                  .connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
-                );
-
-                // Style based on whether it's highlighted upstream
-                if (pathEl && pathEl.classList.contains('highlighted')) {
-                  ctx.strokeStyle = "limegreen";
-                  ctx.globalAlpha  = 1;
-                  ctx.lineWidth    = 2;
-                } else {
-                  ctx.strokeStyle = "#888";
-                  ctx.globalAlpha  = 0.85;
-                  ctx.lineWidth    = 1.2;
-                }
-
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.bezierCurveTo(
-                  x1 + 32, y1,
-                  x2 - 32, y2,
-                  x2, y2
-                );
-                ctx.stroke();
-              });
-            });
-          });
-
-          // Draw nodes with real color, border, label, and flow-path highlights
-          nodes.forEach(([id, n]) => {
-            const x = Math.round((n.pos_x - minX) * scale);
-            const y = Math.round((n.pos_y - minY) * scale);
-            const w = Math.max(30, Math.round(120 * scale));
-            const h = Math.max(18, Math.round(48  * scale));
-
-            // grab base style & label
-            let { bg, border, txt } = getNodeStyleAndLabel(id, n);
-
-            // if this node is in the active flow-path, force green
-            const nodeEl = document.getElementById('node-' + id);
-            if (nodeEl && nodeEl.classList.contains('flow-path')) {
-              bg     = 'limegreen';
-              border = 'limegreen';
-            }
-
-            // draw the box
-            ctx.save();
-            ctx.globalAlpha = 0.93;
-            ctx.fillStyle   = bg;
-            ctx.strokeStyle = border;
-            ctx.lineWidth   = 1.8;
-            ctx.beginPath();
-            ctx.moveTo(x+4, y);
-            ctx.lineTo(x+w-4, y);
-            ctx.quadraticCurveTo(x+w, y, x+w, y+4);
-            ctx.lineTo(x+w, y+h-4);
-            ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
-            ctx.lineTo(x+4, y+h);
-            ctx.quadraticCurveTo(x, y+h, x, y+h-4);
-            ctx.lineTo(x, y+4);
-            ctx.quadraticCurveTo(x, y, x+4, y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
-
-            // Highlight selected node(s)
-            const isSelected =
-              (window._multiSelectedNodes && window._multiSelectedNodes.has(String(id))) ||
-              (editor.selected_id && String(editor.selected_id) === String(id));
-            if (isSelected) {
-              ctx.save();
-              ctx.shadowColor = "#00fff7";
-              ctx.shadowBlur  = 10;
-              ctx.strokeStyle = "#00fff7";
-              ctx.lineWidth   = 4;
-              ctx.globalAlpha = 0.92;
-              ctx.beginPath();
-              ctx.moveTo(x+4, y);
-              ctx.lineTo(x+w-4, y);
-              ctx.quadraticCurveTo(x+w, y, x+w, y+4);
-              ctx.lineTo(x+w, y+h-4);
-              ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
-              ctx.lineTo(x+4, y+h);
-              ctx.quadraticCurveTo(x, y+h, x, y+h-4);
-              ctx.lineTo(x, y+4);
-              ctx.quadraticCurveTo(x, y, x+4, y);
-              ctx.closePath();
-              ctx.stroke();
-              ctx.restore();
-            }
-
-            // Draw label
-            ctx.save();
-            ctx.font         = `bold ${Math.max(9, Math.round(h / 2.3))}px sans-serif`;
-            ctx.fillStyle    = "#181d20";
-            ctx.globalAlpha  = 1.0;
-            ctx.textAlign    = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(txt, x + w/2, y + h/2);
-            ctx.restore();
-          });
-
-          // Draw viewport rectangle
-          const precanvas = document.querySelector('.drawflow');
-          if (precanvas) {
-            const transform = window.getComputedStyle(precanvas).transform;
-            let translateX = 0, translateY = 0, scaleDF = 1;
-            if (transform && transform !== "none") {
-              const match = transform.match(/matrix\(([^)]+)\)/);
-              if (match) {
-                const parts = match[1].split(',');
-                scaleDF      = parseFloat(parts[0]);
-                translateX   = parseFloat(parts[4]);
-                translateY   = parseFloat(parts[5]);
-              }
-            }
-            const rect   = document.getElementById('drawflow').getBoundingClientRect();
-            const flowW  = rect.width, flowH = rect.height;
-            const visX   = (-translateX) / scaleDF;
-            const visY   = (-translateY) / scaleDF;
-            const vx     = (visX - minX) * scale;
-            const vy     = (visY - minY) * scale;
-            const vw     = flowW / scaleDF * scale;
-            const vh     = flowH / scaleDF * scale;
-            ctx.save();
-            ctx.strokeStyle = "#f4e43a";
-            ctx.globalAlpha = 0.9;
-            ctx.lineWidth   = 2;
-            ctx.strokeRect(vx, vy, vw, vh);
-            ctx.restore();
-          }
-        }
-
-        function hookMinimapEvents() {
-          if (!window.editor) return;
-          window.editor.on('nodeMoved', renderMinimap);
-          window.editor.on('nodeCreated', renderMinimap);
-          window.editor.on('nodeRemoved', renderMinimap);
-          window.editor.on('connectionCreated', renderMinimap);
-          window.editor.on('connectionRemoved', renderMinimap);
-          window.editor.on('import', renderMinimap);
-          window.editor.on('zoom', renderMinimap);
-          setInterval(renderMinimap, 2000);
-        }
-
-        document.getElementById(CANVAS_ID).addEventListener('click', function(e){
-          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
-          const nodes = Object.values(data);
-          if (!nodes.length) return;
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          nodes.forEach(n => {
-            minX = Math.min(minX, n.pos_x);
-            minY = Math.min(minY, n.pos_y);
-            maxX = Math.max(maxX, n.pos_x + 170);
-            maxY = Math.max(maxY, n.pos_y + 80);
-          });
-          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
-          const scaleX = W / Math.max(1, maxX - minX);
-          const scaleY = H / Math.max(1, maxY - minY);
-          const scale = Math.min(scaleX, scaleY);
-          const x = e.offsetX / scale + minX;
-          const y = e.offsetY / scale + minY;
-          const precanvas = document.querySelector('.drawflow');
-          if (precanvas) {
-            let scaleDF = 1;
-            const transform = window.getComputedStyle(precanvas).transform;
-            if (transform && transform !== "none") {
-              const match = transform.match(/matrix\(([^)]+)\)/);
-              if (match) scaleDF = parseFloat(match[1].split(',')[0]);
-            }
-            const main = document.getElementById('drawflow');
-            const rect = main.getBoundingClientRect();
-            const targetX = -(x - rect.width/2/scaleDF) * scaleDF;
-            const targetY = -(y - rect.height/2/scaleDF) * scaleDF;
-            precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
-          }
-        });
-
-        hookMinimapEvents();
-        setTimeout(renderMinimap, 1000);
-      });
-
       // A global Set to track selected nodes for multi-select
       window._multiSelectedNodes = window._multiSelectedNodes || new Set();
 
@@ -5204,92 +5065,104 @@
         }
       });
 
-      document.getElementById("activateFlowCheckbox").addEventListener("change", async e => {
-        if (!hubitatCredentialsAreValid(true)) return;
+      document.getElementById("activateFlowButton").addEventListener("click", async () => {
+        const button = document.getElementById("activateFlowButton");
+        const isActivated = button.textContent === "Activated";
         const flowName = document.getElementById("flowName")?.textContent?.trim() || "";
-        const token    = document.getElementById("hubitatToken")?.value?.trim()    || "";
-        const appId    = document.getElementById("hubitatAppId")?.value?.trim()    || "";
-        if (!flowName) {
-          logAction("No Flow selected to activate/deactivate", "error");
-          e.target.checked = !e.target.checked;
+        const token = document.getElementById("hubitatToken")?.value?.trim() || "";
+        const appId = document.getElementById("hubitatAppId")?.value?.trim() || "";
+
+        if (!hubitatCredentialsAreValid(true)) {
+          logAction("Missing App ID or Token", "error");
           return;
         }
-        const action = e.target.checked ? "selectFlow" : "deselectFlow";
-        const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
-        const body   = JSON.stringify({ flow: flowName });
+
+        if (!flowName) {
+          logAction("No Flow selected to activate/deactivate", "error");
+          return;
+        }
+
+        // Toggle button state
+        const newState = !isActivated;
+        button.textContent = newState ? "Activated" : "Deactivated";
+        button.style.backgroundColor = newState ? "#4CAF50" : "#808080";
+
+        const action = newState ? "selectFlow" : "deselectFlow";
+        const url = `/apps/api/${appId}/${action}?access_token=${token}`;
+        const body = JSON.stringify({ flow: flowName });
+
         try {
-          const res    = await fetch(url, {
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body
           });
           const result = await res.json();
           logAction(
-            e.target.checked
+            newState
               ? "✅ Flow activated: " + (result.result || JSON.stringify(result))
               : "✅ Flow deactivated: " + (result.result || JSON.stringify(result))
           );
           checkIfFlowIsInUse(flowName, appId, token);
         } catch (err) {
-          logAction("❌ Failed to " + (e.target.checked ? "activate" : "deactivate") + " flow: " + err, "error");
-          e.target.checked = !e.target.checked;
+          logAction(
+            `❌ Failed to ${newState ? "activate" : "deactivate"} flow: ${err}`,
+            "error"
+          );
+          // Revert button state on error
+          button.textContent = isActivated ? "Activated" : "Deactivated";
+          button.style.backgroundColor = isActivated ? "#4CAF50" : "#808080";
         }
       });
 
-      // ─── Logging Checkbox ─────────────────────────────────────────────────────────
-      document
-        .getElementById("loggingCheckbox")
-        .addEventListener("change", async (e) => {
-          // 1) Validate credentials
-          if (!hubitatCredentialsAreValid(true)) {
-            e.target.checked = !e.target.checked;
-            return;
-          }
+      // ── Logging Button Click Handler ─────────────────────────────────────────────
+      document.getElementById("loggingButton").addEventListener("click", async () => {
+        const btn       = document.getElementById("loggingButton");
+        const isEnabled = btn.textContent === "Logging Enabled";
+        const flowName  = document.getElementById("flowName")?.textContent.trim() || "";
+        const token     = document.getElementById("hubitatToken")?.value.trim()  || "";
+        const appId     = document.getElementById("hubitatAppId")?.value.trim()  || "";
 
-          // 2) Gather names & creds
-          const flowName = document
-            .getElementById("flowName")
-            ?.textContent?.trim() || "";
-          const token = document
-            .getElementById("hubitatToken")
-            ?.value?.trim() || "";
-          const appId = document
-            .getElementById("hubitatAppId")
-            ?.value?.trim() || "";
+        // 1) Credentials & flow name check
+        if (!hubitatCredentialsAreValid(true)) return;
+        if (!flowName) {
+          logAction("No Flow selected to change logging", "error");
+          return;
+        }
 
-          if (!flowName) {
-            logAction("No Flow selected to change logging", "error");
-            e.target.checked = !e.target.checked;
-            return;
-          }
+        // 2) Optimistic UI toggle
+        btn.textContent = isEnabled ? "Logging Disabled" : "Logging Enabled";
+        btn.style.backgroundColor = isEnabled ? "#808080" : "#4CAF50";
 
-          // 3) Fire the Hubitat API
-          const action = e.target.checked ? "selectFlowLog" : "deselectFlowLog";
-          const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
-          try {
-            const res    = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ flow: flowName })
-            });
-            const result = await res.json();
-            logAction(
-              e.target.checked
-                ? `✅ Logging enabled: ${result.result || "OK"}`
-                : `✅ Logging disabled: ${result.result || "OK"}`
-            );
+        // 3) Call Hubitat API
+        const action = isEnabled ? "deselectFlowLog" : "selectFlowLog";
+        const url    = `/apps/api/${appId}/${action}?access_token=${token}`;
+        try {
+          const res    = await fetch(url, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ flow: flowName })
+          });
+          const result = await res.json();
+          logAction(
+            isEnabled
+              ? `✅ Logging disabled: ${result.result || "OK"}`
+              : `✅ Logging enabled: ${result.result || "OK"}`,
+            "info"
+          );
 
-            // 4) Refresh the test/status panel (updates logging status there too)
-            checkIfFlowIsInUse(flowName, appId, token);
-          } catch (err) {
-            logAction(
-              `❌ Failed to ${e.target.checked ? "enable" : "disable"} logging: ${err}`,
-              "error"
-            );
-            // roll back
-            e.target.checked = !e.target.checked;
-          }
-        });
+          // 4) Refresh status panel (will re-sync button state too)
+          checkIfFlowIsInUse(flowName, appId, token);
+        } catch (err) {
+          logAction(
+            `❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`,
+            "error"
+          );
+          // Roll back UI
+          btn.textContent = isEnabled ? "Logging Enabled" : "Logging Disabled";
+          btn.style.backgroundColor = isEnabled ? "#4CAF50" : "#808080";
+        }
+      });
 
       document.getElementById("saveAsFlow").onclick = async function() {
         // 1) Sanity check
