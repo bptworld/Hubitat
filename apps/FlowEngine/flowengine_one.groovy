@@ -25,7 +25,7 @@
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Changes:
- *  1.0.0 - 06/21/25 - Initial Release
+ *  1.0.0 - 07/14/25 - Initial Release
  */
 
 import groovy.json.JsonSlurper
@@ -140,6 +140,23 @@ mappings {
 }
 
 // --- HANDLERS ---
+
+def handleLocationTimeEvent(evt) {
+    log.debug "Sun event: ${evt.name}@${evt.date}"
+    state.activeFlows.each { fname, flowObj ->
+        // find any eventTrigger nodes in this flow that want this sunrise/sunset
+        def matches = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
+            node.name == "eventTrigger" &&
+            node.data.attribute == "timeOfDay" &&
+            node.data.value == evt.name
+        }
+        if (matches) {
+            matches.each { id, node ->
+                handleEvent(evt, fname)
+            }
+        }
+    }
+}
 
 def apiDeleteFlow() {
     // Read the filename from the query string: ?name=FlowName.json
@@ -270,38 +287,24 @@ def recheckAllTriggers() {
     state.activeFlows?.each { fname, flowObj ->
         def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
         dataNodes.each { id, node ->
-            // only handle minute-polling triggers, skip sunrise/sunset
-            if (node.name == "eventTrigger"
-                && node.data.deviceId == "__time__"
-                && !(node.data.attribute in ["sunrise","sunset"]) ) {
-
-                def attr       = node.data.attribute
-                def expected   = node.data.value
-                def comparator = node.data.comparator
+            if (node.name == "eventTrigger" && node.data.deviceId == "__time__") {
+                def attr         = node.data.attribute
+                def expected     = node.data.value
+                def comparator   = node.data.comparator
                 def curValue
-
                 if (attr == "currentTime") {
                     curValue = new Date().format("HH:mm", location.timeZone)
-                }
-                else if (attr == "dayOfWeek") {
+                } else if (attr == "dayOfWeek") {
                     curValue = new Date().format("EEEE", location.timeZone)
-                }
-                else {
+                } else {
                     return
                 }
-
                 if (evaluateComparator(curValue, expected, comparator)) {
-                    // Fire this trigger node
+                    // Fire just this node
                     evaluateNode(fname, id, [ name: attr, value: curValue ])
                 }
             }
         }
-    }
-}
-
-private void checkAllVariableTriggers() {
-    state.activeFlows.each { fname, flowObj ->
-        checkVariableTriggers(fname)
     }
 }
 
@@ -657,27 +660,17 @@ def loadVariables(fname) {
     }
 }
 
-private void getGlobalVars(String fname) {
+def getGlobalVars(fname) {
     def flowObj = state.activeFlows[fname]
     flowObj.globalVars = []
     try {
-        // Fetch the JSON file from Hubitat’s local HTTP server
         def uri = "http://127.0.0.1:8080/local/FE_global_vars.json"
-        httpGet([ uri: uri, contentType: "application/json" ]) { resp ->
-            if (resp.status == 200) {
-                // Hubitat will parse JSON for you into a List/Map
-                if (resp.data instanceof List) {
-                    flowObj.globalVars = resp.data
-                } else {
-                    // fallback just in case
-                    flowObj.globalVars = new JsonSlurper().parseText(resp.data.toString())
-                }
-            } else {
-                log.warn "getGlobalVars: unexpected HTTP ${resp.status}"
-            }
+        httpGet([uri: uri, contentType: "text/html; charset=UTF-8"]) { resp ->
+            def jsonStr = resp.data?.text
+            if (!jsonStr) return
+            flowObj.globalVars = new JsonSlurper().parseText(jsonStr)
         }
     } catch (e) {
-        log.warn "In getGlobalVars - Unable to retrieve Global Variables", e
         flowObj.globalVars = []
     }
 }
@@ -723,7 +716,7 @@ String resolveVars(fname, str) {
  * Subscribe all eventTrigger and schedule nodes for a given flow.
  */
 def subscribeToTriggers(String fname) {
-    def flowObj   = state.activeFlows[fname]
+    def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
 
     // Grab all nodes in this flow
@@ -738,41 +731,25 @@ def subscribeToTriggers(String fname) {
                         handleEvent(evt, fname)
                     }
                 }
-                // — Virtual Time device (sunrise/sunset with offset, or minute‐polling) —
-				else if (node.data.deviceId == "__time__") {
-					def attr = node.data.attribute
+                // — Virtual Time device (sunrise/sunset + offsets + polling) —
+                else if (node.data.deviceId == "__time__") {
+                    def attr   = node.data.attribute       // "timeOfDay", "currentTime", or "dayOfWeek"
+                    def value  = node.data.value           // for timeOfDay: "sunrise" or "sunset"
+                    def offset = (node.data.offset as Integer) ?: 0
 
-					if (attr in ["sunrise","sunset"]) {
-						// calculate today’s sunrise/sunset with the user‐specified offset
-						def off   = (node.data.offset ?: 0) as Integer
-						def times = getSunriseAndSunset([sunriseOffset: off, sunsetOffset: off])
-						def dt    = (attr == "sunrise") ? times.sunrise : times.sunset
-
-						if (dt) {
-							// fire exactly once at the offset time
-							runOnce(dt, {
-								handleEvent(
-									[ name : attr,
-									  value: attr,
-									  data : node.data ],
-									fname
-								)
-							})
-						}
-						// re‐schedule this method at midnight so tomorrow’s times get recalculated
-						schedule("0 0 0 * * ?", {
-							subscribeToTriggers(fname)
-						})
-					}
-					else {
-						// fallback: minute‐based polling only for currentTime/dayOfWeek
-						runEvery1Minute("recheckAllTriggers")
-					}
-				}
+                    if (attr == "timeOfDay") {
+                        def opts = offset != 0 ? [timeOffset: offset] : [:]
+			            subscribe(location, value, "handleLocationTimeEvent", opts)
+                    }
+                    else if (attr in ["currentTime", "dayOfWeek"]) {
+                        // poll once a minute for currentTime/dayOfWeek matches
+                        runEvery1Minute("recheckAllTriggers")
+                    }
+                }
                 // — Physical device triggers —
                 else {
                     def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-                                 node.data.deviceIds : [ node.data.deviceId ]
+                                  node.data.deviceIds : [ node.data.deviceId ]
                     devIds.each { devId ->
                         def device = getDeviceById(devId)
                         if (device) {
@@ -828,46 +805,47 @@ def genericDeviceHandler(evt) {
     }
 }
 
-private void scheduleVariablePolling(String fname) {
+def scheduleVariablePolling(String fname) {
     def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
 
     def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    def hasVarTrigger = dataNodes.values().any { node ->
-        node.name == "eventTrigger" &&
-        node.data?.deviceId == "__variable__"
+    def hasVarTrig = dataNodes.any { id, node ->
+        node?.name == "eventTrigger" && (
+            node.data?.deviceId == "__variable__" ||
+            (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__")
+        )
     }
-
-    if (hasVarTrigger && !state._variablePollingScheduled) {
-        runEvery5Seconds("checkAllVariableTriggers")
-        state._variablePollingScheduled = true
+    if (hasVarTrig && !state._varPollScheduled) {
+        state._varPollScheduled = true
+        runEvery5Seconds("checkVariableTriggers")
     }
 }
 
 // ---- Variable trigger polling and tap/hold clear helpers ----
-private void checkVariableTriggers(String fname) {
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
+def checkVariableTriggers() {
+    state.activeFlows.each { fname, flowObj ->
+        def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
+            node?.name == "eventTrigger" &&
+            (node.data?.deviceId == "__variable__" ||
+             (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
+        }
+        if (!nodes) return
 
-    // 1) Load latest globals
-    getGlobalVars(fname)
-    def globalMap = (flowObj.globalVars ?: []).collectEntries { [(it.name): it.value] }
+        getGlobalVars(fname)
+        def globalMap = flowObj.globalVars.collectEntries { [(it.name): it.value] }
 
-    // 2) Find all __variable__ triggers
-    def variableNodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
-        node.name == "eventTrigger" &&
-        node.data?.deviceId == "__variable__"
-    }
+        nodes.each { id, node ->
+            def varName   = node.data?.varName
+            if (!varName) return
 
-    // 3) Fire when the value changes
-    variableNodes.each { id, node ->
-        def varName     = node.data.variableName
-        if (!varName) return
-        def currentValue = globalMap[varName]
-        def lastValue    = flowObj.lastVarValues[varName]
-        if (currentValue != lastValue) {
-            flowObj.lastVarValues[varName] = currentValue
-            evaluateNode(fname, id, [ name: varName, value: currentValue ])
+            def curValue  = globalMap[varName]
+            def lastValue = flowObj.lastVarValues[varName]
+
+            if (curValue != lastValue) {
+                flowObj.lastVarValues[varName] = curValue
+                evaluateNode(fname, id, [ name: varName, value: curValue ])
+            }
         }
     }
 }
@@ -989,104 +967,58 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     switch (node.name) {
         case "eventTrigger":
 			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
-
-			// —— Handle variable triggers first
-			if (node.data.deviceId == "__variable__") {
-				def varName   = node.data.variableName
-				def curValue  = state.activeFlows[fname]?.varCtx?.get(varName)
-				def expected  = resolveVars(fname, node.data.value)
-				if (evaluateComparator(curValue, expected, node.data.comparator)) {
-					node.outputs.output_1.connections.each { conn ->
-						evaluateNode(fname, conn.node, null, null, visited)
-					}
-				}
-				flowLog(fname, "In evaluateNode - eventTrigger - varName: ${varName} - curValue: ${curValue} - expected: ${expected}", "debug")
-				return
-			}
-
-			// —— Fall back to your existing mode/time/device trigger logic ——
-			def expectedValue   = resolveVars(fname, node.data.value)
+			// ---- Strict matching added here ----
+			def expectedValue = node.data.value
 			def expectedPattern = node.data.clickPattern
-			def eventValue      = (evt instanceof Map) ? evt.value : evt?.value
-			def eventPattern    = (evt instanceof Map) ? evt.pattern : null
+			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
+			def eventPattern = (evt instanceof Map) ? evt.pattern : null
 
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) return
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) return
+			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
+				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
+				return // STOP! Value didn't match
+			}
+			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
+				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
+				return // STOP! Pattern didn't match
+			}
+			// ---- END strict matching ----
 
-			node.outputs?.each { _, outObj ->
+			def passes = true
+			node.outputs?.each { outName, outObj ->
 				outObj.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
+					if (passes) evaluateNode(fname, conn.node, evt, null, visited)
 				}
 			}
-			flowLog(fname, "In evaluateNode - eventTrigger - expectedValue: ${expectedValue} - expectedPattern: ${expectedPattern} - eventValue: ${eventValue} - eventPattern: ${eventPattern}", "debug")
 			break
 
         case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
 
-			// —— Variable-based condition
-			if (node.data.deviceId == "__variable__") {
-				def varName   = node.data.variableName
-				def curValue  = state.activeFlows[fname]?.varCtx?.get(varName)
-				def expected  = resolveVars(fname, node.data.value)
-				def passes    = evaluateComparator(curValue, expected, node.data.comparator)
-				if (passes) {
-					node.outputs.output_1.connections.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				} else {
-					node.outputs.output_2.connections.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				}
-				flowLog(fname, "In evaluateNode - condition - varName: ${varName} - curValue: ${curValue} - expected: ${expected} - passes: ${passes}", "debug")
-				return passes
+			// Pull comparator, expected and actual values
+			def attr       = node.data.attribute
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+			def actual
+
+			if (incomingValue != null) {
+				actual = incomingValue
+			} else if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				actual = getDeviceById(node.data.deviceIds[0])?.currentValue(attr)
+			} else if (node.data.deviceId) {
+				actual = getDeviceById(node.data.deviceId)?.currentValue(attr)
 			}
 
-			// —— Existing device-based condition logic ——
-			def devIds = node.data.deviceIds instanceof List && node.data.deviceIds ? node.data.deviceIds : [ node.data.deviceId ]
-			def attr   = node.data.attribute
-			def curVal
-			if (evt && evt.name == attr && evt.value != null) {
-				curVal = evt.value
-			} else {
-				def dev = getDeviceById(devIds[0])
-				curVal = dev?.currentValue(attr)
-			}
-			def physPasses = evaluateComparator(curVal, resolveVars(fname, node.data.value), node.data.comparator)
-			if (physPasses) {
-				node.outputs.output_1.connections.each { conn ->
+			// Evaluate and route
+			if (evaluateComparator(actual, expected, comparator)) {
+				node.outputs?.output_1?.connections?.each { conn ->
 					evaluateNode(fname, conn.node, evt, null, visited)
 				}
 			} else {
-				node.outputs.output_2.connections.each { conn ->
+				node.outputs?.output_2?.connections?.each { conn ->
 					evaluateNode(fname, conn.node, evt, null, visited)
 				}
 			}
-			flowLog(fname, "In evaluateNode - condition - devIds: ${devIds} - attr: ${attr} - curVal: ${curVal} - physPasses: ${physPasses}", "debug")
-			return physPasses
-
-        case "AND":
-			flowLog(fname, "In evaluateNode - AND", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "OR":
-			flowLog(fname, "In evaluateNode - OR", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "NOT":
-			flowLog(fname, "In evaluateNode - NOT", "debug")
-            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
-            def result = !evaluateNode(fname, input, evt, null, visited)
-            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
-            return result
+			break
 
         case "device":
 			flowLog(fname, "In evaluateNode - device", "debug")
@@ -1213,49 +1145,51 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "notMatchingVar":
-			flowLog(fname, "In evaluateNode - notMatchingVar", "debug")
-			// 1) Gather the device IDs for this node
-			def devIds = []
-			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-				devIds = node.data.deviceIds
-			} else if (node.data.deviceId) {
-				devIds = [node.data.deviceId]
-			}
-
-			// 2) Pull out the attribute, comparator and expected value
+			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
+			// 1) Resolve variable name
+			def varName = resolveVars(fname, node.data.varName)
+			// 2) Gather device IDs
+			def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+						  node.data.deviceIds :
+						  (node.data.deviceId ? [node.data.deviceId] : [])
+			// 3) Filter devices by the “Not” condition
 			def attr       = node.data.attribute
 			def comparator = node.data.comparator
 			def expected   = resolveVars(fname, node.data.value)
-
-			// 3) Find all devices whose currentValue(attr) does NOT pass
-			def notMatching = devIds.findAll { id ->
-				def device = getDeviceById(id)
-				def current = device?.currentValue(attr)
-				!evaluateComparator(current, expected, comparator)
+			def newLines   = []
+			devIds.each { devId ->
+				def device = getDeviceById(devId)
+				if (device) {
+					def curVal = device.currentValue(attr)
+					// only include when **NOT** matching
+					if (!evaluateComparator(curVal, expected, comparator)) {
+						def name = device.displayName ?: device.name
+						newLines << "${name}:${curVal}"
+					}
+				}
 			}
-
-			// 4) Turn that list into a label string
-			def labels = notMatching.collect { id ->
-				def d = getDeviceById(id)
-				d ? (d.displayName ?: d.name ?: id) : id
+			// 4) Merge or overwrite
+			def appendMode = node.data.append as Boolean
+			def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
+			def lines      = existing ? existing.split('\n') as List : []
+			if (appendMode) {
+				newLines.each { nl ->
+					def id = nl.split(':')[0]
+					def idx = lines.findIndexOf { it.split(':')[0] == id }
+					if (idx >= 0) lines[idx] = nl else lines << nl
+				}
+			} else {
+				lines = newLines
 			}
-			def storeVal = labels.join(",")
-
-			// 5) Determine your output-variable name
-			def varName = resolveVars(fname, node.data.outputVar)
-
-			// 6) Save into FE_global_vars.json
-			setVariable(fname, varName, storeVal)
-
-			// 7) Branch just like a condition node
-			def passes = !notMatching.isEmpty()
+			// 5) Save back into in-memory vars
+			flowObj.vars = flowObj.vars ?: [:]
+			flowObj.vars[varName] = lines.join('\n')
+			flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
+			// 6) Continue downstream (only “true” path used here)
 			node.outputs?.output_1?.connections?.each { conn ->
-				if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+				evaluateNode(fname, conn.node, evt, null, visited)
 			}
-			node.outputs?.output_2?.connections?.each { conn ->
-				if (!passes) evaluateNode(fname, conn.node, evt, null, visited)
-			}
-			return passes
+			return
 
 		case "doNothing":
 			flowLog(fname, "In evaluateNode - doNothing", "debug")
@@ -1398,29 +1332,39 @@ def sendNotification(fname, data, evt) {
 }
 
 def expandWildcards(fname, msg, evt) {
-	flowLog(fname, "In expandWildcards - msg: ${msg} - evt: ${evt}", "debug")
-    def device = evt?.device?.displayName ?: ""
+    flowLog(fname, "In expandWildcards - msg: ${msg} - evt: ${evt}", "debug")
+    // Standard event fields
+    def device    = evt?.device?.displayName ?: ""
     def attribute = evt?.name ?: ""
-    def value = evt?.value ?: ""
-    def nowDate = new Date()
-    def time24 = nowDate.format("HH:mm")
-    def time12 = nowDate.format("h:mm a")
-    def date = nowDate.format("MM-dd-yyyy")
+    def value     = evt?.value ?: ""
+    def nowDate   = new Date()
+    def time24    = nowDate.format("HH:mm")
+    def time12    = nowDate.format("h:mm a")
+    def date      = nowDate.format("MM-dd-yyyy")
+
+    // Build map of simple wildcards
     def wilds = [
-        "{device}": device,
-        "{attribute}": attribute,
-        "{value}": value,
-        "{time24}": time24,
-        "{time12}": time12,
-        "{date}": date,
-        "{now}": nowDate.toString()
+        "{device}"        : device,
+        "{attribute}"     : attribute,
+        "{value}"         : value,
+        "{time24}"        : time24,
+        "{time12}"        : time12,
+        "{date}"          : date,
+        "{now}"           : nowDate.toString(),
+        "{variableName}"  : attribute,
+        "{variableValue}" : value
     ]
+    // Apply all of the above
     wilds.each { k, v ->
         msg = msg.replace(k, v instanceof Closure ? v() : v)
     }
-    // Handle {var:VAR} wildcards
-    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { m, varName -> getVarValue(fname, varName) }
-	flowLog(fname, "In expandWildcards - msg: ${msg}", "debug")
+
+    // Handle {var:VARname} syntax (legacy and explicit variable lookup)
+    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, varName ->
+        getVarValue(fname, varName)
+    }
+
+    flowLog(fname, "In expandWildcards - msg: ${msg}", "debug")
     return msg
 }
 
@@ -1430,39 +1374,40 @@ def getVarValue(fname, vname) {
     return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
 }
 
-def setVariable(String fname, String varName, String varValue) {
-    flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
+def setVariable(fname, varName, varValue) {
+	flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
     def flowObj = state.activeFlows[fname]
-
-    // 1) Load existing globals from disk
     getGlobalVars(fname)
+    def updatedGlobal = false
+    def updatedLocal = false
+    flowObj.flowVars = flowObj.flowVars ?: []
     flowObj.globalVars = flowObj.globalVars ?: []
-
-    // 2) Update or append this variable in the global list
-    def existing = flowObj.globalVars.find { it.name == varName }
-    if (existing) {
-        existing.value = varValue
-        flowLog(fname, "Updating existing global var '${varName}' to '${varValue}'", "debug")
-    } else {
-        flowObj.globalVars << [ name: varName, value: varValue ]
-        flowLog(fname, "Adding new global var '${varName}' = '${varValue}'", "debug")
+    flowObj.globalVars.each { v ->
+        if (v.name == varName) {
+            v.value = varValue
+            updatedGlobal = true
+        }
     }
-
-    // 3) Persist globals back to FE_global_vars.json
-    saveGlobalVarsToFile(flowObj.globalVars)
-
-    // 4) Mirror into your in-memory maps so runtime can use it immediately
-    flowObj.vars   = flowObj.vars   ?: [:]
+    flowObj.flowVars.each { v ->
+        if (v.name == varName) {
+            v.value = varValue
+            updatedLocal = true
+        }
+    }
+    if (!updatedGlobal && !updatedLocal) {
+        flowObj.flowVars << [name: varName, value: varValue]
+        updatedLocal = true
+    }
+    flowObj.vars = flowObj.vars ?: [:]
     flowObj.varCtx = flowObj.varCtx ?: [:]
-    flowObj.vars[varName]   = varValue
+    flowObj.vars[varName] = varValue
     flowObj.varCtx[varName] = varValue
 }
 
-private void saveGlobalVarsToFile(List globals) {
+def saveGlobalVarsToFile(globals) {
+	flowLog(fname, "In saveGlobalVarsToFile - globals: ${globals}", "debug")
     def flowFile = "FE_global_vars.json"
-    def json     = JsonOutput.toJson(globals)
-    // uploadHubFile is the Hubitat helper that writes to /local/
-    uploadHubFile(flowFile, json.getBytes("UTF-8"))
+    def fData = groovy.json.JsonOutput.toJson(globals)
 }
 
 // --- Comparators ---
