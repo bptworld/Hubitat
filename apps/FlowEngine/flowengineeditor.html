@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.017 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.018 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -4144,15 +4144,20 @@
                     <br><small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
                   `;
 
-                  // ── TEST-FLOW BUTTON HANDLER ────────────────────────────────
-                  const testInput = document.getElementById("testFlowInput");
-                  const testBtn   = document.getElementById("testFlowBtn");
+                  // ── TEST‑FLOW BUTTON HANDLER ────────────────────────────────
+                  const testInput       = document.getElementById("testFlowInput");
+                  const testBtn         = document.getElementById("testFlowBtn");
+                  const dryRunCheckbox  = document.getElementById("dryRunCheckbox");
+
                   testBtn.onclick = async () => {
                     const val = testInput.value.trim();
                     if (!val) {
                       alert("Please enter a test value.");
                       return;
                     }
+
+                    // Read the Dry Run checkbox
+                    const dryRun = dryRunCheckbox.checked;
 
                     // Ensure flowName ends with .json
                     const dropdown = document.getElementById("hubitatFileDropdown");
@@ -4166,18 +4171,18 @@
                     }
 
                     try {
-                      // Use form-encoded body
+                      // Use form‑encoded body
                       const form = new URLSearchParams();
-                      form.append("flow", flow);
-                      form.append("value", val);
-                      form.append("dryRun", dryRun ? "true" : "false");
+                      form.append("flow",    flow);
+                      form.append("value",   val);
+                      form.append("dryRun",  dryRun ? "true" : "false");
 
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`,
                         {
-                          method: "POST",
+                          method:  "POST",
                           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                          body: form.toString()
+                          body:    form.toString()
                         }
                       );
 
@@ -4197,6 +4202,7 @@
                       logAction("❌ Failed to test flow: " + err, "error");
                     }
                   };
+
                 })
                 .catch(err => {
                   console.error("Error fetching logging settings:", err);
