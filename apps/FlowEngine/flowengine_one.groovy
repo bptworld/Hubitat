@@ -132,6 +132,7 @@ def initialize() {
     state.activeFlows = [:]
     unschedule()
     unsubscribe()
+	state.testDryRun = false
     settings.flowFiles.each { fname ->
         if(fname) loadAndStartFlow(fname)
     }
@@ -379,7 +380,7 @@ def apiTestFlow() {
 	def fname = json?.flow
 	def nodeId = json?.nodeId
 	def value = (json?.value ?: "Test Triggered").toString().toLowerCase()
-	def dryRun = (json?.dryRun == "true")
+	def dryRun = (json?.dryRun == "false")
 	
 	def scrubbedParams = params.clone()
 	scrubbedParams.remove('access_token')
@@ -972,7 +973,7 @@ def getTriggerNodes(fname, evt) {
 
 // ---- Node Evaluation (ALL node types, with delay logic preserved) ----
 def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
-	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt}", "debug")
+	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${state.testDryRun}", "debug")
     def flowObj = state.activeFlows[fname]
     if (!visited) visited = new HashSet()
 			if (visited.contains(nodeId)) return null
