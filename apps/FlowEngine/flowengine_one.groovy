@@ -61,24 +61,6 @@ def mainPage() {
 				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
 				paragraph "<hr>"
-				paragraph "Also note, that when saving this app (clicking Done) another file is created holding your Modes data. Anytime you edit/update your modes, be sure to come back here and simply hit 'Done'."
-				paragraph "<hr>"
-				paragraph "I've been having an issue with the app OAuth changing on it's own.  If this happens to you, you'll need to update your OAuth token and add the appId and Token in the Editor. If this happens to you, use the toggle below, then click 'Done' and come back into the app to see your new token. AT THIS POINT DO NOT HIT 'DONE'.  CLICK ON ANYTHING OUTSIDE OF THE APP - DEVICES, APPS, SETTINGS, ANYTHING.  JUST DON'T HIT 'DONE'."
-				
-				input "updateOAuth", "bool", title: "Do you need to update OAuth?", submitOnChange:true
-				if(updateOAuth) {
-					input "areYouSureOAuth", "bool", title: "Are you sure?", submitOnChange:true
-					if(areYouSureOAuth) {
-						createAccessToken()
-						state.appId = app.id
-						state.token = state.accessToken
-						pauseExecution(1000)
-						changed = true
-						app.updateSetting("updateOAuth",[value:"false",type:"bool"])
-						app.updateSetting("areYouSureOAuth",[value:"false",type:"bool"])
-					}
-				}
-				paragraph "<hr>"
 			}
 			
             section(getFormat("header-green", " Select Flow Files to Enable")) {
@@ -116,6 +98,7 @@ def installed() {
 }
 
 def updated() {
+	flowLog(fname, "In updated", "info")
     unschedule()
     unsubscribe()
     initialize()
@@ -124,15 +107,14 @@ def updated() {
 def initialize() {
     if (!state.accessToken) {
         createAccessToken()
-        state.appId = app.id
-        state.token = state.accessToken
     }
+	state.appId = app.id
+	state.token = state.accessToken
     if (!settings.flowFiles) return
 
     state.activeFlows = [:]
     unschedule()
     unsubscribe()
-	state.testDryRun = false
     settings.flowFiles.each { fname ->
         if(fname) loadAndStartFlow(fname)
     }
@@ -160,7 +142,7 @@ mappings {
 // --- HANDLERS ---
 
 def handleLocationTimeEvent(evt) {
-    log.debug "Sun event: ${evt.name}@${evt.date}"
+    flowLog(fname, "Sun event: ${evt.name}@${evt.date}", "info")
     state.activeFlows.each { fname, flowObj ->
         def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
         def matches = dataNodes.findAll { id, node ->
@@ -181,20 +163,16 @@ def handleLocationTimeEvent(evt) {
 }
 
 def apiDeleteFlow() {
-    // Read the filename from the query string: ?name=FlowName.json
     def fname = params.name
     if (!fname) {
         render status: 400, contentType: "application/json",
                data: '{"error":"Missing file name"}'
         return
     }
-    // Ensure it ends in .json
     if (!fname.toLowerCase().endsWith('.json')) {
         fname += '.json'
     }
     deleteHubFile(fname)
-
-    // Re-initialize so settings.flowFiles removes it, if needed
     updated()
     flowLog(fname, "File has been deleted from File Manager", "info")
 
@@ -213,7 +191,6 @@ def apiSelectFlow() {
     def fn = request?.JSON?.flow
 	def fname = fn + ".json"
 
-    // Ensure json list is populated
     getFileList()
     def validOptions = state.jsonList ?: []
     if (!validOptions.contains(fname)) {
@@ -225,12 +202,10 @@ def apiSelectFlow() {
     def existing = settings?.flowFiles ?: []
     def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
 
-    // Force-save using app.updateSetting with correct enum options
     app.updateSetting("flowFiles", [type: "enum", value: newList])
 
-    // Optional: Reinitialize the app to activate the flow
     updated()
-	flowLog(fname, "File has been selected and enabled in app", "info")
+	flowLog(fname, "File has been selected and ENABLED in app", "info")
     render contentType: "application/json", data: '{"result":"Flow selected and enabled in app"}'
 }
 
@@ -250,7 +225,7 @@ def apiDeselectFlow() {
 
     app.updateSetting("flowFiles", [type: "enum", value: newList])
     updated()
-	flowLog(fname, "File has been de-selected and disabled in app", "info")
+	flowLog(fname, "File has been de-selected and DISABLED in app", "info")
     render contentType: "application/json", data: '{"result":"Flow deselected in app"}'
 }
 
@@ -258,7 +233,6 @@ def apiSelectFlowLogging() {
     def fn = request?.JSON?.flow
 	def fname = fn + ".json"
 
-    // Ensure json list is populated
     getFileList()
     def validOptions = state.jsonList ?: []
     if (!validOptions.contains(fname)) {
@@ -269,11 +243,7 @@ def apiSelectFlowLogging() {
 
     def existing = settings?.perFlowLogEnabled ?: []
     def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
-
-    // Force-save using app.updateSetting with correct enum options
     app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
-
-    // Optional: Reinitialize the app to activate the flow
     updated()
 	flowLog(fname, "Logging has been enabled in app", "info")
     render contentType: "application/json", data: '{"result":"Logging enabled in app"}'
@@ -331,21 +301,20 @@ def recheckAllTriggers() {
 }
 
 def apiRunFlow() {
-    // Expects: { "flow": "filename.json", ... }
     def json = request?.JSON
     def fname = json?.flow
     if (!fname || !state.activeFlows[fname]) {
         render status: 404, data: '{"error":"Flow not found"}'
         return
     }
-    // Run the flow from its event triggers (simulate real trigger)
+    
     def flowObj = state.activeFlows[fname]
     def flow = flowObj.flow
     if (!flow) {
         render status: 404, data: '{"error":"Flow not loaded"}'
         return
     }
-    // Find all eventTrigger nodes and evaluate them as if a trigger happened
+    
     def dataNodes = flow.drawflow?.Home?.data ?: [:]
     def triggered = 0
     dataNodes.each { id, node ->
@@ -376,117 +345,71 @@ def apiRunFlow() {
 }
 
 def apiTestFlow() {
-    def json = params
-	def fname = json?.flow
-	def nodeId = json?.nodeId
-	def value = (json?.value ?: "Test Triggered").toString().toLowerCase()
-	def dryRun = (json?.dryRun == "false")
-	
-	def scrubbedParams = params.clone()
-	scrubbedParams.remove('access_token')
-	def scrubbedJson = request?.JSON ? request.JSON.clone() : null
-	if (scrubbedJson instanceof Map) {
-		scrubbedJson.remove('access_token')
-	}
-	log.info "-------------------- [apiTestFlow - ${fname}] --------------------"
-	log.info "[apiTestFlow] params: ${scrubbedParams} | request.JSON: ${scrubbedJson} | using: ${fname}, ${nodeId}, ${value}"
+    def json   = request?.JSON
+    def fname  = json?.flow
+    def value  = json?.value?.toString()
+    def dryRun = (json?.dryRun as Boolean) ?: false
 
     if (!fname || !state.activeFlows[fname]) {
-        render status: 404, data: '{"error":"Flow not found"}'
+        render status: 404, contentType: "application/json",
+               data: JsonOutput.toJson([ error: "Flow not found" ])
         return
     }
-    // Don't error if nodeId is blank, but prefer to require it for accuracy
-	state.testDryRun = dryRun
-    // --- Build simulated event for both clickPattern AND time triggers ---
-	def evt = [:]
-	if (nodeId) {
-		// look up this trigger node’s settings
-		def node        = state.activeFlows[fname]?.flow?.drawflow?.Home?.data[nodeId]
-		def patternType = node?.data?.clickPattern
-		def deviceId    = node?.data?.deviceId
-		def attr        = node?.data?.attribute
+    flowLog(fname, "----- In apiTestFlow - dryRun: ${dryRun}", "info")
 
-		if (deviceId == "__time__") {
-			// --- Time triggers ---
-			if (attr in ["sunrise","sunset"]) {
-				// simulate a sunrise/sunset event
-				evt.name            = attr
-				evt.value           = attr
-				evt.descriptionText = "Time event: ${attr}"
-				evt.data            = attr
-				evt.pattern         = attr
-			}
-			else if (attr == "currentTime" && (value ==~ /\d{2}:\d{2}/)) {
-				// simulate currentTime compare
-				evt.name            = "currentTime"
-				evt.value           = value
-				evt.descriptionText = "Current time is ${value}"
-				evt.data            = value
-				evt.pattern         = "currentTime"
-			}
-			else if (attr == "dayOfWeek") {
-				// simulate dayOfWeek compare (value should be full weekday name)
-				evt.name            = "dayOfWeek"
-				evt.value           = value.capitalize()
-				evt.descriptionText = "Day of week is ${evt.value}"
-				evt.data            = evt.value
-				evt.pattern         = "dayOfWeek"
-			}
-			else {
-				// fallback if user enters something unexpected
-				evt.name            = attr
-				evt.value           = value
-				evt.descriptionText = "Time event: ${value}"
-				evt.data            = value
-				evt.pattern         = attr
-			}
-		}
-		else if (patternType == "taps" && value.isInteger()) {
-			// --- Multi-taps ---
-			int tapCount = value.toInteger()
-			evt.name            = "pushed"
-			evt.value           = "${tapCount}"
-			evt.descriptionText = "Switch was tapped ${tapCount}x"
-			evt.data            = "${tapCount}"
-			evt.pattern         = "taps"
-		}
-		else if (patternType == "holdPerSecond" && value.isInteger()) {
-			// --- Hold per second ---
-			int sec = value.toInteger()
-			evt.name            = "held"
-			evt.value           = "held"
-			evt.descriptionText = "Switch was held ${sec} sec"
-			evt.data            = "${sec}"
-			evt.pattern         = "holdPerSecond"
-		}
-		else {
-			// --- Fallback for any other text/value triggers ---
-			evt.name            = "pushed"
-			evt.value           = value
-			evt.descriptionText = "Switch event: ${value}"
-			evt.data            = value
-			evt.pattern         = patternType ?: value
-		}
-	} else {
-		// legacy: no nodeId → generic test event
-		evt = [ name: "apiTestFlow", value: value ]
-	}
+    // Persist dry‑run flag for evaluateNode()
+    state.activeFlows[fname].testDryRun = dryRun
 
-	// log exactly what’s being passed into evaluateNode()
-	log.info "[apiTestFlow] evt.name:${evt.name} | evt.value:${evt.value} | evt.descriptionText:${evt.descriptionText} | evt.data:${evt.data} | evt.pattern:${evt.pattern}"
+    def flowObj   = state.activeFlows[fname]
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
 
-	// --- Route to the specific node or all triggers ---
-	if (nodeId) {
-		evaluateNode(fname, nodeId, evt)
-	} else {
-		state.activeFlows[fname]?.flow?.drawflow?.Home?.data?.each { id, node ->
-			if (node.name == "eventTrigger") {
-				evaluateNode(fname, id, evt)
-			}
-		}
-	}
-	state.testDryRun = false
-    render contentType: "application/json", data: '{"result":"Test triggered"}'
+    dataNodes.each { nodeId, node ->
+        if (node.name != "eventTrigger") return
+
+        // gather one or more deviceIds (or "__time__")
+        def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+                         node.data.deviceIds :
+                         [ node.data.deviceId ]
+
+        devIds.each { devId ->
+            if (devId == "__time__") {
+                // ── TEST MODE: use the 'value' string (HH:mm) as the event time ──
+                Date testDate = new Date()
+                def parts = value.tokenize(':')
+                if (parts.size() == 2) {
+                    testDate.hours   = parts[0].toInteger()
+                    testDate.minutes = parts[1].toInteger()
+                }
+                // build a fake time event that carries the node's value list
+                def evt = [
+                    name:           node.data.attribute,     // "timeOfDay"
+                    value:          node.data.value,         // e.g. [sunrise, 20:00]
+                    date:           testDate,
+                    descriptionText:"Simulated time trigger at ${value}"
+                ]
+                handleEvent(evt, fname)
+            }
+            else {
+                // ── DEVICE TEST: fire through the normal device path ─────────────
+                def device = getDeviceById(devId)
+                if (!device) return
+
+                def evt = [
+                    device:         device,
+                    name:           node.data.attribute,
+                    value:          value,
+                    descriptionText:"Simulated ${node.data.attribute} → ${value}"
+                ]
+                handleEvent(evt, fname)
+            }
+        }
+    }
+
+    render contentType: "application/json",
+           data: JsonOutput.toJson([
+               result: "Flow ${fname} triggered${dryRun ? ' (dry run)' : ''}",
+               dryRun: dryRun
+           ])
 }
 
 def apiGetDevices() {
@@ -629,6 +552,7 @@ def loadAndStartFlow(fname) {
     ]
     readAndParseFlow(fname)
     subscribeToTriggers(fname)
+	scheduleTimeBasedTriggers(fname)
     scheduleVariablePolling(fname)
 }
 
@@ -736,87 +660,29 @@ String resolveVars(fname, str) {
     return out
 }
 
-/**
- * Subscribe all eventTrigger and schedule nodes for a given flow.
- */
 def subscribeToTriggers(String fname) {
     def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
 
-    // Grab all nodes in this flow
     def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-
     dataNodes.each { nodeId, node ->
-        switch(node.name) {
-            case "eventTrigger":
-                // — Mode triggers —
-                if (node.data.deviceId == "__mode__") {
-                    subscribe(location, "mode") { evt ->
-                        handleEvent(evt, fname)
-                    }
-                }
-                // — Virtual Time device (sunrise/sunset + offsets + polling) —
-                else if (node.data.deviceId == "__time__") {
-                    def attr   = node.data.attribute       // "timeOfDay", "currentTime", or "dayOfWeek"
-                    def value  = node.data.value           // for timeOfDay: "sunrise" or "sunset"
-                    def offset = (node.data.offset as Integer) ?: 0
+        if (node.name != "eventTrigger") return
 
-                    if (attr == "timeOfDay") {
-                        def opts = offset != 0 ? [timeOffset: offset] : [:]
-			            subscribe(location, value, "handleLocationTimeEvent", opts)
-                    }
-                    else if (attr in ["currentTime", "dayOfWeek"]) {
-                        // poll once a minute for currentTime/dayOfWeek matches
-                        runEvery1Minute("recheckAllTriggers")
-                    }
-                }
-                // — Physical device triggers —
-                else {
-                    def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-                                  node.data.deviceIds : [ node.data.deviceId ]
-                    devIds.each { devId ->
-                        def device = getDeviceById(devId)
-                        if (device) {
-                            subscribe(device, node.data.attribute, "genericDeviceHandler")
-                        }
-                    }
-                }
-                break
-
-            case "schedule":
-                // — Cron expression subscription —
-                if (node.data.cron) {
-                    schedule(node.data.cron) {
-                        handleEvent(
-                            [ name: "schedule",
-                              value: node.data.cron,
-                              data: node.data ],
-                            fname
-                        )
-                    }
-                }
-                // — RepeatDays + HH:mm subscription —
-                if (node.data.repeatDays instanceof List && node.data.time) {
-                    node.data.repeatDays.each { day ->
-                        def (h, m) = node.data.time.tokenize(":")
-                        def dow     = day[0..2].toUpperCase()
-                        def cronExp = "0 ${m} ${h} ? * ${dow}"
-                        schedule(cronExp) {
-                            handleEvent(
-                                [ name: "schedule",
-                                  value: node.data.time,
-                                  data: node.data ],
-                                fname
-                            )
-                        }
-                    }
-                }
-                break
-
-            default:
-                // any other node types are ignored here
-                break
+        // — Mode triggers —
+        if (node.data.deviceId == "__mode__") {
+            subscribe(location, "mode") { evt ->
+                handleEvent(evt, fname)
+            }
         }
+        // — Physical device triggers —
+        else if (node.data.deviceId != "__time__") {
+            def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ? node.data.deviceIds : [ node.data.deviceId ]
+            devIds.each { devId ->
+                def device = getDeviceById(devId)
+                if (device) subscribe(device, node.data.attribute, "genericDeviceHandler")
+            }
+        }
+        // — note: __time__ handled separately below —
     }
 }
 
@@ -827,6 +693,72 @@ def genericDeviceHandler(evt) {
             handleEvent(evt, fname)
         }
     }
+}
+
+private void scheduleTimeBasedTriggers(String fname) {
+    def dataNodes = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
+    dataNodes.each { nodeId, node ->
+        if (node.name != "eventTrigger" || node.data.deviceId != "__time__") return
+
+        def attr = node.data.attribute      // "timeOfDay", "currentTime", "dayOfWeek"
+        def val  = node.data.value
+        switch(attr) {
+            case "timeOfDay":
+                // sunrise/sunset subscriptions
+                def events = (val instanceof List) ? val : [val]
+                events.each { tod ->
+                    if (tod) subscribe(location, tod.toString(), "handleLocationTimeEvent")
+                }
+                break
+
+            case "currentTime":
+				// val is "HH:mm" — parse it and build a proper cron
+				def (hrStr, minStr) = val.tokenize(':')
+				if (hrStr && minStr) {
+					int hr  = hrStr.toInteger()
+					int min = minStr.toInteger()
+					// cron: sec min hour DOM MON DOW — fire every day at hr:min
+					String cron = "0 ${min} ${hr} * * ?"
+					schedule(cron, "handleTimeTrigger", [data: [fname: fname, nodeId: nodeId]])
+				} else {
+					log.warn "Invalid time format for currentTime trigger: ${val}"
+				}
+				break
+			
+            case "dayOfWeek":
+                // schedule weekly using Cron
+                def days = (val instanceof List) ? val : [val]
+                days.each { day ->
+                    // build Cron: sec min hour dom month dow year
+                    // here hour/minute parsing assumes node.data.hour/node.data.minute exist,
+                    // otherwise defaults to midnight
+                    def hr  = node.data.hour   ?: "0"
+                    def min = node.data.minute ?: "0"
+                    def cron = "0 ${min} ${hr} ? * ${day.toUpperCase()} *"
+                    schedule(cron, "handleTimeTrigger", [data: [fname: fname, nodeId: nodeId]])
+                }
+                break
+
+            default:
+                break
+        }
+    }
+}
+
+def handleTimeTrigger(Map data) {
+    def fname  = data.fname
+    def nodeId = data.nodeId
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+
+    def node = flowObj.flow.drawflow?.Home?.data[nodeId]
+    if (!node) return
+
+    // build a minimal event to pass through your normal handler
+    def evt = [ name: node.data.attribute,
+                value: node.data.value,
+                date:  new Date() ]
+    handleEvent(evt, fname)
 }
 
 def scheduleVariablePolling(String fname) {
@@ -949,31 +881,56 @@ def handleEvent(evt, fname) {
             evaluateNode(fname, triggerId, evt)
         }
     }
+	try {
+         notifyFlowTrace(fname, null, "endOfFlow")
+     } catch (ex) {
+         log.warn "[${fname}] Failed to write end‑of‑flow trace: $ex"
+     }
 }
 
-def getTriggerNodes(fname, evt) {
-    def flowObj = state.activeFlows[fname]
+def getTriggerNodes(String fname, evt) {
+    def flowObj   = state.activeFlows[fname]
     def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+
+    // Mode triggers stay the same
     if (evt.name == "mode") {
         return dataNodes.findAll { id, node ->
             node.name == "eventTrigger" &&
             node.data.deviceId == "__mode__" &&
             node.data.attribute == "mode"
         }
-    } else {
-        return dataNodes.findAll { id, node ->
-            if (node.name != "eventTrigger") return false
-            def devIds = []
-            if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds
-            else if (node.data.deviceId) devIds = [node.data.deviceId]
-            return devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name
+    }
+
+    // Everything else: device AND __time__ triggers
+    return dataNodes.findAll { id, node ->
+        if (node.name != "eventTrigger") return false
+
+        // pull out your list of device IDs (could be a single or many)
+        def devIds = []
+        if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+            devIds = node.data.deviceIds
+        } else if (node.data.deviceId) {
+            devIds = [ node.data.deviceId ]
         }
+
+        // 1) time‐based test: if this node is a "__time__" trigger
+        if (devIds.contains("__time__") && node.data.attribute == evt.name) {
+            return true
+        }
+
+        // 2) real device test: only if evt.device is non‐null
+        if (evt.device && devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name) {
+            return true
+        }
+
+        return false
     }
 }
 
 // ---- Node Evaluation (ALL node types, with delay logic preserved) ----
 def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
-	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${state.testDryRun}", "debug")
+	testDryRun = state.activeFlows[fname].testDryRun
+	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${testDryRun}", "debug")
     def flowObj = state.activeFlows[fname]
     if (!visited) visited = new HashSet()
 			if (visited.contains(nodeId)) return null
@@ -991,22 +948,48 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     switch (node.name) {
         case "eventTrigger":
 			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
-			// ---- Strict matching added here ----
-			def expectedValue = node.data.value
+
+			// ── Strict matching of value & pattern ──────────────────────────────
+			def expectedValue   = node.data.value
 			def expectedPattern = node.data.clickPattern
-			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
-			def eventPattern = (evt instanceof Map) ? evt.pattern : null
+			def eventValue      = (evt instanceof Map) ? evt.value   : evt?.value
+			def eventPattern    = (evt instanceof Map) ? evt.pattern : null
 
 			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
 				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return // STOP! Value didn't match
+				return  // STOP if value mismatch
 			}
 			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
 				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return // STOP! Pattern didn't match
+				return  // STOP if pattern mismatch
 			}
-			// ---- END strict matching ----
 
+			// ── Time‑of‑day “between” filter ──────────────────────────────────────
+			if (node.data.deviceId == "__time__" &&
+				node.data.attribute == "timeOfDay" &&
+				node.data.comparator?.toLowerCase() == "between") {
+
+				Date now = (evt.date as Date) ?: new Date()
+				int actualMin = now.hours * 60 + now.minutes
+
+				List bounds = (node.data.value instanceof List)
+								? node.data.value
+								: [ node.data.value.toString() ]
+				if (bounds.size() == 2) {
+					int lowMin  = toTimeMinutes(bounds[0].toString())
+					int highMin = toTimeMinutes(bounds[1].toString())
+					flowLog(fname, "timeOfDay between check → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
+					if (!(actualMin >= lowMin && actualMin <= highMin)) {
+						flowLog(fname, "timeOfDay outside of range, skipping", "debug")
+						return
+					}
+				} else {
+					log.warn "timeOfDay ‘between’ needs two values, got ${bounds}"
+					return
+				}
+			}
+
+			// ── All checks passed: fire downstream nodes ───────────────────────────
 			def passes = true
 			node.outputs?.each { outName, outObj ->
 				outObj.connections?.each { conn ->
@@ -1067,7 +1050,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             return result
 		
         case "device":
-			flowLog(fname, "In evaluateNode - device (dryRun=${state.testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - device (dryRun=${testDryRun})", "debug")
 			// collect device IDs
 			def devIds = []
 			if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
@@ -1078,21 +1061,15 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			def val = resolveVars(fname, node.data.value)
 
 			if (cmd == "toggle") {
-				flowLog(fname, "In evaluateNode - toggle (dryRun=${state.testDryRun})", "debug")
+				flowLog(fname, "In evaluateNode - toggle (dryRun=${testDryRun})", "debug")
 				devIds.each { devId ->
 					def device = getDeviceById(devId)
 					if (device && device.hasCommand("on") && device.hasCommand("off")) {
 						def currentVal = device.currentValue("switch")
-						if (!state.testDryRun) {
-							if (currentVal == "on") {
-								device.off()
-							} else {
-								device.on()
-							}
+						if (currentVal == "on") {
+							device.off()
 						} else {
-							flowLog(fname,
-								"DRY RUN: would toggle device ${devId} (current state: ${currentVal})",
-								"info")
+							device.on()
 						}
 					} else {
 						flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
@@ -1106,17 +1083,18 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				devIds.each { devId ->
 					def device = getDeviceById(devId)
 					if (device && cmd) {
-						if (!state.testDryRun) {
-							if (val != null && val != "") {
+						if (val != null && val != "") {
+							if(testDryRun) {
+								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd} - val: {val}", "debug")
+							} else {
 								device."${cmd}"(val)
+							}
+						} else {
+							if(testDryRun) {
+								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd}", "debug")
 							} else {
 								device."${cmd}"()
 							}
-						} else {
-							flowLog(fname,
-								"DRY RUN: would run ${cmd} on device ${devId}" +
-								(val ? " with value '${val}'" : ""),
-								"info")
 						}
 					}
 				}
@@ -1128,11 +1106,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			return
 
         case "notification":
-			flowLog(fname, "In evaluateNode - notification (dryRun=${state.testDryRun})", "debug")
-			if (!state.testDryRun) {
-            	sendNotification(fname, node.data, evt)
+			flowLog(fname, "In evaluateNode - notification (dryRun=${testDryRun})", "debug")
+			if(testDryRun) {
+				flowLog(fname, "Dry Run: fname: ${fname} - node.data: ${node.data} - evt: {evt}", "debug")
 			} else {
-				flowLog(fname, "DRY RUN: would have sent notification", "info")
+				sendNotification(fname, node.data, evt)
 			}
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
@@ -1158,22 +1136,21 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "setVariable":
-			flowLog(fname, "In evaluateNode - setVariable (dryRun=${state.testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - setVariable (dryRun=${testDryRun})", "debug")
 			def varName = resolveVars(fname, node.data.varName)
 			def varValue = resolveVars(fname, node.data.varValue)
-			if (!state.testDryRun) {
-				setVariable(fname, varName, varValue)
+			if(testDryRun) {
+				flowLog(fname, "Dry Run: fname: ${fname} - varName: ${varName} - varValue: {varValue}", "debug")
 			} else {
-				flowLog(fname, "DRY RUN: would have set Variable - ${varName} - ${varValue}", "info")
+				setVariable(fname, varName, varValue)
 			}
-				
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
 
         case "saveDeviceState":
-			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${state.testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
             def devId = node.data.deviceId
             if (devId) {
                 def device = getDeviceById(devId)
@@ -1185,11 +1162,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
                             if (val != null) devState[attr.name] = val
                         } catch (e) {}
                     }
-					if (!state.testDryRun) {
-                    	flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
-                    	flowObj.savedDeviceStates[devId] = devState
+					if(testDryRun) {
+						flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
 					} else {
-						flowLog(fname, "DRY RUN: would have Saved State", "info")
+						flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
+						flowObj.savedDeviceStates[devId] = devState
 					}
                 }
             }
@@ -1199,12 +1176,14 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "restoreDeviceState":
-			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${state.testDryRun})", "debug")
-			if (!state.testDryRun) {
-				def devId = node.data.deviceId
-				if (devId) {
-					def device = getDeviceById(devId)
-					def devState = flowObj.savedDeviceStates?.get(devId)
+			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${testDryRun})", "debug")
+			def devId = node.data.deviceId
+			if (devId) {
+				def device = getDeviceById(devId)
+				def devState = flowObj.savedDeviceStates?.get(devId)
+				if(testDryRun) {
+					flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
+				} else {
 					if (device && devState) {
 						devState.each { attrName, attrValue ->
 							try {
@@ -1218,8 +1197,6 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 						}
 					}
 				}
-			} else {
-				flowLog(fname, "DRY RUN: would have Restored Device State", "info")
 			}
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
@@ -1227,50 +1204,46 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             break
 
         case "notMatchingVar":
-			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append}) (dryRun=${state.testDryRun})", "debug")
-			if (!state.testDryRun) {
-				// 1) Resolve variable name
-				def varName = resolveVars(fname, node.data.varName)
-				// 2) Gather device IDs
-				def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-							  node.data.deviceIds :
-							  (node.data.deviceId ? [node.data.deviceId] : [])
-				// 3) Filter devices by the “Not” condition
-				def attr       = node.data.attribute
-				def comparator = node.data.comparator
-				def expected   = resolveVars(fname, node.data.value)
-				def newLines   = []
-				devIds.each { devId ->
-					def device = getDeviceById(devId)
-					if (device) {
-						def curVal = device.currentValue(attr)
-						// only include when **NOT** matching
-						if (!evaluateComparator(curVal, expected, comparator)) {
-							def name = device.displayName ?: device.name
-							newLines << "${name}:${curVal}"
-						}
+			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
+			// 1) Resolve variable name
+			def varName = resolveVars(fname, node.data.varName)
+			// 2) Gather device IDs
+			def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+						  node.data.deviceIds :
+						  (node.data.deviceId ? [node.data.deviceId] : [])
+			// 3) Filter devices by the “Not” condition
+			def attr       = node.data.attribute
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+			def newLines   = []
+			devIds.each { devId ->
+				def device = getDeviceById(devId)
+				if (device) {
+					def curVal = device.currentValue(attr)
+					// only include when **NOT** matching
+					if (!evaluateComparator(curVal, expected, comparator)) {
+						def name = device.displayName ?: device.name
+						newLines << "${name}:${curVal}"
 					}
 				}
-				// 4) Merge or overwrite
-				def appendMode = node.data.append as Boolean
-				def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
-				def lines      = existing ? existing.split('\n') as List : []
-				if (appendMode) {
-					newLines.each { nl ->
-						def id = nl.split(':')[0]
-						def idx = lines.findIndexOf { it.split(':')[0] == id }
-						if (idx >= 0) lines[idx] = nl else lines << nl
-					}
-				} else {
-					lines = newLines
-				}
-				// 5) Save back into in-memory vars
-				flowObj.vars = flowObj.vars ?: [:]
-				flowObj.vars[varName] = lines.join('\n')
-				flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
-			} else {
-				flowLog(fname, "DRY RUN: would have Saved Devices to Variable", "info")
 			}
+			// 4) Merge or overwrite
+			def appendMode = node.data.append as Boolean
+			def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
+			def lines      = existing ? existing.split('\n') as List : []
+			if (appendMode) {
+				newLines.each { nl ->
+					def id = nl.split(':')[0]
+					def idx = lines.findIndexOf { it.split(':')[0] == id }
+					if (idx >= 0) lines[idx] = nl else lines << nl
+				}
+			} else {
+				lines = newLines
+			}
+			// 5) Save back into in-memory vars
+			flowObj.vars = flowObj.vars ?: [:]
+			flowObj.vars[varName] = lines.join('\n')
+			flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
 			// 6) Continue downstream (only “true” path used here)
 			node.outputs?.output_1?.connections?.each { conn ->
 				evaluateNode(fname, conn.node, evt, null, visited)
@@ -1278,11 +1251,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			return
 
 		case "doNothing":
-			flowLog(fname, "In evaluateNode - doNothing (dryRun=${state.testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - doNothing", "debug")
 			break
 		
 		case "repeat":
-			flowLog(fname, "In evaluateNode - repeat (dryRun=${state.testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - repeat", "debug")
 			// flowObj is already declared in this scope; just initialize its repeatCounts map:
 			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
 
@@ -1350,45 +1323,65 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     }
 }
 
-
-
 void notifyFlowTrace(flowFile, nodeId, nodeType) {
     if (!flowFile) return
-    // Track flows by runId (or generate one if missing)
+
+    // initialize list of runs
     if (!state.flowTraces) state.flowTraces = []
 
-    // When eventTrigger or new flow, start a new runId
+    // get or create a runId for this invocation
     def runId = state.lastRunId
     if (nodeType == "eventTrigger" || !runId || state.lastFlowFile != flowFile) {
-        runId = "${now()}_${new Random().nextInt(1000000)}"
-        state.lastRunId = runId
+        // new run for this flowFile
+        runId             = "${now()}_${new Random().nextInt(1000000)}"
+        state.lastRunId   = runId
         state.lastFlowFile = flowFile
-        // Remove finished/old runs if needed (optional, e.g. keep last 3)
-        if (state.flowTraces.size() > 2) state.flowTraces = state.flowTraces[-2..-1]
-        // Add a new active flow path
-        state.flowTraces << [ runId: runId, flowFile: flowFile, steps: [] ]
+
+        // ── KEEP only one run per flowFile: remove any existing trace for this flowFile
+        state.flowTraces.removeAll { it.flowFile == flowFile }
+
+        // ── start fresh steps for this run
+        state.flowTraces << [
+            runId:    runId,
+            flowFile: flowFile,
+            steps:    []
+        ]
     }
 
-    // Find the active flow object for this run
+    // locate our run object
     def thisFlow = state.flowTraces.find { it.runId == runId }
     if (!thisFlow) {
-        thisFlow = [ runId: runId, flowFile: flowFile, steps: [] ]
+        thisFlow = [
+            runId:    runId,
+            flowFile: flowFile,
+            steps:    []
+        ]
         state.flowTraces << thisFlow
     }
 
+    // append this step
     def trace = [
-        flowFile: flowFile,
-        nodeId: nodeId,
-        nodeType: nodeType,
+        flowFile:  flowFile,
+        nodeId:    nodeId,
+        nodeType:  nodeType,
         timestamp: new Date().time
     ]
     thisFlow.steps << trace
 
-    // Optional: remove oldest steps if too big
-    if (thisFlow.steps.size() > 40) thisFlow.steps = thisFlow.steps[-40..-1]
+    // optional: cap number of steps per run
+    if (thisFlow.steps.size() > 40) {
+        thisFlow.steps = thisFlow.steps[-40..-1]
+    }
 
-    // Save all active flow paths
+    // write ALL last‐runs back to FE_flowtrace.json
     saveFlow("FE_flowtrace.json", state.flowTraces)
+
+    // ── NEW: emit a Location event so the Editor will detect and poll for the updated trace
+    sendLocationEvent(
+        name:           "flowTraceUpdated",
+        value:          new Date().time,
+        descriptionText:"Flow trace updated for ${flowFile}"
+    )
 }
 
 void saveFlow(fName, fData) {
@@ -1491,32 +1484,105 @@ def setVariable(fname, varName, varValue) {
 }
 
 def saveGlobalVarsToFile(globals) {
-	flowLog(fname, "In saveGlobalVarsToFile - globals: ${globals}", "debug")
-    def flowFile = "FE_global_vars.json"
-    def fData = groovy.json.JsonOutput.toJson(globals)
+    flowLog(fname, "In saveGlobalVarsToFile – globals: ${globals}", "debug")
+
+    // 1) upload the JSON to FE_global_vars.json
+    def fileName   = "FE_global_vars.json"
+    def jsonString = JsonOutput.toJson(globals)
+    uploadHubFile(fileName, jsonString.getBytes("UTF-8"))
+
+    // 2) fire a LOCATION event so Maker‑API will push it over WebSocket
+    sendLocationEvent(
+        name:           "globalVarsUpdated",
+        value:          new Date().time,
+        descriptionText: "Flow‑Engine: global‑vars file updated"
+    )
+    flowLog(fname, "Dispatched globalVarsUpdated location event", "debug")
 }
 
 // --- Comparators ---
 def evaluateComparator(actual, expected, cmp) {
-    switch(cmp) {
-        case "==":      return "$actual" == "$expected"
-        case "!=":      return "$actual" != "$expected"
-        case ">":       return toDouble(actual) > toDouble(expected)
-        case "<":       return toDouble(actual) < toDouble(expected)
-        case ">=":      return toDouble(actual) >= toDouble(expected)
-        case "<=":      return toDouble(actual) <= toDouble(expected)
-        case "contains":    return "$actual".toLowerCase().contains("$expected".toLowerCase())
-        case "notcontains": return !("$actual".toLowerCase().contains("$expected".toLowerCase()))
-        case "startsWith":  return "$actual".toLowerCase().startsWith("$expected".toLowerCase())
-        case "endsWith":    return "$actual".toLowerCase().endsWith("$expected".toLowerCase())
-        case "empty":   return !actual
-        case "isTrue":  return actual == true || "$actual" == "true"
-        case "isFalse": return actual == false || "$actual" == "false"
-        default:        return "$actual" == "$expected"
+    // normalize operator and log each invocation
+    String op = (cmp ?: '').toString().toLowerCase()
+    log.debug "In evaluateComparator – actual: ${actual}, expected: ${expected}, comparator: ${op}"
+
+    switch(op) {
+        case '==':
+            return "$actual" == "$expected"
+        case '!=':
+            return "$actual" != "$expected"
+        case '>':
+            return toDouble(actual) > toDouble(expected)
+        case '<':
+            return toDouble(actual) < toDouble(expected)
+        case '>=':
+            return toDouble(actual) >= toDouble(expected)
+        case '<=':
+            return toDouble(actual) <= toDouble(expected)
+        case 'between':
+            // build a two‑element list from expected
+            List bounds
+            if (expected instanceof List) {
+                bounds = expected
+            } else {
+                bounds = expected.toString()
+                                 .replaceAll(/[\[\]\s]/, '')
+                                 .split(',')
+                                 .toList()
+            }
+            if (bounds.size() == 2) {
+                double low  = toDouble(bounds[0])
+                double high = toDouble(bounds[1])
+                double val  = toDouble(actual)
+                log.debug "  ↳ between check: val=${val}, low=${low}, high=${high}"
+                return (val >= low && val <= high)
+            }
+            log.warn "evaluateComparator: 'between' requires exactly 2 values, got ${bounds}"
+            return false
+        case 'contains':
+            return "$actual".toLowerCase().contains("$expected".toLowerCase())
+        case 'notcontains':
+            return !"$actual".toLowerCase().contains("$expected".toLowerCase())
+        case 'startswith':
+            return "$actual".toLowerCase().startsWith("$expected".toLowerCase())
+        case 'endswith':
+            return "$actual".toLowerCase().endsWith("$expected".toLowerCase())
+        case 'empty':
+            return !actual
+        case 'istrue':
+            return actual == true || "$actual" == "true"
+        case 'isfalse':
+            return actual == false || "$actual" == "false"
+        default:
+            return "$actual" == "$expected"
     }
 }
 
-def toDouble(x) { try { return x as Double } catch(e) { return 0.0 } }
+// helper to coerce any value into a double
+private double toDouble(x) {
+    if (x instanceof Number) {
+        return ((Number)x).doubleValue()
+    }
+    String s = x?.toString()?.trim()
+    if (!s) return 0.0
+    try {
+        return Double.parseDouble(s)
+    } catch (Exception e) {
+        log.warn "toDouble: cannot convert '${s}' to a number"
+        return 0.0
+    }
+}
+
+private int toTimeMinutes(String value) {
+    if (value == "sunrise" || value == "sunset") {
+        def ss = getSunriseAndSunset()
+        Date dt = (value == "sunrise") ? ss.sunrise : ss.sunset
+        return dt.hours * 60 + dt.minutes
+    }
+    // otherwise assume “HH:mm”
+    def parts = value.tokenize(':')
+    return (parts[0].toInteger() * 60) + parts[1].toInteger()
+}
 
 def getFormat(type, myText=null, page=null) {
     if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid #000000;box-shadow: 2px 3px #8B8F8F;border-radius: 5px'>${myText}</div>"
