@@ -1385,7 +1385,6 @@ void notifyFlowTrace(flowFile, nodeId, nodeType) {
 }
 
 void saveFlow(fName, fData) {
-    //if(logEnable) log.debug "Saving to file - ${fName}"
 	String listJson = JsonOutput.toJson(fData) as String
 	uploadHubFile("${fName}",listJson.getBytes())
 }
@@ -1504,7 +1503,6 @@ def saveGlobalVarsToFile(globals) {
 def evaluateComparator(actual, expected, cmp) {
     // normalize operator and log each invocation
     String op = (cmp ?: '').toString().toLowerCase()
-    log.debug "In evaluateComparator – actual: ${actual}, expected: ${expected}, comparator: ${op}"
 
     switch(op) {
         case '==':
@@ -1534,7 +1532,6 @@ def evaluateComparator(actual, expected, cmp) {
                 double low  = toDouble(bounds[0])
                 double high = toDouble(bounds[1])
                 double val  = toDouble(actual)
-                log.debug "  ↳ between check: val=${val}, low=${low}, high=${high}"
                 return (val >= low && val <= high)
             }
             log.warn "evaluateComparator: 'between' requires exactly 2 values, got ${bounds}"
