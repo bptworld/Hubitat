@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.018 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.019 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -161,8 +161,13 @@
     </div>
     <div id="editor">
       <div id="flowTestStatus" style="margin: 12px 0;"></div>
-      <div id="header" style="font-size:25px; display:flex; align-items:center; gap:16px;" title="Node Editor">
+      <div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
         <b>Node Editor</b>
+        <button id="clearTraceBtn"
+                style="margin-left:16px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
+                      background:#808080;color:#fff;border:none;">
+          Clear Trace
+        </button>
       </div>
       <div id="nodeEditor">Right Click a node to edit</div>
       <div><small>Use 'ctrl-click' to select multiple Devices</small></div>
@@ -186,12 +191,18 @@
         </div>
         <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
       </div>
-      <div>
-        <button id="clearLogBtn" style="float:right;margin-bottom:8px;">Clear Log</button>
-      </div>
       <div id="logBox"
-          style="margin-top:20px;max-height:200px;overflow:auto;border-top:1px solid #333;padding-top:10px;font-family:monospace;font-size:12px;">
+          style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
+                  border-top:1px solid #333; padding-top:10px; font-family:monospace;
+                  font-size:12px;">
         Logs:<br>
+      </div>
+      <div style="margin-bottom:8px; text-align:left;">
+        <button id="clearLogBtn"
+                style="margin-left:16px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
+                      background:#808080;color:#fff;border:none;">
+          Clear Log
+        </button>
       </div>
     </div>
   </div>
@@ -290,6 +301,8 @@
     window.undoStack = [];
     window.redoStack = [];
     
+    let flowTracePollingActive = false;
+
     function pushUndoState() {
       if (!editor || !editor.export) {
         return;
@@ -347,6 +360,18 @@
         if (editor && typeof editor.import === "function") {
           editor.import(flow);
           patchFlowWithDeviceLabels(flow, window.devices);
+          
+          const nodes =
+            editor.drawflow?.Home?.data ||
+            editor.drawflow?.drawflow?.Home?.data ||
+            {};
+          Object.values(nodes).forEach(n => {
+            const el = document.getElementById(`node-${n.id}`);
+            if (!el) return;
+            // n.name is "eventTrigger", "condition", "device", etc.
+            el.setAttribute('data-node-type', n.name);
+          });
+          attachNodeClickHandlers();
 
           if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
             Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
@@ -549,43 +574,6 @@
         renderEditor(editor.getNodeFromId(editor.selected_id));
       }
       renderVariableInspector();
-
-      // 5) start polling only because we have a valid file
-      let lastGlobalJson = JSON.stringify(parsed);
-      setInterval(async () => {
-        try {
-          const txt2 = await fetchHubitatVarFileContent("FE_global_vars.json");
-          if (!txt2 || !txt2.trim()) {
-            // user deleted the file externally – stop polling
-            logAction("FE_global_vars.json removed – stopping globals poll", "warn");
-            return;
-          }
-          const parsed2 = JSON.parse(txt2);
-          const json2   = JSON.stringify(parsed2);
-          if (json2 !== lastGlobalJson) {
-            lastGlobalJson             = json2;
-            window.FE_global_vars      = parsed2;
-            window.FE_global_var_names = parsed2.map(v => v.name).filter(Boolean);
-
-            if (window.flowVars?.setGlobalVars) {
-              flowVars.setGlobalVars(parsed2);
-            }
-            if (window.flowVars?.renderManager) {
-              flowVars.renderManager(
-                document.getElementById("variableManager"),
-                { globalVars: true }
-              );
-            }
-            if (editor?.selected_id) {
-              renderEditor(editor.getNodeFromId(editor.selected_id));
-            }
-            renderVariableInspector();
-            logAction("🔄 FE_global_vars.json reloaded from Hubitat", "info");
-          }
-        } catch (e) {
-          console.warn("Error polling FE_global_vars.json – poll aborted", e);
-        }
-      }, 5000);
     }
  
     const TIME_DEVICE = {
@@ -603,34 +591,37 @@
     };
 
     function buildTimeDevicePicker(pickerDiv, node) {
+      // only handle the special “Time” device
       const devs = node.data.deviceIds || [];
       if (devs.length !== 1 || node.data.deviceId !== "__time__") return false;
 
       pickerDiv.innerHTML = "";
 
+      // initialize data on first render
       if (!node.data.attribute) {
-        node.data.attribute  = "timeOfDay";
+        node.data.attribute  = "";
         node.data.comparator = "";
         node.data.value      = "";
       }
 
+      // ── CONDITION LABEL ────────────────────────────────────────────
       pickerDiv.appendChild(Object.assign(document.createElement("label"), {
         textContent: "Condition",
         style: "display:block;margin-bottom:4px"
       }));
+
+      // ── ATTRIBUTE SELECT ───────────────────────────────────────────
       const attrSelect = document.createElement("select");
       attrSelect.style = "display:block;margin-bottom:12px";
-      [
-        { key: "timeOfDay",   label: "Time of Day"   },
-        { key: "dayOfWeek",   label: "Day of Week"   },
-        { key: "currentTime", label: "Current Time"  }
-      ].forEach(o => {
-        const opt = document.createElement("option");
-        opt.value = o.key;
-        opt.textContent = o.label;
-        if (node.data.attribute === o.key) opt.selected = true;
-        attrSelect.appendChild(opt);
-      });
+      attrSelect.innerHTML =
+        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+        [
+          { key: "timeOfDay",   label: "Time of Day"  },
+          { key: "dayOfWeek",   label: "Day of Week"  },
+          { key: "currentTime", label: "Current Time" }
+        ]
+          .map(o => `<option value="${o.key}" ${node.data.attribute === o.key ? "selected" : ""}>${o.label}</option>`)
+          .join("");
       attrSelect.onchange = () => {
         node.data.attribute  = attrSelect.value;
         node.data.comparator = "";
@@ -640,19 +631,22 @@
       };
       pickerDiv.appendChild(attrSelect);
 
+      // ── COMPARATOR LABEL ──────────────────────────────────────────
       pickerDiv.appendChild(Object.assign(document.createElement("label"), {
         textContent: "Comparator",
         style: "display:block;margin-bottom:4px"
       }));
+
+      // ── COMPARATOR SELECT ─────────────────────────────────────────
       const cmpSelect = document.createElement("select");
       cmpSelect.style = "display:block;margin-bottom:12px";
-      ["==","!=", "<","<=", ">",">=", "between"].forEach(cmp => {
-        const opt = document.createElement("option");
-        opt.value = cmp;
-        opt.textContent = cmp === "==" ? "equals" : cmp;
-        if (node.data.comparator === cmp) opt.selected = true;
-        cmpSelect.appendChild(opt);
-      });
+      cmpSelect.innerHTML =
+        `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+        ["==", "!=", "<", "<=", ">", ">=", "between"]
+          .map(cmp =>
+            `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${cmp === "==" ? "equals" : cmp}</option>`
+          )
+          .join("");
       cmpSelect.onchange = () => {
         node.data.comparator = cmpSelect.value;
         node.data.value      = "";
@@ -661,73 +655,65 @@
       };
       pickerDiv.appendChild(cmpSelect);
 
+      // ── VALUE PICKERS ─────────────────────────────────────────────
       if (node.data.attribute === "timeOfDay") {
-        // ── If comparator is “between”, show Sunrise/Sunset range picker ──
+        // Between Sunrise & Sunset?
         if (node.data.comparator === "between") {
-          // ensure node.data.value is an array [start, end]
           if (!Array.isArray(node.data.value)) {
-            node.data.value = ["sunrise", "sunset"];
+            node.data.value = ["", ""]; // start/end
           }
           const [startVal, endVal] = node.data.value;
 
-          // ── Start selector (Sunrise / Sunset)
+          // Start selector
           const startSelect = document.createElement("select");
           startSelect.style = "display:block;margin-bottom:8px";
-          ["sunrise", "sunset"].forEach(optVal => {
-            const opt = document.createElement("option");
-            opt.value = optVal;
-            opt.textContent = optVal.charAt(0).toUpperCase() + optVal.slice(1);
-            if (startVal === optVal) opt.selected = true;
-            startSelect.appendChild(opt);
-          });
+          startSelect.innerHTML =
+            `<option value="" ${!startVal ? "selected" : ""}>(none)</option>` +
+            ["sunrise", "sunset"]
+              .map(opt => `<option value="${opt}" ${startVal === opt ? "selected" : ""}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>`)
+              .join("");
           startSelect.onchange = () => {
             node.data.value[0] = startSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(startSelect);
 
-          // ── End selector (Sunrise / Sunset / Certain Time…)
+          // End selector
           const endSelect = document.createElement("select");
           endSelect.style = "display:block;margin-bottom:8px";
-          [
-            { v: "sunrise", label: "Sunrise" },
-            { v: "sunset",  label: "Sunset" },
-            { v: "custom",  label: "Certain Time…" }
-          ].forEach(def => {
-            const opt = document.createElement("option");
-            opt.value = def.v;
-            opt.textContent = def.label;
-            if (
-              endVal === def.v ||
-              (def.v === "custom" && !["sunrise", "sunset"].includes(endVal))
-            ) {
-              opt.selected = true;
-            }
-            endSelect.appendChild(opt);
-          });
+          endSelect.innerHTML =
+            `<option value="" ${!endVal ? "selected" : ""}>(none)</option>` +
+            [
+              { v: "sunrise", label: "Sunrise" },
+              { v: "sunset",  label: "Sunset" },
+              { v: "custom",  label: "Certain Time…" }
+            ]
+              .map(def => {
+                const sel = (endVal === def.v) || (def.v === "custom" && endVal && !["sunrise","sunset"].includes(endVal));
+                return `<option value="${def.v}" ${sel ? "selected" : ""}>${def.label}</option>`;
+              })
+              .join("");
           endSelect.onchange = () => {
             if (endSelect.value === "custom") {
-              // keep existing custom or default to noon
-              node.data.value[1] =
-                !["sunrise", "sunset"].includes(node.data.value[1])
-                  ? node.data.value[1]
-                  : "12:00";
+              node.data.value[1] = node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1])
+                ? node.data.value[1]
+                : "12:00";
             } else {
               node.data.value[1] = endSelect.value;
             }
             editor.updateNodeDataFromId(node.id, node.data);
-            buildTimeDevicePicker(pickerDiv, node); // re-render so time input shows/hides
+            buildTimeDevicePicker(pickerDiv, node);
           };
           pickerDiv.appendChild(endSelect);
 
-          // ── If “Certain Time” chosen, show a time input ──
+          // Custom time input?
           if (
             node.data.value[1] === "custom" ||
-            !["sunrise", "sunset"].includes(node.data.value[1])
+            (node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1]))
           ) {
             const timeInput = document.createElement("input");
-            timeInput.type = "time";
-            timeInput.value = node.data.value[1];
+            timeInput.type  = "time";
+            timeInput.value = node.data.value[1] || "";
             timeInput.style = "display:block;margin-bottom:12px";
             timeInput.onchange = () => {
               node.data.value[1] = timeInput.value;
@@ -736,101 +722,38 @@
             pickerDiv.appendChild(timeInput);
           }
         }
-        // ── Otherwise, just a single Sunrise/Sunset selector + offset ──
+        // Single Sunrise/Sunset selector
         else {
           const todSelect = document.createElement("select");
           todSelect.style = "display:block;margin-bottom:12px";
-          ["sunrise", "sunset"].forEach(tod => {
-            const opt = document.createElement("option");
-            opt.value = tod;
-            opt.textContent = tod.charAt(0).toUpperCase() + tod.slice(1);
-            if (node.data.value === tod) opt.selected = true;
-            todSelect.appendChild(opt);
-          });
+          // inject “(none)” at top and select it when there’s no value yet
+          todSelect.innerHTML =
+            `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
+            ["sunrise", "sunset"]
+              .map(tod =>
+                `<option value="${tod}" ${node.data.value === tod ? "selected" : ""}>` +
+                  tod.charAt(0).toUpperCase() + tod.slice(1) +
+                `</option>`
+              )
+              .join("");
           todSelect.onchange = () => {
             node.data.value = todSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(todSelect);
-
-          const offsetLabel = document.createElement("label");
-          offsetLabel.textContent = "Offset (minutes)";
-          offsetLabel.style.display = "block";
-          pickerDiv.appendChild(offsetLabel);
-
-          const offsetInput = document.createElement("input");
-          offsetInput.type = "number";
-          offsetInput.placeholder = "e.g. -10 or 15";
-          offsetInput.style = "display:block;margin-bottom:12px";
-          offsetInput.value = node.data.offset || 0;
-          offsetInput.onchange = () => {
-            node.data.offset = parseInt(offsetInput.value, 10) || 0;
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          pickerDiv.appendChild(offsetInput);
         }
       }
-      else if (node.data.attribute === "dayOfWeek") {
-        const dowSelect = document.createElement("select");
-        dowSelect.style = "display:block;margin-bottom:12px";
-        ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-          .forEach(day => {
-            const opt = document.createElement("option");
-            opt.value = day;
-            opt.textContent = day;
-            if (
-              Array.isArray(node.data.value)
-                ? node.data.value.includes(day)
-                : node.data.value === day
-            ) {
-              opt.selected = true;
-            }
-            dowSelect.appendChild(opt);
-          });
-        dowSelect.multiple = true;
-        dowSelect.size = 7;
-        dowSelect.onchange = () => {
-          node.data.value = Array.from(dowSelect.selectedOptions).map(o => o.value);
+      // If not Time‑of‑Day, just a plain time input
+      else {
+        const timeInput = document.createElement("input");
+        timeInput.type  = "time";
+        timeInput.value = node.data.value || "";
+        timeInput.style = "display:block;margin-bottom:12px";
+        timeInput.onchange = () => {
+          node.data.value = timeInput.value;
           editor.updateNodeDataFromId(node.id, node.data);
         };
-        pickerDiv.appendChild(dowSelect);
-      }
-      else if (node.data.attribute === "currentTime") {
-        if (node.data.comparator === "between") {
-          const [startVal = "", endVal = ""] = Array.isArray(node.data.value)
-            ? node.data.value
-            : ["", ""];
-          const startInput = document.createElement("input");
-          startInput.type = "time";
-          startInput.value = startVal;
-          startInput.style = "display:block;margin-bottom:4px";
-          startInput.onchange = () => {
-            node.data.value = [startInput.value, node.data.value[1] || ""];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          pickerDiv.appendChild(startInput);
-
-          const endInput = document.createElement("input");
-          endInput.type = "time";
-          endInput.value = endVal;
-          endInput.style = "display:block;margin-bottom:12px";
-          endInput.onchange = () => {
-            node.data.value = [node.data.value[0] || "", endInput.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          pickerDiv.appendChild(endInput);
-        }
-        else {
-          const timeInput = document.createElement("input");
-          timeInput.type  = "time";
-          timeInput.value = node.data.value || "";
-          timeInput.style = "display:block;margin-bottom:12px";
-          timeInput.onchange = () => {
-            node.data.value = timeInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          pickerDiv.appendChild(timeInput);
-        }
+        pickerDiv.appendChild(timeInput);
       }
 
       return true;
@@ -861,34 +784,46 @@
     }
 
     // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
+    // 1) Generic attribute picker
     function renderAttributePicker(el, node, dev, onChange) {
       const lbl = document.createElement("label");
       lbl.textContent = "Attribute";
       lbl.style.display = "block";
       el.appendChild(lbl);
+
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
-      sel.innerHTML = `<option value="">Pick an attribute…</option>` +
-        Object.keys(dev.attributes).map(attr =>
-          `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
-        ).join('');
+      // inject a "(none)" default, selected when node.data.attribute is falsy
+      sel.innerHTML =
+        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+        Object.keys(dev.attributes)
+          .map(attr =>
+            `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
+          )
+          .join("");
       sel.onchange = onChange;
       el.appendChild(sel);
     }
 
+    // 2) Generic comparator picker
     function renderComparatorPicker(el, node, comparators, comparatorLabels, onChange) {
       const lbl = document.createElement("label");
       lbl.textContent = "Comparator";
       lbl.style.display = "block";
       el.appendChild(lbl);
+
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
-      sel.innerHTML = `<option value="">Pick…</option>` +
-        comparators.map(cmp =>
-          `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp]||cmp}</option>`
-        ).join('');
+      // inject "(none)" default
+      sel.innerHTML =
+        `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+        comparators
+          .map(cmp =>
+            `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
+          )
+          .join("");
       sel.onchange = onChange;
       el.appendChild(sel);
     }
@@ -913,21 +848,18 @@
         const sel = document.createElement("select");
         sel.style.display = "block";
         sel.style.marginBottom = "12px";
-        sel.innerHTML = `<option value="">(none)</option>` +
-          knownValues.map(v =>
-            `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`
-          ).join('');
-        sel.onchange = () => { node.data.value = sel.value; onChange(); };
+        sel.innerHTML =
+          // re‑inject “(none)” and select it when there’s no value yet
+          `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
+          // then your real options
+          knownValues
+            .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
+            .join("");
+        sel.onchange = () => { 
+          node.data.value = sel.value; 
+          onChange(); 
+        };
         el.appendChild(sel);
-      }
-      else {
-        const inp = Object.assign(document.createElement("input"), {
-          type: "text",
-          value: node.data.value || "",
-          style: "display:block;margin-bottom:12px;"
-        });
-        inp.oninput = () => { node.data.value = inp.value; onChange(); };
-        el.appendChild(inp);
       }
     }
 
@@ -1127,7 +1059,8 @@
 
         // Click-pattern indicator (only for triggers)
         const clickHtml = !isCondition && data.clickPattern
-          ? `<div class="click-pattern">${data.clickPattern}</div>`
+        //  ? `<div class="click-pattern">${data.clickPattern}</div>`
+          ? `<div class="click-pattern"></div>`
           : "";
 
         // Locked padlock
@@ -1356,31 +1289,31 @@
       }
 
       const ATTRIBUTE_KNOWN_VALUES = {
-        "contact":        ["(none)", "open", "closed"],
-        "switch":         ["(none)", "on", "off"],
-        "door":           ["(none)", "open", "closed", "unknown"],
-        "lock":           ["(none)", "locked", "unlocked", "unknown"],
-        "motion":         ["(none)", "active", "inactive"],
-        "presence":       ["(none)", "present", "not present"],
-        "water":          ["(none)", "wet", "dry"],
-        "smoke":          ["(none)", "clear", "detected", "tested"],
-        "carbonMonoxide": ["(none)", "clear", "detected", "tested"],
-        "acceleration":   ["(none)", "active", "inactive"],
-        "tamper":         ["(none)", "clear", "detected"],
-        "shade":          ["(none)", "open", "closed", "partially open", "unknown"],
-        "windowShade":    ["(none)", "open", "closed", "partially open", "unknown"],
+        "contact":        ["open", "closed"],
+        "switch":         ["on", "off"],
+        "door":           ["open", "closed", "unknown"],
+        "lock":           ["locked", "unlocked", "unknown"],
+        "motion":         ["active", "inactive"],
+        "presence":       ["present", "not present"],
+        "water":          ["wet", "dry"],
+        "smoke":          ["clear", "detected", "tested"],
+        "carbonMonoxide": ["clear", "detected", "tested"],
+        "acceleration":   ["active", "inactive"],
+        "tamper":         ["clear", "detected"],
+        "shade":          ["open", "closed", "partially open", "unknown"],
+        "windowShade":    ["open", "closed", "partially open", "unknown"],
         "thermostatMode": [
-          "(none)", "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
+          "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
         ],
         "thermostatOperatingState": [
-          "(none)", "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
+          "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
         ],
         "thermostatFanMode": [
-          "(none)", "auto", "on", "circulate"
+          "auto", "on", "circulate"
         ],
-        "alarm":          ["(none)", "off", "strobe", "siren", "both"],
-        "valve":          ["(none)", "open", "closed"],
-        "button":         ["(none)", "pushed", "held", "doubleTapped", "released"],
+        "alarm":          ["off", "strobe", "siren", "both"],
+        "valve":          ["open", "closed"],
+        "button":         ["pushed", "held", "doubleTapped", "released"],
         "temperature":    [],
         "humidity":       [],
         "illuminance":    [],
@@ -1521,257 +1454,176 @@
       }
 
       function renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml) {
+        // clear the container
         el.innerHTML = "";
 
-        // 1) Time picker shortcut
-        if (buildTimeDevicePicker(el, node)) {
-          return;
-        }
+        // ensure deviceIds array
+        const devIds = Array.isArray(node.data.deviceIds)
+          ? node.data.deviceIds
+          : node.data.deviceId
+            ? [node.data.deviceId]
+            : [];
 
-        // 2) Gather selected devices (supports multi-select)
-        const selectedDevs = (node.data.deviceIds || [])
-          .map(id => devices.find(d => d.id == id))
-          .filter(Boolean);
+        // collect shared attribute names across selected devices
+        const sharedAttrs = Array.from(new Set(
+          devIds.flatMap(id => {
+            const dev = devices.find(d => d.id === id);
+            return dev && dev.attributes
+              ? Object.keys(dev.attributes)
+              : [];
+          })
+        )).sort();
 
-        // 3) Special “variable” case when exactly one __variable__ device
-        if (selectedDevs.length === 1 && node.data.deviceId === "__variable__") {
-          // 3a) Variable picker
-          const globals = (window.FE_global_vars || [])
-            .map(v => v.name)
-            .filter(Boolean)
-            .sort();
+        // ── ATTRIBUTE LABEL ────────────────────────────────────────────
+        const attrLabel = document.createElement("label");
+        attrLabel.textContent = "Attribute";
+        attrLabel.style.display = "block";
+        el.appendChild(attrLabel);
 
-          const varLabel = document.createElement("label");
-          varLabel.textContent = "Variable";
-          varLabel.style.display = "block";
-          el.appendChild(varLabel);
-
-          const varSel = document.createElement("select");
-          varSel.style.display = "block";
-          globals.forEach(name => {
-            const opt = document.createElement("option");
-            opt.value = name;
-            opt.textContent = name;
-            if (node.data.variableName === name) opt.selected = true;
-            varSel.appendChild(opt);
-          });
-          el.appendChild(varSel);
-
-          // 3b) Comparator picker
-          const compLabel = document.createElement("label");
-          compLabel.textContent = "Comparator";
-          compLabel.style.display = "block";
-          el.appendChild(compLabel);
-
-          const compSel = document.createElement("select");
-          compSel.style.display = "block";
-          ["==", "!=", ">", "<", ">=", "<="].forEach(op => {
-            const o = document.createElement("option");
-            o.value = op;
-            o.textContent = op;
-            if (node.data.comparator === op) o.selected = true;
-            compSel.appendChild(o);
-          });
-          el.appendChild(compSel);
-
-          // 3c) Value input
-          const valLabel = document.createElement("label");
-          valLabel.textContent = "Value";
-          valLabel.style.display = "block";
-          el.appendChild(valLabel);
-
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.value = node.data.value != null ? node.data.value : "";
-          valInput.style.display = "block";
-          el.appendChild(valInput);
-
-          // 3d) Wire up change handlers
-          varSel.onchange = () => {
-            node.data.variableName = varSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
-          };
-          compSel.onchange = () => {
-            node.data.comparator = compSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
-          };
-          valInput.oninput = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
-          };
-
-          return;
-        }
-
-        // 4) Compute shared attributes across all selected devices
-        let sharedAttrs = [];
-        if (selectedDevs.length) {
-          sharedAttrs = Object.keys(selectedDevs[0].attributes || {});
-          for (let i = 1; i < selectedDevs.length; i++) {
-            sharedAttrs = sharedAttrs.filter(attr =>
-              selectedDevs[i].attributes.hasOwnProperty(attr)
-            );
-          }
-        }
-
-        // 5) Attribute picker
-        const lblA = document.createElement("label");
-        lblA.textContent = "Attribute";
-        lblA.style.display = "block";
-        el.appendChild(lblA);
-
+        // ── ATTRIBUTE SELECT ───────────────────────────────────────────
         const attrSel = document.createElement("select");
         attrSel.style = "display:block;margin-bottom:12px";
-        attrSel.innerHTML = `<option value="">(none)</option>` +
-          sharedAttrs.map(a => `<option value="${a}">${a}</option>`).join("");
-        attrSel.value = node.data.attribute || "";
+        attrSel.innerHTML =
+          `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+          sharedAttrs
+            .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
+            .join("");
         attrSel.onchange = () => {
-          node.data.attribute = attrSel.value;
+          node.data.attribute  = attrSel.value;
+          node.data.logic      = "";
           node.data.comparator = "";
-          node.data.value = "";
+          node.data.value      = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-          markFlowNeedsSave(true);
         };
         el.appendChild(attrSel);
 
-        // 6) Logic & Comparator picker
-        // — Logic dropdown (AND/OR)
-        if (!node.data.logic) node.data.logic = "or";
+        // ── LOGIC LABEL ────────────────────────────────────────────────
         const logicLabel = document.createElement("label");
         logicLabel.textContent = "Logic";
         logicLabel.style.display = "block";
         el.appendChild(logicLabel);
 
+        // ── LOGIC SELECT ───────────────────────────────────────────────
         const logicSel = document.createElement("select");
         logicSel.style = "display:block;margin-bottom:12px";
-        ["and", "or"].forEach(optVal => {
-          const opt = document.createElement("option");
-          opt.value = optVal;
-          opt.textContent = optVal.toUpperCase();
-          if (node.data.logic === optVal) opt.selected = true;
-          logicSel.appendChild(opt);
-        });
+        logicSel.innerHTML =
+          `<option value="" ${!node.data.logic ? "selected" : ""}>(none)</option>` +
+          ["and", "or"]
+            .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
+            .join("");
         logicSel.onchange = () => {
           node.data.logic = logicSel.value;
           editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
+          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
         };
         el.appendChild(logicSel);
 
-        // — Comparator dropdown
-        const lblCmp = document.createElement("label");
-        lblCmp.textContent = "Comparator";
-        lblCmp.style.display = "block";
-        el.appendChild(lblCmp);
+        // ── COMPARATOR LABEL ───────────────────────────────────────────
+        const cmpLabel = document.createElement("label");
+        cmpLabel.textContent = "Comparator";
+        cmpLabel.style.display = "block";
+        el.appendChild(cmpLabel);
 
+        // ── COMPARATOR SELECT ──────────────────────────────────────────
         const cmpSel = document.createElement("select");
         cmpSel.style = "display:block;margin-bottom:12px";
-        ["==","!=","<","<=",">",">=","between","changes"].forEach(c => {
-          const opt = document.createElement("option");
-          opt.value       = c;
-          opt.textContent = c === "==" ? "equals" : c;
-          if (node.data.comparator === c) opt.selected = true;
-          cmpSel.appendChild(opt);
-        });
+        cmpSel.innerHTML =
+          `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+          ["==","!=","<","<=",">",">=","between","changes"]
+            .map(c => {
+              const label = c === "==" ? "equals" : c;
+              return `<option value="${c}" ${node.data.comparator === c ? "selected" : ""}>${label}</option>`;
+            })
+            .join("");
         cmpSel.onchange = () => {
           node.data.comparator = cmpSel.value;
-          node.data.value = node.data.comparator === "between" ? [] : "";
+          node.data.value      = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-          markFlowNeedsSave(true);
         };
         el.appendChild(cmpSel);
 
-        // 7) Value picker / inputs
+        // ── VALUE INPUT(S) ────────────────────────────────────────────
+        if (node.data.comparator === "between") {
+          // two inputs for range
+          const [start = "", end = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
+          // start value
+          const startInput = document.createElement("input");
+          startInput.type  = "text";
+          startInput.placeholder = "Start value";
+          startInput.value = start;
+          startInput.style = "display:block;margin-bottom:8px";
+          startInput.onchange = () => {
+            node.data.value = [startInput.value, end];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(startInput);
+          // end value
+          const endInput = document.createElement("input");
+          endInput.type  = "text";
+          endInput.placeholder = "End value";
+          endInput.value = end;
+          endInput.style = "display:block;margin-bottom:12px";
+          endInput.onchange = () => {
+            node.data.value = [startInput.value, endInput.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(endInput);
+        }
+        
         const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
         if (known.length) {
-          // dropdown of known values
           const valSel = document.createElement("select");
-          valSel.style.width = "100%";
-          known.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            if (node.data.value === v) opt.selected = true;
-            valSel.appendChild(opt);
-          });
+          valSel.style = "display:block;margin-bottom:12px";
+          valSel.innerHTML =
+            `<option value="">(none)</option>` +
+            known
+              .map(v =>
+                `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
+              )
+              .join("");
           valSel.onchange = () => {
             node.data.value = valSel.value;
             editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
           };
           el.appendChild(valSel);
-
-        } else if (node.data.comparator === "between") {
-          // two-input “between” UI
-          const [minVal, maxVal] = Array.isArray(node.data.value)
-            ? node.data.value
-            : ["", ""];
+        }
+        else if (node.data.comparator === "between") {
+          const [start, end] = Array.isArray(node.data.value) ? node.data.value : ["",""];
           const minIn = document.createElement("input");
           const maxIn = document.createElement("input");
-
           minIn.type = maxIn.type = "text";
-          minIn.value = minVal;
-          maxIn.value = maxVal;
+          minIn.value = start;
+          maxIn.value = end;
           minIn.placeholder = "Min";
           maxIn.placeholder = "Max";
           minIn.style = "width:45%; margin-right:8px; display:inline-block";
           maxIn.style = "width:45%; display:inline-block";
-
           const updateBetween = () => {
             node.data.value = [minIn.value, maxIn.value];
             editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
           };
-
-          minIn.oninput = updateBetween;
-          maxIn.oninput = updateBetween;
-
+          minIn.oninput = maxIn.oninput = updateBetween;
           el.appendChild(minIn);
           el.appendChild(maxIn);
-
-        } else {
-          // free-form text input
-          const valIn = document.createElement("input");
-          valIn.type = "text";
-          valIn.value = node.data.value || "";
-          valIn.placeholder = "Value";
-          valIn.style = "width:98%";
-          valIn.oninput = () => {
-            node.data.value = valIn.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(valIn);
         }
+        else if (node.data.comparator && node.data.comparator !== "changes") {
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value";
+          valInput.value = node.data.value || "";
+          valInput.style = "display:block;margin-bottom:12px";
+          valInput.onchange = () => {
+            node.data.value = valInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(valInput);
+        }
+
+        // finally, update the node's HTML preview
+        const tileHtml = nodeTileHtml(node.name, node.data, node.id);
+        editor.updateNodeHtmlFromId(node.id, tileHtml);
       }
 
       // PATCH START: renderEditor, multi-trigger support
@@ -1876,7 +1728,7 @@
             cmdSel.innerHTML =
               `<option value="">Pick a command…</option>` +
               shared.map(c => `<option value="${c}">${c}</option>`).join("");
-            cmdSel.value = node.data.command || "";
+            cmdSel.value = node.data.command;
             cmdSel.onchange = () => {
               node.data.command = cmdSel.value;
               node.data.value   = "";
@@ -2629,11 +2481,10 @@
             renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
           }
 
-          // 4) Variable Name dropdown (with “(none)”)
+          // 4) Variable Name dropdown
           el.insertAdjacentHTML("beforeend", `
             <label>Variable Name</label>
             <select id="varName_${node.id}" style="width:98%; margin-bottom:12px;">
-              <option value="" ${!node.data.varName ? "selected" : ""}>(none)</option>
               ${(Array.from(new Set([
                   ...(window.FE_flowvars   || []).map(v => v.name),
                   ...(window.FE_global_var_names || [])
@@ -2844,6 +2695,24 @@
       }
       
       window.editor = new Drawflow(document.getElementById("drawflow"));
+      // ── MONKEY‑PATCH editor.addNode TO WIPE ALL BUILT‑IN DEFAULTS ──
+      (function(){
+        const origAddNode = editor.addNode.bind(editor);
+        editor.addNode = function(...args) {
+          const data = args[6];
+          if (data && typeof data === 'object') {
+            Object.keys(data).forEach(key => {
+              if (typeof data[key] === 'string') {
+                data[key] = "";
+              } else if (Array.isArray(data[key])) {
+                data[key] = data[key].map(_ => "");
+              }
+            });
+          }
+          return origAddNode(...args);
+        };
+      })();
+
       if (editor && editor.on) {
       console.log("Attaching undo/redo event listeners to real editor");
       editor.on('all', function(event, ...args) { 
@@ -2915,6 +2784,8 @@
       }
       editor.reroute = true;
       editor.start();
+      attachNodeClickHandlers();
+
       editor.on('nodeMoved', function(id) {
         markFlowNeedsSave(true);
       });
@@ -3106,8 +2977,8 @@
         logAction("addCondition button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("condition", 1, 2, x, y, "condition", {
-          deviceId: "", attribute: "", value: "", comparator: "=="
-        }, nodeTileHtml("condition", { deviceId: "", attribute: "", comparator: "==", value: "" }), undefined, { outputs: ["true", "false"] });
+          deviceId: "", attribute: "", value: "", comparator: ""
+        }, nodeTileHtml("condition", { deviceId: "", attribute: "", comparator: "", value: "" }), undefined, { outputs: ["true", "false"] });
         setTimeout(() => {
           const nodeEls = document.querySelectorAll('.drawflow-node');
           nodeEls.forEach(el => {
@@ -3146,8 +3017,8 @@
         logAction("addTrigger button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("eventTrigger", 0, 1, x, y, "eventTrigger", {
-          deviceId: "", attribute: "", value: "", comparator: "=="
-        }, nodeTileHtml("eventTrigger", { deviceId: "", attribute: "", comparator: "==", value: "" }));
+          deviceId: "", attribute: "", value: "", comparator: ""
+        }, nodeTileHtml("eventTrigger", { deviceId: "", attribute: "", comparator: "", value: "" }));
         setTimeout(() => {
           const nodeEls = document.querySelectorAll('.drawflow-node');
           nodeEls.forEach(el => {
@@ -3375,33 +3246,6 @@
         await autoLoadGlobalVarsFromHubitat();
       };
 
-      async function fetchHubitatFileContent(fileName) {
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          throw new Error("Missing credentials");
-        }
-        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
-        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
-        try {
-          const response = await fetch(fileUrl);
-          const raw = await response.text();
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${raw}`);
-          }
-          try {
-            return JSON.parse(raw);
-          } catch (err) {
-            throw new Error("File is not valid JSON: " + raw);
-          }
-        } catch (e) {
-          logAction("Failed to fetch file content: " + e.message, "error");
-          throw e;
-        }
-      }
-
-      // — Auto-load Hubitat flows into the dropdown on page load —
       window.addEventListener("DOMContentLoaded", async () => {
         if (!hubitatCredentialsAreValid(true)) return;
 
@@ -3445,21 +3289,56 @@
             // 2) patch in device labels (for Action/Condition tiles)
             patchFlowWithDeviceLabels(data, window.devices);
 
-            // 4) update the Flow Name display and zoom to fit
+            // 3) update the Flow Name display and zoom to fit
             document.getElementById("flowName").textContent = fileName;
-            zoomDrawflowToFit(40);
             markFlowNeedsSave(false);
             logAction(`Loaded “${fileName}” from Hubitat.`, "success");
 
-            // 5) refresh the Test-Flow status panel
+            // fit & top‑align the freshly imported flow
+            zoomDrawflowToFit();
+
+            // 4) refresh the Test‑Flow status panel
             const appId = document.getElementById("hubitatAppId").value.trim();
             const token = document.getElementById("hubitatToken").value.trim();
             checkIfFlowIsInUse(fileName, appId, token);
+
+            // 5) highlight the last run from FE_flowtrace.json
+            try {
+              const allTraces = await fetchHubitatFileContent("FE_flowtrace.json");
+              const runsForThisFlow = Array.isArray(allTraces)
+                ? allTraces.filter(t => t.flowFile === `${fileName}.json`)
+                : [];
+              if (runsForThisFlow.length > 0) {
+                highlightOnlyLatestRun(runsForThisFlow);
+              } else {
+                logAction(`No previous runs found for ${fileName}`, "info");
+              }
+            } catch (err) {
+              logAction("Unable to load last flow trace: " + err.message, "warn");
+            }
+
           } catch (e) {
             alert("❌ Failed to load: " + e.message);
             logAction("Error loading file: " + e, "error");
           }
         };
+
+        // ── NODE CLICK SELECTION HANDLER ─────────────────────────────────────────
+        document.addEventListener('click', e => {
+          // look for the nearest .drawflow-node element
+          const nodeEl = e.target.closest('.drawflow-node');
+          if (!nodeEl || !editor) return;
+
+          // strip off the "node-" prefix to get the ID
+          const nodeId = nodeEl.id.replace(/^node-/, '');
+          if (!nodeId) return;
+
+          // set the selected_id so Test will pick it up
+          editor.selected_id = nodeId;
+
+          // optional: log your selection so you know it worked
+          //logAction(`🖱️ Selected node ${nodeId}`, 'info');
+        });
       });
 
       async function fetchDevicesFromApp() {
@@ -3685,92 +3564,49 @@
       return ip;
     }
 
-    // === Highlight only the most recent flow execution (nodes and lines, all lines to last node) ===
+    // === Highlight only the most recent real flow execution ===
     function highlightOnlyLatestRun(activeFlows) {
-        // Remove ALL previous highlights
-        document.querySelectorAll('.drawflow-node.executed').forEach(n => {
-          n.classList.remove('executed');
-          n.classList.remove('last-executed');
-        });
-        document.querySelectorAll('.main-path').forEach(path => {
-          path.removeAttribute("stroke");
-          path.removeAttribute("style");
-          path.classList.remove('highlighted');
-        });
+        // clear previous node highlights
+        document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
+                .forEach(n => n.classList.remove('executed','last-executed'));
+        // clear previous path highlights
+        document.querySelectorAll('.main-path')
+                .forEach(p => { p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('highlighted'); });
 
-        if (!Array.isArray(activeFlows) || activeFlows.length === 0) return;
-
-        // Find the latest run (highest timestamp in its last step)
-        let latestFlow = null, latestTs = 0;
-        activeFlows.forEach(flow => {
-          if (
-            flow.steps && flow.steps.length > 0 &&
-            flow.steps.every(step => step.nodeId && step.timestamp)
-          ) {
-            const lastStep = flow.steps[flow.steps.length - 1];
-            if (typeof lastStep.timestamp === "number" && lastStep.timestamp > latestTs) {
-              latestTs = lastStep.timestamp;
-              latestFlow = flow;
+        let latestRun = null, latestTs = 0;
+        (activeFlows || []).forEach(flow => {
+            // only real steps (nodeId truthy)
+            const realSteps = flow.steps.filter(s => s.nodeId);
+            if (!realSteps.length) return;
+            const ts = realSteps[realSteps.length - 1].timestamp;
+            if (ts > latestTs) {
+                latestTs = ts;
+                latestRun = realSteps;
             }
-          }
         });
-        if (!latestFlow) return;
+        if (!latestRun) return;
 
-        // Highlight ONLY the nodes for that run
-        const steps = latestFlow.steps;
-        steps.forEach((step, idx) => {
-          const nodeEl = document.getElementById(`node-${step.nodeId}`);
-          if (nodeEl) {
-            nodeEl.classList.add('executed');
-            nodeEl.classList.remove('last-executed');
-            if (idx === steps.length - 1) nodeEl.classList.add('last-executed');
-          }
+        // highlight nodes
+        latestRun.forEach((step, idx) => {
+            const el = document.getElementById(`node-${step.nodeId}`);
+            if (el) {
+                el.classList.add('executed');
+                if (idx === latestRun.length - 1) el.classList.add('last-executed');
+            }
         });
 
-        // Highlight the path/lines between nodes in order
-        for (let i = 0; i < steps.length - 1; i++) {
-          const fromId = steps[i].nodeId;
-          const toId = steps[i + 1].nodeId;
-          // Try both Drawflow default and data-* selectors for max compatibility
-          let path = document.querySelector(`.connection.node_out_node-${fromId}.node_in_node-${toId} .main-path`);
-          if (!path) path = document.querySelector(`.connection[data-from="${fromId}"][data-to="${toId}"] .main-path`);
-          if (path) {
-            path.setAttribute("stroke", "limegreen");
-            path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
-            path.classList.add("highlighted");
-          }
+        // highlight connecting paths
+        for (let i = 0; i < latestRun.length - 1; i++) {
+            const from = latestRun[i].nodeId, to = latestRun[i+1].nodeId;
+            let path = document.querySelector(`.connection.node_out_node-${from}.node_in_node-${to} .main-path`)
+                    || document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
+            if (path) {
+                path.setAttribute('stroke','limegreen');
+                path.setAttribute('style','stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
+                path.classList.add('highlighted');
+            }
         }
-        // Highlight **ALL incoming lines** to the last node
-        if (steps.length > 0) {
-          const lastNodeId = steps[steps.length - 1].nodeId;
-          // Both Drawflow and data-* selectors
-          document.querySelectorAll(`.connection.node_in_node-${lastNodeId} .main-path, .connection[data-to="${lastNodeId}"] .main-path`).forEach(path => {
-            path.setAttribute("stroke", "limegreen");
-            path.setAttribute("style", "stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;");
-            path.classList.add("highlighted");
-          });
-        }
-      }
-
-    // === Poll the FE_flowtrace file and highlight the latest run ===
-    function pollFlowTrace() {
-      const HUBITAT_IP = getHubitatIP();
-      const url = `http://${HUBITAT_IP}/local/FE_flowtrace.json?nocache=${Date.now()}`;
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error("Not found");
-          return r.json();
-        })
-        .then(activeFlows => {
-          highlightOnlyLatestRun(activeFlows);
-        })
-        .catch(e => {
-          // Ignore errors (404 normal until first flow)
-        });
     }
-
-    // === Start polling every 350ms ===
-    setInterval(pollFlowTrace, 350);
 
       function markExportNeeded(needed = true) {
         const btn = document.getElementById('exportVarsBtn');
@@ -4037,55 +3873,48 @@
         return Math.round(val / grid) * grid;
       }
 
-      function zoomDrawflowToFit(margin = 40) {
-        // Find all node elements
+      function zoomDrawflowToFit(margin = 20) {
+        // 1) Gather node bounds
         const nodes = document.querySelectorAll('.drawflow-node');
         if (!nodes.length) return;
-
-        // Get min/max x/y of all nodes
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         nodes.forEach(node => {
           const x = parseInt(node.style.left, 10) || 0;
-          const y = parseInt(node.style.top, 10) || 0;
-          const w = node.offsetWidth;
-          const h = node.offsetHeight;
-          if (x < minX) minX = x;
-          if (y < minY) minY = y;
-          if (x + w > maxX) maxX = x + w;
-          if (y + h > maxY) maxY = y + h;
+          const y = parseInt(node.style.top,  10) || 0;
+          const w = node.offsetWidth, h = node.offsetHeight;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
         });
 
-        // Get container size
-        const canvas = document.getElementById('drawflow');
-        const cW = canvas.offsetWidth;
-        const cH = canvas.offsetHeight;
+        // 2) Compute container size and desired zoom
+        const canvas   = document.getElementById('drawflow');
+        const cW       = canvas.offsetWidth;
+        const cH       = canvas.offsetHeight;
+        const flowW    = (maxX - minX) + margin * 2;
+        const flowH    = (maxY - minY) + margin * 2;
+        const zoom     = Math.min(cW / flowW, cH / flowH, 1);
 
-        // Fit to canvas, leave some margin
-        const flowWidth = maxX - minX + margin * 2;
-        const flowHeight = maxY - minY + margin * 2;
+        // 3) Compute pan offsets:
+        //    • flush‑to‑left when zoomed out, else respect margin
+        const sideMargin = zoom < 1 ? 0 : margin;
+        const offsetX    = sideMargin - (minX * zoom);
+        //    • flush‑to‑top  when zoomed out, else respect margin
+        const topMargin  = zoom < 1 ? 0 : margin;
+        const offsetY    = topMargin  - (minY * zoom);
 
-        // Calculate zoom (Drawflow uses scale: 1 is 100%)
-        let zoom = Math.min(
-          cW / flowWidth,
-          cH / flowHeight,
-          1 // don't zoom in past 100%
-        );
-
-        // Center pan
-        const offsetX = ((cW - (maxX - minX) * zoom) / 2) - minX * zoom;
-        const offsetY = ((cH - (maxY - minY) * zoom) / 2) - minY * zoom;
-
-        // Set Drawflow zoom and pan
-        window.editor.zoom = zoom * 1;
+        // 4) Apply transform
+        window.editor.zoom = zoom;
         window.editor.precanvas.style.transform =
-          `translate(${offsetX}px, ${offsetY}px) scale(${window.editor.zoom})`;
+          `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
 
-        // Ensure new nodes appear on-screen
+        // 5) Reset canvas coords so new nodes land on‑screen
         if (window.editor) {
           window.editor.canvas_x = 100;
           window.editor.canvas_y = 100;
-          window.editor.pos_x = 100;
-          window.editor.pos_y = 100;
+          window.editor.pos_x    = 100;
+          window.editor.pos_y    = 100;
         }
       }
 
@@ -4126,15 +3955,15 @@
                           style="display:inline-block; font-weight:bold; font-size:20px;">
                       ${flowFileName.replace(/\.json$/i, "")}
                     </span><br>
-                    <small>Flow is Active in Hubitat</small> |
+                    <span style="font-size: 12px;">Flow is Active in Hubitat</span> |
                     ${loggingEnabled
-                      ? "<small>Logging is Enabled</small><br>"
-                      : "<small>Logging is Disabled</small><br>"}
+                      ? "<span style='font-size: 10px;''>Logging is Enabled</span><br>"
+                      : "<span style='font-size: 10px;''>Logging is Disabled</span><br>"}
                     <input id="testFlowInput" type="text"
                           placeholder="Test value..."
-                          style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:15px; width:160px; margin-right:8px;">
+                          style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:120px; margin-right:8px;">
                     <button id="testFlowBtn"
-                            style="background:#1b9b1b; color:#fff; border:none; padding:7px 18px; border-radius:5px; cursor:pointer; font-size:15px; margin-right:18px;">
+                            style="background:#1b9b1b; color:#fff; border:none; padding:7px 10px; border-radius:5px; cursor:pointer; font-size:10px; margin-right:10px;">
                       ▶️ Test
                     </button><br>
                     <label style="margin-left:8px; font-size:13px;">
@@ -4144,10 +3973,10 @@
                     <br><small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
                   `;
 
-                  // ── TEST‑FLOW BUTTON HANDLER ────────────────────────────────
-                  const testInput       = document.getElementById("testFlowInput");
-                  const testBtn         = document.getElementById("testFlowBtn");
-                  const dryRunCheckbox  = document.getElementById("dryRunCheckbox");
+                  // TEST‑FLOW BUTTON HANDLER
+                  const testBtn        = document.getElementById("testFlowBtn");
+                  const testInput      = document.getElementById("testFlowInput");
+                  const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
                     const val = testInput.value.trim();
@@ -4156,53 +3985,41 @@
                       return;
                     }
 
-                    // Read the Dry Run checkbox
-                    const dryRun = dryRunCheckbox.checked;
-
-                    // Ensure flowName ends with .json
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     const fl       = dropdown.value.trim();
                     const flow     = fl.endsWith(".json") ? fl : fl + ".json";
-
-                    logAction("flow:" + flow, "info");
                     if (!flow) {
                       alert("Please select a flow to test.");
                       return;
                     }
 
-                    try {
-                      // Use form‑encoded body
-                      const form = new URLSearchParams();
-                      form.append("flow",    flow);
-                      form.append("value",   val);
-                      form.append("dryRun",  dryRun ? "true" : "false");
+                    const appId = document.getElementById("hubitatAppId").value.trim();
+                    const token = document.getElementById("hubitatToken").value.trim();
+                    if (!appId || !token) {
+                      alert("Missing Hubitat App ID or Token.");
+                      return;
+                    }
+                    const dryRun = dryRunCheckbox.checked;
 
+                    const payload = { flow: flow, value: val, dryRun: dryRun };
+                    console.log("[runFlow ▶] payload:", payload);
+
+                    logAction(`▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""} with value "${val}"`, "info");
+
+                    try {
                       const res = await fetch(
-                        `/apps/api/${appId}/testFlow?access_token=${token}`,
-                        {
+                        `/apps/api/${appId}/testFlow?access_token=${token}`, {
                           method:  "POST",
-                          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                          body:    form.toString()
+                          headers: { "Content-Type": "application/json" },
+                          body:    JSON.stringify(payload)
                         }
                       );
-
-                      const text = await res.text();
-                      let parsed;
-                      try {
-                        parsed = text ? JSON.parse(text) : {};
-                      } catch {
-                        parsed = { result: text };
-                      }
-
-                      logAction(
-                        `▶️ Test flow "${flow}": ${parsed.result || JSON.stringify(parsed)}`, 
-                        "info"
-                      );
+                      const result = await res.json();
+                      logAction(`✅ runFlow result: ${result.result}`, "info");
                     } catch (err) {
-                      logAction("❌ Failed to test flow: " + err, "error");
+                      logAction("❌ Failed to run flow: " + err, "error");
                     }
                   };
-
                 })
                 .catch(err => {
                   console.error("Error fetching logging settings:", err);
@@ -4288,20 +4105,54 @@
         return { x, y };
       }
 
-      // ---- HIGHLIGHT FLOW PATH LOGIC ----
+      // ── Enhanced Flow‑Path Highlighting (nodes + green lines) ─────────────────
       function highlightFlowPath(run) {
         if (!run || !Array.isArray(run.steps)) return;
-        // Remove all previous highlights
-        document.querySelectorAll('.drawflow-node.flow-path').forEach(el => el.classList.remove('flow-path'));
-        // Collect unique node IDs in path order
+
+        // 1) Clear previous node highlights
+        document.querySelectorAll('.drawflow-node.flow-path')
+          .forEach(el => el.classList.remove('flow-path'));
+
+        // 2) Clear previous path highlights
+        document.querySelectorAll('.main-path.highlighted')
+          .forEach(path => {
+            path.removeAttribute('stroke');
+            path.removeAttribute('style');
+            path.classList.remove('highlighted');
+          });
+
+        // 3) Gather unique node IDs in execution order
         const nodeIds = [];
         run.steps.forEach(s => {
-          if (!nodeIds.includes(s.nodeId)) nodeIds.push(s.nodeId);
+          if (s.nodeId && !nodeIds.includes(s.nodeId)) {
+            nodeIds.push(s.nodeId);
+          }
         });
-        nodeIds.forEach(id => {
-          const el = document.querySelector(`.drawflow-node[data-id="${id}"]`);
-          if (el) el.classList.add('flow-path');
+
+        // 4) Highlight each node and the connecting path to the next
+        nodeIds.forEach((id, idx) => {
+          // highlight node
+          const nodeEl = document.getElementById(`node-${id}`);
+          if (nodeEl) nodeEl.classList.add('flow-path');
+
+          // highlight connecting line
+          const nextId = nodeIds[idx + 1];
+          if (nextId) {
+            const pathEl = document.querySelector(
+              `.connection.node_out_node-${id}.node_in_node-${nextId} .main-path`
+            );
+            if (pathEl) {
+              pathEl.setAttribute('stroke', 'limegreen');
+              pathEl.setAttribute(
+                'style',
+                'stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;'
+              );
+              pathEl.classList.add('highlighted');
+            }
+          }
         });
+
+        // 5) Update minimap if present
         if (typeof renderMinimap === 'function') {
           renderMinimap();
         }
@@ -4311,6 +4162,67 @@
         setTimeout(() => highlightFlowPath(run), delayMs);
       }
   
+      let flowTracePollInterval = null;
+
+      async function pollFlowTraceUntilEnd() {
+          const rawName = document.getElementById('flowName').textContent.trim();
+          const flowFile = rawName.toLowerCase().endsWith('.json') ? rawName : rawName + '.json';
+
+          if (flowTracePollInterval) clearInterval(flowTracePollInterval);
+
+          flowTracePollInterval = setInterval(async () => {
+              try {
+                  // fetchHubitatFileContent returns parsed JSON already
+                  const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+                  const runs = Array.isArray(traces)
+                      ? traces.filter(t => t.flowFile === flowFile)
+                      : [];
+                  if (!runs.length) return;
+
+                  const run = runs[0];
+                  highlightFlowPath(run);
+
+                  const last = run.steps[run.steps.length - 1] || {};
+                  if (last.nodeType === 'endOfFlow') {
+                      clearInterval(flowTracePollInterval);
+                      flowTracePollInterval = null;
+                      flowTracePollingActive = false;
+                      logAction('🔄 Flow trace finished', 'info');
+                  }
+              } catch (e) {
+                  console.error('Error polling FE_flowtrace.json', e);
+                  clearInterval(flowTracePollInterval);
+                  flowTracePollInterval = null;
+              }
+          }, 500);
+      }
+      
+      async function fetchHubitatFileContent(fileName) {
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const token = document.getElementById("hubitatToken").value.trim();
+        if (!appId || !token) {
+          logAction("Enter App ID and Access Token!", "error");
+          throw new Error("Missing credentials");
+        }
+        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
+        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
+        try {
+          const response = await fetch(fileUrl);
+          const raw = await response.text();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${raw}`);
+          }
+          try {
+            return JSON.parse(raw);
+          } catch (err) {
+            throw new Error("File is not valid JSON: " + raw);
+          }
+        } catch (e) {
+          logAction("Failed to fetch file content: " + e.message, "error");
+          throw e;
+        }
+      }
+
       document.addEventListener("DOMContentLoaded", function () {
         const drawflow = document.getElementById("drawflow");
         const img = document.getElementById("drawflow-bg-image");
@@ -4547,6 +4459,14 @@
         // 6) Cleanup
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       };
+
+      if (
+        window.flowTraceSocket &&
+        window.flowTraceSocket.readyState === WebSocket.OPEN
+      ) {
+        window.flowTraceSocket.close();
+        logAction("Closed old ws", "info")
+      }
     </script>
     <script>
       // A global Set to track selected nodes for multi-select
@@ -5643,6 +5563,130 @@
           );
         });
       })();
+   
+      // ── Trigger‑Match Logging WebSocket ─────────────────────────────────────────
+      function startFlowTraceStream() {
+        // don’t re‑open if already open
+        if (
+          window.flowTraceSocket &&
+          window.flowTraceSocket.readyState === WebSocket.OPEN
+        ) return;
+
+        const ip    = getHubitatIP();
+        const appId = document.getElementById('hubitatAppId').value.trim();
+        const token = document.getElementById('hubitatToken').value.trim();
+        if (!ip || !appId || !token) {
+          logAction('⚠️ Missing IP, App ID or Token for TriggerLog WS', 'warn');
+          return;
+        }
+
+        window.flowTraceSocket = new WebSocket(`ws://${ip}/eventsocket`);
+
+        window.flowTraceSocket.addEventListener('open', () => {
+          logAction('🔍 [TriggerLog] WebSocket opened', 'info');
+        });
+
+        window.flowTraceSocket.addEventListener('message', ({ data }) => {
+          let evt;
+          try {
+            evt = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          // ── Handle our fake "flowTraceUpdated" Location event ──────────────────────
+          if (evt.name === 'flowTraceUpdated') {
+            // clear any existing highlights
+            document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
+              .forEach(n => n.classList.remove('executed','last-executed'));
+            document.querySelectorAll('.main-path')
+              .forEach(p => {
+                p.removeAttribute('stroke');
+                p.removeAttribute('style');
+                p.classList.remove('highlighted');
+              });
+
+            if (!flowTracePollingActive) {
+              logAction('⚡ Trigger on time', 'info');
+              flowTracePollingActive = true;
+            }
+            pollFlowTraceUntilEnd();
+            return;
+          }
+
+          // ── Existing device‐trigger logic ─────────────────────────────────────────
+          if (evt.source !== 'DEVICE' || !evt.name || !evt.deviceId) return;
+
+          const nodes =
+            editor?.drawflow?.Home?.data ||
+            editor?.drawflow?.drawflow?.Home?.data;
+          if (!nodes) return;
+
+          const match = Object.values(nodes).find(n => {
+            const rawIds = Array.isArray(n.data.deviceIds)
+              ? n.data.deviceIds
+              : [n.data.deviceId];
+            return rawIds.map(x => Number(x)).includes(Number(evt.deviceId))
+                && n.data.attribute === evt.name;
+          });
+
+          if (match) {
+            // clear previous highlights
+            document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
+              .forEach(n => n.classList.remove('executed','last-executed'));
+            document.querySelectorAll('.main-path')
+              .forEach(p => {
+                p.removeAttribute('stroke');
+                p.removeAttribute('style');
+                p.classList.remove('highlighted');
+              });
+
+            logAction(
+              `⚡ Trigger on node ${match.id}: ` +
+              `${evt.displayName} → ${evt.value}`,
+              'info'
+            );
+            pollFlowTraceUntilEnd();
+          }
+        });
+
+        window.flowTraceSocket.addEventListener('error', err =>
+          console.error('❌ WebSocket error', err)
+        );
+      }
+
+      document.addEventListener('DOMContentLoaded', startFlowTraceStream);
+
+      // Clear Trace
+      document.getElementById('clearTraceBtn').addEventListener('click', () => {
+        // clear node highlights
+        document.querySelectorAll(
+          '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
+        ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
+
+        // clear path highlights
+        document.querySelectorAll('.main-path.highlighted').forEach(path => {
+          path.removeAttribute('stroke');
+          path.removeAttribute('style');
+          path.classList.remove('highlighted');
+        });
+
+        // stop live‑polling if active
+        if (typeof flowTracePollInterval !== 'undefined' && flowTracePollInterval) {
+          clearInterval(flowTracePollInterval);
+          flowTracePollInterval = null;
+        }
+
+        logAction('🗑️ Trace cleared', 'info');
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // ── Clear Log button handler ───────────────────────────────
+        document.getElementById('clearLogBtn').addEventListener('click', () => {
+          const lb = document.getElementById('logBox');
+          lb.innerHTML = 'Logs:<br>';
+        });
+      });
     </script>
 </body>
 </html>
