@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.021 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.022 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -1054,7 +1054,7 @@
         const tileClass = (isCondition ? "condition-tile" : "trigger-tile") +
           (editor.selected_id == nodeId ? " selected" : "");
 
-        // Comparator and value text (default “==”)
+        // Comparator and value text
         const comp = data.comparator || "==";
         let valText = "";
         if (comp === "between" && Array.isArray(data.value)) {
@@ -1062,6 +1062,11 @@
         } else if (data.value !== undefined && data.value !== "") {
           valText = ` ${data.value}`;
         }
+
+        // Logic value
+        const logicHtml = data.logic
+          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;"><b>Logic:</b> ${data.logic.toUpperCase()}</div>`
+          : "";
 
         // Main label: variable vs. real device
         let mainText;
@@ -1073,29 +1078,30 @@
           mainText = `${devLabel} ${data.attribute || ""} ${comp}${valText}`;
         }
 
-        // Current-status line (only for real devices when attribute chosen and Show Status enabled)
+        // Current-status line (only for real devices when Show Status enabled)
         let statusHtml = "";
-        const current = getCurrentValue(data.deviceId, data.attribute);
-        if (current !== undefined && current !== "") {
-          statusHtml = `<div class="current-value">${data.attribute}: ${current}</div>`;
+        if (!isCondition && data.attribute && data.showStatus) {
+          const curr = getCurrentValue(data.deviceId, data.attribute);
+          statusHtml = `<div class="status-line" style="font-size:10px;color:#666;">Current: ${curr}</div>`;
         }
 
-        // Click-pattern indicator (only for triggers)
+        // Click-pattern indicator
         const clickHtml = !isCondition && data.clickPattern
-        //  ? `<div class="click-pattern">${data.clickPattern}</div>`
           ? `<div class="click-pattern"></div>`
           : "";
 
         // Locked padlock
         const lockedHtml = data.locked
-          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          ? '<div style="position:absolute;top:6px;right:6px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
           : "";
 
         return `
           <div class="${tileClass}">
             ${isCondition ? "Condition" : "Event Trigger"}<br>
             <span style="font-size:11px">
-              ${mainText}<br><hr>
+              ${mainText}<br>
+              ${logicHtml}
+              <hr>
             </span>
             ${statusHtml}
             ${clickHtml}
@@ -3948,7 +3954,7 @@
                       <input type="checkbox" id="dryRunCheckbox" />
                       Dry Run
                     </label>
-                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value… DO NOT try to test multidevice triggers! Also, time based triggers need to be in 24h format.</small>
+                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value… DO NOT try to test multidevice triggers!</small>
                   `;
                   
                   // TEST‑FLOW BUTTON HANDLER
@@ -3957,12 +3963,21 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    // 1) require a test value
-                    const val = testInput.value.trim();
-                    if (!val) {
+                    // 1) trim, lowercase, and normalize times to 24h
+                    const raw = testInput.value.trim();
+                    if (!raw) {
                       alert("Please enter a test value.");
                       return;
                     }
+                    let val = raw.toLowerCase().replace(
+                      /(\d{1,2}):(\d{2})\s*(am|pm)/g,
+                      (_, h, m, ampm) => {
+                        let hh = parseInt(h, 10) % 12;
+                        if (ampm === "pm") hh += 12;
+                        hh = hh < 10 ? "0" + hh : "" + hh;
+                        return `${hh}:${m}`;
+                      }
+                    );
 
                     // 2) determine the flow filename
                     const dropdown = document.getElementById("hubitatFileDropdown");
@@ -5576,11 +5591,12 @@
           window.flowTraceSocket.readyState === WebSocket.OPEN
         ) return;
 
-        const ip    = getHubitatIP();
         const appId = document.getElementById('hubitatAppId').value.trim();
         const token = document.getElementById('hubitatToken').value.trim();
-        if (!ip || !appId || !token) {
-          logAction('⚠️ Missing IP, App ID or Token for TriggerLog WS', 'warn');
+
+        const ip    = getHubitatIP();
+        if (!ip) {
+          logAction('⚠️ Missing IP for TriggerLog WS', 'warn');
           return;
         }
 
