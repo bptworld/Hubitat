@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.019 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.020 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -1639,6 +1639,8 @@
             node.data.deviceId = node.data.deviceIds[0];
           }
         }
+
+        //hideTestUI();
         
         if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
         const el = document.getElementById("nodeEditor");
@@ -3949,16 +3951,17 @@
                   logBtn.textContent = loggingEnabled ? "Logging Enabled" : "Logging Disabled";
                   logBtn.style.backgroundColor = loggingEnabled ? "#4CAF50" : "#808080";
 
+                  //hideTestUI();
                   // ── Build the status panel UI ───────────────────────────────
                   statusDiv.innerHTML = `
                     <span id="flowName"
                           style="display:inline-block; font-weight:bold; font-size:20px;">
                       ${flowFileName.replace(/\.json$/i, "")}
                     </span><br>
-                    <span style="font-size: 12px;">Flow is Active in Hubitat</span> |
+                    <span style="font-size: 10px;">Flow is Active</span> |
                     ${loggingEnabled
-                      ? "<span style='font-size: 10px;''>Logging is Enabled</span><br>"
-                      : "<span style='font-size: 10px;''>Logging is Disabled</span><br>"}
+                      ? "<span style='font-size: 10px;'>Logging is Enabled</span><br>"
+                      : "<span style='font-size: 10px;'>Logging is Disabled</span><br>"}
                     <input id="testFlowInput" type="text"
                           placeholder="Test value..."
                           style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:120px; margin-right:8px;">
@@ -3970,21 +3973,23 @@
                       <input type="checkbox" id="dryRunCheckbox" />
                       Dry Run
                     </label>
-                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value…</small>
+                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value… DO NOT try to test multidevice triggers! Also, time based triggers need to be in 24h format.</small>
                   `;
-
+                  
                   // TEST‑FLOW BUTTON HANDLER
                   const testBtn        = document.getElementById("testFlowBtn");
                   const testInput      = document.getElementById("testFlowInput");
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
+                    // 1) require a test value
                     const val = testInput.value.trim();
                     if (!val) {
                       alert("Please enter a test value.");
                       return;
                     }
 
+                    // 2) determine the flow filename
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     const fl       = dropdown.value.trim();
                     const flow     = fl.endsWith(".json") ? fl : fl + ".json";
@@ -3993,18 +3998,40 @@
                       return;
                     }
 
+                    // 3) grab credentials
                     const appId = document.getElementById("hubitatAppId").value.trim();
                     const token = document.getElementById("hubitatToken").value.trim();
                     if (!appId || !token) {
                       alert("Missing Hubitat App ID or Token.");
                       return;
                     }
+
                     const dryRun = dryRunCheckbox.checked;
 
-                    const payload = { flow: flow, value: val, dryRun: dryRun };
-                    console.log("[runFlow ▶] payload:", payload);
+                    // 4) ensure a Trigger node is selected
+                    const selId = editor.selected_id;
+                    if (!selId) {
+                      alert("Please select a Trigger node before testing.");
+                      return;
+                    }
+                    const node = editor.getNodeFromId(selId);
+                    if (!node || !node.data) {
+                      alert("Selected element is not a valid node.");
+                      return;
+                    }
 
-                    logAction(`▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""} with value "${val}"`, "info");
+                    // 5) gather deviceIds
+                    const deviceIds = Array.isArray(node.data.deviceIds)
+                      ? node.data.deviceIds
+                      : (node.data.deviceId ? [node.data.deviceId] : []);
+
+                    // 6) build and send payload
+                    const payload = { flow, value: val, dryRun, deviceIds };
+                    console.log("[runFlow ▶] payload:", payload);
+                    logAction(
+                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""} on ${deviceIds.length} device(s) with value "${val}"`,
+                      "info"
+                    );
 
                     try {
                       const res = await fetch(
@@ -4026,6 +4053,8 @@
                   logBtn.textContent = "Logging Disabled";
                   logBtn.style.backgroundColor = "#808080";
                 });
+
+
             } else {
               // No flow active → clear status panel & reset logging button
               statusDiv.innerHTML = `
@@ -5687,6 +5716,41 @@
           lb.innerHTML = 'Logs:<br>';
         });
       });
+
+      function hideTestUI() {
+        const statusDiv = document.getElementById('flowTestStatus');
+        if (!statusDiv) return;
+
+        const testBtn      = statusDiv.querySelector('#testFlowBtn');
+        const testInput    = statusDiv.querySelector('#testFlowInput');
+        const dryRunLabel  = statusDiv.querySelector('#dryRunCheckbox')?.closest('label');
+
+        const selNode = editor.getNodeFromId(editor.selected_id);
+        const isMulti = selNode?.name === 'eventTrigger'
+                    && Array.isArray(selNode.data.deviceIds)
+                    && selNode.data.deviceIds.length > 1;
+
+        if (isMulti) {
+          if (testBtn)     testBtn.hidden     = true;
+          if (testInput)   testInput.hidden   = true;
+          if (dryRunLabel) dryRunLabel.hidden = true;
+
+          if (!statusDiv.querySelector('#testNaMsg')) {
+            const naMsg = document.createElement('div');
+            naMsg.id          = 'testNaMsg';
+            naMsg.textContent = 'Testing not Available';
+            naMsg.style       = 'font-size:12px;color:#b00;margin:8px 0;';
+            statusDiv.appendChild(naMsg);
+          }
+        } else {
+          if (testBtn)     testBtn.hidden     = false;
+          if (testInput)   testInput.hidden   = false;
+          if (dryRunLabel) dryRunLabel.hidden = false;
+          const naMsg = statusDiv.querySelector('#testNaMsg');
+          if (naMsg) naMsg.remove();
+        }
+      }
+
     </script>
 </body>
 </html>
