@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.020 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.021 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -135,15 +135,12 @@
       <button id="addCondition" title="Add a Condition node">Condition</button>
       <button id="addDevice" title="Action (Device)">Action</button>
       <b> | </b>
-      <button id="addLogicAND" title="And">And</button>
       <button id="addComment" title="Comment/Note">Comment</button>
       <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
       <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
       <button id="addDeviceToVar" title="Add a Devices to a Variable node">Devices to Variable</button>
       <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
-      <button id="addLogicNOT" title="Add a NOT logic node">Not</button>
       <button id="addNotification" title="Add a Notification node">Notification</button>
-      <button id="addLogicOR" title="Add an OR logic node">Or</button>
       <button id="addRepeat" title="Add a Repeat node">Repeat</button>
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
@@ -726,7 +723,6 @@
         else {
           const todSelect = document.createElement("select");
           todSelect.style = "display:block;margin-bottom:12px";
-          // inject “(none)” at top and select it when there’s no value yet
           todSelect.innerHTML =
             `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
             ["sunrise", "sunset"]
@@ -743,7 +739,34 @@
           pickerDiv.appendChild(todSelect);
         }
       }
-      // If not Time‑of‑Day, just a plain time input
+      // ── Current Time “between” (two time inputs) ──────────────────────
+      else if (node.data.attribute === "currentTime" && node.data.comparator === "between") {
+        if (!Array.isArray(node.data.value)) node.data.value = ["", ""];
+        const [startVal, endVal] = node.data.value;
+
+        // Start time
+        const startInput = document.createElement("input");
+        startInput.type  = "time";
+        startInput.value = startVal;
+        startInput.style = "display:block;margin-bottom:8px";
+        startInput.onchange = () => {
+          node.data.value[0] = startInput.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(startInput);
+
+        // End time
+        const endInput = document.createElement("input");
+        endInput.type  = "time";
+        endInput.value = endVal;
+        endInput.style = "display:block;margin-bottom:12px";
+        endInput.onchange = () => {
+          node.data.value[1] = endInput.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+        pickerDiv.appendChild(endInput);
+      }
+      // ── Fallback single time input for everything else ───────────────
       else {
         const timeInput = document.createElement("input");
         timeInput.type  = "time";
@@ -3119,54 +3142,6 @@
         attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addNotification finished.");
-      };
-
-      document.getElementById("addLogicAND").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("AND", 1, 2, x, y, "AND", {}, nodeTileHtml("AND", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addLogicOR").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("OR", 1, 2, x, y, "OR", {}, nodeTileHtml("OR", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addLogicNOT").onclick = () => {
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("NOT", 1, 2, x, y, "NOT", {}, nodeTileHtml("NOT", {}), undefined, { outputs: ["true", "false"] });
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
       };
 
       document.getElementById("addDoNothing").onclick = () => {
