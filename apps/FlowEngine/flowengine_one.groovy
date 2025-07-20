@@ -946,74 +946,140 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 	}
 
     switch (node.name) {
-        case "eventTrigger":
+		case "eventTrigger":
 			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
 
-			// ── Strict matching of value & pattern ──────────────────────────────
+			// ── 1) Comparator & expected value ───────────────────────────────────
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+
+			// ── 2) AND/OR logic defaulting to OR ────────────────────────────────
+			def logic = (node.data.logic?.toString() ?: "or").toLowerCase()
+
+			// ── 3) Build list of device IDs ─────────────────────────────────────
+			List<String> devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds.collect { it.toString() }
+			} else if (node.data.deviceId) {
+				devIds = [ node.data.deviceId.toString() ]
+			} else {
+				flowLog(fname, "eventTrigger: no deviceId(s) defined", "warn")
+				return
+			}
+
+			// ── 4) Strict value & pattern matching ──────────────────────────────
 			def expectedValue   = node.data.value
 			def expectedPattern = node.data.clickPattern
-			def eventValue      = (evt instanceof Map) ? evt.value   : evt?.value
-			def eventPattern    = (evt instanceof Map) ? evt.pattern : null
+			def eventValue      = (evt instanceof Map) ? evt.value        : evt?.value
+			def eventPattern    = (evt instanceof Map) ? evt.pattern      : null
 
 			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
 				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return  // STOP if value mismatch
+				return
 			}
 			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
 				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return  // STOP if pattern mismatch
+				return
 			}
 
-			// ── Time‑of‑day “between” filter ──────────────────────────────────────
-			if (node.data.deviceId == "__time__" &&
-				node.data.attribute == "timeOfDay" &&
-				node.data.comparator?.toLowerCase() == "between") {
+			// ── 5) DEVICE‑FILTER & AND‑MODE ONLY FOR REAL EVENTS ────────────────
+			if (!(evt instanceof Map)) {
+				// 5a) Figure out which device actually fired
+				String incomingId = null
+				if (evt.deviceId != null) {
+					incomingId = evt.deviceId.toString()
+				}
+				// map sunrise/sunset → "__time__"
+				else if (evt?.name in ["sunrise","sunset"]) {
+					incomingId = "__time__"
+				}
 
-				Date now = (evt.date as Date) ?: new Date()
+				// 5b) Drop anything not in our devIds
+				if (!(incomingId in devIds)) {
+					flowLog(fname, "eventTrigger: event from ${incomingId} not in ${devIds}", "debug")
+					return
+				}
+
+				// 5c) If AND‑mode, require ALL devices’ currentValues to match
+				if (logic in ["and","all"]) {
+					boolean allMatch = devIds.every { devId ->
+						def device = getDeviceById(devId)
+						def actual = device ? device.currentValue(node.data.attribute) : null
+						evaluateComparator(actual, expected, comparator)
+					}
+					flowLog(fname, "eventTrigger AND across ${devIds} ⇒ ${allMatch}", "debug")
+					if (!allMatch) {
+						return
+					}
+				}
+			}
+
+			// ── 6) Time‑of‑day “between” filter (only if __time__ is in devIds) ─
+			if ("__time__" in devIds &&
+				node.data.attribute == "timeOfDay" &&
+				comparator?.toLowerCase() == "between") {
+
+				Date now      = (evt.date as Date) ?: new Date()
 				int actualMin = now.hours * 60 + now.minutes
 
 				List bounds = (node.data.value instanceof List)
-								? node.data.value
-								: [ node.data.value.toString() ]
+					? node.data.value
+					: [ node.data.value.toString() ]
+
 				if (bounds.size() == 2) {
 					int lowMin  = toTimeMinutes(bounds[0].toString())
 					int highMin = toTimeMinutes(bounds[1].toString())
-					flowLog(fname, "timeOfDay between check → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
+					flowLog(fname, "timeOfDay between → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
 					if (!(actualMin >= lowMin && actualMin <= highMin)) {
-						flowLog(fname, "timeOfDay outside of range, skipping", "debug")
+						flowLog(fname, "timeOfDay outside range, skipping", "debug")
 						return
 					}
 				} else {
-					log.warn "timeOfDay ‘between’ needs two values, got ${bounds}"
+					log.warn "timeOfDay 'between' needs two values, got ${bounds}"
 					return
 				}
 			}
 
-			// ── All checks passed: fire downstream nodes ───────────────────────────
-			def passes = true
+			// ── 7) All checks passed—fire downstream ──────────────────────────────
 			node.outputs?.each { outName, outObj ->
 				outObj.connections?.each { conn ->
-					if (passes) evaluateNode(fname, conn.node, evt, null, visited)
+					evaluateNode(fname, conn.node, evt, null, visited)
 				}
 			}
 			break
 
-        case "condition":
+		case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
 			try {
-				// Pull comparator, expected and logic
 				def attr       = node.data.attribute
-				def comparator = node.data.comparator
+				def comparator = node.data.comparator?.toLowerCase()
 				def expected   = resolveVars(fname, node.data.value)
-				// Default to 'or' if missing
 				def logic      = (node.data.logic?.toString() ?: "or").toLowerCase()
-				def passes     = false
+				boolean passes = false
 
-				if (incomingValue != null) {
-					// If called with an incomingValue, just evaluate that
+				// 1) TIME‑RANGE (“between”) always uses real clock
+				if ((attr in ["currentTime","timeOfDay"]) && comparator == "between") {
+					Date now      = new Date()
+					int  actualMin = now.hours * 60 + now.minutes
+
+					List bounds = (node.data.value instanceof List)
+								  ? node.data.value
+								  : [ node.data.value?.toString() ]
+					if (bounds.size() == 2) {
+						int lowMin  = toTimeMinutes(bounds[0].toString())
+						int highMin = toTimeMinutes(bounds[1].toString())
+						passes = (actualMin >= lowMin && actualMin <= highMin)
+					} else {
+						log.warn "Condition 'between' on ${attr} needs two values, got ${bounds}"
+						passes = false
+					}
+				}
+				// 2) incomingValue override for all other comparators
+				else if (incomingValue != null) {
 					passes = evaluateComparator(incomingValue, expected, comparator)
-				} else {
-					// Gather one or more device IDs
+				}
+				// 3) Multi‑device AND/OR logic for real attributes
+				else {
 					def devIds = []
 					if (node.data.deviceIds instanceof List && node.data.deviceIds) {
 						devIds = node.data.deviceIds
@@ -1021,15 +1087,13 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 						devIds = [ node.data.deviceId ]
 					}
 
-					// Evaluate across all devices, using AND or OR logic
-					if (logic in ["and", "all"]) {
+					if (logic in ["and","all"]) {
 						passes = devIds.every { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
 							evaluateComparator(actual, expected, comparator)
 						}
 					} else {
-						// default OR behavior
 						passes = devIds.any { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
@@ -1038,7 +1102,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 					}
 				}
 
-				// Route the flow based on the result
+				// 4) Route based on result
 				if (passes) {
 					node.outputs?.output_1?.connections?.each { conn ->
 						evaluateNode(fname, conn.node, evt, null, visited)
@@ -1048,10 +1112,10 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 						evaluateNode(fname, conn.node, evt, null, visited)
 					}
 				}
-				break
-			} catch(e) {
-				log.error(getExceptionMessageWithLine(e))
+			} catch (e) {
+				log.error getExceptionMessageWithLine(e)
 			}
+			break
 
 		case "AND":
 			flowLog(fname, "In evaluateNode - AND", "debug")
