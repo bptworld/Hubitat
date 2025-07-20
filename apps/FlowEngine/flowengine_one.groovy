@@ -1000,32 +1000,58 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 
         case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
+			try {
+				// Pull comparator, expected and logic
+				def attr       = node.data.attribute
+				def comparator = node.data.comparator
+				def expected   = resolveVars(fname, node.data.value)
+				// Default to 'or' if missing
+				def logic      = (node.data.logic?.toString() ?: "or").toLowerCase()
+				def passes     = false
 
-			// Pull comparator, expected and actual values
-			def attr       = node.data.attribute
-			def comparator = node.data.comparator
-			def expected   = resolveVars(fname, node.data.value)
-			def actual
+				if (incomingValue != null) {
+					// If called with an incomingValue, just evaluate that
+					passes = evaluateComparator(incomingValue, expected, comparator)
+				} else {
+					// Gather one or more device IDs
+					def devIds = []
+					if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+						devIds = node.data.deviceIds
+					} else if (node.data.deviceId) {
+						devIds = [ node.data.deviceId ]
+					}
 
-			if (incomingValue != null) {
-				actual = incomingValue
-			} else if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-				actual = getDeviceById(node.data.deviceIds[0])?.currentValue(attr)
-			} else if (node.data.deviceId) {
-				actual = getDeviceById(node.data.deviceId)?.currentValue(attr)
-			}
-
-			// Evaluate and route
-			if (evaluateComparator(actual, expected, comparator)) {
-				node.outputs?.output_1?.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
+					// Evaluate across all devices, using AND or OR logic
+					if (logic in ["and", "all"]) {
+						passes = devIds.every { devId ->
+							def device = getDeviceById(devId)
+							def actual = device ? device.currentValue(attr) : null
+							evaluateComparator(actual, expected, comparator)
+						}
+					} else {
+						// default OR behavior
+						passes = devIds.any { devId ->
+							def device = getDeviceById(devId)
+							def actual = device ? device.currentValue(attr) : null
+							evaluateComparator(actual, expected, comparator)
+						}
+					}
 				}
-			} else {
-				node.outputs?.output_2?.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
+
+				// Route the flow based on the result
+				if (passes) {
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				} else {
+					node.outputs?.output_2?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
 				}
+				break
+			} catch(e) {
+				log.error(getExceptionMessageWithLine(e))
 			}
-			break
 
 		case "AND":
 			flowLog(fname, "In evaluateNode - AND", "debug")
