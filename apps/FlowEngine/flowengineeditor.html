@@ -57,7 +57,7 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.022 - </small>
+      <b>Flow Engine Editor</b> <small>- Ver. 1.0.023 - </small>
       <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
       <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
       <select id="hubitatFileDropdown"
@@ -588,113 +588,198 @@
     };
 
     function buildTimeDevicePicker(pickerDiv, node) {
-      // only handle the special “Time” device
+      // Only handle the special “Time” and “Mode” devices
       const devs = node.data.deviceIds || [];
-      if (devs.length !== 1 || node.data.deviceId !== "__time__") return false;
+      if (
+        devs.length !== 1 ||
+        (node.data.deviceId !== "__time__" && node.data.deviceId !== "__mode__")
+      ) {
+        return false;
+      }
 
       pickerDiv.innerHTML = "";
 
-      // initialize data on first render
+      // Initialize data on first render
       if (!node.data.attribute) {
         node.data.attribute  = "";
         node.data.comparator = "";
         node.data.value      = "";
       }
 
-      // ── CONDITION LABEL ────────────────────────────────────────────
-      pickerDiv.appendChild(Object.assign(document.createElement("label"), {
-        textContent: "Condition",
-        style: "display:block;margin-bottom:4px"
-      }));
+      // ── MODE DEVICE ───────────────────────────────────────────────
+      if (node.data.deviceId === "__mode__") {
+        node.data.attribute = "mode";
+        editor.updateNodeDataFromId(node.id, node.data);
 
-      // ── ATTRIBUTE SELECT ───────────────────────────────────────────
+        const lbl = document.createElement("label");
+        lbl.textContent = "Mode";
+        lbl.style.display = "block";
+        pickerDiv.appendChild(lbl);
+
+        const sel = document.createElement("select");
+        sel.style = "display:block;margin-bottom:12px";
+        const modes = window.hubitatModes || [];
+        sel.innerHTML =
+          `<option value=""></option>` +
+          modes
+            .map(m => `<option value="${m.id}"${node.data.value === m.id ? " selected" : ""}>${m.name}</option>`)
+            .join("");
+        sel.onchange = () => {
+          node.data.value = sel.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        pickerDiv.appendChild(sel);
+        return true;
+      }
+
+      // ── CONDITION LABEL ───────────────────────────────────────────
+      pickerDiv.appendChild(
+        Object.assign(document.createElement("label"), {
+          textContent: "Condition",
+          style: "display:block;margin-bottom:4px",
+        })
+      );
+
+      // ── ATTRIBUTE SELECT ──────────────────────────────────────────
       const attrSelect = document.createElement("select");
       attrSelect.style = "display:block;margin-bottom:12px";
       attrSelect.innerHTML =
-        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+        `<option value=""${!node.data.attribute ? " selected" : ""}>(none)</option>` +
         [
           { key: "timeOfDay",   label: "Time of Day"  },
           { key: "dayOfWeek",   label: "Day of Week"  },
           { key: "currentTime", label: "Current Time" }
         ]
-          .map(o => `<option value="${o.key}" ${node.data.attribute === o.key ? "selected" : ""}>${o.label}</option>`)
+          .map(def =>
+            `<option value="${def.key}"${node.data.attribute===def.key ? " selected" : ""}>${def.label}</option>`
+          )
           .join("");
       attrSelect.onchange = () => {
-        node.data.attribute  = attrSelect.value;
+        node.data.attribute = attrSelect.value;
         node.data.comparator = "";
-        node.data.value      = "";
+        node.data.value = "";
         editor.updateNodeDataFromId(node.id, node.data);
         buildTimeDevicePicker(pickerDiv, node);
       };
       pickerDiv.appendChild(attrSelect);
 
       // ── COMPARATOR LABEL ──────────────────────────────────────────
-      pickerDiv.appendChild(Object.assign(document.createElement("label"), {
-        textContent: "Comparator",
-        style: "display:block;margin-bottom:4px"
-      }));
+      pickerDiv.appendChild(
+        Object.assign(document.createElement("label"), {
+          textContent: "Comparator",
+          style: "display:block;margin-bottom:4px",
+        })
+      );
 
       // ── COMPARATOR SELECT ─────────────────────────────────────────
       const cmpSelect = document.createElement("select");
       cmpSelect.style = "display:block;margin-bottom:12px";
       cmpSelect.innerHTML =
-        `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
-        ["==", "!=", "<", "<=", ">", ">=", "between"]
+        `<option value=""${!node.data.comparator ? " selected" : ""}>(none)</option>` +
+        ["==","!=","<","<=" ,">",">=","between"]
           .map(cmp =>
-            `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${cmp === "==" ? "equals" : cmp}</option>`
+            `<option value="${cmp}"${node.data.comparator===cmp ? " selected" : ""}>${cmp==="==" ? "equals" : cmp}</option>`
           )
           .join("");
       cmpSelect.onchange = () => {
         node.data.comparator = cmpSelect.value;
-        node.data.value      = "";
+        node.data.value = "";
         editor.updateNodeDataFromId(node.id, node.data);
         buildTimeDevicePicker(pickerDiv, node);
       };
       pickerDiv.appendChild(cmpSelect);
 
       // ── VALUE PICKERS ─────────────────────────────────────────────
-      if (node.data.attribute === "timeOfDay") {
-        // Between Sunrise & Sunset?
+      if (node.data.attribute === "dayOfWeek") {
+        // Day‑of‑Week picker
+        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
         if (node.data.comparator === "between") {
-          if (!Array.isArray(node.data.value)) {
-            node.data.value = ["", ""]; // start/end
-          }
+          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
           const [startVal, endVal] = node.data.value;
 
-          // Start selector
+          // Start day dropdown
+          const startSel = document.createElement("select");
+          startSel.style = "display:block;margin-bottom:8px";
+          startSel.innerHTML =
+            `<option value=""></option>` +
+            days.map(d =>
+              `<option value="${d}"${startVal===d ? " selected" : ""}>${d}</option>`
+            ).join("");
+          startSel.onchange = () => {
+            node.data.value[0] = startSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(startSel);
+
+          // End day dropdown
+          const endSel = document.createElement("select");
+          endSel.style = "display:block;margin-bottom:12px";
+          endSel.innerHTML =
+            `<option value=""></option>` +
+            days.map(d =>
+              `<option value="${d}"${endVal===d ? " selected" : ""}>${d}</option>`
+            ).join("");
+          endSel.onchange = () => {
+            node.data.value[1] = endSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(endSel);
+        } else {
+          // Multi‑select
+          const sel = document.createElement("select");
+          sel.multiple = true;
+          sel.size     = days.length;
+          sel.style    = "display:block;margin-bottom:12px";
+          const chosen = Array.isArray(node.data.value) ? node.data.value : (node.data.value ? [node.data.value] : []);
+          days.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d;
+            if (chosen.includes(d)) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          sel.onchange = () => {
+            node.data.value = Array.from(sel.selectedOptions).map(o => o.value);
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(sel);
+        }
+      }
+      else if (node.data.attribute === "timeOfDay") {
+        // Time of Day (sunrise/sunset or custom)
+        if (node.data.comparator === "between") {
+          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
+          const [startVal, endVal] = node.data.value;
+
+          // Sunrise/Sunset start selector
           const startSelect = document.createElement("select");
           startSelect.style = "display:block;margin-bottom:8px";
           startSelect.innerHTML =
-            `<option value="" ${!startVal ? "selected" : ""}>(none)</option>` +
-            ["sunrise", "sunset"]
-              .map(opt => `<option value="${opt}" ${startVal === opt ? "selected" : ""}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>`)
-              .join("");
+            `<option value=""${!startVal ? " selected" : ""}>(none)</option>` +
+            ["sunrise","sunset"].map(opt =>
+              `<option value="${opt}"${startVal===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
           startSelect.onchange = () => {
             node.data.value[0] = startSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(startSelect);
 
-          // End selector
+          // Sunrise/Sunset/Custom end selector
           const endSelect = document.createElement("select");
-          endSelect.style = "display:block;margin-bottom:8px";
+          endSelect.style = "display:block;margin-bottom:12px";
           endSelect.innerHTML =
-            `<option value="" ${!endVal ? "selected" : ""}>(none)</option>` +
-            [
-              { v: "sunrise", label: "Sunrise" },
-              { v: "sunset",  label: "Sunset" },
-              { v: "custom",  label: "Certain Time…" }
-            ]
-              .map(def => {
-                const sel = (endVal === def.v) || (def.v === "custom" && endVal && !["sunrise","sunset"].includes(endVal));
-                return `<option value="${def.v}" ${sel ? "selected" : ""}>${def.label}</option>`;
-              })
-              .join("");
+            `<option value=""${!endVal ? " selected" : ""}>(none)</option>` +
+            ["sunrise","sunset","custom"].map(opt =>
+              `<option value="${opt}"${
+                (opt!=="custom" ? endVal===opt : (endVal && !["sunrise","sunset"].includes(endVal)))
+                  ? " selected" : ""
+              }>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
           endSelect.onchange = () => {
             if (endSelect.value === "custom") {
-              node.data.value[1] = node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1])
-                ? node.data.value[1]
-                : "12:00";
+              node.data.value[1] = (endVal && !["sunrise","sunset"].includes(endVal)) ? endVal : "12:00";
             } else {
               node.data.value[1] = endSelect.value;
             }
@@ -703,7 +788,7 @@
           };
           pickerDiv.appendChild(endSelect);
 
-          // Custom time input?
+          // Custom time input if needed
           if (
             node.data.value[1] === "custom" ||
             (node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1]))
@@ -719,19 +804,15 @@
             pickerDiv.appendChild(timeInput);
           }
         }
-        // Single Sunrise/Sunset selector
         else {
+          // Single sunrise/sunset select
           const todSelect = document.createElement("select");
           todSelect.style = "display:block;margin-bottom:12px";
           todSelect.innerHTML =
-            `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
-            ["sunrise", "sunset"]
-              .map(tod =>
-                `<option value="${tod}" ${node.data.value === tod ? "selected" : ""}>` +
-                  tod.charAt(0).toUpperCase() + tod.slice(1) +
-                `</option>`
-              )
-              .join("");
+            `<option value=""${!node.data.value ? " selected" : ""}>(none)</option>` +
+            ["sunrise","sunset"].map(opt =>
+              `<option value="${opt}"${node.data.value===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
           todSelect.onchange = () => {
             node.data.value = todSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
@@ -739,35 +820,33 @@
           pickerDiv.appendChild(todSelect);
         }
       }
-      // ── Current Time “between” (two time inputs) ──────────────────────
       else if (node.data.attribute === "currentTime" && node.data.comparator === "between") {
-        if (!Array.isArray(node.data.value)) node.data.value = ["", ""];
-        const [startVal, endVal] = node.data.value;
+        // Two <input type="time"> for “between” currentTime
+        if (!Array.isArray(node.data.value)) node.data.value = ["",""];
+        const [cStart, cEnd] = node.data.value;
 
-        // Start time
-        const startInput = document.createElement("input");
-        startInput.type  = "time";
-        startInput.value = startVal;
-        startInput.style = "display:block;margin-bottom:8px";
-        startInput.onchange = () => {
-          node.data.value[0] = startInput.value;
+        const inStart = document.createElement("input");
+        inStart.type  = "time";
+        inStart.value = cStart || "";
+        inStart.style = "display:block;margin-bottom:8px";
+        inStart.onchange = () => {
+          node.data.value[0] = inStart.value;
           editor.updateNodeDataFromId(node.id, node.data);
         };
-        pickerDiv.appendChild(startInput);
+        pickerDiv.appendChild(inStart);
 
-        // End time
-        const endInput = document.createElement("input");
-        endInput.type  = "time";
-        endInput.value = endVal;
-        endInput.style = "display:block;margin-bottom:12px";
-        endInput.onchange = () => {
-          node.data.value[1] = endInput.value;
+        const inEnd = document.createElement("input");
+        inEnd.type  = "time";
+        inEnd.value = cEnd || "";
+        inEnd.style = "display:block;margin-bottom:12px";
+        inEnd.onchange = () => {
+          node.data.value[1] = inEnd.value;
           editor.updateNodeDataFromId(node.id, node.data);
         };
-        pickerDiv.appendChild(endInput);
+        pickerDiv.appendChild(inEnd);
       }
-      // ── Fallback single time input for everything else ───────────────
       else {
+        // Fallback single <input type="time">
         const timeInput = document.createElement("input");
         timeInput.type  = "time";
         timeInput.value = node.data.value || "";
@@ -3259,37 +3338,91 @@
 
         // ─── wire up selection ───────────────────────────────────────────────
         dropdown.onchange = async function() {
-          const fileName = dropdown.value.trim();
+          const fileName = this.value.trim();
           if (!fileName) {
             alert("Please select a flow file.");
             return;
           }
+
+          // 1) Pull credentials
+          const appId = document.getElementById("hubitatAppId").value.trim();
+          const token = document.getElementById("hubitatToken").value.trim();
+          if (!appId || !token) {
+            alert("Missing Hubitat App ID or Token.");
+            return;
+          }
+
+          // 2) Fetch raw JSON text from Hubitat
+          const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
+          const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
           try {
-            // 1) fetch & import the flow JSON
-            const data = await fetchHubitatFileContent(fileName);
+            const res = await fetch(fileUrl);
+            const raw = await res.text();
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}: ${raw}`);
+            }
+
+            // 3) Parse or auto‑fix common JSON issues
+            let data;
+            try {
+              data = JSON.parse(raw);
+            } catch (err) {
+              // 3a) Log the parse error
+              logAction(
+                `⚠️ JSON parse error for "${fullName}": ${err.message}. Attempting auto‑fix…`,
+                "warn"
+              );
+
+              // 3b) Apply extended fixes:
+              const fixed = raw
+                // strip UTF‑8 BOM
+                .replace(/^\uFEFF/, "")
+                // remove single‑line comments
+                .replace(/\/\/.*$/gm, "")
+                // remove multi‑line comments
+                .replace(/\/\*[\s\S]*?\*\//g, "")
+                // remove trailing commas in objects/arrays
+                .replace(/,\s*([}\]])/g, "$1")
+                // quote unquoted keys
+                .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
+                // convert single‑quoted strings to double
+                .replace(/'([^']*)'/g, '"$1"')
+                // convert NaN or Infinity to null
+                .replace(/\bNaN\b/g, "null")
+                .replace(/\bInfinity\b/g, "null");
+
+              try {
+                data = JSON.parse(fixed);
+                // 3c) Log the successful auto‑fix
+                logAction(
+                  `🔧 Auto‑fixed JSON on load for "${fullName}"`,
+                  "info"
+                );
+              } catch (err2) {
+                alert(
+                  "❌ JSON load failed even after auto‑fix:\n" +
+                  err2.message
+                );
+                return;
+              }
+            }
+
+            // 4) Import into editor and refresh UI
             editor.import(data);
-
-            // 2) patch in device labels (for Action/Condition tiles)
             patchFlowWithDeviceLabels(data, window.devices);
-
-            // 3) update the Flow Name display and zoom to fit
             document.getElementById("flowName").textContent = fileName;
             markFlowNeedsSave(false);
             logAction(`Loaded “${fileName}” from Hubitat.`, "success");
-
-            // fit & top‑align the freshly imported flow
             zoomDrawflowToFit();
 
-            // 4) refresh the Test‑Flow status panel
-            const appId = document.getElementById("hubitatAppId").value.trim();
-            const token = document.getElementById("hubitatToken").value.trim();
+            // 5) Update Test‑Flow status panel
             checkIfFlowIsInUse(fileName, appId, token);
 
-            // 5) highlight the last run from FE_flowtrace.json
+            // 6) Highlight last run if present
             try {
               const allTraces = await fetchHubitatFileContent("FE_flowtrace.json");
               const runsForThisFlow = Array.isArray(allTraces)
-                ? allTraces.filter(t => t.flowFile === `${fileName}.json`)
+                ? allTraces.filter(t => t.flowFile === `${fullName}`)
                 : [];
               if (runsForThisFlow.length > 0) {
                 highlightOnlyLatestRun(runsForThisFlow);
@@ -3399,40 +3532,98 @@
         // 1) Validate credentials & editor
         if (!hubitatCredentialsAreValid(true) || !editor) return;
 
+        // 2) Determine filename
         const dd = document.getElementById("hubitatFileDropdown");
-        // 2) Determine flowName: if nothing selected, ask the user
-        let flowName;
-        if (!dd.value) {
-          // no existing flow chosen → prompt for a new name
-          let name = prompt("Save flow as:", document.getElementById("flowName").textContent.trim());
-          if (!name) return;  // user cancelled
-          // sanitize exactly like your Save-As routine
-          flowName = name
-            .replace(/\s+/g, "_")
-            .replace(/[^a-zA-Z0-9_\-]/g, "")
-            .replace(/_{2,}/g, "_")
-            .replace(/^_+|_+$/g, "");
-          if (!flowName) {
-            alert("Invalid flow name.");
-            return;
-          }
-        } else {
-          // use the selected flow (strip “.json” if present)
-          flowName = dd.value.replace(/\.json$/i, "");
+        const fl = dd.value.trim();
+        const flowName = fl.endsWith(".json") ? fl.slice(0, -5) : fl;
+        if (!flowName) {
+          alert("Please select or enter a flow name.");
+          return;
         }
 
-        // 3) Export & upload
-        const data = editor.export();
-        if (window.flowVars?.getLocalVars) data.variables = window.flowVars.getLocalVars();
-        await uploadToHubitatFile(
-          `${flowName}.json`,
-          JSON.stringify({ flowName, ...data }, null, 2)
-        );
+        // 3) Export & prepare payload
+        let flowObj;
+        try {
+          flowObj = editor.export();
+          if (window.flowVars?.getLocalVars) flowObj.variables = window.flowVars.getLocalVars();
+        } catch (e) {
+          alert("🛑 Failed to export flow:\n" + e);
+          return;
+        }
 
-        // 4) Refresh dropdown and select the just-saved flow
+        // 4) Serialize to JSON
+        let payloadText;
+        try {
+          payloadText = JSON.stringify({ flowName, ...flowObj }, null, 2);
+        } catch (e) {
+          alert("🛑 Flow data could not be serialized to JSON:\n" + e);
+          return;
+        }
+
+        // 5) Pre‑upload validation + extended auto‑fix
+        try {
+          JSON.parse(payloadText);
+        } catch (e) {
+          logAction(`⚠️ JSON serialization error for "${flowName}.json": ${e.message}. Applying auto‑fix…`, "warn");
+          payloadText = payloadText
+            .replace(/^\uFEFF/, "")                    // strip BOM
+            .replace(/\/\/.*$/gm, "")                  // remove single‑line comments
+            .replace(/\/\*[\s\S]*?\*\//g, "")          // remove multi‑line comments
+            .replace(/,\s*([}\]])/g, "$1")             // remove trailing commas
+            .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":') // quote unquoted keys
+            .replace(/'([^']*)'/g, '"$1"')             // single → double quotes
+            .replace(/\bNaN\b/g, "null")               // NaN → null
+            .replace(/\bInfinity\b/g, "null");         // Infinity → null
+
+          try {
+            JSON.parse(payloadText);
+            logAction(`🔧 Auto‑fixed JSON before upload`, "info");
+          } catch (e2) {
+            alert("🛑 Could not auto‑fix JSON:\n" + e2.message);
+            return;
+          }
+        }
+
+        // 6) Upload to Hubitat
+        await uploadToHubitatFile(`${flowName}.json`, payloadText);
+
+        // 7) Refresh dropdown and select just‑saved file
         await reloadFlowDropdown(`${flowName}.json`);
 
-        // 5) Clear dirty state, log success
+        // 8) Post‑save fetch & verify + extended auto‑fix if needed
+        try {
+          let savedText = await fetchHubitatFileContent(`${flowName}.json`);
+          if (typeof savedText !== "string") {
+            savedText = JSON.stringify(savedText, null, 2);
+          }
+
+          try {
+            JSON.parse(savedText);
+            logAction(`✅ Verified valid JSON for "${flowName}.json"`, "info");
+          } catch {
+            logAction(`⚠️ Saved JSON malformed for "${flowName}.json". Applying auto‑fix…`, "warn");
+            const fixedSaved = savedText
+              .replace(/^\uFEFF/, "")
+              .replace(/\/\/.*$/gm, "")
+              .replace(/\/\*[\s\S]*?\*\//g, "")
+              .replace(/,\s*([}\]])/g, "$1")
+              .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
+              .replace(/'([^']*)'/g, '"$1"')
+              .replace(/\bNaN\b/g, "null")
+              .replace(/\bInfinity\b/g, "null");
+
+            // re‑parse (will throw if still bad)
+            JSON.parse(fixedSaved);
+
+            logAction(`🔧 Auto‑fixed saved JSON for "${flowName}.json"`, "info");
+            await uploadToHubitatFile(`${flowName}.json`, fixedSaved);
+            logAction(`🔁 Re‑uploaded fixed JSON`, "info");
+          }
+        } catch (e) {
+          alert("⚠️ Could not validate saved JSON:\n" + e);
+        }
+
+        // 9) Clear dirty flag & log success
         markFlowNeedsSave(false);
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
       };
