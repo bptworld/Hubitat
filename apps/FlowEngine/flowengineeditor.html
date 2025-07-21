@@ -57,25 +57,25 @@
   </script>
   <div id="headline">
     <div>
-      <b>Flow Engine Editor</b> <small>- Ver. 1.0.023 - </small>
-      <input id="hubitatToken" placeholder="Token" style="width:75px; margin-left:6px;">
-      <input id="hubitatAppId" placeholder="App ID" style="width:50px; margin-left:6px;">
+      <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.024</small></div>
+      <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
+      <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
-        style="width:300px; display:inline-block;"
+        style="width:400px; display:inline-block;"
         title="Pick a flow to load…">
         <option value="">Loading…</option>
       </select>
-      <span id="flowName"
-        style="display:inline-block; width:300px; font-weight:bold; font-size:14px; vertical-align:middle;"></span>
+      <span id="flowName" style="display:inline-block; width:400px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
 
       <div class="inline-div">
         <button id="activateFlowButton"
-          style="font-size:14px; padding:3px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:6px;">
           Deactivated
         </button>
         <button id="loggingButton"
-          style="font-size:14px; padding:3px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
-          Logging Disabled
+          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          Log Disabled
         </button>
       </div>
       <button id="toggleToolbarBtn"
@@ -980,16 +980,8 @@
       if (t === "donothing") {
         return `<div class="logic-node">Do Nothing<${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}/div>`;
       }
-      if (t === "and") {
-        return `<div class="logic-node">AND${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "or") {
-        return `<div class="logic-node">OR${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "not") {
-        return `<div class="logic-node">NOT${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
       if (t === "delay") {
+        const errorStyle = getErrorStyle(type, data);
         let label = "Delay";
         if (typeof data.ms === "number" && !isNaN(data.ms)) {
           label = `Delay ${data.ms} ms`;
@@ -1001,20 +993,24 @@
         return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "delaymin") {
+        const errorStyle = getErrorStyle(type, data);
         let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
         return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
       if (t === "savedevicestate") {
+        const errorStyle = getErrorStyle(type, data);
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
         return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
       if (t === "restoredevicestate") {
+        const errorStyle = getErrorStyle(type, data);
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
         return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
       }
 
       if (t === "comment") {
+        const errorStyle = getErrorStyle(type, data);
         let isSelected = false;
         if (editor && editor.selected_id && nodeId) {
           if (editor.selected_id == nodeId) isSelected = true;
@@ -1028,6 +1024,7 @@
       }
 
       if (t === "schedule") {
+        const errorStyle = getErrorStyle(type, data);
         let cron = data.cron || "";
         let repeatDays = Array.isArray(data.repeatDays) ? data.repeatDays.join(", ") : "";
         let time = data.time || "";
@@ -1043,6 +1040,7 @@
       }
 
       if (t === "repeat") {
+        const errorStyle = getErrorStyle(type, data);
         const lockedIcon = data.locked
           ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>`
           : "";
@@ -1069,6 +1067,7 @@
       }
 
       if (t === "setvariable") {
+        const errorStyle = getErrorStyle(type, data);
         let vName = data.varName || "Variable";
         let vValue = data.varValue || "Value";
         return `<div class="setVariable-tile">
@@ -1081,6 +1080,7 @@
       }
 
       if (t === "notmatchingvar") {
+        const errorStyle = getErrorStyle(type, data);
         const devLabel = "";
         const attribute = "";
         const value = "";
@@ -1107,6 +1107,7 @@
       }
 
       if (t === "notification") {
+        const errorStyle = getErrorStyle(type, data);
         let devLabels = [];
         let ids = Array.isArray(data.targetDeviceId) ? data.targetDeviceId : [data.targetDeviceId];
         (ids || []).forEach(id => {
@@ -1130,6 +1131,7 @@
       // ---- Combined rendering for Event Trigger & Condition ----
       if (type === "eventTrigger" || type === "condition") {
         const isCondition = type === "condition";
+        const errorStyle = getErrorStyle(type, data);
         const tileClass = (isCondition ? "condition-tile" : "trigger-tile") +
           (editor.selected_id == nodeId ? " selected" : "");
 
@@ -1159,9 +1161,9 @@
 
         // Current-status line (only for real devices when Show Status enabled)
         let statusHtml = "";
-        if (!isCondition && data.attribute && data.showStatus) {
+        if (data.attribute) {
           const curr = getCurrentValue(data.deviceId, data.attribute);
-          statusHtml = `<div class="status-line" style="font-size:10px;color:#666;">Current: ${curr}</div>`;
+          statusHtml = `<div class="status-line" style="font-size:10px;color:#00000;">Current: ${curr}</div>`;
         }
 
         // Click-pattern indicator
@@ -1191,6 +1193,7 @@
       if (t === "device") {
         // Selected state & base classes
         const isSelected = editor && editor.selected_id === nodeId;
+        const errorStyle = getErrorStyle(type, data);
         const tileClass  = "device-tile" + (isSelected ? " selected" : "");
 
         // Label, command, and optional value
@@ -5931,6 +5934,164 @@
           const naMsg = statusDiv.querySelector('#testNaMsg');
           if (naMsg) naMsg.remove();
         }
+      }
+
+      /**
+       * Returns a CSS style string to outline in red any node whose required inputs are missing.
+       * Supports all built‑in tile types.
+       *
+       * @param {string} type  The node type (e.g. "eventTrigger", "device", "schedule", etc.)
+       * @param {object} data  The node’s data object
+       * @returns {string}     A CSS style (e.g. "border:2px solid #fa2b2b;") or "" if no error
+       */
+      function getErrorStyle(type, data) {
+        const t = (type || "").toLowerCase();
+        let hasError = false;
+
+        switch (t) {
+          // ── Logic & Comment nodes: never error ─────────────────────────────────
+          case "donothing":
+          case "and":
+          case "or":
+          case "not":
+          case "comment":
+            break;
+
+          // ── Delay nodes: require numeric duration ───────────────────────────────
+          case "delay":
+            if (typeof data.ms !== "number" || isNaN(data.ms)) {
+              hasError = true;
+            }
+            break;
+          case "delaymin":
+            if (typeof data.delayMin !== "number" || isNaN(data.delayMin)) {
+              hasError = true;
+            }
+            break;
+
+          // ── Save/Restore Device State: require a device ─────────────────────────
+          case "savedevicestate":
+          case "restoredevicestate":
+            if (!data.deviceId) {
+              hasError = true;
+            }
+            break;
+
+          // ── Schedule: must have at least one of cron, repeatDays, or time ───────
+          case "schedule":
+            if (
+              !data.cron &&
+              (!Array.isArray(data.repeatDays) || data.repeatDays.length === 0) &&
+              !data.time
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Repeat Until/Max: different requirements by mode ─────────────────────
+          case "repeat":
+            if (data.repeatMode === "until") {
+              if (!data.deviceId || !data.attribute || !data.comparator) {
+                hasError = true;
+              } else if (data.comparator === "between") {
+                if (
+                  !Array.isArray(data.value) ||
+                  !data.value[0] ||
+                  !data.value[1]
+                ) {
+                  hasError = true;
+                }
+              } else if (
+                data.comparator !== "changes" &&
+                (data.value === undefined || data.value === "")
+              ) {
+                hasError = true;
+              }
+            } else {
+              if (
+                typeof data.repeatMax !== "number" ||
+                isNaN(data.repeatMax) ||
+                data.repeatMax < 1
+              ) {
+                hasError = true;
+              }
+            }
+            break;
+
+          // ── Variable assignment: require name and value ─────────────────────────
+          case "setvariable":
+            if (!data.varName || data.varValue === undefined || data.varValue === "") {
+              hasError = true;
+            }
+            break;
+
+          // ── NotMatchingVar: need target devices and an output variable ──────────
+          case "notmatchingvar":
+            const targetsNMV = Array.isArray(data.targetDeviceId)
+              ? data.targetDeviceId
+              : [data.targetDeviceId];
+            if (
+              targetsNMV.length === 0 ||
+              targetsNMV.every(id => !id) ||
+              !data.outputVar
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Notification: must pick at least one device and supply a message ────
+          case "notification":
+            const targetsNOT = Array.isArray(data.targetDeviceId)
+              ? data.targetDeviceId
+              : [data.targetDeviceId];
+            if (
+              targetsNOT.length === 0 ||
+              targetsNOT.every(id => !id) ||
+              !data.message
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Device Action: need device(s) and a command ────────────────────────
+          case "device":
+            const devs = Array.isArray(data.deviceIds)
+              ? data.deviceIds
+              : data.deviceId
+              ? [data.deviceId]
+              : [];
+            if (devs.length === 0 || devs.every(id => !id) || !data.command) {
+              hasError = true;
+            }
+            break;
+
+          // ── Event Trigger & Condition: device, attribute, comparator, value ─────
+          case "eventtrigger":
+          case "condition":
+            if (!data.deviceId || !data.attribute || !data.comparator) {
+              hasError = true;
+            } else if (data.comparator === "between") {
+              if (
+                !Array.isArray(data.value) ||
+                !data.value[0] ||
+                !data.value[1]
+              ) {
+                hasError = true;
+              }
+            } else if (
+              data.comparator !== "changes" &&
+              (data.value === undefined || data.value === "")
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Unknown types: assume valid ─────────────────────────────────────────
+          default:
+            break;
+        }
+
+        return hasError ? "border:2px solid #fa2b2b;" : "";
       }
 
     </script>
