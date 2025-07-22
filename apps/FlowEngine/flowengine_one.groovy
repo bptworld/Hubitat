@@ -25,7 +25,7 @@
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Changes:
- *  1.0.0 - 07/14/25 - Initial Release
+ *  1.0.0 - 07/22/25 - Initial Release
  */
 
 import groovy.json.JsonSlurper
@@ -52,6 +52,7 @@ def mainPage() {
         if(state.appInstalled == 'COMPLETE') {
             section(getFormat("header-green", " <b>Device Master List:</b>")) {}
             section(" Master List", hideable: true, hidden: true) {
+				paragraph "Don't forget, if you add devices to your system after selecting all here.  You'll need to come back here and add the new devices, if you want to use them in Flow Engine."
                 input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
             }
 
@@ -60,6 +61,7 @@ def mainPage() {
 				paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
 				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
 				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
+				paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
 				paragraph "<hr>"
 			}
 			
@@ -140,7 +142,6 @@ mappings {
 }
 
 // --- HANDLERS ---
-
 def handleLocationTimeEvent(evt) {
     flowLog(fname, "Sun event: ${evt.name}@${evt.date}", "info")
     state.activeFlows.each { fname, flowObj ->
@@ -301,6 +302,7 @@ def recheckAllTriggers() {
 }
 
 def apiRunFlow() {
+	flowLog(fname, "---------- In apiRunFlow ----------", "info")
     def json = request?.JSON
     def fname = json?.flow
     if (!fname || !state.activeFlows[fname]) {
@@ -574,21 +576,44 @@ def getFileList() {
         }
     } catch (e) {
 		flowLog(fname, "getFileList error: $e", "error")
-
     }
 }
 
 def readFlowFile(fname) {
-    def uri = "http://127.0.0.1:8080/local/${fname}"
+    def uri     = "http://127.0.0.1:8080/local/${fname}"
+    def jsonStr = ""
     try {
-        def jsonStr = ""
         httpGet([uri: uri, contentType: "text/plain"]) { resp ->
             jsonStr = resp.data?.text
         }
-        if(!jsonStr) return null
-        return new JsonSlurper().parseText(jsonStr)
-    } catch (e) {
-		flowLog(fname, "readFlowFile($fname): $e", "error")
+        if (!jsonStr) return null
+
+        // 1) Try normal parse
+        try {
+            return new JsonSlurper().parseText(jsonStr)
+        }
+        catch (parseEx) {
+            // 2) Log the error, then attempt auto‑fix
+            flowLog(fname, "⚠️ JSON parse error: ${parseEx.message}. Attempting auto‑fix…", "warn")
+
+            def fixed = jsonStr
+                .replaceAll(/^\uFEFF/, "")                    // strip BOM
+                .replaceAll(/\/\/.*$/, "")                    // remove single‑line comments
+                .replaceAll(/\/\*[\s\S]*?\*\//, "")           // remove multi‑line comments
+                .replaceAll(/,\s*([}\]])/, '$1')              // remove trailing commas
+                .replaceAll(/(['"])?([A-Za-z_][\w]*)\1\s*:/, '"$2":') // quote unquoted keys
+                .replaceAll(/'([^']*)'/, '"$1"')              // convert single → double quotes
+                .replaceAll(/\bNaN\b/, "null")                // NaN → null
+                .replaceAll(/\bInfinity\b/, "null")           // Infinity → null
+
+            // 3) Re‑parse the fixed text
+            def obj = new JsonSlurper().parseText(fixed)
+            flowLog(fname, "🔧 Auto‑fixed JSON on load for \"${fname}\"", "info")
+            return obj
+        }
+    }
+    catch (e) {
+        flowLog(fname, "readFlowFile(${fname}) error: ${e}", "error")
         return null
     }
 }
@@ -822,6 +847,14 @@ def clearHoldTracker(data) {
 def handleEvent(evt, fname) {
     def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
+    // Cancel any previous run for this flow
+    unschedule("clearTapTracker")
+    unschedule("clearHoldTracker")
+    unschedule("handleTimeTrigger")
+    unschedule("checkVariableTriggers")
+    // Clear per-run trackers
+    flowObj.tapTracker?.clear()
+    flowObj.holdTracker?.clear()
     flowObj.tapTracker = flowObj.tapTracker ?: [:]
     flowObj.holdTracker = flowObj.holdTracker ?: [:]
     def triggerNodes = getTriggerNodes(fname, evt)
@@ -1069,6 +1102,9 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 						int lowMin  = toTimeMinutes(bounds[0].toString())
 						int highMin = toTimeMinutes(bounds[1].toString())
 						passes = (actualMin >= lowMin && actualMin <= highMin)
+						flowLog(fname, "---------- In evaluateNode-condition1 -------start", "info")
+						flowLog(fname, "In evaluateNode-condition1: actualMin: ${actualMin} | lowMin: ${lowMin} | highMin: ${highMin} | passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition1 ---------end", "info")
 					} else {
 						log.warn "Condition 'between' on ${attr} needs two values, got ${bounds}"
 						passes = false
@@ -1077,6 +1113,9 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				// 2) incomingValue override for all other comparators
 				else if (incomingValue != null) {
 					passes = evaluateComparator(incomingValue, expected, comparator)
+					flowLog(fname, "---------- In evaluateNode-condition2 -------start", "info")
+					flowLog(fname, "In evaluateNode-condition2: incomingValue: ${incomingValue} | expected: ${expected} | comparator: ${comparator} | passes: ${passes}", "info")
+					flowLog(fname, "---------- In evaluateNode-condition2 ---------end", "info")
 				}
 				// 3) Multi‑device AND/OR logic for real attributes
 				else {
@@ -1088,17 +1127,25 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 					}
 
 					if (logic in ["and","all"]) {
+						flowLog(fname, "---------- In evaluateNode-condition-and -------start", "info")
 						passes = devIds.every { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
+							flowLog(fname, "In evaluateNode-condition-and: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
 							evaluateComparator(actual, expected, comparator)
 						}
+						flowLog(fname, "In evaluateNode-condition-and: passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition-and ---------end", "info")
 					} else {
+						flowLog(fname, "---------- In evaluateNode-condition-or -------start", "info")
 						passes = devIds.any { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
+							flowLog(fname, "In evaluateNode-condition-or: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
 							evaluateComparator(actual, expected, comparator)
 						}
+						flowLog(fname, "In evaluateNode-condition-or: passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition-or -------end", "info")
 					}
 				}
 
@@ -1116,28 +1163,6 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				log.error getExceptionMessageWithLine(e)
 			}
 			break
-
-		case "AND":
-			flowLog(fname, "In evaluateNode - AND", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "OR":
-			flowLog(fname, "In evaluateNode - OR", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "NOT":
-			flowLog(fname, "In evaluateNode - NOT", "debug")
-            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
-            def result = !evaluateNode(fname, input, evt, null, visited)
-            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
-            return result
 		
         case "device":
 			flowLog(fname, "In evaluateNode - device (dryRun=${testDryRun})", "debug")
