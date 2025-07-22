@@ -58,7 +58,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.024</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.025</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -90,7 +90,10 @@
   </div>
   <div id="controls">
     <div style="margin-bottom:5px;"></div>
-      <button id="loadDevices" title="Load all devices from Hubitat">Reload Devices</button>
+      <div class="inline-div">
+        <small>Device Options</small><br>
+        <button id="loadDevices" title="Load all devices from Hubitat">Reload</button>
+      </div>
       <b> | </b>
       <div class="inline-div">
         <small>Flow Options</small><br>
@@ -150,6 +153,15 @@
       <button id="undoBtn" title="Undo last change">Undo</button>
       <button id="redoBtn" title="Redo">Redo</button>
       <b> | </b>
+      <label style="margin-left:8px; user-select:none; display:inline-block;">
+        <input
+          type="checkbox"
+          id="globalShowStatus"
+          checked
+          style="vertical-align:middle; margin-right:4px;"
+        >
+        Show Status
+      </label>
     </div>
   </div>
   <div id="main">
@@ -299,6 +311,23 @@
     window.redoStack = [];
     
     let flowTracePollingActive = false;
+
+    // ── global “Show Status” wiring ────────────────────────────────────────
+    // must run after the HTML for #nodeControls (with the new checkbox) exists
+    const globalShowStatusInput = document.getElementById('globalShowStatus');
+    window.globalShowStatus = globalShowStatusInput.checked;
+
+    globalShowStatusInput.addEventListener('change', () => {
+      window.globalShowStatus = globalShowStatusInput.checked;
+      // re‑render every node so they pick up the new setting
+      document.querySelectorAll('.drawflow-node').forEach(el => {
+        const id   = el.id.replace('node-', '');
+        const node = editor.getNodeFromId(id);
+        if (node) {
+          editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
+        }
+      });
+    });
 
     function pushUndoState() {
       if (!editor || !editor.export) {
@@ -1062,7 +1091,7 @@
           <span style="font-size:11px">
             ${description}
           </span>
-          ${lockedIcon}
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -1101,8 +1130,7 @@
             <b>Attr Type:</b> ${scope}<br>
             <b>Save Mode:</b> ${mode}
           </span>
-          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;
-              font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
@@ -1116,23 +1144,28 @@
         });
         let devLabelStr = devLabels.length ? devLabels.join(", ") : "<i>No device</i>";
 
-        let type = (data.notificationType === "speech") ? "Speech" : "Push";
-        let msg = data.message || "";
-        return `<div class="notification-tile">
-          ${type} Notifications<br>
+        const lockedHtml = data.locked
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : "";
+        const notifType = data.notificationType === "speech" ? "Speech" : "Push";
+        const msg       = data.message || "";
+
+        return `
+          <div class="notification-tile">
+            ${notifType} Notifications<br>
           <span style="font-size:11px">
             Device: ${devLabelStr}<br>
             ${msg ? `Message: "${msg}"<br>` : ""}
-            ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
           </span>
+          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
       }
 
       // ---- Combined rendering for Event Trigger & Condition ----
       if (type === "eventTrigger" || type === "condition") {
         const isCondition = type === "condition";
-        const errorStyle = getErrorStyle(type, data);
-        const tileClass = (isCondition ? "condition-tile" : "trigger-tile") +
+        const errorStyle  = getErrorStyle(type, data);
+        const tileClass   = (isCondition ? "condition-tile" : "trigger-tile") +
           (editor.selected_id == nodeId ? " selected" : "");
 
         // Comparator and value text
@@ -1159,11 +1192,18 @@
           mainText = `${devLabel} ${data.attribute || ""} ${comp}${valText}`;
         }
 
-        // Current-status line (only for real devices when Show Status enabled)
+        // Current-status line (handles single + multi-device)
         let statusHtml = "";
-        if (data.attribute) {
-          const curr = getCurrentValue(data.deviceId, data.attribute);
-          statusHtml = `<div class="status-line" style="font-size:10px;color:#00000;">Current: ${curr}</div>`;
+        if (window.globalShowStatus && data.attribute) {
+          const ids = (Array.isArray(data.deviceIds) && data.deviceIds.length)
+            ? data.deviceIds
+            : [data.deviceId];
+          statusHtml = ids.map(id => {
+            const curr  = getCurrentValue(id, data.attribute);
+            const d     = (window.devices || []).find(dev => dev.id == id);
+            const label = d ? (d.label || d.name) : (data.deviceLabel || id);
+            return `<div class="status-line" style="font-size:10px;color:#000000;">Current ${label}: ${curr}</div>`;
+          }).join("");
         }
 
         // Click-pattern indicator
@@ -1177,7 +1217,7 @@
           : "";
 
         return `
-          <div class="${tileClass}">
+          <div class="${tileClass}" ${errorStyle}>
             ${isCondition ? "Condition" : "Event Trigger"}<br>
             <span style="font-size:11px">
               ${mainText}<br>
@@ -1190,8 +1230,8 @@
           </div>`;
       }
 
+      // Action tile (device) with per-device status including device names
       if (t === "device") {
-        // Selected state & base classes
         const isSelected = editor && editor.selected_id === nodeId;
         const errorStyle = getErrorStyle(type, data);
         const tileClass  = "device-tile" + (isSelected ? " selected" : "");
@@ -1200,42 +1240,36 @@
         const label = data.deviceLabel
           || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
           || "<i>Pick device(s)…</i>";
-        const cmd   = data.command || "";
-        const val   = data.value ? `(${data.value})` : "";
+        const cmd = data.command || "";
+        const val = data.value ? `(${data.value})` : "";
 
-        // Only build status for the attribute matching the command
+        // Status: show current value per selected device
         let statusHtml = "";
-        if (cmd) {
+        if (window.globalShowStatus && cmd) {
           const cmdAttrMap = {
-            on:               ["switch"],
-            off:              ["switch"],
-            toggle:           ["switch"],
-            setLevel:         ["level"],
-            startLevelChange: ["level"],
-            stopLevelChange:  ["level"],
-            setColor:         ["color"],
-            lock:             ["lock"],
-            unlock:           ["lock"]
+            on: ["switch"], off: ["switch"], toggle: ["switch"],
+            setLevel: ["level"], startLevelChange: ["level"], stopLevelChange: ["level"],
+            setColor: ["color"], lock: ["lock"], unlock: ["lock"]
           };
           const attrsToShow = cmdAttrMap[cmd] || [];
-          const devs        = window.devices || [];
+          const devs = window.devices || [];
           const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
             ? data.deviceIds
             : [data.deviceId];
 
-          ids.forEach(id => {
+          statusHtml = ids.map(id => {
             const dev = devs.find(d => d.id == id);
-            if (!dev?.attributes) return;
-            attrsToShow.forEach(attr => {
+            if (!dev?.attributes) return "";
+            return attrsToShow.map(attr => {
               const v = dev.attributes[attr];
-              if (v != null) {
-                statusHtml += `<div class="current-value">${attr}: ${v}</div>`;
-              }
-            });
-          });
+              if (v == null) return "";
+              const name = dev.label || dev.name || id;
+              return `<div class="current-value">Current ${name}: ${v}</div>`;
+            }).join("");
+          }).join("");
         }
 
-        // Color preview (unchanged)
+        // Color preview
         let colorPreview = "";
         if (cmd.toLowerCase() === "setcolor" && data.color) {
           colorPreview = `<div style="
@@ -1253,16 +1287,16 @@
           ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
           : "";
 
-        // Render the tile (–– placeholders when empty)
-        return `<div class="${tileClass}">
-          Action<br>
-          <span style="font-size:11px">
-            ${label} ${cmd || ''} ${val || ''}<br><hr>
-          </span>
-          ${statusHtml}
-          ${colorPreview}
-          ${lockedHtml}
-        </div>`;
+        return `
+          <div class="${tileClass}" ${errorStyle}>
+            Action<br>
+            <span style="font-size:11px">
+              ${label} ${cmd || ''} ${val || ''}<br><hr>
+            </span>
+            ${statusHtml}
+            ${colorPreview}
+            ${lockedHtml}
+          </div>`;
       }
     }
 
@@ -3110,7 +3144,6 @@
             }
           });
         }, 100);
-        markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3121,6 +3154,7 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
         attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addCondition finished.");
@@ -3150,7 +3184,6 @@
             }
           });
         }, 100);
-        markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3161,6 +3194,7 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
         attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addTrigger finished.");
@@ -3172,7 +3206,6 @@
         editor.addNode("comment", 0, 0, x, y, "comment", { 
           text: "comment..." }
         );
-        markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3183,8 +3216,10 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
         attachNodeClickHandlers();
         updateNodeSelectionUI();
+        logAction("addComment finished.");
       };
 
       document.getElementById("addSetVariable").onclick = () => {
@@ -3203,6 +3238,7 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
         attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addSetVariable finished.");
@@ -3233,6 +3269,7 @@
       };
 
       document.getElementById("addDoNothing").onclick = () => {
+        logAction("addDoNothing button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         markFlowNeedsSave(true);
         editor.addNode("doNothing", 1, 0, x, y, "doNothing", 
@@ -3249,14 +3286,18 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
+        logAction("addDoNothing finished.");
       };
 
       document.getElementById("addDelay").onclick = () => {
+        logAction("addDelay button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("delay", 1, 1, x, y, "delay", {
           delayMs: 1000
         }, nodeTileHtml("delay", { delayMs: 1000 }));
-        markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3267,14 +3308,18 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
+        logAction("addDelay finished.");
       };
 
       document.getElementById("addDelayMin").onclick = () => {
+        logAction("addDelayMin button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("delayMin", 1, 1, x, y, "delayMin", {
           delayMin: 1
         }, nodeTileHtml("delayMin", { delayMin: 1 }));
-        markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3285,6 +3330,10 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
+        markFlowNeedsSave(true);
+        attachNodeClickHandlers();
+        updateNodeSelectionUI();
+        logAction("addDelayMin finished.");
       };
 
       document.getElementById("newFlow").onclick  = async function() {
@@ -4226,6 +4275,8 @@
                         }
                       );
                       const result = await res.json();
+                      
+                      clearAllSelections();
                       logAction(`✅ runFlow result: ${result.result}`, "info");
                     } catch (err) {
                       logAction("❌ Failed to run flow: " + err, "error");
@@ -5801,6 +5852,8 @@
         });
 
         window.flowTraceSocket.addEventListener('message', ({ data }) => {
+          clearAllSelections();
+
           let evt;
           try {
             evt = JSON.parse(data);
@@ -6094,6 +6147,18 @@
         return hasError ? "border:2px solid #fa2b2b;" : "";
       }
 
+      function clearAllSelections() {
+        // 1) Clear multi‑select on canvas
+        window._multiSelectedNodes.clear();
+        updateMultiSelectUI();
+
+        // 2) Clear single‑select in the editor pane
+        if (window.editor) {
+          window.editor.selected_id = null;
+          // Reset the side‑panel to its “empty” state:
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+        }
+      }
     </script>
 </body>
 </html>
