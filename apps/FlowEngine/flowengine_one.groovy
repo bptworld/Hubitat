@@ -104,14 +104,25 @@ def updated() {
     initialize()
 }
 
+// ─── initialize() ─────────────────────────────────────────────────────────────
 private void initialize() {
+    if (!state.accessToken) {
+        createAccessToken()
+    }
+    state.appId  = app.id
+    state.token  = state.accessToken
+
     // — clear everything once —
     unsubscribe()
     unschedule()
 
+    // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
+    state.timeJobs = state.timeJobs ?: [:]
+    state.timeSubs = state.timeSubs ?: [:]
+
     // — sunrise/sunset still by subscription —
-    subscribe(location, "sunrise",      "handleLocationTimeEvent", [ filterEvents:false ])
-    subscribe(location, "sunset",       "handleLocationTimeEvent", [ filterEvents:false ])
+    subscribe(location, "sunrise", "handleLocationTimeEvent", [filterEvents:false])
+    subscribe(location, "sunset",  "handleLocationTimeEvent", [filterEvents:false])
 
     // — ONE poller for all HH:mm & dayOfWeek triggers —
     schedule("0 * * ? * * *", "pollTimeTriggers")
@@ -119,22 +130,24 @@ private void initialize() {
     // — load your flows as before —
     state.activeFlows = [:]
     settings.flowFiles?.each { fname ->
-        loadAndStartFlow(fname)    // no longer needs to schedule cron jobs
+        loadAndStartFlow(fname)
     }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Utility to clear *only* one flow’s schedules & subscriptions
-// ──────────────────────────────────────────────────────────────────────────────
+// ─── clearFlowTimeTriggers() ───────────────────────────────────────────────────
 private void clearFlowTimeTriggers(String fname) {
+    // ensure the maps exist
+    state.timeJobs = state.timeJobs ?: [:]
+    state.timeSubs = state.timeSubs ?: [:]
+
     // 1a) unschedule just this flow’s cron jobs by jobName
-    state.timeJobs[fname]?.each { jobName ->
+    (state.timeJobs[fname] ?: []).each { jobName ->
         unschedule(jobName)
     }
     state.timeJobs.remove(fname)
 
     // 1b) unsubscribe just this flow’s sunrise/sunset hooks
-    state.timeSubs[fname]?.each { evtName ->
+    (state.timeSubs[fname] ?: []).each { evtName ->
         unsubscribe(location, evtName, "handleLocationTimeEvent")
     }
     state.timeSubs.remove(fname)
@@ -905,6 +918,28 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			return
 
+		case "AND":
+			flowLog(fname, "In evaluateNode - AND", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "OR":
+			flowLog(fname, "In evaluateNode - OR", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "NOT":
+			flowLog(fname, "In evaluateNode - NOT", "debug")
+            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
+            def result = !evaluateNode(fname, input, evt, null, visited)
+            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
+            return result
+		
 		case "doNothing":
 			flowLog(fname, "In evaluateNode - doNothing", "debug")
 			break
