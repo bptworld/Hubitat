@@ -84,10 +84,11 @@ button:hover { background: #02c258; }
 }
 .main-path.highlighted {
   stroke: limegreen !important;
-  stroke-width: 10px !important;
+  stroke-width: 18px !important;
 }
+
 .drawflow-node.executed {
-  outline: 5px solid limegreen !important;
+  outline: 7px solid limegreen !important;
   box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important;
   border-radius: 14px !important;
   z-index: 2000 !important;
@@ -132,7 +133,7 @@ button:hover { background: #02c258; }
 
 .drawflow .drawflow-node {
   background: #85848a !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
@@ -143,37 +144,37 @@ button:hover { background: #02c258; }
 
 .drawflow-node.eventTrigger {
   background: #fb0101 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.condition {
   background: #fc9331 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.device {
   background: #01a8fb !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.setVariable {
   background: #f7026c !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.notification {
   background: #462bf9 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.comment {
   background: #faf777 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   min-width: 300px !important;
   border-radius: 0 !important;
@@ -183,13 +184,13 @@ button:hover { background: #02c258; }
 .drawflow-node.or,
 .drawflow-node.not {
   background: #ab02f9 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
 .drawflow-node.schedule {
   background: #fb0101 !important;
-  border: 2.2px solid #0cb56d !important;
+  border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
 }
