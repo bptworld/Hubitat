@@ -58,7 +58,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.026</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.027</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -105,11 +105,11 @@
         <button id="newFlow" title="Start a new flow from scratch">New</button>
       </div>
       <b> | </b>
-      <button id="bgImageBtn" type="button">Background Image</button>
-      <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
-      <b> | </b>
       <div class="inline-div">
-        <small><label for="gridBrightnessSlider">Background Brightness</label></small><br>
+        <small><label for="gridBrightnessSlider">Background Image/Brightness</label></small><br>
+        <button id="bgImageBtn" type="button">Image</button>
+        <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
+        <b> | </b>
         <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
       </div>
       <b> | </b>
@@ -817,6 +817,35 @@
           };
           pickerDiv.appendChild(endSelect);
 
+         // Offset input for start and end
+        const offsetLabel = document.createElement("label");
+        offsetLabel.textContent = "Offset ± (minutes)";
+        offsetLabel.style = "display:block;margin:8px 0 4px 0;";
+        pickerDiv.appendChild(offsetLabel);
+
+        const startOffset = document.createElement("input");
+        startOffset.type = "number";
+        startOffset.placeholder = "Start Offset";
+        startOffset.value = Array.isArray(node.data.offset) ? node.data.offset[0] || 0 : 0;
+        startOffset.style = "display:block;margin-bottom:6px;width:100%;";
+
+        const endOffset = document.createElement("input");
+        endOffset.type = "number";
+        endOffset.placeholder = "End Offset";
+        endOffset.value = Array.isArray(node.data.offset) ? node.data.offset[1] || 0 : 0;
+        endOffset.style = "display:block;margin-bottom:12px;width:100%;";
+
+        startOffset.onchange = endOffset.onchange = () => {
+          node.data.offset = [
+            parseInt(startOffset.value) || 0,
+            parseInt(endOffset.value) || 0
+          ];
+          editor.updateNodeDataFromId(node.id, node.data);
+        };
+
+        pickerDiv.appendChild(startOffset);
+        pickerDiv.appendChild(endOffset);
+
           // Custom time input if needed
           if (
             node.data.value[1] === "custom" ||
@@ -847,6 +876,23 @@
             editor.updateNodeDataFromId(node.id, node.data);
           };
           pickerDiv.appendChild(todSelect);
+
+          // Offset input for single sunrise/sunset
+          const offsetLabel = document.createElement("label");
+          offsetLabel.textContent = "Offset ± (minutes)";
+          offsetLabel.style = "display:block;margin:8px 0 4px 0;";
+          pickerDiv.appendChild(offsetLabel);
+
+          const offsetInput = document.createElement("input");
+          offsetInput.type = "number";
+          offsetInput.placeholder = "Offset (min)";
+          offsetInput.value = node.data.offset || 0;
+          offsetInput.style = "display:block;margin-bottom:12px;width:100%;";
+          offsetInput.onchange = () => {
+            node.data.offset = parseInt(offsetInput.value) || 0;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          pickerDiv.appendChild(offsetInput);
         }
       }
       else if (node.data.attribute === "currentTime" && node.data.comparator === "between") {
@@ -1433,7 +1479,7 @@
         });
       }
 
-      const ATTRIBUTE_KNOWN_VALUES = {
+      window.ATTRIBUTE_KNOWN_VALUES = {
         "contact":        ["open", "closed"],
         "switch":         ["on", "off"],
         "door":           ["open", "closed", "unknown"],
@@ -1771,7 +1817,6 @@
         editor.updateNodeHtmlFromId(node.id, tileHtml);
       }
 
-      // PATCH START: renderEditor, multi-trigger support
       window.renderEditor = function renderEditor(node) {
         if (
           ["device", "condition", "eventTrigger", "notMatchingVar"].includes(node.name)
@@ -1785,8 +1830,8 @@
           }
         }
 
-        //hideTestUI();
-        
+        const panel = document.getElementById("nodeEditor");
+        if (panel) panel.style.display = '';
         if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
         const el = document.getElementById("nodeEditor");
         el.innerHTML = "";
@@ -2964,8 +3009,12 @@
 
       document.getElementById("drawflow").addEventListener("click", function(e) {
         if (!e.target.closest(".drawflow-node")) {
-          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          window._multiSelectedNodes.clear();
           editor.selected_id = null;
+          updateMultiSelectUI();
+        // Close the Node Editor when clicking on blank canvas:
+        const panel = document.getElementById("nodeEditor");
+        if (panel) panel.style.display = 'none';
         }
       });
 
@@ -3584,13 +3633,25 @@
         // 1) Validate credentials & editor
         if (!hubitatCredentialsAreValid(true) || !editor) return;
 
-        // 2) Determine filename
-        const dd = document.getElementById("hubitatFileDropdown");
-        const fl = dd.value.trim();
-        const flowName = fl.endsWith(".json") ? fl.slice(0, -5) : fl;
+        // 2) Determine filename (if empty, prompt for one like Save As)
+        const dd     = document.getElementById("hubitatFileDropdown");
+        const fl     = dd.value.trim();
+        let flowName = fl.endsWith(".json") ? fl.slice(0, -5) : fl;
         if (!flowName) {
-          alert("Please select or enter a flow name.");
-          return;
+          // Prompt for new name
+          let name = prompt("Save flow as:", "");
+          if (!name) return;  // user cancelled
+
+          // Sanitize and validate
+          name = sanitizeFlowName(name);
+          if (!isValidFlowName(name)) {
+            alert("Invalid flow name. Only letters, numbers, underscores, and dashes allowed.");
+            return;
+          }
+
+          // Update display & use that name
+          flowName = name;
+          document.getElementById("flowName").textContent = flowName;
         }
 
         // 3) Export & prepare payload
@@ -3828,7 +3889,7 @@
                     || document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
             if (path) {
                 path.setAttribute('stroke','limegreen');
-                path.setAttribute('style','stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
+                path.setAttribute('style','stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
                 path.classList.add('highlighted');
             }
         }
@@ -4197,72 +4258,77 @@
                       <input type="checkbox" id="dryRunCheckbox" />
                       Dry Run
                     </label>
-                    <br><small>To test this Flow, click on the Trigger device to test, then enter a value… DO NOT try to test multidevice triggers!</small>
+                    <br><small>To test this Flow, simply enter a value and click Test.</small>
                   `;
                   
-                  // TEST‑FLOW BUTTON HANDLER
+                  // ── TEST‑FLOW BUTTON HANDLER (auto‑pick first eventTrigger) ───────────────
                   const testBtn        = document.getElementById("testFlowBtn");
                   const testInput      = document.getElementById("testFlowInput");
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    // 1) trim, lowercase, and normalize times to 24h
+                    // 1) normalize your test value to 24h
                     const raw = testInput.value.trim();
                     if (!raw) {
                       alert("Please enter a test value.");
                       return;
                     }
-                    let val = raw.toLowerCase().replace(
-                      /(\d{1,2}):(\d{2})\s*(am|pm)/g,
-                      (_, h, m, ampm) => {
-                        let hh = parseInt(h, 10) % 12;
+                    let val = raw
+                      .toLowerCase()
+                      .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
+                        let hh = parseInt(h,10) % 12;
                         if (ampm === "pm") hh += 12;
-                        hh = hh < 10 ? "0" + hh : "" + hh;
-                        return `${hh}:${m}`;
-                      }
-                    );
+                        return (hh<10? "0"+hh : hh) + ":" + m;
+                      });
 
-                    // 2) determine the flow filename
+                    // 2) pick the flow file
                     const dropdown = document.getElementById("hubitatFileDropdown");
-                    const fl       = dropdown.value.trim();
-                    const flow     = fl.endsWith(".json") ? fl : fl + ".json";
+                    let flow = dropdown.value.trim();
+                    if (!flow.endsWith(".json")) flow += ".json";
                     if (!flow) {
                       alert("Please select a flow to test.");
                       return;
                     }
 
-                    // 3) grab credentials
+                    // 3) grab Hubitat credentials
                     const appId = document.getElementById("hubitatAppId").value.trim();
                     const token = document.getElementById("hubitatToken").value.trim();
                     if (!appId || !token) {
                       alert("Missing Hubitat App ID or Token.");
                       return;
                     }
-
                     const dryRun = dryRunCheckbox.checked;
 
-                    // 4) ensure a Trigger node is selected
-                    const selId = editor.selected_id;
-                    if (!selId) {
-                      alert("Please select a Trigger node before testing.");
-                      return;
-                    }
-                    const node = editor.getNodeFromId(selId);
-                    if (!node || !node.data) {
-                      alert("Selected element is not a valid node.");
+                    // 4) pick the trigger node that actually supports this test value (val)
+                    const df       = editor.drawflow?.drawflow || editor.drawflow;
+                    const data     = df?.Home?.data || {};
+                    const triggers = Object.entries(data).filter(([id, nd]) =>
+                      nd.name === 'eventTrigger' &&
+                      (ATTRIBUTE_KNOWN_VALUES[nd.data.attribute] || []).includes(val)
+                    );
+
+                    if (!triggers.length) {
+                      alert(`No Trigger node matching value "${val}" found.`);
                       return;
                     }
 
-                    // 5) gather deviceIds
+                    // Always use the first matching trigger based on the test value
+                    const [selId, node] = triggers[0];
+                    // update selection to highlight the correct node
+                    editor.selected_id = selId;
+
+                    // 5) gather deviceIds from that trigger node
                     const deviceIds = Array.isArray(node.data.deviceIds)
                       ? node.data.deviceIds
                       : (node.data.deviceId ? [node.data.deviceId] : []);
 
-                    // 6) build and send payload
+                    // 6) build payload & invoke testFlow
                     const payload = { flow, value: val, dryRun, deviceIds };
                     console.log("[runFlow ▶] payload:", payload);
+
                     logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""} on ${deviceIds.length} device(s) with value "${val}"`,
+                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}`
+                      + ` on ${deviceIds.length} device(s) with value "${val}"`,
                       "info"
                     );
 
@@ -4270,16 +4336,16 @@
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`, {
                           method:  "POST",
-                          headers: { "Content-Type": "application/json" },
+                          headers: { 'Content-Type':'application/json' },
                           body:    JSON.stringify(payload)
                         }
                       );
+                      if (!res.ok) throw new Error(await res.text());
                       const result = await res.json();
-                      
-                      clearAllSelections();
-                      logAction(`✅ runFlow result: ${result.result}`, "info");
-                    } catch (err) {
-                      logAction("❌ Failed to run flow: " + err, "error");
+                      logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
+                    }
+                    catch (err) {
+                      logAction(`❌ Test failed: ${err}`, "error");
                     }
                   };
                 })
@@ -4409,7 +4475,7 @@
               pathEl.setAttribute('stroke', 'limegreen');
               pathEl.setAttribute(
                 'style',
-                'stroke: limegreen !important; stroke-width: 4px !important; filter: drop-shadow(0 0 6px #0f0) !important;'
+                'stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;'
               );
               pathEl.classList.add('highlighted');
             }
@@ -4429,36 +4495,48 @@
       let flowTracePollInterval = null;
 
       async function pollFlowTraceUntilEnd() {
-          const rawName = document.getElementById('flowName').textContent.trim();
-          const flowFile = rawName.toLowerCase().endsWith('.json') ? rawName : rawName + '.json';
+        const rawName = document.getElementById('flowName').textContent.trim();
+        const flowFile = rawName.toLowerCase().endsWith('.json')
+            ? rawName
+            : rawName + '.json';
 
-          if (flowTracePollInterval) clearInterval(flowTracePollInterval);
+        if (flowTracePollInterval) {
+            clearInterval(flowTracePollInterval);
+        }
 
-          flowTracePollInterval = setInterval(async () => {
-              try {
-                  // fetchHubitatFileContent returns parsed JSON already
-                  const traces = await fetchHubitatFileContent('FE_flowtrace.json');
-                  const runs = Array.isArray(traces)
-                      ? traces.filter(t => t.flowFile === flowFile)
-                      : [];
-                  if (!runs.length) return;
+        flowTracePollInterval = setInterval(async () => {
+            try {
+                // fetchHubitatFileContent returns parsed JSON already
+                const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+                const runs = Array.isArray(traces)
+                    ? traces.filter(t => t.flowFile === flowFile)
+                    : [];
+                if (!runs.length) return;
 
-                  const run = runs[0];
-                  highlightFlowPath(run);
+                const run = runs[0];
 
-                  const last = run.steps[run.steps.length - 1] || {};
-                  if (last.nodeType === 'endOfFlow') {
-                      clearInterval(flowTracePollInterval);
-                      flowTracePollInterval = null;
-                      flowTracePollingActive = false;
-                      logAction('🔄 Flow trace finished', 'info');
-                  }
-              } catch (e) {
-                  console.error('Error polling FE_flowtrace.json', e);
-                  clearInterval(flowTracePollInterval);
-                  flowTracePollInterval = null;
-              }
-          }, 500);
+                // highlight the running path
+                highlightFlowPath(run);
+
+                const last = run.steps[run.steps.length - 1] || {};
+                if (last.nodeType === 'endOfFlow') {
+                    // stop polling
+                    clearInterval(flowTracePollInterval);
+                    flowTracePollInterval = null;
+                    flowTracePollingActive = false;
+                    logAction('🔄 Flow trace finished', 'info');
+
+                    // re-select the original trigger node so it stays highlighted
+                    if (window._lastTriggerId != null) {
+                        window.editor.selected_id = window._lastTriggerId;
+                    }
+                }
+            } catch (e) {
+                console.error('Error polling FE_flowtrace.json', e);
+                clearInterval(flowTracePollInterval);
+                flowTracePollInterval = null;
+            }
+        }, 500);
       }
       
       async function fetchHubitatFileContent(fileName) {
@@ -5116,20 +5194,46 @@
             if (el._multiNodeHandled) return; // Only attach once
             el._multiNodeHandled = true;
 
-            el.addEventListener('mousedown', function(e) {
-              if (e.button !== 0) return;
+            // After you’ve rendered your nodes, attach this to each one:
+            document.querySelectorAll('.drawflow-node').forEach(el => {
+              el.addEventListener('mousedown', function(e) {
+                // Only left‑click starts selection/drag
+                if (e.button !== 0) return;
 
-              // PATCH: Allow connections to be made by not intercepting input/output port events
-              if (e.target.classList.contains('input') || e.target.classList.contains('output')) {
-                return; // Let Drawflow handle port connection creation natively
-              }
+                // --- PATCH: Let Drawflow handle port connections natively ---
+                if (e.target.classList.contains('input') ||
+                    e.target.classList.contains('output')) {
+                  return;
+                }
 
-              const nodeId = this.id.replace('node-', '');
-              const node = window.editor.getNodeFromId(nodeId);
+                const nodeId = this.id.replace('node-', '');
+                const node   = window.editor.getNodeFromId(nodeId);
 
-              // --- PATCH: Prevent drag if node is locked ---
-              if (node && node.data && node.data.locked) {
-                // Allow selection and multi-select but NOT drag/move
+                // --- PATCH: Prevent drag if node is locked ---
+                if (node?.data?.locked) {
+                  // Ctrl/Cmd = toggle multi‑select on locked node
+                  if (e.ctrlKey || e.metaKey) {
+                    if (window._multiSelectedNodes.has(nodeId)) {
+                      window._multiSelectedNodes.delete(nodeId);
+                    } else {
+                      window._multiSelectedNodes.add(nodeId);
+                    }
+                    updateMultiSelectUI();
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                  }
+                  // Single‑select the locked node (no drag)
+                  window._multiSelectedNodes.clear();
+                  window._multiSelectedNodes.add(nodeId);
+                  updateMultiSelectUI();
+                  e.stopPropagation();
+                  e.preventDefault();
+                  return;
+                }
+                // --- end locked‑node patch ---
+
+                // --- Multi‑select handling (unlocked nodes) ---
                 if (e.ctrlKey || e.metaKey) {
                   if (window._multiSelectedNodes.has(nodeId)) {
                     window._multiSelectedNodes.delete(nodeId);
@@ -5141,70 +5245,45 @@
                   e.preventDefault();
                   return;
                 }
-                // Single select (locked)
-                window._multiSelectedNodes.clear();
-                window._multiSelectedNodes.add(nodeId);
-                updateMultiSelectUI();
-                e.stopPropagation();
-                e.preventDefault();
-                return; // Dragging/moving is blocked
-              }
-              // --- END PATCH ---
 
-              // --- Multi-select handling (unlocked nodes) ---
-              if (e.ctrlKey || e.metaKey) {
-                if (window._multiSelectedNodes.has(nodeId)) {
-                  window._multiSelectedNodes.delete(nodeId);
-                } else {
+                // --- Single‑select handling (unlocked node) ---
+                if (!window._multiSelectedNodes.has(nodeId)) {
+                  window._multiSelectedNodes.clear();
                   window._multiSelectedNodes.add(nodeId);
+                  updateMultiSelectUI();
                 }
-                updateMultiSelectUI();
-                e.stopPropagation();
+
+                // --- Determine which nodes to drag ---
+                let dragSet;
+                if (window._multiSelectedNodes.size > 1 &&
+                    window._multiSelectedNodes.has(nodeId)) {
+                  dragSet = Array.from(window._multiSelectedNodes);
+                } else {
+                  dragSet = [nodeId];
+                }
+
+                // If any selected node is locked, cancel drag
+                if (dragSet.some(id => {
+                  const n = window.editor.getNodeFromId(id);
+                  return n?.data?.locked;
+                })) {
+                  return;
+                }
+
+                // --- INITIATE GROUP DRAG ---
+                dragStart = {
+                  baseX: e.clientX,
+                  baseY: e.clientY,
+                  positions: dragSet.map(id => {
+                    const d = window.editor.drawflow.drawflow.Home.data[id];
+                    return { id, x: d.pos_x, y: d.pos_y };
+                  })
+                };
+                dragMoving = false;
+                document.body.style.userSelect = "none";
                 e.preventDefault();
-                return;
-              }
-
-              // --- Single select handling (unlocked node) ---
-              if (!window._multiSelectedNodes.has(nodeId)) {
-                window._multiSelectedNodes.clear();
-                window._multiSelectedNodes.add(nodeId);
-                updateMultiSelectUI();
-              }
-
-              // --- Drag logic for unlocked nodes only ---
-              let dragSet = [];
-              if (window._multiSelectedNodes && window._multiSelectedNodes.size > 1 && window._multiSelectedNodes.has(nodeId)) {
-                dragSet = Array.from(window._multiSelectedNodes);
-              } else {
-                dragSet = [nodeId];
-              }
-
-              // Attach drag events for all selected nodes (unless any are locked)
-              if (dragSet.some(id => {
-                const n = window.editor.getNodeFromId(id);
-                return n && n.data && n.data.locked;
-              })) {
-                // One or more nodes in selection are locked; do not drag
-                return;
-              }
-
-              // --- ACTUALLY START GROUP DRAG (THIS WAS MISSING!) ---
-              dragStart = {
-                baseX: e.clientX,
-                baseY: e.clientY,
-                positions: dragSet.map(id => {
-                  const data = window.editor.drawflow.drawflow.Home.data[id];
-                  return {
-                    id,
-                    x: data.pos_x,
-                    y: data.pos_y
-                  };
-                })
-              };
-              dragMoving = false;
-              document.body.style.userSelect = "none";
-              e.preventDefault();
-              e.stopPropagation();
+                e.stopPropagation();
+              });
             });
           });
         }
@@ -5511,21 +5590,14 @@
         const canvas = document.getElementById("drawflow");
         if (canvas) {
           canvas.addEventListener("mousedown", function(e) {
-            // Only trigger if user clicks directly on the background, NOT a node or connection
             if (e.target === canvas) {
-              // Unselect all nodes
               window._multiSelectedNodes.clear();
-              if (window.editor) {
-                window.editor.selected_id = null;
-              }
-              // Remove highlight from all nodes
+              editor.selected_id = null;
               document.querySelectorAll('.drawflow-node').forEach(el => {
                 el.classList.remove('selected-multi');
                 el.classList.remove('selected');
               });
-              // Clear node editor panel
-              const editorPanel = document.getElementById("nodeEditor");
-              if (editorPanel) editorPanel.innerHTML = "Click a node to edit";
+              // We still deselect, but leave the Node Editor alone here.
             }
           });
         }
@@ -5852,8 +5924,6 @@
         });
 
         window.flowTraceSocket.addEventListener('message', ({ data }) => {
-          clearAllSelections();
-
           let evt;
           try {
             evt = JSON.parse(data);
@@ -5883,7 +5953,7 @@
 
           // ── Existing device‐trigger logic ─────────────────────────────────────────
           if (evt.source !== 'DEVICE' || !evt.name || !evt.deviceId) return;
-
+          clearAllSelections();
           const nodes =
             editor?.drawflow?.Home?.data ||
             editor?.drawflow?.drawflow?.Home?.data;
@@ -5898,6 +5968,7 @@
           });
 
           if (match) {
+            window.editor.selected_id = match.id;
             // clear previous highlights
             document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
               .forEach(n => n.classList.remove('executed','last-executed'));
@@ -6151,13 +6222,6 @@
         // 1) Clear multi‑select on canvas
         window._multiSelectedNodes.clear();
         updateMultiSelectUI();
-
-        // 2) Clear single‑select in the editor pane
-        if (window.editor) {
-          window.editor.selected_id = null;
-          // Reset the side‑panel to its “empty” state:
-          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-        }
       }
     </script>
 </body>
