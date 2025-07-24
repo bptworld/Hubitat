@@ -32,10 +32,23 @@ async function fetchHubitatVarFiles() {
 async function fetchHubitatVarFileContent(fileName) {
   const appId = document.getElementById("hubitatAppId")?.value.trim();
   const token = document.getElementById("hubitatToken")?.value.trim();
-  if (!appId || !token) { alert("Missing Hubitat appId/token"); return null; }
+
+  if (!appId || !token) {
+    alert("Missing Hubitat appId/token");
+    return null;
+  }
+
+  if (!fileName || fileName === "null") {
+    alert("No file selected to fetch.");
+    return null;
+  }
+
   const url = `/apps/api/${appId}/getFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
   const res = await fetch(url);
-  if (!res.ok) { alert("Failed to get file: " + (await res.text())); return null; }
+  if (!res.ok) {
+    alert("Failed to get file: " + (await res.text()));
+    return null;
+  }
   return await res.text();
 }
 
@@ -281,35 +294,67 @@ async function fetchHubitatVarFileContent(fileName) {
     };
   }
 
-  // --- RENDER VARIABLES LIST ---
   function renderVarsList(scope = "flow") {
     updateCtx();
-    let arr = scope === "global" ? globalVars : flowVars;
-    let vlist = managerEl.querySelector('#varsList');
+    const arr   = scope === "global" ? globalVars : flowVars;
+    const vlist = managerEl.querySelector('#varsList');
     vlist.innerHTML = '';
     if (arr.length === 0) {
-      vlist.innerHTML = `<div style="color:#aaa; margin-top:10px;">
-        There are no ${scope === "global" ? "Global" : "Local"} variables.
-        <br><hr>
-      </div>`;
+      vlist.innerHTML = `
+        <div style="color:#aaa; margin-top:10px;">
+          There are no ${scope === "global" ? "Global" : "Local"} variables.
+          <br><hr>
+        </div>`;
       return;
     }
-    arr.forEach((v,i) => {
-      let type = parseType(v.value);
-      let valDisplay = getVarResolved(v);
-      let circ = hasCircular(v.name, () => arr);
-      let used = isVarUsed(v.name, arr) || false;
-      vlist.innerHTML += `<div style="margin-bottom:3px;${circ?'background:#441919;':''}">
-        <input type="text" value="${htmlEscape(v.name)}" style="width:170px;${used?'':'background:#ffffff;border:1.5px solid #b04343;'}" placeholder="variable name"
-          oninput="flowVars.setVarName('${scope}',${i},this.value)">
-        <input type="text" value="${htmlEscape(v.value)}" style="width:110px" placeholder="value"
-          oninput="flowVars.setVarVal('${scope}',${i},this.value)">
-        <span style="font-size:12px;color:${typeColor(type)}">${type}</span>
-        <span style="font-size:13px;color:${circ ? '#f33' : '#b7ffac'};">${circ ? "ERR: Circular" : (valDisplay!==undefined?" = "+htmlEscape(valDisplay):"")}</span>
-        <button onclick="flowVars.delVar('${scope}',${i})" class="delvarbtn">✕</button>
-      </div>`;
+
+    arr.forEach((v, i) => {
+      const type       = parseType(v.value);
+      const valDisplay = getVarResolved(v);
+      const circ       = hasCircular(v.name, () => arr);
+      const used       = isVarUsed(v.name, arr) || false;
+
+      vlist.innerHTML += `
+        <div style="margin-bottom:3px;${circ ? 'background:#441919;' : ''}">
+          <input
+            type="text"
+            value="${htmlEscape(v.name)}"
+            style="width:120px;${used ? '' : 'background:#ffffff;border:1.5px solid #b04343;'}"
+            placeholder="variable name"
+            oninput="flowVars.setVarName('${scope}', ${i}, this.value)"
+          >
+          <input
+            type="text"
+            value="${htmlEscape(v.value)}"
+            style="width:70px"
+            placeholder="value"
+            onchange="flowVars.setVarVal('${scope}', ${i}, this.value)"
+          >
+          <span style="font-size:12px; color:${typeColor(type)}">
+            ${type}
+          </span>
+          <span style="font-size:13px; color:${circ ? '#f33' : '#b7ffac'};">
+            ${circ
+              ? "ERR: Circular"
+              : (valDisplay !== undefined ? " = " + htmlEscape(valDisplay) : "")
+            }
+          </span>
+          <button
+            onclick="flowVars.delVar('${scope}', ${i})"
+            class="delvarbtn"
+          >✕</button>
+        </div>`;
     });
   }
+
+  // And ensure your setVarVal re‑renders the list:
+  root.setVarVal = function(scope, i, val) {
+    const arr = scope === "global" ? globalVars : flowVars;
+    arr[i].value = val;
+    renderVarsList(scope);
+    notifyVarsChange();
+    if (scope === "global") markExportNeeded(true);
+  };
 
   // --- VARIABLE USAGE DETECTION (across all scopes) ---
   function isVarUsed(name, arr) {
@@ -332,6 +377,8 @@ async function fetchHubitatVarFileContent(fileName) {
   root.setVarVal = function(scope, i, val) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr[i].value = val;
+    // now re‑draw the list so the type badge updates
+    renderVarsList(scope);
     notifyVarsChange();
     if (scope === "global") markExportNeeded(true);
   };
@@ -341,11 +388,6 @@ async function fetchHubitatVarFileContent(fileName) {
     renderVarsList(scope);
     notifyVarsChange();
     if (scope === "global") markExportNeeded(true);
-  };
-  // --- ADVANCED: VAR HOVER TOOLTIP ---
-  // Call this in your value field's mouseover to get a tooltip with variable info
-  root.varTooltip = function(varName) {
-    return makeVarTooltip(varName);
   };
 
   // --- AUTOCOMPLETE: For UI input fields ---
