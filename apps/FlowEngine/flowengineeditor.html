@@ -58,7 +58,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.027</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.028</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -960,26 +960,28 @@
       return /^[a-zA-Z0-9_-]+$/.test(flowName);
     }
 
-    // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
-    // 1) Generic attribute picker
     function renderAttributePicker(el, node, dev, onChange) {
+      // Attribute label
       const lbl = document.createElement("label");
       lbl.textContent = "Attribute";
       lbl.style.display = "block";
       el.appendChild(lbl);
 
+      // Attribute dropdown
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
-      // inject a "(none)" default, selected when node.data.attribute is falsy
       sel.innerHTML =
-        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
-        Object.keys(dev.attributes)
+        `<option value=""${!node.data.attribute ? " selected" : ""}>(none)</option>` +
+        Object.keys(dev.attributes || {})
           .map(attr =>
-            `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
+            `<option value="${attr}"${node.data.attribute===attr?" selected":""}>${attr}</option>`
           )
           .join("");
-      sel.onchange = onChange;
+      sel.onchange = () => {
+        node.data.attribute = sel.value;
+        onChange();
+      };
       el.appendChild(sel);
     }
 
@@ -1225,7 +1227,7 @@
 
         // Logic value
         const logicHtml = data.logic
-          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;"><b>Logic:</b> ${data.logic.toUpperCase()}</div>`
+          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;">Logic: ${data.logic.toUpperCase()}</div>`
           : "";
 
         // Main label: variable vs. real device
@@ -1252,9 +1254,9 @@
           }).join("");
         }
 
-        // Click-pattern indicator
-        const clickHtml = !isCondition && data.clickPattern
-          ? `<div class="click-pattern"></div>`
+        // Click Pattern indicator (only for Event Trigger)
+        const clickHtml = data.clickPattern
+          ? `<div class="click-pattern" title="${data.clickPattern}">${data.clickPattern}</div>`
           : "";
 
         // Locked padlock
@@ -1268,10 +1270,10 @@
             <span style="font-size:11px">
               ${mainText}<br>
               ${logicHtml}
+              ${clickHtml}
               <hr>
             </span>
             ${statusHtml}
-            ${clickHtml}
             ${lockedHtml}
           </div>`;
       }
@@ -1648,6 +1650,13 @@
         // clear the container
         el.innerHTML = "";
 
+        // define the allowed click‑pattern values
+        const clickOptions = ['single', 'double', 'held', 'released'];
+        // if you want taps 1–10 as well:
+        for (let i = 1; i <= 10; i++) {
+          clickOptions.push(`tap ${i}`);
+        }
+        
         // ensure deviceIds array
         const devIds = Array.isArray(node.data.deviceIds)
           ? node.data.deviceIds
@@ -1655,7 +1664,7 @@
             ? [node.data.deviceId]
             : [];
 
-        // collect shared attribute names across selected devices
+        // collect shared attribute names
         const sharedAttrs = Array.from(new Set(
           devIds.flatMap(id => {
             const dev = devices.find(d => d.id === id);
@@ -1665,19 +1674,19 @@
           })
         )).sort();
 
-        // ── ATTRIBUTE LABEL ────────────────────────────────────────────
+        // ── ATTRIBUTE ─────────────────────────────────────────────────────
         const attrLabel = document.createElement("label");
         attrLabel.textContent = "Attribute";
         attrLabel.style.display = "block";
         el.appendChild(attrLabel);
 
-        // ── ATTRIBUTE SELECT ───────────────────────────────────────────
         const attrSel = document.createElement("select");
-        attrSel.style = "display:block;margin-bottom:12px";
+        attrSel.style.display = "block";
+        attrSel.style.marginBottom = "12px";
         attrSel.innerHTML =
-          `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+          `<option value=""${!node.data.attribute?" selected":""}>(none)</option>` +
           sharedAttrs
-            .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
+            .map(a => `<option value="${a}"${node.data.attribute===a?" selected":""}>${a}</option>`)
             .join("");
         attrSel.onchange = () => {
           node.data.attribute  = attrSel.value;
@@ -1689,20 +1698,20 @@
         };
         el.appendChild(attrSel);
 
-        // ── LOGIC LABEL ────────────────────────────────────────────────
+        // ── LOGIC ─────────────────────────────────────────────────────────
         const logicLabel = document.createElement("label");
         logicLabel.textContent = "Logic";
         logicLabel.style.display = "block";
         el.appendChild(logicLabel);
 
-        // ── LOGIC SELECT ───────────────────────────────────────────────
         const logicSel = document.createElement("select");
-        logicSel.style = "display:block;margin-bottom:12px";
+        logicSel.style.display = "block";
+        logicSel.style.marginBottom = "12px";
         logicSel.innerHTML =
-          `<option value="" ${!node.data.logic ? "selected" : ""}>(none)</option>` +
-          ["and", "or"]
-            .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
-            .join("");
+          `<option value=""${!node.data.logic?" selected":""}>(none)</option>` +
+          ["and","or"].map(l =>
+            `<option value="${l}"${node.data.logic===l?" selected":""}>${l.toUpperCase()}</option>`
+          ).join("");
         logicSel.onchange = () => {
           node.data.logic = logicSel.value;
           editor.updateNodeDataFromId(node.id, node.data);
@@ -1710,111 +1719,67 @@
         };
         el.appendChild(logicSel);
 
-        // ── COMPARATOR LABEL ───────────────────────────────────────────
+        // ── COMPARATOR ────────────────────────────────────────────────────
         const cmpLabel = document.createElement("label");
         cmpLabel.textContent = "Comparator";
         cmpLabel.style.display = "block";
         el.appendChild(cmpLabel);
 
-        // ── COMPARATOR SELECT ──────────────────────────────────────────
         const cmpSel = document.createElement("select");
-        cmpSel.style = "display:block;margin-bottom:12px";
+        cmpSel.style.display = "block";
+        cmpSel.style.marginBottom = "12px";
         cmpSel.innerHTML =
-          `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
-          ["==","!=","<","<=",">",">=","between","changes"]
-            .map(c => {
-              const label = c === "==" ? "equals" : c;
-              return `<option value="${c}" ${node.data.comparator === c ? "selected" : ""}>${label}</option>`;
-            })
-            .join("");
+          `<option value=""${!node.data.comparator?" selected":""}>(none)</option>` +
+          ["==","!=","<","<=" ,">",">=","between"].map(cmp =>
+            `<option value="${cmp}"${node.data.comparator===cmp?" selected":""}>${cmp==="=="?"equals":cmp}</option>`
+          ).join("");
         cmpSel.onchange = () => {
           node.data.comparator = cmpSel.value;
-          node.data.value      = "";
+          node.data.value = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
         };
         el.appendChild(cmpSel);
 
-        // ── VALUE INPUT(S) ────────────────────────────────────────────
-        if (node.data.comparator === "between") {
-          // two inputs for range
-          const [start = "", end = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
-          // start value
-          const startInput = document.createElement("input");
-          startInput.type  = "text";
-          startInput.placeholder = "Start value";
-          startInput.value = start;
-          startInput.style = "display:block;margin-bottom:8px";
-          startInput.onchange = () => {
-            node.data.value = [startInput.value, end];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          el.appendChild(startInput);
-          // end value
-          const endInput = document.createElement("input");
-          endInput.type  = "text";
-          endInput.placeholder = "End value";
-          endInput.value = end;
-          endInput.style = "display:block;margin-bottom:12px";
-          endInput.onchange = () => {
-            node.data.value = [startInput.value, endInput.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          el.appendChild(endInput);
-        }
-        
-        const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
-        if (known.length) {
-          const valSel = document.createElement("select");
-          valSel.style = "display:block;margin-bottom:12px";
-          valSel.innerHTML =
-            `<option value="">(none)</option>` +
-            known
-              .map(v =>
-                `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
-              )
-              .join("");
-          valSel.onchange = () => {
-            node.data.value = valSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          el.appendChild(valSel);
-        }
-        else if (node.data.comparator === "between") {
-          const [start, end] = Array.isArray(node.data.value) ? node.data.value : ["",""];
-          const minIn = document.createElement("input");
-          const maxIn = document.createElement("input");
-          minIn.type = maxIn.type = "text";
-          minIn.value = start;
-          maxIn.value = end;
-          minIn.placeholder = "Min";
-          maxIn.placeholder = "Max";
-          minIn.style = "width:45%; margin-right:8px; display:inline-block";
-          maxIn.style = "width:45%; display:inline-block";
-          const updateBetween = () => {
-            node.data.value = [minIn.value, maxIn.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          minIn.oninput = maxIn.oninput = updateBetween;
-          el.appendChild(minIn);
-          el.appendChild(maxIn);
-        }
-        else if (node.data.comparator && node.data.comparator !== "changes") {
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value";
-          valInput.value = node.data.value || "";
-          valInput.style = "display:block;margin-bottom:12px";
-          valInput.onchange = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          el.appendChild(valInput);
-        }
+        // ── VALUE ─────────────────────────────────────────────────────────
+        const known = window.ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
+        const isBetween = node.data.comparator === "between";
+        // you need your renderValueField helper available here
+        renderValueField(
+          el,
+          node,
+          known,
+          () => editor.updateNodeDataFromId(node.id, node.data),
+          isBetween
+        );
 
-        // finally, update the node's HTML preview
-        const tileHtml = nodeTileHtml(node.name, node.data, node.id);
-        editor.updateNodeHtmlFromId(node.id, tileHtml);
+        // ── CLICK PATTERN (only when attribute === "switch") ─────────────
+        if (node.data.attribute === "switch") {
+          const clickLabel = document.createElement("label");
+          clickLabel.textContent = "Click Pattern";
+          clickLabel.style.display   = "block";
+          clickLabel.style.marginTop = "8px";
+          el.appendChild(clickLabel);
+
+          const patternSelect = document.createElement("select");
+          patternSelect.style.display       = "block";
+          patternSelect.style.marginBottom  = "12px";
+          patternSelect.style.width         = "100%";
+          
+          clickOptions.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value       = p;
+            opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+            if (node.data.clickPattern === p) opt.selected = true;
+            patternSelect.appendChild(opt);
+          });
+          patternSelect.onchange = () => {
+            node.data.clickPattern = patternSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            updateTileHtml(node);
+          };
+          el.appendChild(patternSelect);
+        }
       }
 
       window.renderEditor = function renderEditor(node) {
@@ -2906,8 +2871,7 @@
       })();
 
       if (editor && editor.on) {
-      console.log("Attaching undo/redo event listeners to real editor");
-      editor.on('all', function(event, ...args) { 
+        editor.on('all', function(event, ...args) { 
         //console.log("DRAWFLOW EVENT:", event, args); 
       });
 
@@ -4267,21 +4231,25 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    // 1) normalize your test value to 24h
+                    // 1) normalize & convert any “hh:mm am/pm” to 24h, then trim
                     const raw = testInput.value.trim();
                     if (!raw) {
                       alert("Please enter a test value.");
                       return;
                     }
-                    let val = raw
+                    const rawLower = raw
                       .toLowerCase()
                       .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
-                        let hh = parseInt(h,10) % 12;
+                        let hh = parseInt(h, 10) % 12;
                         if (ampm === "pm") hh += 12;
-                        return (hh<10? "0"+hh : hh) + ":" + m;
+                        return (hh < 10 ? "0" + hh : hh) + ":" + m;
                       });
 
-                    // 2) pick the flow file
+                    // 2) treat bare digits as “tap X”
+                    const clickVal = /^\d+$/.test(rawLower) ? `tap ${rawLower}` : null;
+                    const val      = clickVal || rawLower;
+
+                    // 3) pick the flow file
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     let flow = dropdown.value.trim();
                     if (!flow.endsWith(".json")) flow += ".json";
@@ -4290,7 +4258,9 @@
                       return;
                     }
 
-                    // 3) grab Hubitat credentials
+                    startFlowTraceStream();
+
+                    // 4) grab Hubitat credentials
                     const appId = document.getElementById("hubitatAppId").value.trim();
                     const token = document.getElementById("hubitatToken").value.trim();
                     if (!appId || !token) {
@@ -4299,55 +4269,54 @@
                     }
                     const dryRun = dryRunCheckbox.checked;
 
-                    // 4) pick the trigger node that actually supports this test value (val)
-                    const df       = editor.drawflow?.drawflow || editor.drawflow;
-                    const data     = df?.Home?.data || {};
-                    const triggers = Object.entries(data).filter(([id, nd]) =>
-                      nd.name === 'eventTrigger' &&
-                      (ATTRIBUTE_KNOWN_VALUES[nd.data.attribute] || []).includes(val)
-                    );
+                    // 5) pick the trigger node (preferring clickPattern)
+                    const df   = editor.drawflow?.drawflow || editor.drawflow;
+                    const data = df?.Home?.data || {};
+                    const triggers = Object.entries(data).filter(([id, nd]) => {
+                      if (nd.name !== 'eventTrigger') return false;
+                      if (nd.data.clickPattern) {
+                        return nd.data.clickPattern === val;
+                      }
+                      return (ATTRIBUTE_KNOWN_VALUES[nd.data.attribute] || []).includes(val);
+                    });
 
                     if (!triggers.length) {
                       alert(`No Trigger node matching value "${val}" found.`);
                       return;
                     }
-
-                    // Always use the first matching trigger based on the test value
                     const [selId, node] = triggers[0];
-                    // update selection to highlight the correct node
                     editor.selected_id = selId;
 
-                    // 5) gather deviceIds from that trigger node
+                    // 6) gather device IDs
                     const deviceIds = Array.isArray(node.data.deviceIds)
                       ? node.data.deviceIds
                       : (node.data.deviceId ? [node.data.deviceId] : []);
 
-                    // 6) build payload & invoke testFlow
+                    // 7) build payload & invoke testFlow
                     const payload = { flow, value: val, dryRun, deviceIds };
                     console.log("[runFlow ▶] payload:", payload);
-
                     logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}`
-                      + ` on ${deviceIds.length} device(s) with value "${val}"`,
+                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
+                      ` on ${deviceIds.length} device(s) with value "${val}"`,
                       "info"
                     );
 
                     try {
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`, {
-                          method:  "POST",
-                          headers: { 'Content-Type':'application/json' },
-                          body:    JSON.stringify(payload)
+                          method: "POST",
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload)
                         }
                       );
                       if (!res.ok) throw new Error(await res.text());
                       const result = await res.json();
                       logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
-                    }
-                    catch (err) {
+                    } catch (err) {
                       logAction(`❌ Test failed: ${err}`, "error");
                     }
                   };
+
                 })
                 .catch(err => {
                   console.error("Error fetching logging settings:", err);
@@ -4437,7 +4406,10 @@
 
       // ── Enhanced Flow‑Path Highlighting (nodes + green lines) ─────────────────
       function highlightFlowPath(run) {
-        if (!run || !Array.isArray(run.steps)) return;
+        // Guard: require a valid run and loaded flow data
+        const df       = editor.drawflow?.drawflow || editor.drawflow;
+        const flowData = df?.Home?.data;
+        if (!run || !Array.isArray(run.steps) || !flowData) return;
 
         // 1) Clear previous node highlights
         document.querySelectorAll('.drawflow-node.flow-path')
@@ -4497,45 +4469,50 @@
       async function pollFlowTraceUntilEnd() {
         const rawName = document.getElementById('flowName').textContent.trim();
         const flowFile = rawName.toLowerCase().endsWith('.json')
-            ? rawName
-            : rawName + '.json';
+          ? rawName
+          : rawName + '.json';
 
+        // clear any prior poll
         if (flowTracePollInterval) {
-            clearInterval(flowTracePollInterval);
+          clearInterval(flowTracePollInterval);
+          flowTracePollInterval = null;
         }
 
         flowTracePollInterval = setInterval(async () => {
-            try {
-                // fetchHubitatFileContent returns parsed JSON already
-                const traces = await fetchHubitatFileContent('FE_flowtrace.json');
-                const runs = Array.isArray(traces)
-                    ? traces.filter(t => t.flowFile === flowFile)
-                    : [];
-                if (!runs.length) return;
+          try {
+            // fetchHubitatFileContent returns parsed JSON
+            const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+            const runs = Array.isArray(traces)
+              ? traces.filter(t => t.flowFile === flowFile)
+              : [];
+            if (!runs.length) return;
 
-                const run = runs[0];
+            const run = runs[0];
+            highlightFlowPath(run);
 
-                // highlight the running path
-                highlightFlowPath(run);
+            const last = run.steps[run.steps.length - 1] || {};
+            if (last.nodeType === 'endOfFlow') {
+              // stop polling
+              clearInterval(flowTracePollInterval);
+              flowTracePollInterval = null;
+              flowTracePollingActive = false;
 
-                const last = run.steps[run.steps.length - 1] || {};
-                if (last.nodeType === 'endOfFlow') {
-                    // stop polling
-                    clearInterval(flowTracePollInterval);
-                    flowTracePollInterval = null;
-                    flowTracePollingActive = false;
-                    logAction('🔄 Flow trace finished', 'info');
+              // close the trace WebSocket to prevent further time‐trigger logs
+              if (window.flowTraceSocket) {
+                window.flowTraceSocket.close();
+                window.flowTraceSocket = null;
+              }
 
-                    // re-select the original trigger node so it stays highlighted
-                    if (window._lastTriggerId != null) {
-                        window.editor.selected_id = window._lastTriggerId;
-                    }
-                }
-            } catch (e) {
-                console.error('Error polling FE_flowtrace.json', e);
-                clearInterval(flowTracePollInterval);
-                flowTracePollInterval = null;
+              logAction('🔄 Flow trace finished', 'info');
+              if (window._lastTriggerId != null) {
+                window.editor.selected_id = window._lastTriggerId;
+              }
             }
+          } catch (e) {
+            console.error('Error polling FE_flowtrace.json', e);
+            clearInterval(flowTracePollInterval);
+            flowTracePollInterval = null;
+          }
         }, 500);
       }
       
@@ -5902,6 +5879,7 @@
    
       // ── Trigger‑Match Logging WebSocket ─────────────────────────────────────────
       function startFlowTraceStream() {
+        window.flowTracePollingActive = false;
         // don’t re‑open if already open
         if (
           window.flowTraceSocket &&
@@ -5992,8 +5970,6 @@
           console.error('❌ WebSocket error', err)
         );
       }
-
-      document.addEventListener('DOMContentLoaded', startFlowTraceStream);
 
       // Clear Trace
       document.getElementById('clearTraceBtn').addEventListener('click', () => {
