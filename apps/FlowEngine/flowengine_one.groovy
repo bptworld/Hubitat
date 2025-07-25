@@ -332,56 +332,67 @@ def recheckAllTriggers() {
     }
 }
 
+// ─── apiRunFlow ───────────────────────────────────────────────────
 def apiRunFlow() {
-	flowLog(fname, "---------- In apiRunFlow ----------", "info")
-    def json = request?.JSON
-    def fname = json?.flow
+    flowLog(fname, "---------- In apiRunFlow ----------", "info")
+    def json         = request?.JSON
+    def fname        = json?.flow
+    def eventValue   = json?.value?.toString()
+    def eventPattern = json?.pattern?.toString()
+
     if (!fname || !state.activeFlows[fname]) {
         render status: 404, data: '{"error":"Flow not found"}'
         return
     }
-    
-    def flowObj = state.activeFlows[fname]
-    def flow = flowObj.flow
+
+    def flowObj   = state.activeFlows[fname]
+    def flow      = flowObj.flow
     if (!flow) {
         render status: 404, data: '{"error":"Flow not loaded"}'
         return
     }
-    
+
     def dataNodes = flow.drawflow?.Home?.data ?: [:]
     def triggered = 0
     dataNodes.each { id, node ->
-        if (node.name == "eventTrigger") {
-			def expectedValue = node.data.value
-			def expectedPattern = node.data.clickPattern
-			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
-			def eventPattern = (evt instanceof Map) ? evt.pattern : null
+        if (node.name != "eventTrigger") return
 
-			// Strict value match (if set)
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return
-			}
-			// Strict pattern match (if set)
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return
-			}
+        def expectedValue   = node.data.value
+        def expectedPattern = node.data.clickPattern
 
-			// If matches, proceed as normal
-			evaluateNode(fname, id, [name: "apiRunFlow", value: "API Run", pattern: eventPattern])
-			if(!triggered) triggered = 0
-			triggered++
-		}
+        // Strict value match (if set)
+        if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
+            flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
+            return
+        }
+        // Strict pattern match (if set)
+        if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
+            flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
+            return
+        }
+
+        // Build a fake evt map including pattern:
+        def evt = [
+            name        : node.data.attribute,
+            value       : eventValue,
+            pattern     : eventPattern,
+            descriptionText: "API Run of ${node.data.attribute} → ${eventValue}" 
+        ]
+        // Fire the trigger
+        handleEvent(evt, fname)
+        triggered++
     }
+
     render contentType: "application/json", data: groovy.json.JsonOutput.toJson([result: "Flow triggered", triggered: triggered])
 }
 
+// ─── apiTestFlow ──────────────────────────────────────────────────
 def apiTestFlow() {
-    def json   = request?.JSON
-    def fname  = json?.flow
-    def value  = json?.value?.toString()
-    def dryRun = (json?.dryRun as Boolean) ?: false
+    def json         = request?.JSON
+    def fname        = json?.flow
+    def value        = json?.value?.toString()
+    def dryRun       = (json?.dryRun as Boolean) ?: false
+    def testPattern  = json?.pattern?.toString() ?: value
 
     if (!fname || !state.activeFlows[fname]) {
         render status: 404, contentType: "application/json",
@@ -399,38 +410,39 @@ def apiTestFlow() {
     dataNodes.each { nodeId, node ->
         if (node.name != "eventTrigger") return
 
-        // gather one or more deviceIds (or "__time__")
+        // gather device IDs or "__time__"
         def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
                          node.data.deviceIds :
                          [ node.data.deviceId ]
 
         devIds.each { devId ->
             if (devId == "__time__") {
-                // ── TEST MODE: use the 'value' string (HH:mm) as the event time ──
+                // ── TEST MODE: simulate a time event
                 Date testDate = new Date()
                 def parts = value.tokenize(':')
                 if (parts.size() == 2) {
                     testDate.hours   = parts[0].toInteger()
                     testDate.minutes = parts[1].toInteger()
                 }
-                // build a fake time event that carries the node's value list
                 def evt = [
-                    name:           node.data.attribute,     // "timeOfDay"
-                    value:          node.data.value,         // e.g. [sunrise, 20:00]
-                    date:           testDate,
+                    name        : node.data.attribute,     // e.g. "timeOfDay"
+                    value       : node.data.value,         // e.g. [sunrise,20:00]
+                    date        : testDate,
+                    pattern     : null,
                     descriptionText:"Simulated time trigger at ${value}"
                 ]
                 handleEvent(evt, fname)
             }
             else {
-                // ── DEVICE TEST: fire through the normal device path ─────────────
+                // ── DEVICE TEST: simulate a device event with click‐pattern
                 def device = getDeviceById(devId)
                 if (!device) return
 
                 def evt = [
-                    device:         device,
-                    name:           node.data.attribute,
-                    value:          value,
+                    device         : device,
+                    name           : node.data.attribute,
+                    value          : value,
+                    pattern        : testPattern,
                     descriptionText:"Simulated ${node.data.attribute} → ${value}"
                 ]
                 handleEvent(evt, fname)
@@ -1298,15 +1310,29 @@ def subscribeToTriggers(String fname) {
                 handleEvent(evt, fname)
             }
         }
-        // — Physical device triggers —
+        // — Physical device triggers with click‑pattern support —
         else if (node.data.deviceId != "__time__") {
-            def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ? node.data.deviceIds : [ node.data.deviceId ]
+            def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) 
+                         ? node.data.deviceIds 
+                         : [ node.data.deviceId ]
             devIds.each { devId ->
                 def device = getDeviceById(devId)
-                if (device) subscribe(device, node.data.attribute, "genericDeviceHandler")
+                if (!device) return
+                subscribe(device, node.data.attribute) { evt ->
+                    // Extract click pattern if present, else fall back to evt.value
+                    def pattern = evt.data?.click?.pattern ?: evt.value?.toString()
+                    def mapEvt = [
+                      device         : evt.device,
+                      name           : evt.name,
+                      value          : evt.value?.toString(),
+                      pattern        : pattern,
+                      descriptionText: evt.descriptionText
+                    ]
+                    handleEvent(mapEvt, fname)
+                }
             }
         }
-        // — note: __time__ handled separately below —
+        // — __time__ triggers handled elsewhere —
     }
 }
 
