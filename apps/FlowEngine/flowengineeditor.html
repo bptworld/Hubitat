@@ -58,7 +58,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.028</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.029</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -306,6 +306,7 @@
     window.nodeYLimit = 400;
     window.nextNodeCol = 0;
     window.nextNodeIndex = 0;
+    window.selectedNodeIds = [];
 
     window.undoStack = [];
     window.redoStack = [];
@@ -425,6 +426,34 @@
         logAction("Undo/Redo failed to restore flow: " + e, "error");
       }
     }
+
+    // -- MULTI-NODE SELECTION HANDLER --
+    document.getElementById("drawflow").addEventListener("click", function(e) {
+      const nodeElem = e.target.closest('.drawflow-node');
+      if (!nodeElem) return;
+      const nodeId = nodeElem.id.replace(/^node-/, "");
+      if (!nodeId) return;
+      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+
+      if (e.ctrlKey || e.metaKey) {
+        // Toggle selection
+        if (window._multiSelectedNodes.has(nodeId)) {
+          window._multiSelectedNodes.delete(nodeId);
+        } else {
+          window._multiSelectedNodes.add(nodeId);
+        }
+      } else {
+        // Single-select
+        window._multiSelectedNodes.clear();
+        window._multiSelectedNodes.add(nodeId);
+      }
+
+      // Update visual highlighting
+      updateMultiSelectUI();
+
+      // Still keep editor.selected_id in sync for property panel, etc.
+      editor.selected_id = nodeId;
+    });
 
     function markFlowNeedsSave(needed = true) {
       const btn = document.getElementById('sendFlow');
@@ -960,28 +989,26 @@
       return /^[a-zA-Z0-9_-]+$/.test(flowName);
     }
 
+    // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
+    // 1) Generic attribute picker
     function renderAttributePicker(el, node, dev, onChange) {
-      // Attribute label
       const lbl = document.createElement("label");
       lbl.textContent = "Attribute";
       lbl.style.display = "block";
       el.appendChild(lbl);
 
-      // Attribute dropdown
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
+      // inject a "(none)" default, selected when node.data.attribute is falsy
       sel.innerHTML =
-        `<option value=""${!node.data.attribute ? " selected" : ""}>(none)</option>` +
-        Object.keys(dev.attributes || {})
+        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+        Object.keys(dev.attributes)
           .map(attr =>
-            `<option value="${attr}"${node.data.attribute===attr?" selected":""}>${attr}</option>`
+            `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
           )
           .join("");
-      sel.onchange = () => {
-        node.data.attribute = sel.value;
-        onChange();
-      };
+      sel.onchange = onChange;
       el.appendChild(sel);
     }
 
@@ -1227,7 +1254,7 @@
 
         // Logic value
         const logicHtml = data.logic
-          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;">Logic: ${data.logic.toUpperCase()}</div>`
+          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;"><b>Logic:</b> ${data.logic.toUpperCase()}</div>`
           : "";
 
         // Main label: variable vs. real device
@@ -1254,9 +1281,9 @@
           }).join("");
         }
 
-        // Click Pattern indicator (only for Event Trigger)
-        const clickHtml = data.clickPattern
-          ? `<div class="click-pattern" title="${data.clickPattern}">${data.clickPattern}</div>`
+        // Click-pattern indicator
+        const clickHtml = !isCondition && data.clickPattern
+          ? `<div class="click-pattern"></div>`
           : "";
 
         // Locked padlock
@@ -1270,10 +1297,10 @@
             <span style="font-size:11px">
               ${mainText}<br>
               ${logicHtml}
-              ${clickHtml}
               <hr>
             </span>
             ${statusHtml}
+            ${clickHtml}
             ${lockedHtml}
           </div>`;
       }
@@ -1547,37 +1574,37 @@
        * @param {boolean} multi - true for multi-select, false for single-select
        */
       function renderDevicePicker(el, devices, selectedIds, onChange, multi = true) {
-        // Remove old content if called multiple times
-        const existing = el.querySelector('.device-picker-block');
-        if (existing) existing.remove();
+      // Remove old content if called multiple times
+      const existing = el.querySelector('.device-picker-block');
+      if (existing) existing.remove();
 
-        // Picker wrapper
-        const pickerWrap = document.createElement("div");
-        pickerWrap.className = "device-picker-block";
-        pickerWrap.style = "margin-bottom:8px";
+      // Picker wrapper
+      const pickerWrap = document.createElement("div");
+      pickerWrap.className = "device-picker-block";
+      pickerWrap.style = "margin-bottom:8px";
 
-        // Search input
-        const devFilterInput = document.createElement("input");
-        devFilterInput.type = "text";
-        devFilterInput.placeholder = "Search devices…";
-        devFilterInput.style = "width:98%;margin-bottom:3px;padding:3px 7px;border-radius:7px;border:1px solid #333;font-size:13px;";
-        pickerWrap.appendChild(devFilterInput);
+      // Search input
+      const devFilterInput = document.createElement("input");
+      devFilterInput.type = "text";
+      devFilterInput.placeholder = "Search devices…";
+      devFilterInput.style = "width:98%;margin-bottom:3px;padding:3px 7px;border-radius:7px;border:1px solid #333;font-size:13px;";
+      pickerWrap.appendChild(devFilterInput);
 
-        // Select dropdown
-        const devSelect = document.createElement("select");
-        devSelect.multiple = multi;
-        devSelect.size = Math.min(10, devices.length);
-        devSelect.style.width = "98%";
-        devSelect.style.display = "block";
-        devSelect.style.marginBottom = "12px";
-        pickerWrap.appendChild(devSelect);
+      // Select dropdown
+      const devSelect = document.createElement("select");
+      devSelect.multiple = multi;
+      devSelect.size = Math.min(10, devices.length);
+      devSelect.style.width = "98%";
+      devSelect.style.display = "block";
+      devSelect.style.marginBottom = "12px";
+      pickerWrap.appendChild(devSelect);
 
-        function populate(filtered) {
-        // 1. Remember current scroll position and selected items
+      function populate(filtered) {
+        // Remember current scroll position and selected items
         const prevScroll   = devSelect.scrollTop;
         const prevSelected = Array.from(devSelect.selectedOptions).map(o => o.value);
 
-        // 2. Clear out old options and rebuild from `filtered`
+        // Clear out old options and rebuild from `filtered`
         devSelect.innerHTML = "";
         getSortedDevicesWithSpecials(filtered).forEach((d) => {
           if (d.id === "__divider__") {
@@ -1590,73 +1617,44 @@
             const opt = document.createElement("option");
             opt.value       = d.id;
             opt.textContent = d.label || d.name || d.id;
+            if (selectedIds.includes(d.id)) opt.selected = true;
             devSelect.appendChild(opt);
           }
         });
 
-        // 3. Restore any items that were selected before
-        Array.from(devSelect.options).forEach(opt => {
-          if (prevSelected.includes(opt.value)) {
-            opt.selected = true;
-          }
-        });
-
-        // 4. Restore scroll position so the list doesn't jump back to the top
+        // Restore scroll position
         devSelect.scrollTop = prevScroll;
       }
 
-      // Make sure your live‐filter code still calls populate(filtered) as before:
+      // Filter handler
       devFilterInput.oninput = function() {
         const filter = devFilterInput.value.trim().toLowerCase();
-        if (!filter) {
-          populate(devices);
-          return;
-        }
+        if (!filter) { populate(devices); return; }
         const filtered = devices.filter(d =>
           (d.label || d.name || d.id || "").toLowerCase().includes(filter) ||
           d.id === "__time__" || d.id === "__mode__"
         );
         populate(filtered);
       };
-        populate(devices);
 
-        // Live filter
-        devFilterInput.oninput = function() {
-          const filter = devFilterInput.value.trim().toLowerCase();
-          if (!filter) { populate(devices); return; }
-          const filtered = devices.filter(d =>
-            (d.label || d.name || d.id || "").toLowerCase().includes(filter) ||
-            d.id === "__time__" || d.id === "__mode__"
-          );
-          populate(filtered);
-        };
+      // Initial population
+      populate(devices);
 
-        // On change
-        devSelect.onchange = () => {
-          let newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-          if (!multi) newSelected = newSelected.slice(0, 1); // Single
-          const labels = newSelected.map(id => {
-            const dev = devices.find(d => d.id == id);
-            return dev ? (dev.label || dev.name || id) : id;
-          });
-          if (onChange) onChange(newSelected, labels);
-          markFlowNeedsSave(true);
-        };
+      // This is the CRITICAL PART for ctrl-click multi-select:
+      devSelect.onchange = () => {
+        let newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+        onChange(newSelected, newSelected.map(
+          id => (devices.find(d => d.id == id) || {}).label || id
+        ));
+      };
 
-        el.appendChild(pickerWrap);
-      }
+      el.appendChild(pickerWrap);
+    }
 
       function renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml) {
         // clear the container
         el.innerHTML = "";
 
-        // define the allowed click‑pattern values
-        const clickOptions = ['single', 'double', 'held', 'released'];
-        // if you want taps 1–10 as well:
-        for (let i = 1; i <= 10; i++) {
-          clickOptions.push(`tap ${i}`);
-        }
-        
         // ensure deviceIds array
         const devIds = Array.isArray(node.data.deviceIds)
           ? node.data.deviceIds
@@ -1664,7 +1662,7 @@
             ? [node.data.deviceId]
             : [];
 
-        // collect shared attribute names
+        // collect shared attribute names across selected devices
         const sharedAttrs = Array.from(new Set(
           devIds.flatMap(id => {
             const dev = devices.find(d => d.id === id);
@@ -1674,19 +1672,19 @@
           })
         )).sort();
 
-        // ── ATTRIBUTE ─────────────────────────────────────────────────────
+        // ── ATTRIBUTE LABEL ────────────────────────────────────────────
         const attrLabel = document.createElement("label");
         attrLabel.textContent = "Attribute";
         attrLabel.style.display = "block";
         el.appendChild(attrLabel);
 
+        // ── ATTRIBUTE SELECT ───────────────────────────────────────────
         const attrSel = document.createElement("select");
-        attrSel.style.display = "block";
-        attrSel.style.marginBottom = "12px";
+        attrSel.style = "display:block;margin-bottom:12px";
         attrSel.innerHTML =
-          `<option value=""${!node.data.attribute?" selected":""}>(none)</option>` +
+          `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
           sharedAttrs
-            .map(a => `<option value="${a}"${node.data.attribute===a?" selected":""}>${a}</option>`)
+            .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
             .join("");
         attrSel.onchange = () => {
           node.data.attribute  = attrSel.value;
@@ -1698,20 +1696,20 @@
         };
         el.appendChild(attrSel);
 
-        // ── LOGIC ─────────────────────────────────────────────────────────
+        // ── LOGIC LABEL ────────────────────────────────────────────────
         const logicLabel = document.createElement("label");
         logicLabel.textContent = "Logic";
         logicLabel.style.display = "block";
         el.appendChild(logicLabel);
 
+        // ── LOGIC SELECT ───────────────────────────────────────────────
         const logicSel = document.createElement("select");
-        logicSel.style.display = "block";
-        logicSel.style.marginBottom = "12px";
+        logicSel.style = "display:block;margin-bottom:12px";
         logicSel.innerHTML =
-          `<option value=""${!node.data.logic?" selected":""}>(none)</option>` +
-          ["and","or"].map(l =>
-            `<option value="${l}"${node.data.logic===l?" selected":""}>${l.toUpperCase()}</option>`
-          ).join("");
+          `<option value="" ${!node.data.logic ? "selected" : ""}>(none)</option>` +
+          ["and", "or"]
+            .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
+            .join("");
         logicSel.onchange = () => {
           node.data.logic = logicSel.value;
           editor.updateNodeDataFromId(node.id, node.data);
@@ -1719,67 +1717,111 @@
         };
         el.appendChild(logicSel);
 
-        // ── COMPARATOR ────────────────────────────────────────────────────
+        // ── COMPARATOR LABEL ───────────────────────────────────────────
         const cmpLabel = document.createElement("label");
         cmpLabel.textContent = "Comparator";
         cmpLabel.style.display = "block";
         el.appendChild(cmpLabel);
 
+        // ── COMPARATOR SELECT ──────────────────────────────────────────
         const cmpSel = document.createElement("select");
-        cmpSel.style.display = "block";
-        cmpSel.style.marginBottom = "12px";
+        cmpSel.style = "display:block;margin-bottom:12px";
         cmpSel.innerHTML =
-          `<option value=""${!node.data.comparator?" selected":""}>(none)</option>` +
-          ["==","!=","<","<=" ,">",">=","between"].map(cmp =>
-            `<option value="${cmp}"${node.data.comparator===cmp?" selected":""}>${cmp==="=="?"equals":cmp}</option>`
-          ).join("");
+          `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+          ["==","!=","<","<=",">",">=","between","changes"]
+            .map(c => {
+              const label = c === "==" ? "equals" : c;
+              return `<option value="${c}" ${node.data.comparator === c ? "selected" : ""}>${label}</option>`;
+            })
+            .join("");
         cmpSel.onchange = () => {
           node.data.comparator = cmpSel.value;
-          node.data.value = "";
+          node.data.value      = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
         };
         el.appendChild(cmpSel);
 
-        // ── VALUE ─────────────────────────────────────────────────────────
-        const known = window.ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
-        const isBetween = node.data.comparator === "between";
-        // you need your renderValueField helper available here
-        renderValueField(
-          el,
-          node,
-          known,
-          () => editor.updateNodeDataFromId(node.id, node.data),
-          isBetween
-        );
-
-        // ── CLICK PATTERN (only when attribute === "switch") ─────────────
-        if (node.data.attribute === "switch") {
-          const clickLabel = document.createElement("label");
-          clickLabel.textContent = "Click Pattern";
-          clickLabel.style.display   = "block";
-          clickLabel.style.marginTop = "8px";
-          el.appendChild(clickLabel);
-
-          const patternSelect = document.createElement("select");
-          patternSelect.style.display       = "block";
-          patternSelect.style.marginBottom  = "12px";
-          patternSelect.style.width         = "100%";
-          
-          clickOptions.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value       = p;
-            opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
-            if (node.data.clickPattern === p) opt.selected = true;
-            patternSelect.appendChild(opt);
-          });
-          patternSelect.onchange = () => {
-            node.data.clickPattern = patternSelect.value;
+        // ── VALUE INPUT(S) ────────────────────────────────────────────
+        if (node.data.comparator === "between") {
+          // two inputs for range
+          const [start = "", end = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
+          // start value
+          const startInput = document.createElement("input");
+          startInput.type  = "text";
+          startInput.placeholder = "Start value";
+          startInput.value = start;
+          startInput.style = "display:block;margin-bottom:8px";
+          startInput.onchange = () => {
+            node.data.value = [startInput.value, end];
             editor.updateNodeDataFromId(node.id, node.data);
-            updateTileHtml(node);
           };
-          el.appendChild(patternSelect);
+          el.appendChild(startInput);
+          // end value
+          const endInput = document.createElement("input");
+          endInput.type  = "text";
+          endInput.placeholder = "End value";
+          endInput.value = end;
+          endInput.style = "display:block;margin-bottom:12px";
+          endInput.onchange = () => {
+            node.data.value = [startInput.value, endInput.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(endInput);
         }
+        
+        const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
+        if (known.length) {
+          const valSel = document.createElement("select");
+          valSel.style = "display:block;margin-bottom:12px";
+          valSel.innerHTML =
+            `<option value="">(none)</option>` +
+            known
+              .map(v =>
+                `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
+              )
+              .join("");
+          valSel.onchange = () => {
+            node.data.value = valSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(valSel);
+        }
+        else if (node.data.comparator === "between") {
+          const [start, end] = Array.isArray(node.data.value) ? node.data.value : ["",""];
+          const minIn = document.createElement("input");
+          const maxIn = document.createElement("input");
+          minIn.type = maxIn.type = "text";
+          minIn.value = start;
+          maxIn.value = end;
+          minIn.placeholder = "Min";
+          maxIn.placeholder = "Max";
+          minIn.style = "width:45%; margin-right:8px; display:inline-block";
+          maxIn.style = "width:45%; display:inline-block";
+          const updateBetween = () => {
+            node.data.value = [minIn.value, maxIn.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          minIn.oninput = maxIn.oninput = updateBetween;
+          el.appendChild(minIn);
+          el.appendChild(maxIn);
+        }
+        else if (node.data.comparator && node.data.comparator !== "changes") {
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value";
+          valInput.value = node.data.value || "";
+          valInput.style = "display:block;margin-bottom:12px";
+          valInput.onchange = () => {
+            node.data.value = valInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+          };
+          el.appendChild(valInput);
+        }
+
+        // finally, update the node's HTML preview
+        const tileHtml = nodeTileHtml(node.name, node.data, node.id);
+        editor.updateNodeHtmlFromId(node.id, tileHtml);
       }
 
       window.renderEditor = function renderEditor(node) {
@@ -2769,10 +2811,7 @@
           });
 
           devSelect.onchange = () => {
-            // Save as array (supports multiple)
             node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             markFlowNeedsSave(true);
           };
           el.appendChild(devSelect);
@@ -4058,52 +4097,6 @@
                 menuDiv.remove();
               };
               menuDiv.appendChild(unlockBtn);
-
-              // --- Save Subflow ---
-              const saveSubflowBtn = document.createElement('div');
-              saveSubflowBtn.textContent = "Save Subflow";
-              saveSubflowBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              saveSubflowBtn.onmouseenter = () => saveSubflowBtn.style.background = "#555";
-              saveSubflowBtn.onmouseleave = () => saveSubflowBtn.style.background = "transparent";
-              saveSubflowBtn.onclick = async () => {
-                // Base flow name as default
-                const baseName = document.getElementById("flowName").value.trim();
-                if (!baseName) {
-                  alert("Please enter a Flow Name.");
-                  return;
-                }
-
-                // Prompt for subflow name, defaulting to subflow_<baseName>
-                const defaultName = baseName.startsWith("subflow_")
-                  ? baseName
-                  : "subflow_" + baseName;
-                let subflowName = prompt("Enter subflow name:", defaultName);
-                if (!subflowName) {
-                  return; // user cancelled
-                }
-
-                // Inline sanitize
-                subflowName = subflowName
-                  .replace(/\s+/g, "_")
-                  .replace(/[^a-zA-Z0-9_\-]/g, "")
-                  .replace(/_{2,}/g, "_")
-                  .replace(/^_+|_+$/g, "");
-
-                // Export full flow and include variables
-                const full = editor.export();
-                if (window.flowVars?.getLocalVars) {
-                  full.variables = flowVars.getLocalVars();
-                }
-
-                // Upload subflow under the chosen name
-                const payload = { flowName: subflowName, ...full };
-                await uploadToHubitatFile(subflowName + ".json", JSON.stringify(payload, null, 2));
-
-                markFlowNeedsSave(false);
-                logAction(`Sent subflow "${subflowName}" to Hubitat File Manager.`, "success");
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(saveSubflowBtn);
             }
             document.body.appendChild(menuDiv);
 
@@ -4231,25 +4224,21 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    // 1) normalize & convert any “hh:mm am/pm” to 24h, then trim
+                    // 1) normalize your test value to 24h
                     const raw = testInput.value.trim();
                     if (!raw) {
                       alert("Please enter a test value.");
                       return;
                     }
-                    const rawLower = raw
+                    let val = raw
                       .toLowerCase()
                       .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
-                        let hh = parseInt(h, 10) % 12;
+                        let hh = parseInt(h,10) % 12;
                         if (ampm === "pm") hh += 12;
-                        return (hh < 10 ? "0" + hh : hh) + ":" + m;
+                        return (hh<10? "0"+hh : hh) + ":" + m;
                       });
 
-                    // 2) treat bare digits as “tap X”
-                    const clickVal = /^\d+$/.test(rawLower) ? `tap ${rawLower}` : null;
-                    const val      = clickVal || rawLower;
-
-                    // 3) pick the flow file
+                    // 2) pick the flow file
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     let flow = dropdown.value.trim();
                     if (!flow.endsWith(".json")) flow += ".json";
@@ -4258,9 +4247,7 @@
                       return;
                     }
 
-                    startFlowTraceStream();
-
-                    // 4) grab Hubitat credentials
+                    // 3) grab Hubitat credentials
                     const appId = document.getElementById("hubitatAppId").value.trim();
                     const token = document.getElementById("hubitatToken").value.trim();
                     if (!appId || !token) {
@@ -4269,54 +4256,68 @@
                     }
                     const dryRun = dryRunCheckbox.checked;
 
-                    // 5) pick the trigger node (preferring clickPattern)
+                    // 4) pick the trigger node that actually supports this test value (val)
                     const df   = editor.drawflow?.drawflow || editor.drawflow;
                     const data = df?.Home?.data || {};
-                    const triggers = Object.entries(data).filter(([id, nd]) => {
-                      if (nd.name !== 'eventTrigger') return false;
-                      if (nd.data.clickPattern) {
-                        return nd.data.clickPattern === val;
-                      }
-                      return (ATTRIBUTE_KNOWN_VALUES[nd.data.attribute] || []).includes(val);
-                    });
+
+                    // You need to determine which attribute is being tested.
+                    // If you have a UI dropdown for attribute, use its value. 
+                    // If not, try to infer from nodes:
+                    // We'll try to match all eventTriggers whose value matches 'val'
+                    // and pick one with an attribute that matches the device's valid attributes.
+
+                    // This code assumes 'attribute' is selected somewhere in your test UI.
+                    // If not, pick the first matching trigger with the value:
+                    const triggers = Object.entries(data).filter(([_, nd]) =>
+                      nd.name === "eventTrigger" &&
+                      (String(nd.data.value) === String(val))
+                    );
 
                     if (!triggers.length) {
-                      alert(`No Trigger node matching value "${val}" found.`);
+                      alert(`No Trigger node matching test value "${val}" found.`);
                       return;
                     }
-                    const [selId, node] = triggers[0];
-                    editor.selected_id = selId;
 
-                    // 6) gather device IDs
+                    // Try to honor the user’s selected trigger if it's one of the matches
+                    let selId = editor.selected_id;
+                    let node  = selId && editor.getNodeFromId(selId);
+
+                    if (!triggers.some(([id]) => id === selId)) {
+                      // otherwise pick the first matching trigger
+                      [selId, node] = triggers[0];
+                    }
+
+                    // 5) gather deviceIds from that trigger node
                     const deviceIds = Array.isArray(node.data.deviceIds)
                       ? node.data.deviceIds
                       : (node.data.deviceId ? [node.data.deviceId] : []);
 
-                    // 7) build payload & invoke testFlow
+                    // 6) build payload & invoke testFlow
                     const payload = { flow, value: val, dryRun, deviceIds };
                     console.log("[runFlow ▶] payload:", payload);
+
                     logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
-                      ` on ${deviceIds.length} device(s) with value "${val}"`,
+                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}`
+                      + ` on ${deviceIds.length} device(s) with value "${val}"`,
                       "info"
                     );
 
                     try {
                       const res = await fetch(
                         `/apps/api/${appId}/testFlow?access_token=${token}`, {
-                          method: "POST",
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(payload)
+                          method:  "POST",
+                          headers: { 'Content-Type':'application/json' },
+                          body:    JSON.stringify(payload)
                         }
                       );
                       if (!res.ok) throw new Error(await res.text());
                       const result = await res.json();
                       logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
-                    } catch (err) {
+                    }
+                    catch (err) {
                       logAction(`❌ Test failed: ${err}`, "error");
                     }
                   };
-
                 })
                 .catch(err => {
                   console.error("Error fetching logging settings:", err);
@@ -4406,10 +4407,7 @@
 
       // ── Enhanced Flow‑Path Highlighting (nodes + green lines) ─────────────────
       function highlightFlowPath(run) {
-        // Guard: require a valid run and loaded flow data
-        const df       = editor.drawflow?.drawflow || editor.drawflow;
-        const flowData = df?.Home?.data;
-        if (!run || !Array.isArray(run.steps) || !flowData) return;
+        if (!run || !Array.isArray(run.steps)) return;
 
         // 1) Clear previous node highlights
         document.querySelectorAll('.drawflow-node.flow-path')
@@ -4469,50 +4467,45 @@
       async function pollFlowTraceUntilEnd() {
         const rawName = document.getElementById('flowName').textContent.trim();
         const flowFile = rawName.toLowerCase().endsWith('.json')
-          ? rawName
-          : rawName + '.json';
+            ? rawName
+            : rawName + '.json';
 
-        // clear any prior poll
         if (flowTracePollInterval) {
-          clearInterval(flowTracePollInterval);
-          flowTracePollInterval = null;
+            clearInterval(flowTracePollInterval);
         }
 
         flowTracePollInterval = setInterval(async () => {
-          try {
-            // fetchHubitatFileContent returns parsed JSON
-            const traces = await fetchHubitatFileContent('FE_flowtrace.json');
-            const runs = Array.isArray(traces)
-              ? traces.filter(t => t.flowFile === flowFile)
-              : [];
-            if (!runs.length) return;
+            try {
+                // fetchHubitatFileContent returns parsed JSON already
+                const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+                const runs = Array.isArray(traces)
+                    ? traces.filter(t => t.flowFile === flowFile)
+                    : [];
+                if (!runs.length) return;
 
-            const run = runs[0];
-            highlightFlowPath(run);
+                const run = runs[0];
 
-            const last = run.steps[run.steps.length - 1] || {};
-            if (last.nodeType === 'endOfFlow') {
-              // stop polling
-              clearInterval(flowTracePollInterval);
-              flowTracePollInterval = null;
-              flowTracePollingActive = false;
+                // highlight the running path
+                highlightFlowPath(run);
 
-              // close the trace WebSocket to prevent further time‐trigger logs
-              if (window.flowTraceSocket) {
-                window.flowTraceSocket.close();
-                window.flowTraceSocket = null;
-              }
+                const last = run.steps[run.steps.length - 1] || {};
+                if (last.nodeType === 'endOfFlow') {
+                    // stop polling
+                    clearInterval(flowTracePollInterval);
+                    flowTracePollInterval = null;
+                    flowTracePollingActive = false;
+                    logAction('🔄 Flow trace finished', 'info');
 
-              logAction('🔄 Flow trace finished', 'info');
-              if (window._lastTriggerId != null) {
-                window.editor.selected_id = window._lastTriggerId;
-              }
+                    // re-select the original trigger node so it stays highlighted
+                    if (window._lastTriggerId != null) {
+                        window.editor.selected_id = window._lastTriggerId;
+                    }
+                }
+            } catch (e) {
+                console.error('Error polling FE_flowtrace.json', e);
+                clearInterval(flowTracePollInterval);
+                flowTracePollInterval = null;
             }
-          } catch (e) {
-            console.error('Error polling FE_flowtrace.json', e);
-            clearInterval(flowTracePollInterval);
-            flowTracePollInterval = null;
-          }
         }, 500);
       }
       
@@ -5879,7 +5872,6 @@
    
       // ── Trigger‑Match Logging WebSocket ─────────────────────────────────────────
       function startFlowTraceStream() {
-        window.flowTracePollingActive = false;
         // don’t re‑open if already open
         if (
           window.flowTraceSocket &&
@@ -5922,7 +5914,7 @@
               });
 
             if (!flowTracePollingActive) {
-              logAction('⚡ Trigger on time', 'info');
+              logAction('⚡ Triggered', 'info');
               flowTracePollingActive = true;
             }
             pollFlowTraceUntilEnd();
@@ -5970,6 +5962,8 @@
           console.error('❌ WebSocket error', err)
         );
       }
+
+      document.addEventListener('DOMContentLoaded', startFlowTraceStream);
 
       // Clear Trace
       document.getElementById('clearTraceBtn').addEventListener('click', () => {
@@ -6199,6 +6193,7 @@
         window._multiSelectedNodes.clear();
         updateMultiSelectUI();
       }
+      
     </script>
 </body>
 </html>
