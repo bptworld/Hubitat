@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.032</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.033</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -330,6 +330,7 @@
         const node = editor.getNodeFromId(id);
         if (node) {
           editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
+          markFlowNeedsSave(true)
         }
       });
     });
@@ -723,6 +724,7 @@
         node.data.value = "";
         editor.updateNodeDataFromId(node.id, node.data);
         buildTimeDevicePicker(pickerDiv, node);
+        markFlowNeedsSave(true);
       };
       pickerDiv.appendChild(attrSelect);
 
@@ -749,6 +751,7 @@
         node.data.value = "";
         editor.updateNodeDataFromId(node.id, node.data);
         buildTimeDevicePicker(pickerDiv, node);
+        markFlowNeedsSave(true);
       };
       pickerDiv.appendChild(cmpSelect);
 
@@ -771,6 +774,7 @@
           startSel.onchange = () => {
             node.data.value[0] = startSel.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(startSel);
 
@@ -785,6 +789,7 @@
           endSel.onchange = () => {
             node.data.value[1] = endSel.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(endSel);
         } else {
@@ -804,6 +809,7 @@
           sel.onchange = () => {
             node.data.value = Array.from(sel.selectedOptions).map(o => o.value);
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(sel);
         }
@@ -825,6 +831,7 @@
           startSelect.onchange = () => {
             node.data.value[0] = startSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(startSelect);
 
@@ -847,6 +854,7 @@
             }
             editor.updateNodeDataFromId(node.id, node.data);
             buildTimeDevicePicker(pickerDiv, node);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(endSelect);
 
@@ -874,6 +882,7 @@
             parseInt(endOffset.value) || 0
           ];
           editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
         };
 
         pickerDiv.appendChild(startOffset);
@@ -891,6 +900,7 @@
             timeInput.onchange = () => {
               node.data.value[1] = timeInput.value;
               editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
             };
             pickerDiv.appendChild(timeInput);
           }
@@ -907,6 +917,7 @@
           todSelect.onchange = () => {
             node.data.value = todSelect.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(todSelect);
 
@@ -924,6 +935,7 @@
           offsetInput.onchange = () => {
             node.data.offset = parseInt(offsetInput.value) || 0;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           pickerDiv.appendChild(offsetInput);
         }
@@ -940,6 +952,7 @@
         inStart.onchange = () => {
           node.data.value[0] = inStart.value;
           editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
         };
         pickerDiv.appendChild(inStart);
 
@@ -950,6 +963,7 @@
         inEnd.onchange = () => {
           node.data.value[1] = inEnd.value;
           editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
         };
         pickerDiv.appendChild(inEnd);
       }
@@ -962,6 +976,7 @@
         timeInput.onchange = () => {
           node.data.value = timeInput.value;
           editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
         };
         pickerDiv.appendChild(timeInput);
       }
@@ -1013,6 +1028,7 @@
           )
           .join("");
       sel.onchange = onChange;
+      markFlowNeedsSave(true);
       el.appendChild(sel);
     }
 
@@ -1035,6 +1051,7 @@
           )
           .join("");
       sel.onchange = onChange;
+      markFlowNeedsSave(true);
       el.appendChild(sel);
     }
 
@@ -1053,7 +1070,7 @@
         const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
         const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
         const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
-        const upd = () => { node.data.value = [minIn.value, maxIn.value]; onChange(); };
+        const upd = () => { node.data.value = [minIn.value, maxIn.value]; onChange(); markFlowNeedsSave(true);};
         minIn.onchange = maxIn.onchange = upd;
         minIn.className = maxIn.className = "value-field";
         el.appendChild(minIn);
@@ -1073,6 +1090,7 @@
         sel.onchange = () => { 
           node.data.value = sel.value; 
           onChange(); 
+          markFlowNeedsSave(true);
         };
         el.appendChild(sel);
       }
@@ -1087,6 +1105,7 @@
         input.onchange = () => {
           node.data.value = input.value;
           onChange();
+          markFlowNeedsSave(true);
         };
         el.appendChild(input);
       }
@@ -1716,6 +1735,7 @@
           node.data.value      = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
         };
         el.appendChild(attrSel);
 
@@ -1737,6 +1757,7 @@
           node.data.logic = logicSel.value;
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
         };
         el.appendChild(logicSel);
 
@@ -1762,6 +1783,7 @@
           node.data.value      = "";
           editor.updateNodeDataFromId(node.id, node.data);
           renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
         };
         el.appendChild(cmpSel);
 
@@ -1778,6 +1800,7 @@
           startInput.onchange = () => {
             node.data.value = [startInput.value, end];
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           el.appendChild(startInput);
           // end value
@@ -1789,6 +1812,7 @@
           endInput.onchange = () => {
             node.data.value = [startInput.value, endInput.value];
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           el.appendChild(endInput);
         }
@@ -1807,6 +1831,7 @@
           valSel.onchange = () => {
             node.data.value = valSel.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           el.appendChild(valSel);
         }
@@ -1822,6 +1847,7 @@
           valInput.onchange = () => {
             node.data.value = valInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
           };
           el.appendChild(valInput);
         }
@@ -2220,6 +2246,7 @@
             node.data.delayMin = Number(minInput.value) || 1;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
           };
           el.appendChild(minInput);
 
@@ -2771,6 +2798,7 @@
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
             renderEditor(node); // rerender to update device dropdown label
+            markFlowNeedsSave(true);
           };
           el.appendChild(typeSelect);
 
@@ -4265,7 +4293,6 @@
 
                     // 4) Get dynamic sunrise/sunset times
                     async function getDynamicSunTimes() {
-                      // Default: Boston, fallback
                       let lat = 42.36, lng = -71.06;
                       try {
                         if (navigator.geolocation) {
@@ -4274,9 +4301,7 @@
                           lat = pos.coords.latitude;
                           lng = pos.coords.longitude;
                         }
-                      } catch(e) {
-                        // geolocation failed, use defaults
-                      }
+                      } catch(e) {}
                       try {
                         if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
                           const times = SunCalc.getTimes(new Date(), lat, lng);
@@ -4286,9 +4311,7 @@
                             sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
                           };
                         }
-                      } catch(e) {
-                        // SunCalc failed, will use fallback below
-                      }
+                      } catch(e) {}
                       return { sunrise: "06:00", sunset: "20:00" };
                     }
 
@@ -4297,17 +4320,15 @@
                     // 5) Find matching trigger node(s)
                     const df   = editor.drawflow?.drawflow || editor.drawflow;
                     const data = df?.Home?.data || {};
-                    let testAttr = "currentTime"; // Use as appropriate, e.g., "timeOfDay"
-                    let testVal = val;
 
-                    const triggers = Object.entries(data).filter(([_, nd]) => {
+                    const triggers = Object.entries(data).filter(([id, nd]) => {
                       if (nd.name !== 'eventTrigger') return false;
 
-                      // TIME TRIGGERS
+                      // --- TIME TRIGGERS ---
                       if (nd.data.deviceId === "__time__") {
+                        // --- BETWEEN (ex: between sunrise and 12:00) ---
                         if (nd.data.comparator === "between" && Array.isArray(nd.data.value)) {
                           let [start, end] = nd.data.value.map(String);
-                          // Map sunrise/sunset to real times
                           start = SUN_TIMES[start] || start;
                           end   = SUN_TIMES[end]   || end;
                           const toMins = t => {
@@ -4320,25 +4341,27 @@
                           if (startMins <= endMins) {
                             return testMins >= startMins && testMins <= endMins;
                           } else {
-                            // Spans midnight
                             return testMins >= startMins || testMins <= endMins;
                           }
                         } else {
-                          // Single-value time triggers, sunrise, or sunset
+                          // single time, sunrise, sunset
                           if (val === "sunrise" || val === "sunset") {
                             return nd.data.value === val;
                           }
-                          // Compare as times
                           let triggerVal = SUN_TIMES[nd.data.value] || nd.data.value;
                           return String(triggerVal) === String(val);
                         }
                       }
 
-                      // DEVICE/EVENT TRIGGERS
-                      return (
-                        nd.data.attribute === testAttr &&
-                        String(nd.data.value) === String(val)
-                      );
+                      // --- DEVICE TRIGGERS W/KNOWN VALUES ---
+                      if (nd.data.attribute && window.ATTRIBUTE_KNOWN_VALUES && ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]) {
+                        return ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]
+                          .map(v => v.toLowerCase())
+                          .includes(val);
+                      }
+
+                      // --- FALLBACK: EXACT MATCH ---
+                      return String(nd.data.value).toLowerCase() === val;
                     });
 
                     if (!triggers.length) {
@@ -4664,6 +4687,7 @@
           let p = loadPrefs();
           p.imageBrightness = val;
           savePrefs(p);
+          markFlowNeedsSave(true)
         });
 
         // --- Snap to grid: remember setting
@@ -4671,6 +4695,7 @@
           let p = loadPrefs();
           p.snapToGrid = snapToGridToggle.checked;
           savePrefs(p);
+          markFlowNeedsSave(true)
         });
       });
 
@@ -5436,9 +5461,8 @@
           window._multiSelectedNodes = new Set(newIds.map(String));
           editor.selected_id = newIds[0];
           window.renderEditor(editor.getNodeFromId(editor.selected_id));
+          markFlowNeedsSave(true);
         }
-
-        markFlowNeedsSave(true);
       }
 
       function hideContextMenu() {
@@ -5454,9 +5478,9 @@
             node.data.locked = !!lockState;
             editor.updateNodeDataFromId(node.id, node.data);
             editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
           }
         });
-        markFlowNeedsSave(true);
       }
 
       document.addEventListener("DOMContentLoaded", function() {
