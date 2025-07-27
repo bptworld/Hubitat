@@ -180,7 +180,10 @@
         </button>
       </div>
       <div id="nodeEditor">Right Click a node to edit</div>
-      <div><small>Use 'ctrl-click' to select multiple Devices</small></div>
+      <div>
+        <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
+        <small id="multiSelectTip-win" style="display:none;">Use 'ctrl-click' to select multiple Devices</small>
+      </div>
       <div><hr></div>
       <div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
         <div id="variableInspectorHeader"
@@ -6288,6 +6291,29 @@
         // 3. Fallback to static times if everything else fails
         return { sunrise: "06:00", sunset: "20:00" };
       }
+
+      function getOS() {
+        if (navigator.userAgentData && navigator.userAgentData.platform) {
+          const p = navigator.userAgentData.platform.toLowerCase();
+          if (p.includes('mac')) return 'mac';
+          if (p.includes('win')) return 'windows';
+          if (p.includes('linux')) return 'linux';
+          return 'other';
+        }
+        const p = navigator.platform.toLowerCase();
+        if (p.includes('mac')) return 'mac';
+        if (p.includes('win')) return 'windows';
+        if (p.includes('linux')) return 'linux';
+        return 'other';
+      }
+
+      const os = getOS();
+      if (os === 'mac') {
+        document.getElementById('multiSelectTip-mac').style.display = '';
+      } else {
+        document.getElementById('multiSelectTip-win').style.display = '';
+      }
+
     </script>
 </body>
 </html>
