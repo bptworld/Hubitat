@@ -1425,7 +1425,7 @@ def scheduleVariablePolling(String fname) {
     }
     if (hasVarTrig && !state._varPollScheduled) {
         state._varPollScheduled = true
-        runIn(5, "checkVariableTriggers")
+        schedule("0/15 * * * * ?", checkVariableTriggers)
     }
 }
 
