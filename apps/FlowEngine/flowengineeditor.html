@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.030</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.031</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -190,7 +190,7 @@
             style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
           <span id="variableInspectorArrow"
                 style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Variable Inspector
+          Variable Inspecto
         </div>
         <div id="variableInspectorContent"
             style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
@@ -5639,59 +5639,6 @@
         }
       });
 
-      document.getElementById("activateFlowButton").addEventListener("click", async () => {
-        const button       = document.getElementById("activateFlowButton");
-        const flowDropdown = document.getElementById("hubitatFileDropdown");
-        const flowName     = flowDropdown?.value?.trim() || "";
-        const token        = document.getElementById("hubitatToken")?.value.trim()  || "";
-        const appId        = document.getElementById("hubitatAppId")?.value.trim()  || "";
-
-        // 1) Validate inputs
-        if (!hubitatCredentialsAreValid(true)) {
-          logAction("Missing App ID or Token", "error");
-          return;
-        }
-        if (!flowName) {
-          logAction("No Flow selected to activate/deactivate", "error");
-          return;
-        }
-
-        // 2) Decide endpoint
-        const isActive = button.textContent.trim() === "Activated";
-        const action   = isActive ? "deselectFlow" : "selectFlow";
-        const url      = `/apps/api/${appId}/${action}?access_token=${token}`;
-
-        // 3) Disable to prevent double‐clicks
-        button.disabled = true;
-        try {
-          // ── Send the flow name in the POST body ──
-          const response = await fetch(url, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ flow: flowName })
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status} ${response.statusText}`);
-          }
-          const result = await response.json();
-
-          // 4) Log success
-          logAction(
-            isActive
-              ? `❎ Flow deactivated: ${result.result || JSON.stringify(result)}`
-              : `✅ Flow activated:   ${result.result || JSON.stringify(result)}`,
-            "info"
-          );
-
-          // 5) Refresh UI state
-          await checkIfFlowIsInUse(flowName, appId, token);
-        } catch (err) {
-          logAction(`❌ Toggle failed: ${err}`, "error");
-        } finally {
-          button.disabled = false;
-        }
-      });
-
       // ── Logging Button Click Handler ─────────────────────────────────────────────
       document.getElementById("loggingButton").addEventListener("click", async () => {
         const btn      = document.getElementById("loggingButton");
@@ -6313,6 +6260,68 @@
       } else {
         document.getElementById('multiSelectTip-win').style.display = '';
       }
+
+      // Always only register this once!
+      (function() {
+        const button       = document.getElementById("activateFlowButton");
+        const flowDropdown = document.getElementById("hubitatFileDropdown");
+
+        // Remove any previous handler, just in case
+        button.replaceWith(button.cloneNode(true));
+        const newButton = document.getElementById("activateFlowButton");
+
+        newButton.addEventListener("click", async () => {
+          const flowName = flowDropdown?.value?.trim() || "";
+          const token    = document.getElementById("hubitatToken")?.value.trim()  || "";
+          const appId    = document.getElementById("hubitatAppId")?.value.trim()  || "";
+
+          // 1) Validate inputs
+          if (!hubitatCredentialsAreValid(true)) {
+            logAction("Missing App ID or Token", "error");
+            return;
+          }
+          if (!flowName) {
+            logAction("No Flow selected to activate/deactivate", "error");
+            return;
+          }
+
+          // 2) Decide endpoint
+          const isActive = newButton.textContent.trim() === "Activated";
+          const action   = isActive ? "deselectFlow" : "selectFlow";
+          const url      = `/apps/api/${appId}/${action}?access_token=${token}`;
+
+          // 3) Disable to prevent double‐clicks
+          newButton.disabled = true;
+          try {
+            // ── Send the flow name in the POST body ──
+            const response = await fetch(url, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({ flow: flowName })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+
+            // 4) Log success
+            logAction(
+              isActive
+                ? `❎ Flow deactivated: ${result.result || JSON.stringify(result)}`
+                : `✅ Flow activated:   ${result.result || JSON.stringify(result)}`,
+              "info"
+            );
+
+            // 5) Refresh UI state (ALWAYS use checkIfFlowIsInUse for UI!)
+            await checkIfFlowIsInUse(flowName, appId, token);
+
+          } catch (err) {
+            logAction(`❌ Toggle failed: ${err}`, "error");
+          } finally {
+            newButton.disabled = false;
+          }
+        });
+      })();
 
     </script>
 </body>
