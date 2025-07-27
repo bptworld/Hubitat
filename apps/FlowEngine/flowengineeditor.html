@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.035</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.036</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -4260,7 +4260,7 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    /// clear node highlights
+                    // clear node highlights
                     document.querySelectorAll(
                       '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
                     ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
@@ -4272,16 +4272,12 @@
                       path.classList.remove('highlighted');
                     });
 
-                    // 🧼 Also wipe old trace if it's still painted
-                    if (window.lastRunTrace) window.lastRunTrace = null;
-
                     // 1) Normalize test value
                     const raw = testInput.value.trim();
                     if (!raw) {
                       alert("Please enter a test value.");
                       return;
                     }
-
                     let val = raw
                       .toLowerCase()
                       .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
@@ -4430,8 +4426,6 @@
                   logBtn.textContent = "Logging Disabled";
                   logBtn.style.backgroundColor = "#808080";
                 });
-
-
             } else {
               // No flow active → clear status panel & reset logging button
               statusDiv.innerHTML = `
