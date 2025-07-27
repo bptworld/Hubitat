@@ -47,6 +47,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
   <script src="FE_flowvars.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 </head>
 <body>
   <script>
@@ -58,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.029</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.030</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -1035,29 +1036,34 @@
     }
 
     function renderValueField(el, node, knownValues, onChange, between = false) {
+      // Prevent duplicate value fields
+      if (el.querySelector('.value-field')) return;
+
       const lbl = document.createElement("label");
       lbl.textContent = "Value";
       lbl.style.display = "block";
+      lbl.className = "value-field";
       el.appendChild(lbl);
 
       if (between) {
-        // two inputs for “between”
-        const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
+        // Two inputs for “between”
+        const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
         const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
         const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
         const upd = () => { node.data.value = [minIn.value, maxIn.value]; onChange(); };
         minIn.onchange = maxIn.onchange = upd;
+        minIn.className = maxIn.className = "value-field";
         el.appendChild(minIn);
         el.appendChild(maxIn);
       }
       else if (knownValues && knownValues.length) {
+        // Use dropdown
         const sel = document.createElement("select");
         sel.style.display = "block";
         sel.style.marginBottom = "12px";
+        sel.className = "value-field";
         sel.innerHTML =
-          // re‑inject “(none)” and select it when there’s no value yet
           `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
-          // then your real options
           knownValues
             .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
             .join("");
@@ -1066,6 +1072,20 @@
           onChange(); 
         };
         el.appendChild(sel);
+      }
+      else {
+        // Fallback: show input for free value if no known values!
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = node.data.value || "";
+        input.placeholder = "Enter value";
+        input.style = "display:block;margin-bottom:12px;width:100%;";
+        input.className = "value-field";
+        input.onchange = () => {
+          node.data.value = input.value;
+          onChange();
+        };
+        el.appendChild(input);
       }
     }
 
@@ -1788,23 +1808,7 @@
           el.appendChild(valSel);
         }
         else if (node.data.comparator === "between") {
-          const [start, end] = Array.isArray(node.data.value) ? node.data.value : ["",""];
-          const minIn = document.createElement("input");
-          const maxIn = document.createElement("input");
-          minIn.type = maxIn.type = "text";
-          minIn.value = start;
-          maxIn.value = end;
-          minIn.placeholder = "Min";
-          maxIn.placeholder = "Max";
-          minIn.style = "width:45%; margin-right:8px; display:inline-block";
-          maxIn.style = "width:45%; display:inline-block";
-          const updateBetween = () => {
-            node.data.value = [minIn.value, maxIn.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-          };
-          minIn.oninput = maxIn.oninput = updateBetween;
-          el.appendChild(minIn);
-          el.appendChild(maxIn);
+          renderValueField(el, node, knownValues, onChange, true);
         }
         else if (node.data.comparator && node.data.comparator !== "changes") {
           const valInput = document.createElement("input");
@@ -4224,7 +4228,7 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
-                    // 1) normalize your test value to 24h
+                    // 1) Normalize test value
                     const raw = testInput.value.trim();
                     if (!raw) {
                       alert("Please enter a test value.");
@@ -4233,12 +4237,12 @@
                     let val = raw
                       .toLowerCase()
                       .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
-                        let hh = parseInt(h,10) % 12;
+                        let hh = parseInt(h, 10) % 12;
                         if (ampm === "pm") hh += 12;
-                        return (hh<10? "0"+hh : hh) + ":" + m;
+                        return (hh < 10 ? "0" + hh : hh) + ":" + m;
                       });
 
-                    // 2) pick the flow file
+                    // 2) Pick the flow file
                     const dropdown = document.getElementById("hubitatFileDropdown");
                     let flow = dropdown.value.trim();
                     if (!flow.endsWith(".json")) flow += ".json";
@@ -4247,7 +4251,7 @@
                       return;
                     }
 
-                    // 3) grab Hubitat credentials
+                    // 3) Credentials
                     const appId = document.getElementById("hubitatAppId").value.trim();
                     const token = document.getElementById("hubitatToken").value.trim();
                     if (!appId || !token) {
@@ -4256,49 +4260,108 @@
                     }
                     const dryRun = dryRunCheckbox.checked;
 
-                    // 4) pick the trigger node that actually supports this test value (val)
+                    // 4) Get dynamic sunrise/sunset times
+                    async function getDynamicSunTimes() {
+                      // Default: Boston, fallback
+                      let lat = 42.36, lng = -71.06;
+                      try {
+                        if (navigator.geolocation) {
+                          const pos = await new Promise((resolve, reject) =>
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
+                          lat = pos.coords.latitude;
+                          lng = pos.coords.longitude;
+                        }
+                      } catch(e) {
+                        // geolocation failed, use defaults
+                      }
+                      try {
+                        if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
+                          const times = SunCalc.getTimes(new Date(), lat, lng);
+                          const pad = n => (n < 10 ? "0" : "") + n;
+                          return {
+                            sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
+                            sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
+                          };
+                        }
+                      } catch(e) {
+                        // SunCalc failed, will use fallback below
+                      }
+                      return { sunrise: "06:00", sunset: "20:00" };
+                    }
+
+                    const SUN_TIMES = await getDynamicSunTimes();
+
+                    // 5) Find matching trigger node(s)
                     const df   = editor.drawflow?.drawflow || editor.drawflow;
                     const data = df?.Home?.data || {};
+                    let testAttr = "currentTime"; // Use as appropriate, e.g., "timeOfDay"
+                    let testVal = val;
 
-                    // You need to determine which attribute is being tested.
-                    // If you have a UI dropdown for attribute, use its value. 
-                    // If not, try to infer from nodes:
-                    // We'll try to match all eventTriggers whose value matches 'val'
-                    // and pick one with an attribute that matches the device's valid attributes.
+                    const triggers = Object.entries(data).filter(([_, nd]) => {
+                      if (nd.name !== 'eventTrigger') return false;
 
-                    // This code assumes 'attribute' is selected somewhere in your test UI.
-                    // If not, pick the first matching trigger with the value:
-                    const triggers = Object.entries(data).filter(([_, nd]) =>
-                      nd.name === "eventTrigger" &&
-                      (String(nd.data.value) === String(val))
-                    );
+                      // TIME TRIGGERS
+                      if (nd.data.deviceId === "__time__") {
+                        if (nd.data.comparator === "between" && Array.isArray(nd.data.value)) {
+                          let [start, end] = nd.data.value.map(String);
+                          // Map sunrise/sunset to real times
+                          start = SUN_TIMES[start] || start;
+                          end   = SUN_TIMES[end]   || end;
+                          const toMins = t => {
+                            const [h, m] = (t + ":").split(":").map(Number);
+                            return h*60 + (m || 0);
+                          };
+                          const testMins  = toMins(val);
+                          const startMins = toMins(start);
+                          const endMins   = toMins(end);
+                          if (startMins <= endMins) {
+                            return testMins >= startMins && testMins <= endMins;
+                          } else {
+                            // Spans midnight
+                            return testMins >= startMins || testMins <= endMins;
+                          }
+                        } else {
+                          // Single-value time triggers, sunrise, or sunset
+                          if (val === "sunrise" || val === "sunset") {
+                            return nd.data.value === val;
+                          }
+                          // Compare as times
+                          let triggerVal = SUN_TIMES[nd.data.value] || nd.data.value;
+                          return String(triggerVal) === String(val);
+                        }
+                      }
+
+                      // DEVICE/EVENT TRIGGERS
+                      return (
+                        nd.data.attribute === testAttr &&
+                        String(nd.data.value) === String(val)
+                      );
+                    });
 
                     if (!triggers.length) {
                       alert(`No Trigger node matching test value "${val}" found.`);
                       return;
                     }
 
-                    // Try to honor the user’s selected trigger if it's one of the matches
+                    // Honor user-selected node if it's a trigger, else pick the first match
                     let selId = editor.selected_id;
                     let node  = selId && editor.getNodeFromId(selId);
-
                     if (!triggers.some(([id]) => id === selId)) {
-                      // otherwise pick the first matching trigger
                       [selId, node] = triggers[0];
                     }
 
-                    // 5) gather deviceIds from that trigger node
+                    // 6) Gather deviceIds from that trigger node
                     const deviceIds = Array.isArray(node.data.deviceIds)
                       ? node.data.deviceIds
                       : (node.data.deviceId ? [node.data.deviceId] : []);
 
-                    // 6) build payload & invoke testFlow
+                    // 7) Build payload & invoke testFlow
                     const payload = { flow, value: val, dryRun, deviceIds };
                     console.log("[runFlow ▶] payload:", payload);
 
                     logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}`
-                      + ` on ${deviceIds.length} device(s) with value "${val}"`,
+                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
+                      ` on ${deviceIds.length} device(s) with value "${val}"`,
                       "info"
                     );
 
@@ -6194,6 +6257,37 @@
         updateMultiSelectUI();
       }
       
+      async function getDynamicSunTimes() {
+        // 1. Try to use browser geolocation
+        let lat = 42.36, lng = -71.06; // Boston fallback
+        try {
+          if (navigator.geolocation) {
+            const pos = await new Promise((resolve, reject) =>
+              navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+          }
+        } catch(e) {
+          // Could not get geolocation, will use default coords
+        }
+
+        // 2. Try to use SunCalc for sunrise/sunset
+        try {
+          if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
+            const times = SunCalc.getTimes(new Date(), lat, lng);
+            const pad = n => (n < 10 ? "0" : "") + n;
+            return {
+              sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
+              sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
+            };
+          }
+        } catch(e) {
+          // SunCalc failed, will use hardcoded times
+        }
+
+        // 3. Fallback to static times if everything else fails
+        return { sunrise: "06:00", sunset: "20:00" };
+      }
     </script>
 </body>
 </html>
