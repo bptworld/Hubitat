@@ -591,7 +591,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 					boolean allMatch = devIds.every { devId ->
 						def device = getDeviceById(devId)
 						def actual = device ? device.currentValue(node.data.attribute) : null
-						evaluateComparator(actual, expected, comparator)
+						evaluateComparator(actual, expected, comparator ?: '==')
 					}
 					flowLog(fname, "eventTrigger AND across ${devIds} ⇒ ${allMatch}", "debug")
 					if (!allMatch) {
@@ -685,7 +685,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
 							flowLog(fname, "In evaluateNode-condition-and: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
-							evaluateComparator(actual, expected, comparator)
+							evaluateComparator(actual, expected, comparator ?: '==')
 						}
 						flowLog(fname, "In evaluateNode-condition-and: passes: ${passes}", "info")
 						flowLog(fname, "---------- In evaluateNode-condition-and ---------end", "info")
@@ -695,7 +695,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
 							flowLog(fname, "In evaluateNode-condition-or: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
-							evaluateComparator(actual, expected, comparator)
+							evaluateComparator(actual, expected, comparator ?: '==')
 						}
 						flowLog(fname, "In evaluateNode-condition-or: passes: ${passes}", "info")
 						flowLog(fname, "---------- In evaluateNode-condition-or -------end", "info")
@@ -1176,6 +1176,7 @@ def getFileList() {
     } catch (e) {
 		flowLog(fname, "getFileList error: $e", "error")
     }
+	state.jsonList = state.jsonList.sort { it?.toLowerCase() }
 }
 
 def readFlowFile(fname) {
@@ -1424,7 +1425,7 @@ def scheduleVariablePolling(String fname) {
     }
     if (hasVarTrig && !state._varPollScheduled) {
         state._varPollScheduled = true
-        runEvery5Seconds("checkVariableTriggers")
+        runEvery5Seconds(this.&checkVariableTriggers)
     }
 }
 
