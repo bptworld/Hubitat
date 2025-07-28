@@ -38,7 +38,9 @@ html { margin:0; padding:0; height:100%; font-family:sans-serif; }
   width: 250px !important;
   padding: 18px 16px 16px 16px; background: #181818;
 }
-#nodeEditor label { margin-top: 6px; margin-right: 6px; display:inline-block; }
+
+#nodeEditor label {
+   margin-top: 6px; margin-right: 6px; display:inline-block; }
 #nodeEditor input, #nodeEditor select { margin-bottom: 7px; margin-right:8px;}
 #wsLogBox {
   resize: vertical;
@@ -315,4 +317,13 @@ button:hover { background: #02c258; }
 /* hide the flowName immediately after the file-picker dropdown */
 #hubitatFileDropdown + span#flowName {
   display: none !important;
+}
+
+.selection-panel {
+  margin-top: 14px;
+  background: #000;
+  border-radius: 7px;
+  padding: 12px 12px 8px 12px;
+  border: 1px solid #e1e1ed;
+  color: #fff;
 }
