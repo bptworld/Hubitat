@@ -174,22 +174,28 @@ mappings {
 
 // --- HANDLERS ---
 def handleLocationTimeEvent(evt) {
-    flowLog(fname, "Sun event: ${evt.name}@${evt.date}", "info")
     state.activeFlows.each { fname, flowObj ->
-        def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
         def matches = dataNodes.findAll { id, node ->
             node.name == "eventTrigger" &&
             node.data.deviceId == "__time__" &&
             node.data.attribute == "timeOfDay" &&
             (
-              node.data.comparator == "between"
-                ? (node.data.value instanceof List && node.data.value[0] == evt.name)
-                : (node.data.value == evt.name)
+                // Exactly matches event
+                (node.data.comparator == "==" && node.data.value == evt.name) ||
+                // Between window starts or ends on this event
+                (node.data.comparator == "between" &&
+                 node.data.value instanceof List &&
+                 (node.data.value[0] == evt.name || node.data.value[1] == evt.name)) ||
+                // Value is a single string and matches
+                (node.data.value == evt.name) ||
+                // Value is a list and contains event
+                (node.data.value instanceof List && node.data.value.contains(evt.name))
             )
         }
-
         matches.each { id, node ->
-            handleEvent(evt, fname)
+            flowLog(fname, "Firing eventTrigger from location time event (${evt.name})", "debug")
+            evaluateNode(fname, id, [ name: evt.name, value: evt.value ])
         }
     }
 }
@@ -755,7 +761,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 							if(testDryRun) {
 								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd} - val: {val}", "debug")
 							} else {
-								device."${cmd}"(val)
+								if (cmd == "setLevel" || cmd == "setColorTemperature") {
+									device."${cmd}"(val.toInteger())
+								} else {
+									device."${cmd}"(val)
+								}
 							}
 						} else {
 							if(testDryRun) {
