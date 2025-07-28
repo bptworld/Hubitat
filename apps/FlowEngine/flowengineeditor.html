@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.036</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.037</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -190,7 +190,7 @@
             style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
           <span id="variableInspectorArrow"
                 style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Variable Inspecto
+          Variable Inspector
         </div>
         <div id="variableInspectorContent"
             style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
@@ -1474,6 +1474,7 @@
         });
         devices.push(TIME_DEVICE);
         devices.push(MODE_DEVICE);
+        devices.push(VARIABLE_DEVICE);
         window.devices = devices;
 
         // Set current mode on Home Location device
@@ -1858,6 +1859,16 @@
       }
 
       window.renderEditor = function renderEditor(node) {
+        const panel = document.getElementById("nodeEditor");
+        if (panel) panel.style.display = '';
+        if (!node) {
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          return;
+        }
+        const el = document.getElementById("nodeEditor");
+        el.innerHTML = "";
+
+        const pickerDevices = getSortedDevicesWithSpecials(window.devices || []);
         if (
           ["device", "condition", "eventTrigger", "notMatchingVar"].includes(node.name)
         ) {
@@ -1870,11 +1881,31 @@
           }
         }
 
-        const panel = document.getElementById("nodeEditor");
-        if (panel) panel.style.display = '';
-        if (!node) { document.getElementById("nodeEditor").innerHTML = "Click a node to edit"; return; }
-        const el = document.getElementById("nodeEditor");
-        el.innerHTML = "";
+        if (node.name === "eventTrigger") {
+          // Device picker always rendered first!
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (ids, labels) => {
+              node.data.deviceIds = ids;
+              node.data.deviceId = ids[0] || "";
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              window.renderEditor(node);
+            },
+            true // multi-select ENABLED
+          );
+
+          // If Variable is selected, add variable picker BELOW device picker
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(el, node, true); // append variable picker
+            return;
+          }
+        };
 
         // ************************************
         // --- SHARED HELPERS ---
@@ -2109,6 +2140,7 @@
                 );
               }
               markFlowNeedsSave(true);
+              window.renderEditor(node);
             },
             true // multi-select
           );
@@ -3633,6 +3665,7 @@
             });
             devices.push(TIME_DEVICE);
             devices.push(MODE_DEVICE);
+            devices.push(VARIABLE_DEVICE);
             window.devices = devices;
 
             // Set current mode on Home Location device
@@ -3798,6 +3831,7 @@
         });
         devices.push(TIME_DEVICE);
         devices.push(MODE_DEVICE);
+        devices.push(VARIABLE_DEVICE);
         window.devices = devices;
 
         // Set current mode on Home Location device
@@ -6357,6 +6391,67 @@
           }
         });
       })();
+
+      function buildVariableTriggerEditor(pickerDiv, node, appendOnly) {
+        // Remove existing variable trigger panel(s)
+        const oldPanels = pickerDiv.querySelectorAll('.variable-trigger-panel');
+        oldPanels.forEach(panel => panel.remove());
+
+        // Only clear the whole panel if not appending (legacy/compat)
+        if (!appendOnly) pickerDiv.innerHTML = "";
+
+        const container = document.createElement("div");
+        container.className = "selection-panel";
+
+        // Label: Variable Name
+        const varLabel = document.createElement("label");
+        varLabel.textContent = "Variable Name";
+        varLabel.style.display = "block";
+        container.appendChild(varLabel);
+
+        // Dropdown: Variable Names (from global + flow)
+        const varSelect = document.createElement("select");
+        varSelect.style.display = "block";
+        varSelect.style.marginBottom = "12px";
+        const vars = [
+          ...(Array.isArray(window.FE_flowvars) ? window.FE_flowvars.map(v => v.name) : []),
+          ...(Array.isArray(window.FE_global_vars) ? window.FE_global_vars.map(v => v.name) : [])
+        ];
+        varSelect.innerHTML =
+          `<option value="" ${!node.data.variableName ? "selected" : ""}>(none)</option>` +
+          vars.map(v =>
+            `<option value="${v}" ${node.data.variableName === v ? "selected" : ""}>${v}</option>`
+          ).join("");
+        varSelect.onchange = () => {
+          node.data.variableName = varSelect.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
+          markFlowNeedsSave(true);
+        };
+        container.appendChild(varSelect);
+
+        // Comparator picker
+        renderComparatorPicker(container, node, ["==", "!=", ">", "<", ">=", "<=", "between"], {
+          "==": "equals", "!=": "not equals",
+          ">": ">", "<": "<", ">=": "≥", "<=": "≤", "between": "between"
+        }, () => {
+          node.data.comparator = container.querySelector("select:last-of-type").value;
+          node.data.value = "";
+          editor.updateNodeDataFromId(node.id, node.data);
+          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
+          markFlowNeedsSave(true);
+        });
+
+        // Value input (or two if "between")
+        const between = node.data.comparator === "between";
+        renderValueField(container, node, [], () => {
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        }, between);
+
+        // Finally, append to the editor panel (device picker always above!)
+        pickerDiv.appendChild(container);
+      }
 
     </script>
 </body>
