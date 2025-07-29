@@ -30,6 +30,7 @@
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
+state.globalVarsCache = state.globalVarsCache ?: []
 
 definition(
     name: "Flow Engine One",
@@ -115,6 +116,12 @@ private void initialize() {
     // — clear everything once —
     unsubscribe()
     unschedule()
+
+	try {
+    	state.globalVarsCache = readFlowFile("FE_global_vars.json") ?: []
+	} catch (e) {
+		state.globalVarsCache = []
+	}
 
     // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
     state.timeJobs = state.timeJobs ?: [:]
@@ -464,7 +471,6 @@ def handleEvent(evt, fname) {
         // 1) Cancel any scheduled helpers
         unschedule("clearTapTracker")
         unschedule("clearHoldTracker")
-        unschedule("checkVariableTriggers")
 
         // 2) Emit a cancel trace
         try {
@@ -1161,10 +1167,9 @@ def loadAndStartFlow(fname) {
         globalVars: [],
         vars: [:]
     ]
-    readAndParseFlow(fname)
+    loadVariables(fname)
     subscribeToTriggers(fname)
 	scheduleTimeBasedTriggers(fname)
-    scheduleVariablePolling(fname)
 }
 
 def getFileList() {
@@ -1204,7 +1209,7 @@ def readFlowFile(fname) {
         }
         catch (parseEx) {
             // 2) Log the error, then attempt auto‑fix
-            flowLog(fname, "⚠️ JSON parse error: ${parseEx.message}. Attempting auto‑fix…", "warn")
+            flowLog(fname, "JSON parse error: ${parseEx.message}. Attempting auto‑fix…", "warn")
 
             def fixed = jsonStr
                 .replaceAll(/^\uFEFF/, "")                    // strip BOM
@@ -1218,7 +1223,7 @@ def readFlowFile(fname) {
 
             // 3) Re‑parse the fixed text
             def obj = new JsonSlurper().parseText(fixed)
-            flowLog(fname, "🔧 Auto‑fixed JSON on load for \"${fname}\"", "info")
+            flowLog(fname, "Auto‑fixed JSON on load for \"${fname}\"", "info")
             return obj
         }
     }
@@ -1232,13 +1237,20 @@ def getDeviceById(id) {
     return settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
 }
 
-// ---- Variable/Helper logic ----
-def readAndParseFlow(fname) { loadVariables(fname) }
 def loadVariables(fname) {
     def flowObj = state.activeFlows[fname]
     flowObj.varCtx = [:]
-    getGlobalVars(fname)
-    flowObj.globalVars.each { v ->
+    // Load global vars from file
+    def globalVars = []
+    try {
+        globalVars = readFlowFile("FE_global_vars.json") ?: []
+    } catch (e) {
+        flowLog(fname, "Could not load FE_global_vars.json: $e", "warn")
+    }
+    // Store in flowObj for compatibility, if you want
+    flowObj.globalVars = globalVars
+    // Build variable context
+    globalVars.each { v ->
         flowObj.varCtx[v.name] = resolveVarValue(fname, v)
     }
 }
@@ -1422,44 +1434,32 @@ def handleTimeTrigger(Map data) {
     handleEvent(evt, fname)
 }
 
-def scheduleVariablePolling(String fname) {
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
-
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    def hasVarTrig = dataNodes.any { id, node ->
-        node?.name == "eventTrigger" && (
-            node.data?.deviceId == "__variable__" ||
-            (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__")
-        )
-    }
-    if (hasVarTrig && !state._varPollScheduled) {
-        state._varPollScheduled = true
-        schedule("0/15 * * * * ?", checkVariableTriggers)
-    }
-}
-
 // ---- Variable trigger polling and tap/hold clear helpers ----
 def checkVariableTriggers() {
+    def globalVars = state.globalVarsCache ?: []
     state.activeFlows.each { fname, flowObj ->
         def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
             node?.name == "eventTrigger" &&
             (node.data?.deviceId == "__variable__" ||
              (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
         }
-        if (!nodes) return
-
-        getGlobalVars(fname)
-        def globalMap = flowObj.globalVars.collectEntries { [(it.name): it.value] }
+		if (!nodes) return
+        def globalMap = globalVars.collectEntries { [(it.name): it.value] }
 
         nodes.each { id, node ->
-            def varName   = node.data?.varName
-            if (!varName) return
+            def varName   = node.data?.variableName
+			if (!varName) {
+				log.warn "In checkVariableTriggers - Missing varName in node ${id}: ${node.data}"
+				return
+			}
 
             def curValue  = globalMap[varName]
-            def lastValue = flowObj.lastVarValues[varName]
-
-            if (curValue != lastValue) {
+            def lastValue = flowObj.lastVarValues[varName] ?: "firstrunforthisvar"
+            def comparator = node.data?.comparator ?: '=='
+            def expected   = node.data?.value
+			
+			flowLog(varName, "curValue: ${curValue} - comparator: ${comparator} - lastValue: ${lastValue}", "debug")
+            if (evaluateComparator(curValue, expected, comparator) && curValue != lastValue) {
                 flowObj.lastVarValues[varName] = curValue
                 evaluateNode(fname, id, [ name: varName, value: curValue ])
             }
@@ -1648,29 +1648,53 @@ def getVarValue(fname, vname) {
 }
 
 def setVariable(fname, varName, varValue) {
-	flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
+    flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
     def flowObj = state.activeFlows[fname]
-    getGlobalVars(fname)
-    def updatedGlobal = false
-    def updatedLocal = false
+
+    // Load the latest global vars from file
+    def globalVars = []
+    try {
+        globalVars = readFlowFile("FE_global_vars.json") ?: []
+        //flowLog(fname, "Loaded globalVars from file: " + globalVars*.name, "debug")
+    } catch (e) {
+        flowLog(fname, "Could not load global vars from file, falling back to local: $e", "warn")
+    }
+
     flowObj.flowVars = flowObj.flowVars ?: []
-    flowObj.globalVars = flowObj.globalVars ?: []
-    flowObj.globalVars.each { v ->
-        if (v.name == varName) {
-            v.value = varValue
-            updatedGlobal = true
+    def isGlobal = globalVars.any { it.name == varName }
+    flowLog(fname, "In setVariable - isGlobal: ${isGlobal}", "debug")
+    def updated = false
+
+    if (isGlobal) {
+		flowLog(fname, "In setVariable - Parsing vars", "debug")
+        // Update in loaded list
+        globalVars.each { v ->
+            if (v.name == varName) {
+                v.value = varValue
+                updated = true
+            }
+        }
+        // Save the new list to file
+		if (updated) {
+			flowLog(fname, "In setVariable - Saving vars", "debug")
+			saveGlobalVarsToFile(globalVars)
+			state.globalVarsCache = globalVars
+			checkVariableTriggers()
+		}
+    } else {
+        // Update or add as local
+        flowObj.flowVars.each { v ->
+            if (v.name == varName) {
+                v.value = varValue
+                updated = true
+            }
+        }
+        if (!updated) {
+            flowObj.flowVars << [name: varName, value: varValue]
         }
     }
-    flowObj.flowVars.each { v ->
-        if (v.name == varName) {
-            v.value = varValue
-            updatedLocal = true
-        }
-    }
-    if (!updatedGlobal && !updatedLocal) {
-        flowObj.flowVars << [name: varName, value: varValue]
-        updatedLocal = true
-    }
+
+    // Always update context maps
     flowObj.vars = flowObj.vars ?: [:]
     flowObj.varCtx = flowObj.varCtx ?: [:]
     flowObj.vars[varName] = varValue
