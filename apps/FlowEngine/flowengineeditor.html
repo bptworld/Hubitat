@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.037</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.038</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -208,14 +208,14 @@
           style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
                   border-top:1px solid #333; padding-top:10px; font-family:monospace;
                   font-size:12px;">
-        Logs:<br>
-      </div>
-      <div style="margin-bottom:8px; text-align:left;">
+        <span style="display:inline-block;">Logs:</span>
         <button id="clearLogBtn"
-                style="margin-left:16px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
-                      background:#808080;color:#fff;border:none;">
+                style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
+                      background:#808080;color:#fff;border:none;display:inline-block;">
           Clear Log
         </button>
+        <br>
+        <div id="logLines"></div>
       </div>
     </div>
   </div>
@@ -556,7 +556,13 @@
 
       let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
       if (globals.length) {
-        html += `<div style="color:#eee;margin-bottom:3px;"><b>Global Variables</b></div>`;
+        html += `<div style="color:#eee;margin-bottom:3px;">
+          <b>Global Variables</b>
+          <button id="importGlobalVarsBtn" style="margin-left:12px;font-size:10px;padding:3px 5px;
+            border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+            Update Vars
+          </button>
+        </div>`;
         globals.forEach(v => {
           html += `<div style="margin-left:8px;">
             <span style="color:#eec150;">${v.name}</span> = 
@@ -565,21 +571,29 @@
         });
       }
 
-      if (window.FE_flowvars && Array.isArray(window.FE_flowvars) && window.FE_flowvars.length) {
-        html += `<div style="color:#eee;margin:10px 0 3px 0;"><b>Flow Variables</b></div>`;
-        window.FE_flowvars.forEach(v => {
-          html += `<div style="margin-left:8px;">
-            <span style="color:#90cdf4;">${v.name}</span> = 
-            <span style="color:#9fff9a;">${JSON.stringify(v.value)}</span>
-          </div>`;
-        });
-      }
-
-      if (!html) {
-        html = `<div style="color:#888;">No variables set.</div>`;
-      }
-
       container.innerHTML = html;
+
+      // Always (re)attach handler after DOM update:
+      const btn = document.getElementById("importGlobalVarsBtn");
+      if (btn) {
+        btn.onclick = async () => {
+          try {
+            const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+            if (!txt) { alert("No FE_global_vars.json found on Hubitat."); return; }
+            let arr = JSON.parse(txt);
+            if (Array.isArray(arr)) {
+              window.FE_global_vars = arr;
+              renderVariableInspector(); // This line is OK! Button handler is reset every render
+              if (typeof notifyVarsChange === "function") notifyVarsChange();
+              logAction("Imported " + arr.length + " global vars", "success");
+            } else {
+              alert("File does not contain an array.");
+            }
+          } catch (e) {
+            alert("Failed to import: " + e.message);
+          }
+        };
+      }
     }
 
     async function autoLoadGlobalVarsFromHubitat(retries = 8) {
@@ -1906,6 +1920,32 @@
             return;
           }
         };
+
+        if (node.name === "condition") {
+          // Device picker always rendered first!
+          renderDevicePickerSection(
+            el,
+            node,
+            getSortedDevicesWithSpecials(window.devices || []),
+            (ids, labels) => {
+              node.data.deviceIds = ids;
+              node.data.deviceId = ids[0] || "";
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              window.renderEditor(node);
+            },
+            true // multi-select ENABLED
+          );
+
+          // If Variable is selected, add variable picker BELOW device picker
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(el, node, true);
+            return;
+          }
+        }
 
         // ************************************
         // --- SHARED HELPERS ---
@@ -6070,14 +6110,6 @@
         logAction('🗑️ Trace cleared', 'info');
       });
 
-      document.addEventListener('DOMContentLoaded', () => {
-        // ── Clear Log button handler ───────────────────────────────
-        document.getElementById('clearLogBtn').addEventListener('click', () => {
-          const lb = document.getElementById('logBox');
-          lb.innerHTML = 'Logs:<br>';
-        });
-      });
-
       function hideTestUI() {
         const statusDiv = document.getElementById('flowTestStatus');
         if (!statusDiv) return;
@@ -6452,6 +6484,19 @@
         // Finally, append to the editor panel (device picker always above!)
         pickerDiv.appendChild(container);
       }
+
+      function logAction(msg, type = "info") {
+        const logLines = document.getElementById("logLines");
+        if (logLines) {
+          logLines.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
+          logLines.scrollTop = logLines.scrollHeight;
+        }
+      }
+
+      document.getElementById('clearLogBtn').onclick = function () {
+        const logLines = document.getElementById('logLines');
+        if (logLines) logLines.innerHTML = "";
+      };
 
     </script>
 </body>
