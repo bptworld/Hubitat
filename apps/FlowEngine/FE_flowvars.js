@@ -240,51 +240,22 @@ async function fetchHubitatVarFileContent(fileName) {
       };
       // Import global variables from Hubitat
       document.getElementById('importVarsBtn').onclick = async () => {
-        let files = await fetchHubitatVarFiles();
-        if (!files.length) { alert("No .json files on Hubitat"); return; }
-        let modal = document.createElement("div");
-        modal.style.position = "fixed";
-        modal.style.top = "0";
-        modal.style.left = "0";
-        modal.style.width = "100vw";
-        modal.style.height = "100vh";
-        modal.style.background = "rgba(0,0,0,0.32)";
-        modal.style.display = "flex";
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-        modal.style.zIndex = "99999";
-        modal.innerHTML = `
-          <div style="background:#232a2d;padding:24px 22px 18px 22px;border-radius:13px;box-shadow:0 2px 18px #0009;">
-            <div style="font-size:17px;margin-bottom:7px;">Import variables from:</div>
-            <select id="varsFileDropdown" style="width:275px;font-size:16px;margin-bottom:18px;">
-              ${files.map(f => `<option value="${f}">${f}</option>`).join("")}
-            </select>
-            <div style="text-align:right;">
-              <button id="varsImportOK">Import</button>
-              <button id="varsImportCancel" style="background:#a04040;">Cancel</button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById("varsImportOK").onclick = async () => {
-          let pick = document.getElementById("varsFileDropdown").value;
-          document.body.removeChild(modal);
-          if (!pick || pick == 'null') return;
-          let txt = await fetchHubitatVarFileContent(pick);
-          try {
-            let arr = JSON.parse(txt);
-            if (Array.isArray(arr)) {
-              globalVars = arr;
-              renderVarsList("global");
-              notifyVarsChange();
-              markExportNeeded(true);
-              alert("Imported " + arr.length + " global vars from " + pick);
-            } else alert("File does not contain an array.");
-          } catch(e) { alert("Failed to parse file: " + e.message); }
-        };
-        document.getElementById("varsImportCancel").onclick = () => {
-          document.body.removeChild(modal);
-        };
+        // Instantly fetch FE_global_vars.json from Hubitat, no picker
+        try {
+          const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+          if (!txt) return;
+          let arr = JSON.parse(txt);
+          if (Array.isArray(arr)) {
+            globalVars = arr;
+            renderVarsList("global");
+            notifyVarsChange();
+            logAction("Imported " + arr.length + " global vars", "success");
+          } else {
+            alert("File does not contain an array.");
+          }
+        } catch(e) {
+          alert("Failed to import: " + e.message);
+        }
       };
     }
 
