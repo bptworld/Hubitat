@@ -1,6503 +1,1826 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Flow Engine Editor</title>
-  <!-- ── BLOCKING Hubitat Credentials Prompt & Validation ── -->
-  <script>
-    (async function ensureHubitatCredentials() {
-      // 1) Load saved or prompt until we have non-empty values
-      let appId = localStorage.getItem('hubitatAppId') || '';
-      let token = localStorage.getItem('hubitatToken') || '';
-      while (!appId) {
-        appId = prompt('Enter your Hubitat App ID (from the One app):');
-      }
-      while (!token) {
-        token = prompt('Enter your Hubitat Access Token (from the One app):');
-      }
-
-      // 2) Save and pre-fill the inputs when they exist
-      localStorage.setItem('hubitatAppId', appId.trim());
-      localStorage.setItem('hubitatToken', token.trim());
-      document.addEventListener('DOMContentLoaded', () => {
-        const a = document.getElementById('hubitatAppId');
-        const t = document.getElementById('hubitatToken');
-        if (a) a.value = appId.trim();
-        if (t) t.value = token.trim();
-      });
-
-      // 3) Test the credentials by calling listFiles once
-      try {
-        const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
-        if (!res.ok) throw new Error();
-      } catch (e) {
-        // Bad App ID or Token: clear and restart
-        localStorage.removeItem('hubitatAppId');
-        localStorage.removeItem('hubitatToken');
-        alert('Hubitat credentials invalid. You will be prompted again.');
-        location.reload();
-        return;
-      }
-      // If we reach here, credentials are good and parsing continues…
-    })();
-  </script>
-
-  <link rel="stylesheet" href="FE_drawflow-css.min.css">
-  <link rel="stylesheet" href="FE_drawflow-extra.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
-  <script src="FE_flowvars.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
-</head>
-<body>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('hubitatAppId').value = window.hubitatAppId;
-      document.getElementById('hubitatToken').value = window.hubitatToken;
-    });
-  </script>
-  <div id="headline">
-    <div>
-      <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.038</small></div>
-      <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
-      <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
-      <select id="hubitatFileDropdown"
-        style="width:400px; display:inline-block;"
-        title="Pick a flow to load…">
-        <option value="">Loading…</option>
-      </select>
-      <span id="flowName" style="display:inline-block; width:400px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
-
-      <div class="inline-div">
-        <button id="activateFlowButton"
-          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:6px;">
-          Deactivated
-        </button>
-        <button id="loggingButton"
-          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
-          Log Disabled
-        </button>
-      </div>
-      <button id="toggleToolbarBtn"
-      style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
-    ▲ Hide Toolbar
-      </button>
-      <button id="toggleToolbar2Btn"
-      style="position:absolute;top:8px;right:15px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
-    ▲ Hide Node Controls
-      </button>
-    </div>
-  </div>
-  <div id="controls">
-    <div style="margin-bottom:5px;"></div>
-      <div class="inline-div">
-        <small>Device Options</small><br>
-        <button id="loadDevices" title="Load all devices from Hubitat">Reload</button>
-      </div>
-      <b> | </b>
-      <div class="inline-div">
-        <small>Flow Options</small><br>
-        <button id="sendFlow" title="Save current flow to Hubitat">Save</button>
-        <button id="saveAsFlow" title="Save current flow under a new name">Save As</button>
-        <button id="exportAnonFlow" title="Export a clean flow for sharing">Export</button>
-        <button id="renameFlow" title="Rename current flow and file">Rename</button>
-        <button id="deleteFlowAppBtn" title="Delete current Flow from Hubitat">Delete</button>
-        <button id="newFlow" title="Start a new flow from scratch">New</button>
-      </div>
-      <b> | </b>
-      <div class="inline-div">
-        <small><label for="gridBrightnessSlider">Background Image/Brightness</label></small><br>
-        <button id="bgImageBtn" type="button">Image</button>
-        <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
-        <b> | </b>
-        <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
-      </div>
-      <b> | </b>
-      <div class="inline-div">
-        <small>Align selected Nodes and/or </small>
-        <label style="user-select:none;">
-          <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
-          <small></small>Snap to grid</small>
-        </label>
-        <br>
-        <button id="alignLeftBtn"  title="Align Left">Left</button>
-        <button id="alignRightBtn" title="Align Right">Right</button>
-        <button id="alignTopBtn"   title="Align Top">Top</button>
-        <button id="alignBottomBtn" title="Align Bottom">Bottom</button>
-        <button id="alignCenterBtn"   title="Align Center">Center</button>
-        <button id="alignMiddleBtn"   title="Align Middle">Middle</button>
-      </div>
-    </div>
-  </div>
-  <div id="nodeControls">
-    <div style="margin-bottom:5px;">
-      <small style="display:block; text-align:center;">
-        ------- Add Nodes -------
-      </small>
-      <button id="addTrigger" title="Add an Event Trigger node">Event Trigger</button>
-      <button id="addCondition" title="Add a Condition node">Condition</button>
-      <button id="addDevice" title="Action (Device)">Action</button>
-      <b> | </b>
-      <button id="addComment" title="Comment/Note">Comment</button>
-      <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
-      <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
-      <button id="addDeviceToVar" title="Add a Devices to a Variable node">Devices to Variable</button>
-      <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
-      <button id="addNotification" title="Add a Notification node">Notification</button>
-      <button id="addRepeat" title="Add a Repeat node">Repeat</button>
-      <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
-      <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
-      <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
-      <button id="addSetVariable" title="Add a Set Variable node">Set Variable</button>
-      <b> | </b>
-      <button id="undoBtn" title="Undo last change">Undo</button>
-      <button id="redoBtn" title="Redo">Redo</button>
-      <b> | </b>
-      <label style="margin-left:8px; user-select:none; display:inline-block;">
-        <input
-          type="checkbox"
-          id="globalShowStatus"
-          checked
-          style="vertical-align:middle; margin-right:4px;"
-        >
-        Show Status
-      </label>
-    </div>
-  </div>
-  <div id="main">
-    <div id="drawflow">
-      <img id="drawflow-bg-image" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; pointer-events:none;">
-    </div>
-    <div id="editor">
-      <div id="flowTestStatus" style="margin: 12px 0;"></div>
-      <div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
-        <b>Node Editor</b>
-        <button id="clearTraceBtn"
-                style="margin-left:16px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
-                      background:#808080;color:#fff;border:none;">
-          Clear Trace
-        </button>
-      </div>
-      <div id="nodeEditor">Right Click a node to edit</div>
-      <div>
-        <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
-        <small id="multiSelectTip-win" style="display:none;">Use 'ctrl-click' to select multiple Devices</small>
-      </div>
-      <div><hr></div>
-      <div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
-        <div id="variableInspectorHeader"
-            style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
-          <span id="variableInspectorArrow"
-                style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Variable Inspector
-        </div>
-        <div id="variableInspectorContent"
-            style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
-        </div>
-      </div>
-      <div><hr></div>
-      <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
-        <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
-          <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Hide/Show/Add Variables
-        </div>
-        <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
-      </div>
-      <div id="logBox"
-          style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
-                  border-top:1px solid #333; padding-top:10px; font-family:monospace;
-                  font-size:12px;">
-        <span style="display:inline-block;">Logs:</span>
-        <button id="clearLogBtn"
-                style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
-                      background:#808080;color:#fff;border:none;display:inline-block;">
-          Clear Log
-        </button>
-        <br>
-        <div id="logLines"></div>
-      </div>
-    </div>
-  </div>
-  <div id="minimap-container"
-    style="position:fixed; bottom:24px; right:28px; width:240px; height:140px; background:#181d20cc; border-radius:12px; z-index:9999; box-shadow:0 2px 10px #0008; border:2px solid #444; overflow:hidden; cursor:pointer; display:none;">
-    <canvas id="minimap-canvas" width="240" height="140"></canvas>
-    <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">minimap</div>
-  </div>
-  <script src="FE_drawflow-js.min.js"></script>
-  <script src="FE_html2canvas.min.js"></script>
-  <script>
-    // 1) Fetch the list of flow-files from Hubitat
-    async function fetchHubitatFiles() {
-      const appId = document.getElementById("hubitatAppId").value.trim();
-      const token = document.getElementById("hubitatToken").value.trim();
-      if (!appId || !token) {
-        console.error("Missing App ID or Token");
-        return [];
-      }
-      const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      return Array.isArray(body.files)
-        ? body.files.map(f => f.replace(/\.json$/i, ""))
-        : [];
-    }
-
-    // 2) Globally-available: repopulate the dropdown
-    async function reloadFlowDropdown(selected) {
-      const dropdown = document.getElementById("hubitatFileDropdown");
-      if (!dropdown) return;
-
-      // 1) Rebuild the list
-      dropdown.style.display = "inline-block";
-      dropdown.innerHTML = "<option value=''>Pick a Flow…</option>";
-      let files = [];
-      try {
-        files = await fetchHubitatFiles();
-      } catch (err) {
-        console.error("Error fetching flow list:", err);
-        return;
-      }
-      files.forEach(f => {
-        const opt = document.createElement("option");
-        opt.value       = f;
-        opt.textContent = f;
-        dropdown.appendChild(opt);
-      });
-
-      // 2) Select the passed-in flow (empty string = “none”)
-      const focus = selected.replace(/\.json$/i, "")
-      dropdown.value = focus;
-
-      // 3) Pull creds for the API calls
-      const token = document.getElementById("hubitatToken")?.value?.trim() || "";
-      const appId = document.getElementById("hubitatAppId")?.value?.trim() || "";
-
-      // 4) Finally, redraw your Test/Status panel
-      checkIfFlowIsInUse(focus, appId, token);
-    }
-
-    function sanitizeFlowName(name) {
-      return name
-        .trim()
-        .replace(/\s+/g, "_")
-        .replace(/[^A-Za-z0-9_-]/g, "")
-        .replace(/_{2,}/g, "_")
-        .replace(/^_+|_+$/g, "");
-    }
- 
-    var devices = [];
-    window.editor = null;
-    window._multiSelectedNodes = new Set();
-    window.nextNodeX = 1200;
-    window.nextNodeY = 40;
-    window.nodeYIncrement = 56;
-    window.nodeStartX = 1200;
-    window.nodeStartY = 40;
-    window.nodeYLimit = 800;
-    window.newNodeOffsetX = 0;
-    window.newNodeOffsetY = 0;
-    window.newNodeOffsetStep = 5;
-    window.newNodeCounter = 0;
-    window.newNodeOffsetLimit = 10;
-
-    window.FE_global_var_names = [];
-    window.FE_flowvars = [];
-    window.FE_global_vars = [];
-
-    window.nodeStartMargin = 40;
-    window.nodeYIncrement = 64;
-    window.nodeYLimit = 400;
-    window.nextNodeCol = 0;
-    window.nextNodeIndex = 0;
-    window.selectedNodeIds = [];
-
-    window.undoStack = [];
-    window.redoStack = [];
-    
-    let flowTracePollingActive = false;
-
-    // ── global “Show Status” wiring ────────────────────────────────────────
-    // must run after the HTML for #nodeControls (with the new checkbox) exists
-    const globalShowStatusInput = document.getElementById('globalShowStatus');
-    window.globalShowStatus = globalShowStatusInput.checked;
-
-    globalShowStatusInput.addEventListener('change', () => {
-      window.globalShowStatus = globalShowStatusInput.checked;
-      // re‑render every node so they pick up the new setting
-      document.querySelectorAll('.drawflow-node').forEach(el => {
-        const id   = el.id.replace('node-', '');
-        const node = editor.getNodeFromId(id);
-        if (node) {
-          editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
-          markFlowNeedsSave(true)
-        }
-      });
-    });
-
-    function pushUndoState() {
-      if (!editor || !editor.export) {
-        return;
-      }
-      const state = JSON.stringify(editor.export());
-      if (window.undoStack.length && window.undoStack[window.undoStack.length-1] === state) {
-        return;
-      }
-      window.undoStack.push(state);
-      window.redoStack = [];
-    }
-
-    function doUndo() {
-      logAction("doUndo button clicked.");
-      if (window.undoStack.length < 2) return;
-      const current = window.undoStack.pop();
-      window.redoStack.push(current);
-      const prev = window.undoStack[window.undoStack.length-1];
-      if (prev) {
-        restoreFlowFromJson(prev);
-      }
-    }
-
-    function doRedo() {
-      logAction("doRedo button clicked.");
-      if (!window.redoStack.length) return;
-      const state = window.redoStack.pop();
-      if (state) {
-        if (editor && editor.export)
-          window.undoStack.push(JSON.stringify(editor.export()));
-        restoreFlowFromJson(state);
-      }
-    }
-
-    async function restoreFlowFromJson(jsonStr) {
-      try {
-        if (!window.devices || !window.devices.length) {
-          if (typeof fetchDevicesFromApp === "function") {
-            window.devices = await fetchDevicesFromApp();
-            window.devices.forEach(dev => {
-              if (Array.isArray(dev.attributes)) {
-                const attrMap = {};
-                dev.attributes.forEach(a => {
-                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
-                });
-                dev.attributes = attrMap;
-              }
-            });
-            window.devices.push(TIME_DEVICE);
-            window.devices.push(MODE_DEVICE);
-          }
-        }
-
-        const flow = JSON.parse(jsonStr);
-        if (editor && typeof editor.import === "function") {
-          editor.import(flow);
-          patchFlowWithDeviceLabels(flow, window.devices);
-          
-          const nodes =
-            editor.drawflow?.Home?.data ||
-            editor.drawflow?.drawflow?.Home?.data ||
-            {};
-          Object.values(nodes).forEach(n => {
-            const el = document.getElementById(`node-${n.id}`);
-            if (!el) return;
-            // n.name is "eventTrigger", "condition", "device", etc.
-            el.setAttribute('data-node-type', n.name);
-          });
-          attachNodeClickHandlers();
-
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-            Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
-          }
-
-          setTimeout(() => {
-            let selected = editor.selected_id;
-            if (!selected) {
-              const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-                ? Object.keys(editor.drawflow.Home.data)
-                : [];
-              if (allIds.length) {
-                selected = allIds[0];
-                editor.selected_id = selected;
-              }
-            }
-            if (selected) {
-              window.renderEditor(editor.getNodeFromId(selected));
-            } else {
-              document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-            }
-          }, 10);
-        }
-      } catch (e) {
-        logAction("Undo/Redo failed to restore flow: " + e, "error");
-      }
-    }
-
-    // -- MULTI-NODE SELECTION HANDLER --
-    document.getElementById("drawflow").addEventListener("click", function(e) {
-      const nodeElem = e.target.closest('.drawflow-node');
-      if (!nodeElem) return;
-      const nodeId = nodeElem.id.replace(/^node-/, "");
-      if (!nodeId) return;
-      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-
-      if (e.ctrlKey || e.metaKey) {
-        // Toggle selection
-        if (window._multiSelectedNodes.has(nodeId)) {
-          window._multiSelectedNodes.delete(nodeId);
-        } else {
-          window._multiSelectedNodes.add(nodeId);
-        }
-      } else {
-        // Single-select
-        window._multiSelectedNodes.clear();
-        window._multiSelectedNodes.add(nodeId);
-      }
-
-      // Update visual highlighting
-      updateMultiSelectUI();
-
-      // Still keep editor.selected_id in sync for property panel, etc.
-      editor.selected_id = nodeId;
-    });
-
-    function markFlowNeedsSave(needed = true) {
-      const btn = document.getElementById('sendFlow');
-      if (!btn) return;
-      if (needed) {
-        btn.classList.add('need-save');
-        pushUndoState();
-      } else {
-        btn.classList.remove('need-save');
-      }
-    }
-
-    function hubitatCredentialsAreValid(logIfMissing = false) {
-      const appId = document.getElementById("hubitatAppId")?.value?.trim();
-      const token = document.getElementById("hubitatToken")?.value?.trim();
-      if (!appId || !token) {
-        if (logIfMissing) logAction("Missing App ID or Token. Please enter both.", "warn");
-        return false;
-      }
-      return true;
-    }
-
-    function showHubitatWarning(show) {
-      let warn = document.getElementById("hubitatWarnBanner");
-      if (!warn) {
-        warn = document.createElement("div");
-        warn.id = "hubitatWarnBanner";
-        warn.style = "background: #ffc107; color: #111; padding: 9px 22px; font-weight: bold; text-align:center; font-size:16px; border-bottom: 2px solid #b8860b;";
-        warn.innerHTML = "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
-        document.body.insertBefore(warn, document.body.firstChild);
-      }
-      warn.style.display = show ? "block" : "none";
-    }
-
-    function updateHubitatButtonStates() {
-      const valid = hubitatCredentialsAreValid();
-      const buttonIds = [
-        "loadDevices", 
-        "loadFlowFromHubitatDropdown", 
-        "sendFlow"
-      ];
-      buttonIds.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.disabled = !valid;
-      });
-      showHubitatWarning(!valid);
-    }
-    document.getElementById("hubitatAppId").addEventListener("input", updateHubitatButtonStates);
-    document.getElementById("hubitatToken").addEventListener("input", updateHubitatButtonStates);
-    window.addEventListener("DOMContentLoaded", updateHubitatButtonStates);
-
-    function clearUiIfCredentialsMissing() {
-      if (!hubitatCredentialsAreValid()) {
-        if (typeof window.devices !== "undefined") window.devices = [];
-        if (editor && editor.clear) editor.clear();
-      }
-    }
-    document.getElementById("hubitatAppId").addEventListener("input", clearUiIfCredentialsMissing);
-    document.getElementById("hubitatToken").addEventListener("input", clearUiIfCredentialsMissing);
-
-    function validateHubitatInputFormat() {
-      const appId = document.getElementById("hubitatAppId")?.value?.trim();
-      const token = document.getElementById("hubitatToken")?.value?.trim();
-      if (appId && !/^[a-zA-Z0-9]+$/.test(appId)) {
-        showHubitatWarning(true);
-        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid App ID format. Only letters and numbers are allowed.";
-      } else if (token && !/^[a-zA-Z0-9\-]+$/.test(token)) {
-        showHubitatWarning(true);
-        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid Token format.";
-      } else {
-        showHubitatWarning(!hubitatCredentialsAreValid());
-        if (hubitatCredentialsAreValid()) document.getElementById("hubitatWarnBanner").innerText =
-          "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
-      }
-    }
-    document.getElementById("hubitatAppId").addEventListener("input", validateHubitatInputFormat);
-    document.getElementById("hubitatToken").addEventListener("input", validateHubitatInputFormat);
-
-    window.addEventListener("DOMContentLoaded", function() {
-      setTimeout(updateHubitatButtonStates, 350);
-    });
-      
-    function logAction(msg, type = "info") {
-      const logBox = document.getElementById("logBox");
-      if (logBox) {
-        logBox.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
-        logBox.scrollTop = logBox.scrollHeight;
-      }
-    }
-
-    function renderVariableInspector() {
-      const container = document.getElementById("variableInspectorContent");
-      if (!container) return;
-      let html = "";
-
-      let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-      if (globals.length) {
-        html += `<div style="color:#eee;margin-bottom:3px;">
-          <b>Global Variables</b>
-          <button id="importGlobalVarsBtn" style="margin-left:12px;font-size:10px;padding:3px 5px;
-            border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
-            Update Vars
-          </button>
-        </div>`;
-        globals.forEach(v => {
-          html += `<div style="margin-left:8px;">
-            <span style="color:#eec150;">${v.name}</span> = 
-            <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
-          </div>`;
-        });
-      }
-
-      container.innerHTML = html;
-
-      // Always (re)attach handler after DOM update:
-      const btn = document.getElementById("importGlobalVarsBtn");
-      if (btn) {
-        btn.onclick = async () => {
-          try {
-            const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-            if (!txt) { alert("No FE_global_vars.json found on Hubitat."); return; }
-            let arr = JSON.parse(txt);
-            if (Array.isArray(arr)) {
-              window.FE_global_vars = arr;
-              renderVariableInspector(); // This line is OK! Button handler is reset every render
-              if (typeof notifyVarsChange === "function") notifyVarsChange();
-              logAction("Imported " + arr.length + " global vars", "success");
-            } else {
-              alert("File does not contain an array.");
-            }
-          } catch (e) {
-            alert("Failed to import: " + e.message);
-          }
-        };
-      }
-    }
-
-    async function autoLoadGlobalVarsFromHubitat(retries = 8) {
-      // 0) sanity check
-      if (typeof fetchHubitatVarFileContent !== "function") {
-        throw new Error("fetchHubitatVarFileContent not available");
-      }
-
-      // 1) fetch the file
-      let txt;
-      try {
-        txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-      } catch (e) {
-        if (retries > 0) {
-          // transient error, retry
-          return setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
-        }
-        //logAction("Error fetching FE_global_vars.json – aborting globals load", "error");
-        return;
-      }
-
-      // 2) if not found or empty, skip globals entirely
-      if (!txt || !txt.trim()) {
-        //logAction("FE_global_vars.json not found – skipping globals load", "warn");
-        return;
-      }
-
-      // 3) parse (or abort on invalid JSON)
-      let parsed;
-      try {
-        parsed = JSON.parse(txt);
-        logAction("Auto-loaded FE_global_vars.json", "info");
-      } catch (e) {
-        console.warn("FE_global_vars.json is invalid JSON – aborting globals load", e);
-        return;
-      }
-
-      // 4) populate in-memory state and UI
-      window.FE_global_vars      = parsed;
-      window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
-
-      if (window.flowVars?.setGlobalVars) {
-        flowVars.setGlobalVars(parsed);
-      }
-      if (window.flowVars?.renderManager) {
-        flowVars.renderManager(
-          document.getElementById("variableManager"),
-          { globalVars: true }
-        );
-      }
-      if (editor?.selected_id) {
-        renderEditor(editor.getNodeFromId(editor.selected_id));
-      }
-      renderVariableInspector();
-    }
- 
-    const TIME_DEVICE = {
-      id: "__time__",
-      label: "Time",
-      name: "Time",
-      attributes: {
-        currentTime: "",
-        timeOfDay: ["sunrise", "sunset"],
-        dayOfWeek: [
-          "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
-        ]
-      },
-      commands: []
-    };
-
-    function buildTimeDevicePicker(pickerDiv, node) {
-      // Only handle the special “Time” and “Mode” devices
-      const devs = node.data.deviceIds || [];
-      if (
-        devs.length !== 1 ||
-        (node.data.deviceId !== "__time__" && node.data.deviceId !== "__mode__")
-      ) {
-        return false;
-      }
-
-      pickerDiv.innerHTML = "";
-
-      // Initialize data on first render
-      if (!node.data.attribute) {
-        node.data.attribute  = "";
-        node.data.comparator = "";
-        node.data.value      = "";
-      }
-
-      // ── MODE DEVICE ───────────────────────────────────────────────
-      if (node.data.deviceId === "__mode__") {
-        node.data.attribute = "mode";
-        editor.updateNodeDataFromId(node.id, node.data);
-
-        const lbl = document.createElement("label");
-        lbl.textContent = "Mode";
-        lbl.style.display = "block";
-        pickerDiv.appendChild(lbl);
-
-        const sel = document.createElement("select");
-        sel.style = "display:block;margin-bottom:12px";
-        const modes = window.hubitatModes || [];
-        sel.innerHTML =
-          `<option value=""></option>` +
-          modes
-            .map(m => `<option value="${m.id}"${node.data.value === m.id ? " selected" : ""}>${m.name}</option>`)
-            .join("");
-        sel.onchange = () => {
-          node.data.value = sel.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        };
-        pickerDiv.appendChild(sel);
-        return true;
-      }
-
-      // ── CONDITION LABEL ───────────────────────────────────────────
-      pickerDiv.appendChild(
-        Object.assign(document.createElement("label"), {
-          textContent: "Condition",
-          style: "display:block;margin-bottom:4px",
-        })
-      );
-
-      // ── ATTRIBUTE SELECT ──────────────────────────────────────────
-      const attrSelect = document.createElement("select");
-      attrSelect.style = "display:block;margin-bottom:12px";
-      attrSelect.innerHTML =
-        `<option value=""${!node.data.attribute ? " selected" : ""}>(none)</option>` +
-        [
-          { key: "timeOfDay",   label: "Time of Day"  },
-          { key: "dayOfWeek",   label: "Day of Week"  },
-          { key: "currentTime", label: "Current Time" }
-        ]
-          .map(def =>
-            `<option value="${def.key}"${node.data.attribute===def.key ? " selected" : ""}>${def.label}</option>`
-          )
-          .join("");
-      attrSelect.onchange = () => {
-        node.data.attribute = attrSelect.value;
-        node.data.comparator = "";
-        node.data.value = "";
-        editor.updateNodeDataFromId(node.id, node.data);
-        buildTimeDevicePicker(pickerDiv, node);
-        markFlowNeedsSave(true);
-      };
-      pickerDiv.appendChild(attrSelect);
-
-      // ── COMPARATOR LABEL ──────────────────────────────────────────
-      pickerDiv.appendChild(
-        Object.assign(document.createElement("label"), {
-          textContent: "Comparator",
-          style: "display:block;margin-bottom:4px",
-        })
-      );
-
-      // ── COMPARATOR SELECT ─────────────────────────────────────────
-      const cmpSelect = document.createElement("select");
-      cmpSelect.style = "display:block;margin-bottom:12px";
-      cmpSelect.innerHTML =
-        `<option value=""${!node.data.comparator ? " selected" : ""}>(none)</option>` +
-        ["==","!=","<","<=" ,">",">=","between"]
-          .map(cmp =>
-            `<option value="${cmp}"${node.data.comparator===cmp ? " selected" : ""}>${cmp==="==" ? "equals" : cmp}</option>`
-          )
-          .join("");
-      cmpSelect.onchange = () => {
-        node.data.comparator = cmpSelect.value;
-        node.data.value = "";
-        editor.updateNodeDataFromId(node.id, node.data);
-        buildTimeDevicePicker(pickerDiv, node);
-        markFlowNeedsSave(true);
-      };
-      pickerDiv.appendChild(cmpSelect);
-
-      // ── VALUE PICKERS ─────────────────────────────────────────────
-      if (node.data.attribute === "dayOfWeek") {
-        // Day‑of‑Week picker
-        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        if (node.data.comparator === "between") {
-          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
-          const [startVal, endVal] = node.data.value;
-
-          // Start day dropdown
-          const startSel = document.createElement("select");
-          startSel.style = "display:block;margin-bottom:8px";
-          startSel.innerHTML =
-            `<option value=""></option>` +
-            days.map(d =>
-              `<option value="${d}"${startVal===d ? " selected" : ""}>${d}</option>`
-            ).join("");
-          startSel.onchange = () => {
-            node.data.value[0] = startSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(startSel);
-
-          // End day dropdown
-          const endSel = document.createElement("select");
-          endSel.style = "display:block;margin-bottom:12px";
-          endSel.innerHTML =
-            `<option value=""></option>` +
-            days.map(d =>
-              `<option value="${d}"${endVal===d ? " selected" : ""}>${d}</option>`
-            ).join("");
-          endSel.onchange = () => {
-            node.data.value[1] = endSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(endSel);
-        } else {
-          // Multi‑select
-          const sel = document.createElement("select");
-          sel.multiple = true;
-          sel.size     = days.length;
-          sel.style    = "display:block;margin-bottom:12px";
-          const chosen = Array.isArray(node.data.value) ? node.data.value : (node.data.value ? [node.data.value] : []);
-          days.forEach(d => {
-            const opt = document.createElement("option");
-            opt.value = d;
-            opt.textContent = d;
-            if (chosen.includes(d)) opt.selected = true;
-            sel.appendChild(opt);
-          });
-          sel.onchange = () => {
-            node.data.value = Array.from(sel.selectedOptions).map(o => o.value);
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(sel);
-        }
-      }
-      else if (node.data.attribute === "timeOfDay") {
-        // Time of Day (sunrise/sunset or custom)
-        if (node.data.comparator === "between") {
-          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
-          const [startVal, endVal] = node.data.value;
-
-          // Sunrise/Sunset start selector
-          const startSelect = document.createElement("select");
-          startSelect.style = "display:block;margin-bottom:8px";
-          startSelect.innerHTML =
-            `<option value=""${!startVal ? " selected" : ""}>(none)</option>` +
-            ["sunrise","sunset"].map(opt =>
-              `<option value="${opt}"${startVal===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
-            ).join("");
-          startSelect.onchange = () => {
-            node.data.value[0] = startSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(startSelect);
-
-          // Sunrise/Sunset/Custom end selector
-          const endSelect = document.createElement("select");
-          endSelect.style = "display:block;margin-bottom:12px";
-          endSelect.innerHTML =
-            `<option value=""${!endVal ? " selected" : ""}>(none)</option>` +
-            ["sunrise","sunset","custom"].map(opt =>
-              `<option value="${opt}"${
-                (opt!=="custom" ? endVal===opt : (endVal && !["sunrise","sunset"].includes(endVal)))
-                  ? " selected" : ""
-              }>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
-            ).join("");
-          endSelect.onchange = () => {
-            if (endSelect.value === "custom") {
-              node.data.value[1] = (endVal && !["sunrise","sunset"].includes(endVal)) ? endVal : "12:00";
-            } else {
-              node.data.value[1] = endSelect.value;
-            }
-            editor.updateNodeDataFromId(node.id, node.data);
-            buildTimeDevicePicker(pickerDiv, node);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(endSelect);
-
-         // Offset input for start and end
-        const offsetLabel = document.createElement("label");
-        offsetLabel.textContent = "Offset ± (minutes)";
-        offsetLabel.style = "display:block;margin:8px 0 4px 0;";
-        pickerDiv.appendChild(offsetLabel);
-
-        const startOffset = document.createElement("input");
-        startOffset.type = "number";
-        startOffset.placeholder = "Start Offset";
-        startOffset.value = Array.isArray(node.data.offset) ? node.data.offset[0] || 0 : 0;
-        startOffset.style = "display:block;margin-bottom:6px;width:100%;";
-
-        const endOffset = document.createElement("input");
-        endOffset.type = "number";
-        endOffset.placeholder = "End Offset";
-        endOffset.value = Array.isArray(node.data.offset) ? node.data.offset[1] || 0 : 0;
-        endOffset.style = "display:block;margin-bottom:12px;width:100%;";
-
-        startOffset.onchange = endOffset.onchange = () => {
-          node.data.offset = [
-            parseInt(startOffset.value) || 0,
-            parseInt(endOffset.value) || 0
-          ];
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        };
-
-        pickerDiv.appendChild(startOffset);
-        pickerDiv.appendChild(endOffset);
-
-          // Custom time input if needed
-          if (
-            node.data.value[1] === "custom" ||
-            (node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1]))
-          ) {
-            const timeInput = document.createElement("input");
-            timeInput.type  = "time";
-            timeInput.value = node.data.value[1] || "";
-            timeInput.style = "display:block;margin-bottom:12px";
-            timeInput.onchange = () => {
-              node.data.value[1] = timeInput.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
-            };
-            pickerDiv.appendChild(timeInput);
-          }
-        }
-        else {
-          // Single sunrise/sunset select
-          const todSelect = document.createElement("select");
-          todSelect.style = "display:block;margin-bottom:12px";
-          todSelect.innerHTML =
-            `<option value=""${!node.data.value ? " selected" : ""}>(none)</option>` +
-            ["sunrise","sunset"].map(opt =>
-              `<option value="${opt}"${node.data.value===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
-            ).join("");
-          todSelect.onchange = () => {
-            node.data.value = todSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(todSelect);
-
-          // Offset input for single sunrise/sunset
-          const offsetLabel = document.createElement("label");
-          offsetLabel.textContent = "Offset ± (minutes)";
-          offsetLabel.style = "display:block;margin:8px 0 4px 0;";
-          pickerDiv.appendChild(offsetLabel);
-
-          const offsetInput = document.createElement("input");
-          offsetInput.type = "number";
-          offsetInput.placeholder = "Offset (min)";
-          offsetInput.value = node.data.offset || 0;
-          offsetInput.style = "display:block;margin-bottom:12px;width:100%;";
-          offsetInput.onchange = () => {
-            node.data.offset = parseInt(offsetInput.value) || 0;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          pickerDiv.appendChild(offsetInput);
-        }
-      }
-      else if (node.data.attribute === "currentTime" && node.data.comparator === "between") {
-        // Two <input type="time"> for “between” currentTime
-        if (!Array.isArray(node.data.value)) node.data.value = ["",""];
-        const [cStart, cEnd] = node.data.value;
-
-        const inStart = document.createElement("input");
-        inStart.type  = "time";
-        inStart.value = cStart || "";
-        inStart.style = "display:block;margin-bottom:8px";
-        inStart.onchange = () => {
-          node.data.value[0] = inStart.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        };
-        pickerDiv.appendChild(inStart);
-
-        const inEnd = document.createElement("input");
-        inEnd.type  = "time";
-        inEnd.value = cEnd || "";
-        inEnd.style = "display:block;margin-bottom:12px";
-        inEnd.onchange = () => {
-          node.data.value[1] = inEnd.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        };
-        pickerDiv.appendChild(inEnd);
-      }
-      else {
-        // Fallback single <input type="time">
-        const timeInput = document.createElement("input");
-        timeInput.type  = "time";
-        timeInput.value = node.data.value || "";
-        timeInput.style = "display:block;margin-bottom:12px";
-        timeInput.onchange = () => {
-          node.data.value = timeInput.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        };
-        pickerDiv.appendChild(timeInput);
-      }
-
-      return true;
-    }
-
-    const MODE_DEVICE = {
-      id: "__mode__",
-      label: "Home Location",
-      name: "Mode",
-      attributes: { mode: "" },
-      commands: []
-    };
-
-    const VARIABLE_DEVICE = {
-      id: "__variable__",
-      label: "Variable",
-      name: "Variable",
-      attributes: { value: "" }
-    };
-
-    const devs = Array.isArray(window.devices) ? window.devices : [];
-    let conditionDevices = [...devs];
-
-    conditionDevices.unshift(VARIABLE_DEVICE);
-
-    function isValidFlowName(flowName) {
-      return /^[a-zA-Z0-9_-]+$/.test(flowName);
-    }
-
-    // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
-    // 1) Generic attribute picker
-    function renderAttributePicker(el, node, dev, onChange) {
-      const lbl = document.createElement("label");
-      lbl.textContent = "Attribute";
-      lbl.style.display = "block";
-      el.appendChild(lbl);
-
-      const sel = document.createElement("select");
-      sel.style.display = "block";
-      sel.style.marginBottom = "12px";
-      // inject a "(none)" default, selected when node.data.attribute is falsy
-      sel.innerHTML =
-        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
-        Object.keys(dev.attributes)
-          .map(attr =>
-            `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
-          )
-          .join("");
-      sel.onchange = onChange;
-      markFlowNeedsSave(true);
-      el.appendChild(sel);
-    }
-
-    // 2) Generic comparator picker
-    function renderComparatorPicker(el, node, comparators, comparatorLabels, onChange) {
-      const lbl = document.createElement("label");
-      lbl.textContent = "Comparator";
-      lbl.style.display = "block";
-      el.appendChild(lbl);
-
-      const sel = document.createElement("select");
-      sel.style.display = "block";
-      sel.style.marginBottom = "12px";
-      // inject "(none)" default
-      sel.innerHTML =
-        `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
-        comparators
-          .map(cmp =>
-            `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
-          )
-          .join("");
-      sel.onchange = onChange;
-      markFlowNeedsSave(true);
-      el.appendChild(sel);
-    }
-
-    function renderValueField(el, node, knownValues, onChange, between = false) {
-      // Prevent duplicate value fields
-      if (el.querySelector('.value-field')) return;
-
-      const lbl = document.createElement("label");
-      lbl.textContent = "Value";
-      lbl.style.display = "block";
-      lbl.className = "value-field";
-      el.appendChild(lbl);
-
-      if (between) {
-        // Two inputs for “between”
-        const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
-        const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
-        const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
-        const upd = () => { node.data.value = [minIn.value, maxIn.value]; onChange(); markFlowNeedsSave(true);};
-        minIn.onchange = maxIn.onchange = upd;
-        minIn.className = maxIn.className = "value-field";
-        el.appendChild(minIn);
-        el.appendChild(maxIn);
-      }
-      else if (knownValues && knownValues.length) {
-        // Use dropdown
-        const sel = document.createElement("select");
-        sel.style.display = "block";
-        sel.style.marginBottom = "12px";
-        sel.className = "value-field";
-        sel.innerHTML =
-          `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
-          knownValues
-            .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
-            .join("");
-        sel.onchange = () => { 
-          node.data.value = sel.value; 
-          onChange(); 
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(sel);
-      }
-      else {
-        // Fallback: show input for free value if no known values!
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = node.data.value || "";
-        input.placeholder = "Enter value";
-        input.style = "display:block;margin-bottom:12px;width:100%;";
-        input.className = "value-field";
-        input.onchange = () => {
-          node.data.value = input.value;
-          onChange();
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(input);
-      }
-    }
-
-    function nodeTileHtml(type, data, nodeId) {
-      function getCurrentValue(deviceId, attr) {
-        const devs = window.devices || [];
-        const dev = devs.find(d => d.id == deviceId);
-        if (dev && dev.attributes && attr && dev.attributes[attr] !== undefined) {
-          return dev.attributes[attr];
-        }
-        return "";
-      }
-
-      const t = (type || "").toLowerCase();
-
-      if (t === "donothing") {
-        return `<div class="logic-node">Do Nothing<${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}/div>`;
-      }
-      if (t === "delay") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = "Delay";
-        if (typeof data.ms === "number" && !isNaN(data.ms)) {
-          label = `Delay ${data.ms} ms`;
-        } else if (data && data.ms) {
-          label = `Delay ${data.ms} ms`;
-        } else if (data && data.minutes) {
-          label = `Delay ${data.minutes} min`;
-        }
-        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "delaymin") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
-        return `<div class="logic-node">${label}${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-
-      if (t === "savedevicestate") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-      if (t === "restoredevicestate") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}</div>`;
-      }
-
-      if (t === "comment") {
-        const errorStyle = getErrorStyle(type, data);
-        let isSelected = false;
-        if (editor && editor.selected_id && nodeId) {
-          if (editor.selected_id == nodeId) isSelected = true;
-        }
-        let txt = data && data.text ? data.text : "(No comment)";
-        return `<div class="comment-tile">
-          Comment<hr>
-          <div>${txt}</div>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      if (t === "schedule") {
-        const errorStyle = getErrorStyle(type, data);
-        let cron = data.cron || "";
-        let repeatDays = Array.isArray(data.repeatDays) ? data.repeatDays.join(", ") : "";
-        let time = data.time || "";
-        return `<div class="schedule-tile">
-          Schedule<hr>
-          <span style="font-size:11px">
-            ${cron ? "Cron: " + cron + "<br>" : ""}
-            ${repeatDays ? "Repeat: " + repeatDays + "<br>" : ""}
-            ${time ? "Time: " + time : ""}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      if (t === "repeat") {
-        const errorStyle = getErrorStyle(type, data);
-        const lockedIcon = data.locked
-          ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>`
-          : "";
-
-        let description;
-        if (data.repeatMode === "until") {
-          const deviceLabel = data.deviceLabel || "Device";
-          const attr        = data.attribute   || "Attribute";
-          const comp        = data.comparator  || "==";
-          const val         = data.value       || "Value";
-          description = `Until ${deviceLabel} ${attr} ${comp} ${val}`;
-        } else {
-          const max = data.repeatMax || 1;
-          description = `Max ${max} time${max !== 1 ? "s" : ""}`;
-        }
-
-        return `<div class="repeat-tile" style="position:relative;">
-          Repeat<br>
-          <span style="font-size:11px">
-            ${description}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      if (t === "setvariable") {
-        const errorStyle = getErrorStyle(type, data);
-        let vName = data.varName || "Variable";
-        let vValue = data.varValue || "Value";
-        return `<div class="setVariable-tile">
-          Set Variable<br>
-          <span style="font-size:11px">
-            ${vName} = ${vValue}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      if (t === "notmatchingvar") {
-        const errorStyle = getErrorStyle(type, data);
-        const devLabel = "";
-        const attribute = "";
-        const value = "";
-        const outputVar = (data.outputVar && data.outputVar.trim().toLowerCase() !== "undefined")
-          ? data.outputVar
-          : "Devices to a Variable";
-        const scope = data.varScope === "global" ? "Global" : "Flow";
-        const mode  = data.append ? "Append" : "Overwrite";
-
-        return `<div class="setVariable-tile">
-          Devices to a Variable<br>
-          <span style="font-size:11px">
-            ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
-            ${attribute ? "Attr: " + attribute + "<br>" : ""}
-            ${value     ? "Not:  " + value     + "<br>" : ""}
-            <hr>
-            <b>Output variable / file name:</b> ${outputVar}<br>
-            <b>Attr Type:</b> ${scope}<br>
-            <b>Save Mode:</b> ${mode}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      if (t === "notification") {
-        const errorStyle = getErrorStyle(type, data);
-        let devLabels = [];
-        let ids = Array.isArray(data.targetDeviceId) ? data.targetDeviceId : [data.targetDeviceId];
-        (ids || []).forEach(id => {
-          let dev = (window.devices || []).find(d => d.id == id);
-          if (dev) devLabels.push(dev.label || dev.name || dev.id);
-        });
-        let devLabelStr = devLabels.length ? devLabels.join(", ") : "<i>No device</i>";
-
-        const lockedHtml = data.locked
-          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
-          : "";
-        const notifType = data.notificationType === "speech" ? "Speech" : "Push";
-        const msg       = data.message || "";
-
-        return `
-          <div class="notification-tile">
-            ${notifType} Notifications<br>
-          <span style="font-size:11px">
-            Device: ${devLabelStr}<br>
-            ${msg ? `Message: "${msg}"<br>` : ""}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
-      }
-
-      // ---- Combined rendering for Event Trigger & Condition ----
-      if (type === "eventTrigger" || type === "condition") {
-        const isCondition = type === "condition";
-        const errorStyle  = getErrorStyle(type, data);
-        const tileClass   = (isCondition ? "condition-tile" : "trigger-tile") +
-          (editor.selected_id == nodeId ? " selected" : "");
-
-        // Comparator and value text
-        const comp = data.comparator || "==";
-        let valText = "";
-        if (comp === "between" && Array.isArray(data.value)) {
-          valText = ` (${data.value[0]} to ${data.value[1]})`;
-        } else if (data.value !== undefined && data.value !== "") {
-          valText = ` ${data.value}`;
-        }
-
-        // Logic value
-        const logicHtml = data.logic
-          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;"><b>Logic:</b> ${data.logic.toUpperCase()}</div>`
-          : "";
-
-        // Main label: variable vs. real device
-        let mainText;
-        if (data.deviceId === "__variable__") {
-          mainText = `${data.variableName || "<no var>"} ${comp}${valText}`;
-        } else {
-          const dev = (window.devices || []).find(d => d.id == data.deviceId);
-          const devLabel = dev ? (dev.label || dev.name) : (data.deviceLabel || data.deviceId);
-          mainText = `${devLabel} ${data.attribute || ""} ${comp}${valText}`;
-        }
-
-        // Current-status line (handles single + multi-device)
-        let statusHtml = "";
-        if (window.globalShowStatus && data.attribute) {
-          const ids = (Array.isArray(data.deviceIds) && data.deviceIds.length)
-            ? data.deviceIds
-            : [data.deviceId];
-          statusHtml = ids.map(id => {
-            const curr  = getCurrentValue(id, data.attribute);
-            const d     = (window.devices || []).find(dev => dev.id == id);
-            const label = d ? (d.label || d.name) : (data.deviceLabel || id);
-            return `<div class="status-line" style="font-size:10px;color:#000000;">Current ${label}: ${curr}</div>`;
-          }).join("");
-        }
-
-        // Click-pattern indicator
-        const clickHtml = !isCondition && data.clickPattern
-          ? `<div class="click-pattern"></div>`
-          : "";
-
-        // Locked padlock
-        const lockedHtml = data.locked
-          ? '<div style="position:absolute;top:6px;right:6px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
-          : "";
-
-        return `
-          <div class="${tileClass}" ${errorStyle}>
-            ${isCondition ? "Condition" : "Event Trigger"}<br>
-            <span style="font-size:11px">
-              ${mainText}<br>
-              ${logicHtml}
-              <hr>
-            </span>
-            ${statusHtml}
-            ${clickHtml}
-            ${lockedHtml}
-          </div>`;
-      }
-
-      // Action tile (device) with per-device status including device names
-      if (t === "device") {
-        const isSelected = editor && editor.selected_id === nodeId;
-        const errorStyle = getErrorStyle(type, data);
-        const tileClass  = "device-tile" + (isSelected ? " selected" : "");
-
-        // Label, command, and optional value
-        const label = data.deviceLabel
-          || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
-          || "<i>Pick device(s)…</i>";
-        const cmd = data.command || "";
-        const val = data.value ? `(${data.value})` : "";
-
-        // Status: show current value per selected device
-        let statusHtml = "";
-        if (window.globalShowStatus && cmd) {
-          const cmdAttrMap = {
-            on: ["switch"], off: ["switch"], toggle: ["switch"],
-            setLevel: ["level"], startLevelChange: ["level"], stopLevelChange: ["level"],
-            setColor: ["color"], lock: ["lock"], unlock: ["lock"]
-          };
-          const attrsToShow = cmdAttrMap[cmd] || [];
-          const devs = window.devices || [];
-          const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
-            ? data.deviceIds
-            : [data.deviceId];
-
-          statusHtml = ids.map(id => {
-            const dev = devs.find(d => d.id == id);
-            if (!dev?.attributes) return "";
-            return attrsToShow.map(attr => {
-              const v = dev.attributes[attr];
-              if (v == null) return "";
-              const name = dev.label || dev.name || id;
-              return `<div class="current-value">Current ${name}: ${v}</div>`;
-            }).join("");
-          }).join("");
-        }
-
-        // Color preview
-        let colorPreview = "";
-        if (cmd.toLowerCase() === "setcolor" && data.color) {
-          colorPreview = `<div style="
-            margin-top:4px;
-            width:30px; height:14px;
-            border-radius:5px;
-            background:${data.color};
-            border:1px solid #555;
-            display:inline-block;
-          "></div>`;
-        }
-
-        // Locked icon
-        const lockedHtml = data.locked
-          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
-          : "";
-
-        return `
-          <div class="${tileClass}" ${errorStyle}>
-            Action<br>
-            <span style="font-size:11px">
-              ${label} ${cmd || ''} ${val || ''}<br><hr>
-            </span>
-            ${statusHtml}
-            ${colorPreview}
-            ${lockedHtml}
-          </div>`;
-      }
-    }
-
-    function updateTileHtml(node) {
-      if (editor && typeof editor.updateNodeHtmlFromId === "function") {
-        editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-      }
-    }
-
-    function updateMultiSelectUI() {
-      document.querySelectorAll('.drawflow-node').forEach(el => {
-        el.classList.remove('selected-multi');
-        const nodeId = el.id.replace(/^node-/, '');
-        if (window._multiSelectedNodes?.has(nodeId)) {
-          el.classList.add('selected-multi');
-        }
-      });
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-      // --- Wait for credentials autofill, then auto-load globals ---
-      function tryAutoLoadGlobalsWhenReady(retries = 30) {
-        const appIdEl = document.getElementById("hubitatAppId");
-        const tokenEl = document.getElementById("hubitatToken");
-        if (appIdEl && tokenEl && appIdEl.value && tokenEl.value) {
-          autoLoadGlobalVarsFromHubitat();
-        } else if (retries > 0) {
-          setTimeout(() => tryAutoLoadGlobalsWhenReady(retries - 1), 200);
-        }
-      }
-      tryAutoLoadGlobalsWhenReady();
-
-      function rememberInput(inputId, storageKey) {
-        const el = document.getElementById(inputId);
-        if (localStorage.getItem(storageKey)) {
-          el.value = localStorage.getItem(storageKey);
-        }
-        el.addEventListener("input", function() {
-          localStorage.setItem(storageKey, el.value.trim());
-        });
-      }
-      rememberInput("hubitatAppId", "hubitatAppId");
-      rememberInput("hubitatToken", "hubitatToken");
-
-      document.getElementById("loadDevices").onclick = async () => {
-        if (!hubitatCredentialsAreValid(true)) return;
-        logAction("loadDevices button clicked.");
-        await fetchModesFromAppFile();
-        devices = await fetchDevicesFromApp();
-        devices.forEach(dev => {
-          if (Array.isArray(dev.attributes)) {
-            const attrMap = {};
-            dev.attributes.forEach(a => {
-              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
-            });
-            dev.attributes = attrMap;
-          }
-        });
-        devices.push(TIME_DEVICE);
-        devices.push(MODE_DEVICE);
-        devices.push(VARIABLE_DEVICE);
-        window.devices = devices;
-
-        // Set current mode on Home Location device
-        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
-        const currentMode = currentModeObj ? currentModeObj.name : "";
-        const modeDev = window.devices.find(d => d.id === "__mode__");
-        if (modeDev) {
-          modeDev.attributes.mode = currentMode;
-        }
-
-        // --- PATCH: force field sync after import/undo ---
-        setTimeout(() => {
-          // 1. Always pick a node to edit
-          let selected = editor.selected_id;
-          if (!selected) {
-            // If nothing selected, pick the first node in the flow (if any)
-            const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-              ? Object.keys(editor.drawflow.Home.data)
-              : [];
-            if (allIds.length) {
-              selected = allIds[0];
-              editor.selected_id = selected;
-            }
-          }
-          if (selected) {
-            // Always refresh the editor panel to match current node data
-            window.renderEditor(editor.getNodeFromId(selected));
-          } else {
-            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          }
-        }, 10);
-        logAction("Devices loaded: " + devices.length);
-      };
-
-      // Auto-load devices if credentials are filled (with delayed check for browser autofill)
-      setTimeout(() => {
-        const appIdEl = document.getElementById("hubitatAppId");
-        const tokenEl = document.getElementById("hubitatToken");
-        if (appIdEl.value && tokenEl.value) {
-          document.getElementById("loadDevices").click();
-        }
-      }, 350);
-
-      function patchFlowWithDeviceLabels(flow, devices) {
-        // Support both new and legacy JSON paths
-        const dataNodes =
-          (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data)
-            ? flow.drawflow.Home.data
-            : (flow && flow.drawflow && flow.drawflow.drawflow &&
-              flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data)
-              ? flow.drawflow.drawflow.Home.data
-              : {};
-
-        // Ensure "notMatchingVar" nodes get a default outputVar label
-        Object.values(dataNodes).forEach(node => {
-          const name = (node.name || "").toLowerCase();
-          if (name === "notmatchingvar") {
-            if (!node.data.outputVar || node.data.outputVar === "undefined") {
-              node.data.outputVar = "Devices to a Variable";
-            }
-          }
-        });
-
-        // Tag any device-based node with its human-readable label
-        Object.values(dataNodes).forEach(node => {
-          const type = (node.name || "").toLowerCase();
-          if (["device", "condition", "eventtrigger"].includes(type) &&
-              node.data && node.data.deviceId) {
-            const dev = devices.find(d => d.id == node.data.deviceId);
-            node.data.deviceLabel = dev
-              ? (dev.label || dev.name)
-              : node.data.deviceId;
-          }
-        });
-      }
-
-      window.ATTRIBUTE_KNOWN_VALUES = {
-        "contact":        ["open", "closed"],
-        "switch":         ["on", "off"],
-        "door":           ["open", "closed", "unknown"],
-        "lock":           ["locked", "unlocked", "unknown"],
-        "motion":         ["active", "inactive"],
-        "presence":       ["present", "not present"],
-        "water":          ["wet", "dry"],
-        "smoke":          ["clear", "detected", "tested"],
-        "carbonMonoxide": ["clear", "detected", "tested"],
-        "acceleration":   ["active", "inactive"],
-        "tamper":         ["clear", "detected"],
-        "shade":          ["open", "closed", "partially open", "unknown"],
-        "windowShade":    ["open", "closed", "partially open", "unknown"],
-        "thermostatMode": [
-          "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
-        ],
-        "thermostatOperatingState": [
-          "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
-        ],
-        "thermostatFanMode": [
-          "auto", "on", "circulate"
-        ],
-        "alarm":          ["off", "strobe", "siren", "both"],
-        "valve":          ["open", "closed"],
-        "button":         ["pushed", "held", "doubleTapped", "released"],
-        "temperature":    [],
-        "humidity":       [],
-        "illuminance":    [],
-        "energy":         [],
-        "power":          [],
-        "level":          []
-      };
-
-      function getSortedDevicesWithSpecials(devices) {
-        const modeDevice = devices.find(d => d.id === "__mode__");
-        const timeDevice = devices.find(d => d.id === "__time__");
-        const variableDevice = devices.find(d => d.id === "__variable__");
-        const realDevices = devices
-          .filter(d => d.id !== "__mode__" && d.id !== "__time__" && d.id !== "__variable__")
-          .slice()
-          .sort((a, b) => {
-            const aLabel = (a.label || a.name || a.id || "").toLowerCase();
-            const bLabel = (b.label || b.name || b.id || "").toLowerCase();
-            if (aLabel < bLabel) return -1;
-            if (aLabel > bLabel) return 1;
-            return 0;
-          });
-        const arr = [];
-        if (modeDevice) arr.push(modeDevice);
-        if (timeDevice) arr.push(timeDevice);
-        if (variableDevice) arr.push(variableDevice);
-        if (realDevices.length) arr.push({ id: "__divider__", label: "───────────────" });
-        arr.push(...realDevices);
-        return arr;
-      }
-
-      /**
-       * Renders a device search/filter + (single/multi) select picker.
-       * @param {HTMLElement} el - Where to append the picker.
-       * @param {Array} devices - List of all devices.
-       * @param {Array} selectedIds - Array of currently selected device IDs.
-       * @param {Function} onChange - Called with (newSelectedIds, newDeviceLabels) when selection changes.
-       * @param {boolean} multi - true for multi-select, false for single-select
-       */
-      function renderDevicePicker(el, devices, selectedIds, onChange, multi = true) {
-      // Remove old content if called multiple times
-      const existing = el.querySelector('.device-picker-block');
-      if (existing) existing.remove();
-
-      // Picker wrapper
-      const pickerWrap = document.createElement("div");
-      pickerWrap.className = "device-picker-block";
-      pickerWrap.style = "margin-bottom:8px";
-
-      // Search input
-      const devFilterInput = document.createElement("input");
-      devFilterInput.type = "text";
-      devFilterInput.placeholder = "Search devices…";
-      devFilterInput.style = "width:98%;margin-bottom:3px;padding:3px 7px;border-radius:7px;border:1px solid #333;font-size:13px;";
-      pickerWrap.appendChild(devFilterInput);
-
-      // Select dropdown
-      const devSelect = document.createElement("select");
-      devSelect.multiple = multi;
-      devSelect.size = Math.min(10, devices.length);
-      devSelect.style.width = "98%";
-      devSelect.style.display = "block";
-      devSelect.style.marginBottom = "12px";
-      pickerWrap.appendChild(devSelect);
-
-      function populate(filtered) {
-        // Remember current scroll position and selected items
-        const prevScroll   = devSelect.scrollTop;
-        const prevSelected = Array.from(devSelect.selectedOptions).map(o => o.value);
-
-        // Clear out old options and rebuild from `filtered`
-        devSelect.innerHTML = "";
-        getSortedDevicesWithSpecials(filtered).forEach((d) => {
-          if (d.id === "__divider__") {
-            const divider = document.createElement("option");
-            divider.disabled    = true;
-            divider.textContent = d.label;
-            divider.style.background = "#444";
-            devSelect.appendChild(divider);
-          } else {
-            const opt = document.createElement("option");
-            opt.value       = d.id;
-            opt.textContent = d.label || d.name || d.id;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
-          }
-        });
-
-        // Restore scroll position
-        devSelect.scrollTop = prevScroll;
-      }
-
-      // Filter handler
-      devFilterInput.oninput = function() {
-        const filter = devFilterInput.value.trim().toLowerCase();
-        if (!filter) { populate(devices); return; }
-        const filtered = devices.filter(d =>
-          (d.label || d.name || d.id || "").toLowerCase().includes(filter) ||
-          d.id === "__time__" || d.id === "__mode__"
-        );
-        populate(filtered);
-      };
-
-      // Initial population
-      populate(devices);
-
-      // This is the CRITICAL PART for ctrl-click multi-select:
-      devSelect.onchange = () => {
-        let newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-        onChange(newSelected, newSelected.map(
-          id => (devices.find(d => d.id == id) || {}).label || id
-        ));
-      };
-
-      el.appendChild(pickerWrap);
-    }
-
-      function renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml) {
-        // clear the container
-        el.innerHTML = "";
-
-        // ensure deviceIds array
-        const devIds = Array.isArray(node.data.deviceIds)
-          ? node.data.deviceIds
-          : node.data.deviceId
-            ? [node.data.deviceId]
-            : [];
-
-        // collect shared attribute names across selected devices
-        const sharedAttrs = Array.from(new Set(
-          devIds.flatMap(id => {
-            const dev = devices.find(d => d.id === id);
-            return dev && dev.attributes
-              ? Object.keys(dev.attributes)
-              : [];
-          })
-        )).sort();
-
-        // ── ATTRIBUTE LABEL ────────────────────────────────────────────
-        const attrLabel = document.createElement("label");
-        attrLabel.textContent = "Attribute";
-        attrLabel.style.display = "block";
-        el.appendChild(attrLabel);
-
-        // ── ATTRIBUTE SELECT ───────────────────────────────────────────
-        const attrSel = document.createElement("select");
-        attrSel.style = "display:block;margin-bottom:12px";
-        attrSel.innerHTML =
-          `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
-          sharedAttrs
-            .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
-            .join("");
-        attrSel.onchange = () => {
-          node.data.attribute  = attrSel.value;
-          node.data.logic      = "";
-          node.data.comparator = "";
-          node.data.value      = "";
-          editor.updateNodeDataFromId(node.id, node.data);
-          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(attrSel);
-
-        // ── LOGIC LABEL ────────────────────────────────────────────────
-        const logicLabel = document.createElement("label");
-        logicLabel.textContent = "Logic";
-        logicLabel.style.display = "block";
-        el.appendChild(logicLabel);
-
-        // ── LOGIC SELECT ───────────────────────────────────────────────
-        const logicSel = document.createElement("select");
-        logicSel.style = "display:block;margin-bottom:12px";
-        logicSel.innerHTML =
-          `<option value="" ${!node.data.logic ? "selected" : ""}>(none)</option>` +
-          ["and", "or"]
-            .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
-            .join("");
-        logicSel.onchange = () => {
-          node.data.logic = logicSel.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(logicSel);
-
-        // ── COMPARATOR LABEL ───────────────────────────────────────────
-        const cmpLabel = document.createElement("label");
-        cmpLabel.textContent = "Comparator";
-        cmpLabel.style.display = "block";
-        el.appendChild(cmpLabel);
-
-        // ── COMPARATOR SELECT ──────────────────────────────────────────
-        const cmpSel = document.createElement("select");
-        cmpSel.style = "display:block;margin-bottom:12px";
-        cmpSel.innerHTML =
-          `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
-          ["==","!=","<","<=",">",">=","between","changes"]
-            .map(c => {
-              const label = c === "==" ? "equals" : c;
-              return `<option value="${c}" ${node.data.comparator === c ? "selected" : ""}>${label}</option>`;
-            })
-            .join("");
-        cmpSel.onchange = () => {
-          node.data.comparator = cmpSel.value;
-          node.data.value      = "";
-          editor.updateNodeDataFromId(node.id, node.data);
-          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(cmpSel);
-
-        // ── VALUE INPUT(S) ────────────────────────────────────────────
-        if (node.data.comparator === "between") {
-          // two inputs for range
-          const [start = "", end = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
-          // start value
-          const startInput = document.createElement("input");
-          startInput.type  = "text";
-          startInput.placeholder = "Start value";
-          startInput.value = start;
-          startInput.style = "display:block;margin-bottom:8px";
-          startInput.onchange = () => {
-            node.data.value = [startInput.value, end];
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(startInput);
-          // end value
-          const endInput = document.createElement("input");
-          endInput.type  = "text";
-          endInput.placeholder = "End value";
-          endInput.value = end;
-          endInput.style = "display:block;margin-bottom:12px";
-          endInput.onchange = () => {
-            node.data.value = [startInput.value, endInput.value];
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(endInput);
-        }
-        
-        const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
-        if (known.length) {
-          const valSel = document.createElement("select");
-          valSel.style = "display:block;margin-bottom:12px";
-          valSel.innerHTML =
-            `<option value="">(none)</option>` +
-            known
-              .map(v =>
-                `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
-              )
-              .join("");
-          valSel.onchange = () => {
-            node.data.value = valSel.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(valSel);
-        }
-        else if (node.data.comparator === "between") {
-          renderValueField(el, node, knownValues, onChange, true);
-        }
-        else if (node.data.comparator && node.data.comparator !== "changes") {
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value";
-          valInput.value = node.data.value || "";
-          valInput.style = "display:block;margin-bottom:12px";
-          valInput.onchange = () => {
-            node.data.value = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(valInput);
-        }
-
-        // finally, update the node's HTML preview
-        const tileHtml = nodeTileHtml(node.name, node.data, node.id);
-        editor.updateNodeHtmlFromId(node.id, tileHtml);
-      }
-
-      window.renderEditor = function renderEditor(node) {
-        const panel = document.getElementById("nodeEditor");
-        if (panel) panel.style.display = '';
-        if (!node) {
-          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          return;
-        }
-        const el = document.getElementById("nodeEditor");
-        el.innerHTML = "";
-
-        const pickerDevices = getSortedDevicesWithSpecials(window.devices || []);
-        if (
-          ["device", "condition", "eventTrigger", "notMatchingVar"].includes(node.name)
-        ) {
-          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          if (node.data.deviceId && node.data.deviceIds.length === 0) {
-            node.data.deviceIds = [node.data.deviceId];
-          }
-          if (node.data.deviceIds.length === 1) {
-            node.data.deviceId = node.data.deviceIds[0];
-          }
-        }
-
-        if (node.name === "eventTrigger") {
-          // Device picker always rendered first!
-          renderDevicePickerSection(
-            el,
-            node,
-            pickerDevices,
-            (ids, labels) => {
-              node.data.deviceIds = ids;
-              node.data.deviceId = ids[0] || "";
-              node.data.attribute = "";
-              node.data.comparator = "";
-              node.data.value = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
-              window.renderEditor(node);
-            },
-            true // multi-select ENABLED
-          );
-
-          // If Variable is selected, add variable picker BELOW device picker
-          if (node.data.deviceId === "__variable__") {
-            buildVariableTriggerEditor(el, node, true); // append variable picker
-            return;
-          }
-        };
-
-        if (node.name === "condition") {
-          // Device picker always rendered first!
-          renderDevicePickerSection(
-            el,
-            node,
-            getSortedDevicesWithSpecials(window.devices || []),
-            (ids, labels) => {
-              node.data.deviceIds = ids;
-              node.data.deviceId = ids[0] || "";
-              node.data.attribute = "";
-              node.data.comparator = "";
-              node.data.value = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
-              window.renderEditor(node);
-            },
-            true // multi-select ENABLED
-          );
-
-          // If Variable is selected, add variable picker BELOW device picker
-          if (node.data.deviceId === "__variable__") {
-            buildVariableTriggerEditor(el, node, true);
-            return;
-          }
-        }
-
-        // ************************************
-        // --- SHARED HELPERS ---
-        // ***********************************
-        function getPickerDevices(devices) {
-          const homeLoc = devices.find(d => d.id === "__mode__");
-          const timeDev = devices.find(d => d.id === "__time__");
-          const varDev = { id: "__variable__", label: "Variable", name: "Variable" };
-          const rest = devices.filter(d => !["__mode__", "__time__"].includes(d.id));
-          let pickerDevices = [];
-          if (homeLoc) pickerDevices.push(homeLoc);
-          if (timeDev) pickerDevices.push(timeDev);
-          pickerDevices.push(varDev);
-          if (rest.length) pickerDevices.push({ id: "__divider__", label: "───────────────" });
-          pickerDevices = pickerDevices.concat(rest.sort((a, b) => {
-            const la = (a.label || a.name || a.id).toLowerCase();
-            const lb = (b.label || b.name || b.id).toLowerCase();
-            return la.localeCompare(lb);
-          }));
-          return pickerDevices;
-        }
-
-        function renderDevicePickerSection(el, node, devices, onChange, multiSelect=true) {
-          const devLabel = document.createElement("label");
-          devLabel.textContent = "Device(s)";
-          devLabel.style.display = "block";
-          el.appendChild(devLabel);
-          renderDevicePicker(
-            el,
-            devices,
-            Array.isArray(node.data.deviceIds)
-              ? node.data.deviceIds
-              : node.data.deviceId ? [node.data.deviceId] : [],
-            onChange,
-            multiSelect
-          );
-        }
-
-        // ************************************
-        // DEVICE NODE (Action)
-        // ************************************
-        if (node.name === "device") {
-          // 2) Normalize deviceIds / deviceId
-          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          node.data.deviceId = node.data.deviceIds.length === 1
-            ? node.data.deviceIds[0]
-            : "";
-
-          // 3) Prepare full device list for the picker
-          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
-          const pickerDevices = getPickerDevices(allDevices);
-
-          // 4) Helper to build Command → Value fields
-          function buildDeviceActionFields(container) {
-            // Compute shared commands
-            const selected = node.data.deviceIds
-              .map(id => allDevices.find(d => d.id == id))
-              .filter(Boolean);
-            let shared = Array.isArray(selected[0]?.commands)
-              ? selected[0].commands.slice()
-              : [];
-            for (let i = 1; i < selected.length; i++) {
-              if (Array.isArray(selected[i].commands)) {
-                shared = shared.filter(cmd =>
-                  selected[i].commands.includes(cmd)
-                );
-              } else {
-                shared = [];
-              }
-            }
-            if (shared.includes("on") && shared.includes("off") && !shared.includes("toggle")) {
-              shared.push("toggle");
+/**
+ *  **************** Flow Engine One ****************
+ *  Design Usage:
+ *  Feel the Flow
+ *
+ *  Copyright 2025 Bryan Turcotte (@bptworld)
+ *
+ *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
+ *
+ *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
+ *
+ *  Paypal at: https://paypal.me/bptworld
+ *-------------------------------------------------------------------------------------------------------------------
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ * ------------------------------------------------------------------------------------------------------------------------------
+ *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
+ * ------------------------------------------------------------------------------------------------------------------------------
+ *  Changes:
+ *  1.0.0 - 07/22/25 - Initial Release
+ */
+
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+state.globalVarsCache = state.globalVarsCache ?: []
+
+definition(
+    name: "Flow Engine One",
+    namespace: "BPTWorld",
+    author: "Bryan Turcotte",
+    description: "Feel the Flow - Unified App, Multiple Flows, Multiple JSONs",
+    category: "Convenience",
+    iconUrl: "", iconX2Url: "", iconX3Url: "",
+    importUrl: "",
+    oauth: true
+)
+
+preferences {
+    page name: "mainPage", title: "", install: true, uninstall: true
+}
+
+def mainPage() {
+    dynamicPage(name: "mainPage") {
+        installCheck()
+        if(state.appInstalled == 'COMPLETE') {
+            section(getFormat("header-green", " <b>Device Master List:</b>")) {}
+            section(" Master List", hideable: true, hidden: true) {
+				paragraph "Don't forget, if you add devices to your system after selecting all here.  You'll need to come back here and add the new devices, if you want to use them in Flow Engine."
+                input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
             }
 
-            // Command picker
-            const cmdLbl = document.createElement("label");
-            cmdLbl.textContent = "Command";
-            cmdLbl.style.display = "block";
-            container.appendChild(cmdLbl);
-
-            const cmdSel = document.createElement("select");
-            cmdSel.style = "display:block;margin-bottom:12px";
-            cmdSel.innerHTML =
-              `<option value="">Pick a command…</option>` +
-              shared.map(c => `<option value="${c}">${c}</option>`).join("");
-            cmdSel.value = node.data.command;
-            cmdSel.onchange = () => {
-              node.data.command = cmdSel.value;
-              node.data.value   = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              // rebuild just the Value UI
-              container.innerHTML = "";
-              buildDeviceActionFields(container);
-              markFlowNeedsSave(true);
-            };
-            container.appendChild(cmdSel);
-
-            // Value label
-            if (node.data.command) {
-              const valLbl = document.createElement("label");
-              valLbl.textContent = "Value";
-              valLbl.style.display = "block";
-              container.appendChild(valLbl);
-
-              // Value input/picker
-              const numericCmds = [
-                "setLevel","setTemperature","setVolume",
-                "setPosition","setHue","setSaturation","setSpeed"
-              ];
-              if (numericCmds.includes(node.data.command)) {
-                const inp = document.createElement("input");
-                inp.type  = "number";
-                inp.value = node.data.value || "";
-                inp.style = "display:block;margin-bottom:12px";
-                inp.oninput = () => {
-                  node.data.value = inp.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                  markFlowNeedsSave(true);
-                };
-                container.appendChild(inp);
-              }
-              else if (node.data.command === "setColor") {
-                const inp = document.createElement("input");
-                inp.type  = "color";
-                inp.value = node.data.value || "#ffffff";
-                inp.style = "display:block;margin-bottom:12px";
-                inp.oninput = () => {
-                  node.data.value = inp.value;
-                  node.data.color = inp.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                  markFlowNeedsSave(true);
-                };
-                container.appendChild(inp);
-              }
-              else {
-                const inp = document.createElement("input");
-                inp.type  = "text";
-                inp.value = node.data.value || "";
-                inp.style = "display:block;margin-bottom:12px";
-                inp.oninput = () => {
-                  node.data.value = inp.value;
-                  editor.updateNodeDataFromId(node.id, node.data);
-                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-                  markFlowNeedsSave(true);
-                };
-                container.appendChild(inp);
-              }
+			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
+            	paragraph "This app is used to receive flow data from your Flow Engine Editor."
+				paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
+				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
+				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
+				paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
+				paragraph "<hr>"
+			}
+			
+            section(getFormat("header-green", " Select Flow Files to Enable")) {
+                getFileList()
+                input "flowFiles", "enum", title: "Choose one or more Flow JSON files to Enable (to pause a Flow, simply remove from this list)", required: false, multiple: true, options: state.jsonList, submitOnChange: true
+				if (flowFiles) {
+					paragraph "<small><b>Flows are enabled for:</b><br>${flowFiles.join('<br>')}</small>"
+				}
             }
-          }
-
-          // 5) Render the Device(s) picker
-          renderDevicePickerSection(
-            el,
-            node,
-            pickerDevices,
-            (newIds, newLabels) => {
-              node.data.deviceIds   = newIds;
-              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
-              node.data.deviceLabel = newLabels.join(", ");
-              node.data.command     = "";
-              node.data.value       = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              // rebuild Command → Value fields in place
-              const div = document.getElementById("device-pickers-" + node.id);
-              div.innerHTML = "";
-              buildDeviceActionFields(div);
-              markFlowNeedsSave(true);
-            },
-            true // multi-select
-          );
-
-          // 6) Container for Command → Value
-          const pickerDiv = document.createElement("div");
-          pickerDiv.id    = "device-pickers-" + node.id;
-          pickerDiv.style.marginTop = "8px";
-          el.appendChild(pickerDiv);
-
-          // 7) Initial build of Command → Value
-          buildDeviceActionFields(pickerDiv);
-
-          return;
-        }
-
-        // ************************************
-        // EVENT TRIGGER NODE
-        // ************************************
-        if (node.name === "eventTrigger") {
-          // 2) Normalize device data
-          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          node.data.deviceId = node.data.deviceIds.length === 1
-            ? node.data.deviceIds[0]
-            : "";
-
-          // 3) Full list for the picker
-          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
-          const pickerDevices = getPickerDevices(allDevices);
-
-          // ── DEVICE(S) PICKER ──
-          renderDevicePickerSection(
-            el,
-            node,
-            pickerDevices,
-            (newIds, newLabels) => {
-              node.data.deviceIds   = newIds;
-              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
-              node.data.deviceLabel = newLabels.join(", ");
-              // clear old condition fields
-              node.data.attribute   = "";
-              node.data.comparator  = "";
-              node.data.value       = "";
-
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(
-                node.id,
-                nodeTileHtml(node.name, node.data, node.id)
-              );
-
-              // rebuild only the pickers in that container
-              const pickerDiv = document.getElementById("trigger-pickers-" + node.id);
-              pickerDiv.innerHTML = "";
-              if (!buildTimeDevicePicker(pickerDiv, node)) {
-                renderConditionDeviceFields(
-                  pickerDiv,
-                  node,
-                  pickerDevices,
-                  editor,
-                  nodeTileHtml
-                );
-              }
-              markFlowNeedsSave(true);
-              window.renderEditor(node);
-            },
-            true // multi-select
-          );
-
-          // ── PICKER CONTAINER ──
-          const pickerDiv = document.createElement("div");
-          pickerDiv.id    = "trigger-pickers-" + node.id;
-          pickerDiv.style.marginTop = "8px";
-          el.appendChild(pickerDiv);
-
-          // 4) Initial build of time-or-condition fields
-          if (buildTimeDevicePicker(pickerDiv, node)) {
-            return;
-          }
-          renderConditionDeviceFields(
-            pickerDiv,
-            node,
-            pickerDevices,
-            editor,
-            nodeTileHtml
-          );
-          return;
-        }
-
-        // ************************************
-        // CONDITION NODE
-        // ************************************
-        if (node.name === "condition") {
-          // 1) Normalize data array
-          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          node.data.deviceId = node.data.deviceIds.length === 1
-            ? node.data.deviceIds[0]
-            : "";
-
-          // 2) Prepare full device list
-          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
-          const pickerDevices = getPickerDevices(allDevices);
-
-          // ── DEVICE(S) PICKER ──
-          renderDevicePickerSection(
-            el,
-            node,
-            pickerDevices,
-            (newIds, newLabels) => {
-              // update selection
-              node.data.deviceIds   = newIds;
-              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
-              node.data.deviceLabel = newLabels.join(", ");
-              // clear previous fields
-              node.data.attribute   = "";
-              node.data.comparator  = "";
-              node.data.value       = "";
-
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(
-                node.id,
-                nodeTileHtml(node.name, node.data, node.id)
-              );
-
-              // 3) Rebuild only the condition pickers in place
-              const pickerDiv = document.getElementById("condition-pickers-" + node.id);
-              pickerDiv.innerHTML = "";
-              if (!buildTimeDevicePicker(pickerDiv, node)) {
-                renderConditionDeviceFields(
-                  pickerDiv,
-                  node,
-                  pickerDevices,
-                  editor,
-                  nodeTileHtml
-                );
-              }
-              markFlowNeedsSave(true);
-            },
-            true // multi-select
-          );
-
-          // ── PICKER CONTAINER ──
-          const pickerDiv = document.createElement("div");
-          pickerDiv.id    = "condition-pickers-" + node.id;
-          pickerDiv.style.marginTop = "8px";
-          el.appendChild(pickerDiv);
-
-          // 4) Initial build of time-or-condition fields
-          if (buildTimeDevicePicker(pickerDiv, node)) {
-            return;
-          }
-          renderConditionDeviceFields(
-            pickerDiv,
-            node,
-            pickerDevices,
-            editor,
-            nodeTileHtml
-          );
-          return;
-        }
-
-        if (node.name === "delay") {
-          el.innerHTML = ""; // Clear sidebar panel
-
-          const msLabel = document.createElement("label");
-          msLabel.textContent = "Milliseconds";
-          msLabel.style.display = "block";
-          el.appendChild(msLabel);
-
-          const msInput = document.createElement("input");
-          msInput.type = "number";
-          msInput.min = 0;
-          msInput.step = 1;
-          msInput.value = typeof node.data.ms === "number" ? node.data.ms : (parseInt(node.data.ms) || 1000);
-          msInput.style.display = "block";
-          msInput.style.marginBottom = "12px";
-          msInput.oninput = () => {
-            node.data.ms = parseInt(msInput.value) || 0;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(msInput);
-        }
-
-        if (node.name === "delayMin") {
-          const el = document.getElementById("nodeEditor");
-          el.innerHTML = "<b>Delay (Minutes)</b><br><br>";
-
-          const minLabel = document.createElement("label");
-          minLabel.textContent = "Delay (minutes): ";
-          el.appendChild(minLabel);
-
-          const minInput = document.createElement("input");
-          minInput.type = "number";
-          minInput.min = 1;
-          minInput.value = node.data.delayMin || 1;
-          minInput.style.width = "60px";
-          minInput.oninput = () => {
-            node.data.delayMin = Number(minInput.value) || 1;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(minInput);
-
-          return;
-        }
-
-        if (node.name === "repeat") {
-          el.innerHTML = "<b>Repeat Node</b><hr>";
-
-          // ── MODE SELECTOR ──────────────────────────────────────────────
-          const modeLabel = document.createElement("label");
-          modeLabel.textContent = "Repeat mode:";
-          modeLabel.style.display = "block";
-          el.appendChild(modeLabel);
-
-          const countRadio = document.createElement("input");
-          countRadio.type = "radio";
-          countRadio.name = "repeatMode";
-          countRadio.value = "count";
-          countRadio.id = `repeatModeCount-${node.id}`;
-          el.appendChild(countRadio);
-          const countLabel = document.createElement("label");
-          countLabel.htmlFor = countRadio.id;
-          countLabel.textContent = "Max repeats";
-          countLabel.style.margin = "0 12px 0 4px";
-          el.appendChild(countLabel);
-
-          const untilRadio = document.createElement("input");
-          untilRadio.type = "radio";
-          untilRadio.name = "repeatMode";
-          untilRadio.value = "until";
-          untilRadio.id = `repeatModeUntil-${node.id}`;
-          el.appendChild(untilRadio);
-          const untilLabel = document.createElement("label");
-          untilLabel.htmlFor = untilRadio.id;
-          untilLabel.textContent = "Until this happens";
-          el.appendChild(untilLabel);
-
-          // ── Container for mode-specific UI ─────────────────────────────
-          const modeDiv = document.createElement("div");
-          modeDiv.style.marginTop = "8px";
-          el.appendChild(modeDiv);
-
-          // ── RENDER COUNT MODE ───────────────────────────────────────────
-          function renderCount() {
-            modeDiv.innerHTML = "";
-            const lbl = document.createElement("label");
-            lbl.textContent = "Max repeats:";
-            lbl.style.display = "block";
-            modeDiv.appendChild(lbl);
-
-            const inp = document.createElement("input");
-            inp.type = "number";
-            inp.min = 1;
-            inp.max = 100;
-            inp.value = node.data.repeatMax || 1;
-            inp.style.width = "60px";
-            inp.onchange = () => {
-              node.data.repeatMax = parseInt(inp.value, 10) || 1;
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              markFlowNeedsSave(true);
-            };
-            modeDiv.appendChild(inp);
-          }
-
-          // ── RENDER UNTIL MODE ───────────────────────────────────────────
-          function renderUntil() {
-            modeDiv.innerHTML = "";
-
-            // Device(s) picker
-            const allDevices    = Array.isArray(window.devices) ? window.devices : [];
-            const pickerDevices = getPickerDevices(allDevices);
-
-            // ── DEVICE(S) PICKER ──
-            renderDevicePickerSection(
-              el,
-              node,
-              pickerDevices,
-              (newIds, newLabels) => {
-                // update selection
-                node.data.deviceIds   = newIds;
-                node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
-                node.data.deviceLabel = newLabels.join(", ");
-                // clear previous fields
-                node.data.attribute   = "";
-                node.data.comparator  = "";
-                node.data.value       = "";
-
-                editor.updateNodeDataFromId(node.id, node.data);
-                editor.updateNodeHtmlFromId(
-                  node.id,
-                  nodeTileHtml(node.name, node.data, node.id)
-                );
-
-                // 3) Rebuild only the condition pickers in place
-                const pickerDiv = document.getElementById("condition-pickers-" + node.id);
-                pickerDiv.innerHTML = "";
-                if (!buildTimeDevicePicker(pickerDiv, node)) {
-                  renderConditionDeviceFields(
-                    pickerDiv,
-                    node,
-                    pickerDevices,
-                    editor,
-                    nodeTileHtml
-                  );
-                }
-                markFlowNeedsSave(true);
-              },
-              true // multi-select
-            );
-
-            // ── PICKER CONTAINER ──
-            const pickerDiv = document.createElement("div");
-            pickerDiv.id    = "condition-pickers-" + node.id;
-            pickerDiv.style.marginTop = "8px";
-            el.appendChild(pickerDiv);
-
-            // 4) Initial build of time-or-condition fields
-            if (buildTimeDevicePicker(pickerDiv, node)) {
-              return;
-            }
-            renderConditionDeviceFields(
-              pickerDiv,
-              node,
-              pickerDevices,
-              editor,
-              nodeTileHtml
-            );
-            return;
-          }
-
-          // ── INITIALIZE & HOOK EVENTS ────────────────────────────────────
-          const initialMode = node.data.repeatMode === "until" ? "until" : "count";
-          countRadio.checked = initialMode === "count";
-          untilRadio.checked = initialMode === "until";
-          node.data.repeatMode = initialMode;
-
-          countRadio.onchange = () => {
-            node.data.repeatMode = "count";
-            editor.updateNodeDataFromId(node.id, node.data);
-            renderCount();
-            markFlowNeedsSave(true);
-          };
-
-          untilRadio.onchange = () => {
-            node.data.repeatMode = "until";
-            editor.updateNodeDataFromId(node.id, node.data);
-            renderUntil();
-            markFlowNeedsSave(true);
-          };
-
-          // Render the chosen panel
-          if (initialMode === "until") {
-            renderUntil();
-          } else {
-            renderCount();
-          }
-
-          return;
-        }
-
-        if (node.name === "setVariable") {
-          el.innerHTML = "<b>Set Variable</b><br><br>";
-
-          // Variable Name
-          const varLabel = document.createElement("label");
-          varLabel.textContent = "Variable Name";
-          el.appendChild(varLabel);
-
-          // dropdown of existing variables
-          const varSelect = document.createElement("select");
-          varSelect.style.width = "98%";
-
-          // gather flow & global var names
-          const flowVarNames   = (window.FE_flowvars   || []).map(v => v.name);
-          const globalVarNames = window.FE_global_var_names || [];
-          const allVarNames    = Array.from(new Set([...flowVarNames, ...globalVarNames]));
-
-          // build options
-          allVarNames.forEach(name => {
-            const opt = document.createElement("option");
-            opt.value       = name;
-            opt.textContent = name;
-            if (node.data.varName === name) opt.selected = true;
-            varSelect.appendChild(opt);
-          });
-
-          varSelect.onchange = () => {
-            node.data.varName = varSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            renderVariableInspector();
-            markFlowNeedsSave(true);
-          };
-
-          el.appendChild(varSelect);
-
-          // Value
-          const valLabel = document.createElement("label");
-          valLabel.textContent = "Value";
-          el.appendChild(valLabel);
-
-          const valInput = document.createElement("input");
-          valInput.type = "text";
-          valInput.placeholder = "Value to set";
-          valInput.value = node.data.varValue || "";
-          valInput.style.width = "98%";
-          valInput.oninput = () => {
-            node.data.varValue = valInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(valInput);
-
-          // Preview of result
-          const previewChip = document.createElement("div");
-          previewChip.className = "current-value";
-          previewChip.style.marginLeft = "2px";
-          previewChip.style.fontSize = "13px";
-          previewChip.style.fontWeight = "bold";
-          previewChip.style.cursor = "pointer";
-          previewChip.title = "Preview of value/expression";
-          el.appendChild(previewChip);
-          function updatePreview() {
-            if (window.flowVars && window.flowVars.evaluate) {
-              try {
-                const v = valInput.value;
-                if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
-                const result = window.flowVars.evaluate(v);
-                let color = "#b7ffac";
-                if (typeof result === "number") color = "#3af";
-                else if (typeof result === "boolean") color = "#0c0";
-                else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-                previewChip.textContent = "= " + result;
-                previewChip.style.color = color;
-                previewChip.title = (typeof result) + ": " + result;
-              } catch(e) {
-                previewChip.textContent = "ERR: " + e.message;
-                previewChip.style.color = "#f33";
-                previewChip.title = e.message;
-              }
-            }
-          }
-          valInput.addEventListener("input", updatePreview);
-          updatePreview();
-
-          return;
-        }
-
-        if (node.name === "schedule") {
-          const el = document.getElementById("nodeEditor");
-          el.innerHTML = "<div style='font-size:18px;font-weight:bold;margin-bottom:8px;'>Schedule Node</div>";
-
-          // --- Cron Preset Dropdown ---
-          const cronPresetLabel = document.createElement("label");
-          cronPresetLabel.textContent = "Quick Cron Presets:";
-          cronPresetLabel.style.display = "block";
-          el.appendChild(cronPresetLabel);
-
-          const cronPresets = [
-            { label: "-- Custom Examples - Change to fit your needs --", value: "" },
-            { label: "Every Minute", value: "* * * * *" },
-            { label: "Every 5 Minutes", value: "*/5 * * * *" },
-            { label: "Every 15 Minutes", value: "*/15 * * * *" },
-            { label: "Every Hour", value: "0 * * * *" },
-            { label: "Every Day at Midnight", value: "0 0 * * *" },
-            { label: "Every Day at 7 AM", value: "0 7 * * *" },
-            { label: "Every Other Day (7 AM)", value: "0 7 */2 * *" },
-            { label: "Every 3rd Day (8 AM)", value: "0 8 */3 * *" },
-            { label: "Every Week (Sunday at 7 AM)", value: "0 7 * * 0" },
-            { label: "Every Month (1st at 7 AM)", value: "0 7 1 * *" },
-            { label: "Every Weekday (Mon-Fri, 7 AM)", value: "0 7 * * 1-5" },
-            { label: "Custom", value: "" }
-          ];
-
-          const cronPresetSelect = document.createElement("select");
-          cronPresetSelect.style.marginBottom = "8px";
-          cronPresets.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p.value;
-            opt.textContent = p.label;
-            cronPresetSelect.appendChild(opt);
-          });
-          cronPresetSelect.value = cronPresets.find(p => p.value === node.data.cron)?.value || "";
-          el.appendChild(cronPresetSelect);
-
-          // --- Cron Expression Input ---
-          const cronLabel = document.createElement("label");
-          cronLabel.textContent = "Or enter a Cron Expression:";
-          cronLabel.style.display = "block";
-          el.appendChild(cronLabel);
-
-          const cronInput = document.createElement("input");
-          cronInput.type = "text";
-          cronInput.value = node.data.cron || "";
-          cronInput.placeholder = "e.g. 0 7 * * 1-5";
-          cronInput.style.display = "block";
-          cronInput.style.marginBottom = "10px";
-          el.appendChild(cronInput);
-
-          // --- Days Multi-select Dropdown ---
-          const repeatLabel = document.createElement("label");
-          repeatLabel.textContent = "Repeat on Days:";
-          repeatLabel.style.display = "block";
-          el.appendChild(repeatLabel);
-
-          const days = [
-            { value: "Sunday", label: "Sunday" },
-            { value: "Monday", label: "Monday" },
-            { value: "Tuesday", label: "Tuesday" },
-            { value: "Wednesday", label: "Wednesday" },
-            { value: "Thursday", label: "Thursday" },
-            { value: "Friday", label: "Friday" },
-            { value: "Saturday", label: "Saturday" }
-          ];
-
-          const selected = Array.isArray(node.data.repeatDays) ? node.data.repeatDays : [];
-
-          const daySelect = document.createElement("select");
-          daySelect.multiple = true;
-          daySelect.size = 7;
-          daySelect.style.display = "block";
-          daySelect.style.marginBottom = "12px";
-
-          days.forEach(day => {
-            const opt = document.createElement("option");
-            opt.value = day.value;
-            opt.textContent = day.label;
-            if (selected.includes(day.value)) opt.selected = true;
-            daySelect.appendChild(opt);
-          });
-          el.appendChild(daySelect);
-
-          // --- Time Picker ---
-          const timeLabel = document.createElement("label");
-          timeLabel.textContent = "Time of Day:";
-          timeLabel.style.display = "block";
-          el.appendChild(timeLabel);
-
-          const timeInput = document.createElement("input");
-          timeInput.type = "time";
-          timeInput.value = node.data.time || "";
-          timeInput.style.display = "block";
-          timeInput.style.marginBottom = "10px";
-          el.appendChild(timeInput);
-
-          // --- Event Handlers ---
-
-          // When selecting a cron preset
-          cronPresetSelect.onchange = () => {
-            if (cronPresetSelect.value !== "") {
-              cronInput.value = cronPresetSelect.value;
-              node.data.cron = cronInput.value;
-
-              // --- CLEAR other schedule fields ---
-              node.data.repeatDays = [];
-              node.data.time = "";
-
-              // Clear multi-select days
-              Array.from(daySelect.options).forEach(opt => opt.selected = false);
-
-              // Clear time input
-              timeInput.value = "";
-
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              markFlowNeedsSave(true);
-            } else {
-              cronInput.value = node.data.cron || "";
-            }
-          };
-
-          // When typing a cron expression
-          cronInput.oninput = () => {
-            node.data.cron = cronInput.value;
-            cronPresetSelect.value = ""; // Deselect preset
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          // When selecting days
-          daySelect.onchange = () => {
-            node.data.repeatDays = Array.from(daySelect.selectedOptions).map(opt => opt.value);
-            // Clear cron and preset
-            node.data.cron = "";
-            cronInput.value = "";
-            cronPresetSelect.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          // When picking a time
-          timeInput.oninput = () => {
-            node.data.time = timeInput.value;
-            // Clear cron and preset
-            node.data.cron = "";
-            cronInput.value = "";
-            cronPresetSelect.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-        }
-
-        if (node.name === "comment") {
-          el.innerHTML = `<label>Comment</label>`;
-          let textarea = document.createElement("textarea");
-          textarea.style = "width:98%;min-height:60px;font-size:13px;background:#fffbe6;color:#7d6103;border-radius:7px;margin-top:6px;";
-          textarea.value = node.data.text || "";
-          textarea.oninput = function () {
-            node.data.text = textarea.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(textarea);
-          return;
-        }
-
-        if (node.name === "notMatchingVar") {
-          // 1) Normalize deviceIds
-          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
-          node.data.deviceId = node.data.deviceIds.length === 1
-            ? node.data.deviceIds[0]
-            : "";
-
-          // 2) Device picker section (unchanged) …
-          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
-          const pickerDevices = getPickerDevices(allDevices);
-          renderDevicePickerSection(
-            el,
-            node,
-            pickerDevices,
-            (newIds, newLabels) => {
-              node.data.deviceIds   = newIds;
-              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
-              node.data.deviceLabel = newLabels.join(", ");
-              node.data.attribute   =
-              node.data.comparator  =
-              node.data.value       = "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              const pickDiv = document.getElementById("notmatchingvar-pickers-" + node.id);
-              pickDiv.innerHTML = "";
-              if (!buildTimeDevicePicker(pickDiv, node)) {
-                renderConditionDeviceFields(pickDiv, node, pickerDevices, editor, nodeTileHtml);
-              }
-              markFlowNeedsSave(true);
-            },
-            true
-          );
-
-          // 3) Picker container (unchanged) …
-          const pickerDiv = document.createElement("div");
-          pickerDiv.id    = "notmatchingvar-pickers-" + node.id;
-          pickerDiv.style.marginTop = "8px";
-          el.appendChild(pickerDiv);
-          if (!buildTimeDevicePicker(pickerDiv, node)) {
-            renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
-          }
-
-          // 4) Variable Name dropdown
-          el.insertAdjacentHTML("beforeend", `
-            <label>Variable Name</label>
-            <select id="varName_${node.id}" style="width:98%; margin-bottom:12px;">
-              ${(Array.from(new Set([
-                  ...(window.FE_flowvars   || []).map(v => v.name),
-                  ...(window.FE_global_var_names || [])
-                ])).map(n => `
-                  <option value="${n}" ${node.data.varName === n ? "selected" : ""}>${n}</option>
-                `).join(""))}
-            </select>
-          `);
-          document.getElementById(`varName_${node.id}`).onchange = e => {
-            node.data.varName = e.target.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          // 5) Save Mode dropdown
-          el.insertAdjacentHTML("beforeend", `
-            <label>Save Mode</label>
-            <select id="saveMode_${node.id}" style="width:98%; margin-bottom:12px;">
-              <option value="overwrite" ${!node.data.append ? "selected" : ""}>Overwrite</option>
-              <option value="append"    ${ node.data.append ? "selected" : ""}>Append</option>
-            </select>
-          `);
-          document.getElementById(`saveMode_${node.id}`).onchange = e => {
-            node.data.append = e.target.value === "append";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          return;
-        }
-
-        if (node.name === "saveDeviceState" || node.name === "restoreDeviceState") {
-          el.innerHTML = `${node.name === "saveDeviceState" ? "Save Device State" : "Restore Device State"}<br><br>`;
-
-          const devLabel = document.createElement("label");
-          devLabel.textContent = "Device";
-          devLabel.style.display = "block";
-          el.appendChild(devLabel);
-
-          renderDevicePicker(
-            el,
-            devices,
-            node.data.deviceId ? [node.data.deviceId] : [],
-            (newSelectedIds, newDeviceLabels) => {
-              node.data.deviceId = newSelectedIds[0] || "";
-              node.data.deviceLabel = newDeviceLabels[0] || "";
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              markFlowNeedsSave(true);
-            },
-            false // single-select
-          );
-          return;
-        }
-
-        if (node.name === "notification") {
-          const el = document.getElementById("nodeEditor");
-          el.innerHTML = "<b>Notification Node</b><br><br>";
-
-          // Type selector
-          const typeLabel = document.createElement("label");
-          typeLabel.textContent = "Type";
-          el.appendChild(typeLabel);
-
-          const typeSelect = document.createElement("select");
-          ["push", "speech"].forEach(type => {
-            const opt = document.createElement("option");
-            opt.value = type;
-            opt.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-            if (node.data.notificationType === type) opt.selected = true;
-            typeSelect.appendChild(opt);
-          });
-          typeSelect.value = node.data.notificationType || "push";
-          typeSelect.onchange = () => {
-            node.data.notificationType = typeSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            renderEditor(node); // rerender to update device dropdown label
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(typeSelect);
-
-          // --- Device dropdown (filtered by capability) ---
-          const type = typeSelect.value || node.data.notificationType || "push";
-          const deviceLabel = document.createElement("label");
-          deviceLabel.textContent = (type === "speech") ? "Speaker Device" : "Notification Device";
-          el.appendChild(deviceLabel);
-
-          // Filter device list for Notification (push) or Speech
-          let filteredDevices = [];
-          if (type === "speech") {
-            // Find devices with Speech capability
-            filteredDevices = devices.filter(d =>
-              (d.commands && d.commands.includes("speak")) ||
-              (d.capabilities && d.capabilities.includes("SpeechSynthesis"))
-            );
-          } else {
-            // Find devices with Notification capability
-            filteredDevices = devices.filter(d =>
-              (d.commands && d.commands.includes("deviceNotification")) ||
-              (d.capabilities && d.capabilities.includes("Notification"))
-            );
-          }
-          // fallback: if none found, show all devices as an option (prevents blank dropdown)
-          if (filteredDevices.length === 0) filteredDevices = devices;
-          filteredDevices.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
-          const devSelect = document.createElement("select");
-          devSelect.multiple = true;
-          devSelect.size = Math.min(8, filteredDevices.length); // Show up to 8
-
-          // Support both array and legacy string for selected devices
-          const selectedIds = Array.isArray(node.data.targetDeviceId)
-            ? node.data.targetDeviceId
-            : node.data.targetDeviceId
-              ? [node.data.targetDeviceId]
-              : [];
-
-          filteredDevices.forEach(d => {
-            const opt = document.createElement("option");
-            opt.value = d.id;
-            opt.textContent = d.label;
-            if (selectedIds.includes(d.id)) opt.selected = true;
-            devSelect.appendChild(opt);
-          });
-
-          devSelect.onchange = () => {
-            node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(devSelect);
-
-          // Message label & inpu
-          const msgLabel = document.createElement("label");
-          msgLabel.textContent = "Message";
-          msgLabel.style.display = "block";
-          el.appendChild(msgLabel);
-
-          const msgInput = document.createElement("input");
-          msgInput.type = "text";
-          msgInput.style.width = "100%";
-          msgInput.style.marginBottom = "8px";
-          msgInput.placeholder = "";
-          msgInput.value = node.data.message || "";
-          msgInput.oninput = () => {
-            node.data.message = msgInput.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-          };
-          el.appendChild(msgInput);
-
-        const wildcardMsg = document.createElement("div");
-        wildcardMsg.style.fontSize = "13px";
-        wildcardMsg.style.marginTop = "7px";
-        wildcardMsg.style.color = "#b7cdfd";
-        wildcardMsg.innerHTML =
-          '<b><u>Wildcards:</u></b><br>' +
-          '<b>{device}</b> – Event device name/label<br>' +
-          '<b>{value}</b> – Event value<br>' +
-          '<b>{text}</b> – Event description or text<br>' +
-          '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
-          '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
-          '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
-          '<b>{now}</b> – Current system date & time (now)<br>' +
-          '<b>{variableName}</b> – Selected variable name<br>' +
-          '<b>{variableValue}</b> – Selected variable value<br>' +
-          '<span style="color:#eee;">Example: {variableName} = {variableValue} at {time12} on {date}</span>';
-        el.appendChild(wildcardMsg);
-
-          return;
-        }
-    
-        const previewChip = document.createElement("div");
-        previewChip.className = "current-value";
-        previewChip.style.marginLeft = "2px";
-        previewChip.style.fontSize = "13px";
-        previewChip.style.fontWeight = "bold";
-        previewChip.style.cursor = "pointer";
-        previewChip.title = "Preview of value/expression";
-        el.appendChild(previewChip);
-        function updatePreview() {
-          if (window.flowVars && window.flowVars.evaluate) {
-            try {
-              const v = msgInput.value;
-              if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
-              const result = window.flowVars.evaluate(v);
-              let color = "#b7ffac";
-              if (typeof result === "number") color = "#3af";
-              else if (typeof result === "boolean") color = "#0c0";
-              else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
-              previewChip.textContent = "= " + result;
-              previewChip.style.color = color;
-              previewChip.title = (typeof result) + ": " + result;
-            } catch(e) {
-              previewChip.textContent = "ERR: " + e.message;
-              previewChip.style.color = "#f33";
-              previewChip.title = e.message;
-            }
-          }
-        }
-        if (typeof renderMinimap === 'function') {
-          renderMinimap();
-        }
-        return;
-      }
-      
-      window.editor = new Drawflow(document.getElementById("drawflow"));
-      // ── MONKEY‑PATCH editor.addNode TO WIPE ALL BUILT‑IN DEFAULTS ──
-      (function(){
-        const origAddNode = editor.addNode.bind(editor);
-        editor.addNode = function(...args) {
-          const data = args[6];
-          if (data && typeof data === 'object') {
-            Object.keys(data).forEach(key => {
-              if (typeof data[key] === 'string') {
-                data[key] = "";
-              } else if (Array.isArray(data[key])) {
-                data[key] = data[key].map(_ => "");
-              }
-            });
-          }
-          return origAddNode(...args);
-        };
-      })();
-
-      if (editor && editor.on) {
-        editor.on('all', function(event, ...args) { 
-        //console.log("DRAWFLOW EVENT:", event, args); 
-      });
-
-      editor.on('nodeCreated', pushUndoState);
-      editor.on('nodeRemoved', pushUndoState);
-      editor.on('nodeMoved', pushUndoState);
-      editor.on('nodeDataChanged', pushUndoState);
-
-      // --- SNAP TO GRID: add this below ---
-      editor.on('nodeMoved', function(id) {
-        // Only snap if toggle is checked
-        var snapActive = document.getElementById("snapToGridToggle")?.checked;
-        if (!snapActive) return;
-
-        const nodeEl = document.getElementById("node-" + id);
-        if (!nodeEl) {
-          console.log("Node element not found by id: node-" + id);
-          return;
-        }
-
-        let left = parseInt(nodeEl.style.left, 10) || 0;
-        let top = parseInt(nodeEl.style.top, 10) || 0;
-        let snappedLeft = Math.round(left / 20) * 20;
-        let snappedTop = Math.round(top / 20) * 20;
-
-        if (left !== snappedLeft || top !== snappedTop) {
-          nodeEl.style.left = snappedLeft + "px";
-          nodeEl.style.top = snappedTop + "px";
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data[id]) {
-            editor.drawflow.Home.data[id].pos_x = snappedLeft;
-            editor.drawflow.Home.data[id].pos_y = snappedTop;
-          }
-          //console.log("SNAPPED NODE " + id + " to (" + snappedLeft + ", " + snappedTop + ")");
-        }
-      });
-    }
-
-      // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
-      if (!editor.moveNodeTo) {
-        editor.moveNodeTo = function(nodeId, x, y) {
-          // Robustly find the Home flow data
-          let home = this.drawflow && this.drawflow.Home
-            ? this.drawflow.Home
-            : this.drawflow && this.drawflow.drawflow && this.drawflow.drawflow.Home
-              ? this.drawflow.drawflow.Home
-              : null;
-          if (!home || !home.data) return;
-
-          const node = home.data[nodeId];
-          if (!node) return;
-          node.pos_x = x;
-          node.pos_y = y;
-
-          // Move the actual HTML node in the DOM
-          const htmlNode = document.getElementById("node-" + nodeId);
-          if (htmlNode) {
-            htmlNode.style.left = x + "px";
-            htmlNode.style.top = y + "px";
-          }
-
-          // Also rerender lines
-          if (typeof this.updateConnectionNodes === "function") {
-            this.updateConnectionNodes(`node-${nodeId}`);
-          }
-        }
-      }
-      editor.reroute = true;
-      editor.start();
-      attachNodeClickHandlers();
-
-      editor.on('nodeMoved', function(id) {
-        markFlowNeedsSave(true);
-      });
-      editor.on('connectionRemoved', function(connection) {
-        markFlowNeedsSave(true);
-      });
-      editor.on('connectionCreated', function(connection) {
-        markFlowNeedsSave(true);
-      });
-      editor.on('nodeRemoved', function(id) {
-        markFlowNeedsSave(true);
-      });
-
-      if (typeof Drawflow !== "undefined" && !Drawflow.prototype.updateNodeHtmlFromId) {
-        Drawflow.prototype.updateNodeHtmlFromId = function(id, html) {
-          let selector = "#node-" + id;
-          if (typeof id === "string" && id.startsWith("node-")) {
-           selector = "#" + id;
-          }
-          const nodeDiv = this.container.querySelector(selector + " .drawflow_content_node");
-          if (nodeDiv) nodeDiv.innerHTML = html;
-        }
-      }
-
-      editor.on("nodeSelected", function (id) {
-        editor.selected_id = id;
-        renderEditor(editor.getNodeFromId(id));
-      });
-
-      document.getElementById("drawflow").addEventListener("click", function(e) {
-        if (!e.target.closest(".drawflow-node")) {
-          window._multiSelectedNodes.clear();
-          editor.selected_id = null;
-          updateMultiSelectUI();
-        // Close the Node Editor when clicking on blank canvas:
-        const panel = document.getElementById("nodeEditor");
-        if (panel) panel.style.display = 'none';
-        }
-      });
-
-      document.getElementById("undoBtn").onclick = doUndo;
-      document.getElementById("redoBtn").onclick = doRedo;
-
-      document.getElementById("addRepeat").onclick = function() {
-        logAction("addDeviceToVar button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("repeat", 1, 0, x, y, "repeat",
-          {}, nodeTileHtml("repeat", {}),
-        );
-        markFlowNeedsSave(true);
-        // Increment offset for next node
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-      };
-    
-      document.getElementById("addDeviceToVar").onclick = function () {
-        logAction("addDeviceToVar button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("notMatchingVar", 1, 2, x, y, "notMatchingVar", {
-            deviceIds: [], attribute: "", value: "", varScope: "flow"}
-        ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
-        markFlowNeedsSave(true);
-        // Increment offset for next node
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        logAction("addDeviceToVar finished.");
-      };
-
-      // --- Save Device State ---
-      document.getElementById("addSaveDeviceState").onclick = function() {
-        logAction("addSaveDeviceState button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("saveDeviceState", 1, 1, x, y, "saveDeviceState", {
-         deviceId: "", deviceLabel: "" 
-        }, nodeTileHtml("saveDeviceState", { deviceId: "", deviceLabel: "" }, ));
-        markFlowNeedsSave(true);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      // --- Restore Device State ---
-      document.getElementById("addRestoreDeviceState").onclick = function() {
-        logAction("addRestoreDeviceState button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("restoreDeviceState", 1, 1, x, y, "restoreDeviceState", {
-         deviceId: "", deviceLabel: "" 
-        }, nodeTileHtml("restoreDeviceState", { deviceId: "", deviceLabel: "" }, ));
-        markFlowNeedsSave(true);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addSchedule").onclick = function() {
-        logAction("addSchedule button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("schedule", 0, 1, x, y, "schedule", {
-          cron: "",
-          repeatDays: [],
-          time: ""
-        });
-        markFlowNeedsSave(true);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-      };
-
-      document.getElementById("addDevice").onclick = () => {
-        logAction("addDevice button clicked.");
-
-        // 1) Compute the next X/Y (with your existing offset variables)
-        const { x, y } = getTopLeftOnScreenCoords();
-
-        // 2) Add the Device-Action node at that spot
-        editor.addNode(
-          "device",      // node type
-          1,             // inputs
-          1,             // outputs
-          x, y,          // position
-          "device",      // CSS class
-          {
-            deviceId: "",
-            attribute: "",
-            command: "",
-            value: ""
-          },
-          nodeTileHtml(
-            "device",
-            { deviceId: "", attribute: "", command: "", value: "" }
-          )
-        );
-
-        // 3) Increment your per-click offsets exactly like the others
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-
-        // 4) Re-apply your data-node-type attribute after draw
-        setTimeout(() => {
-          document.querySelectorAll('.drawflow-node').forEach(el => {
-            const id = el.id.replace('node-', '');
-            const node = editor.getNodeFromId(id);
-            if (node && node.name === "device") {
-              el.setAttribute('data-node-type', 'device');
-            }
-          });
-        }, 100);
-
-        // 5) Final bookkeeping
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addDevice finished.");
-      };
-
-      document.getElementById("addCondition").onclick = () => {
-        logAction("addCondition button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("condition", 1, 2, x, y, "condition", {
-          deviceId: "", attribute: "", value: "", comparator: ""
-        }, nodeTileHtml("condition", { deviceId: "", attribute: "", comparator: "", value: "" }), undefined, { outputs: ["true", "false"] });
-        setTimeout(() => {
-          const nodeEls = document.querySelectorAll('.drawflow-node');
-          nodeEls.forEach(el => {
-            const id = el.id.replace('node-', '');
-            if (editor.getNodeFromId && editor.getNodeFromId(id)) {
-              const node = editor.getNodeFromId(id);
-              if (node && node.name === "device") {
-                el.setAttribute('data-node-type', 'device');
-              }
-              if (node && node.name === "condition") {
-                el.setAttribute('data-node-type', 'condition');
-              }
-              if (node && node.name === "eventTrigger") {
-                el.setAttribute('data-node-type', 'eventTrigger');
-              }
-            }
-          });
-        }, 100);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addCondition finished.");
-      };
-
-      document.getElementById("addTrigger").onclick = () => {
-        logAction("addTrigger button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("eventTrigger", 0, 1, x, y, "eventTrigger", {
-          deviceId: "", attribute: "", value: "", comparator: ""
-        }, nodeTileHtml("eventTrigger", { deviceId: "", attribute: "", comparator: "", value: "" }));
-        setTimeout(() => {
-          const nodeEls = document.querySelectorAll('.drawflow-node');
-          nodeEls.forEach(el => {
-            const id = el.id.replace('node-', '');
-            if (editor.getNodeFromId && editor.getNodeFromId(id)) {
-              const node = editor.getNodeFromId(id);
-              if (node && node.name === "device") {
-                el.setAttribute('data-node-type', 'device');
-              }
-              if (node && node.name === "condition") {
-                el.setAttribute('data-node-type', 'condition');
-              }
-              if (node && node.name === "eventTrigger") {
-                el.setAttribute('data-node-type', 'eventTrigger');
-              }
-            }
-          });
-        }, 100);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addTrigger finished.");
-      };
-
-      document.getElementById("addComment").onclick = function () {
-        logAction("addComment button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("comment", 0, 0, x, y, "comment", { 
-          text: "comment..." }
-        );
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addComment finished.");
-      };
-
-      document.getElementById("addSetVariable").onclick = () => {
-        logAction("addSetVariable button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("setVariable", 1, 1, x, y, "setVariable", {
-          varName: "", varValue: ""
-        }, nodeTileHtml("setVariable", { varName: "", varValue: "" }));
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addSetVariable finished.");
-      };
-
-      document.getElementById("addNotification").onclick = () => {
-        logAction("addNotification button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("notification", 1, 1, x, y, "notification", {
-          notificationType: "push", // default
-          targetDeviceId: "",
-          message: ""
-        }, nodeTileHtml("notification", { notificationType: "push", message: "" }));
-        markFlowNeedsSave(true);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addNotification finished.");
-      };
-
-      document.getElementById("addDoNothing").onclick = () => {
-        logAction("addDoNothing button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        markFlowNeedsSave(true);
-        editor.addNode("doNothing", 1, 0, x, y, "doNothing", 
-          {}, 
-          '<div class="logic-node">Do Nothing</div>'
-        );
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addDoNothing finished.");
-      };
-
-      document.getElementById("addDelay").onclick = () => {
-        logAction("addDelay button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("delay", 1, 1, x, y, "delay", {
-          delayMs: 1000
-        }, nodeTileHtml("delay", { delayMs: 1000 }));
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addDelay finished.");
-      };
-
-      document.getElementById("addDelayMin").onclick = () => {
-        logAction("addDelayMin button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("delayMin", 1, 1, x, y, "delayMin", {
-          delayMin: 1
-        }, nodeTileHtml("delayMin", { delayMin: 1 }));
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        markFlowNeedsSave(true);
-        attachNodeClickHandlers();
-        updateNodeSelectionUI();
-        logAction("addDelayMin finished.");
-      };
-
-      document.getElementById("newFlow").onclick  = async function() {
-        if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
-          editor.clear();
-          document.getElementById("flowName").textContent = "";      // clear name
-          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          if (editor && typeof editor.export === "function") {
-            window.undoStack = [JSON.stringify(editor.export())];
-            window.redoStack = [];
-          }
-          markFlowNeedsSave(false);
-          logAction("Started a new flow (all nodes cleared).");
-
-          // ─── CLEAR DROPDOWN SELECTION ───
-          const dd = document.getElementById("hubitatFileDropdown");
-          dd.value = "";   // resets to your “Pick a Flow…” placeholder
-          // ─────────────────────────────────
-
-          const appId = document.getElementById("hubitatAppId").value.trim();
-          const token = document.getElementById("hubitatToken").value.trim();
-          checkIfFlowIsInUse("new", appId, token);
-        }
-        await autoLoadGlobalVarsFromHubitat();
-      };
-
-      window.addEventListener("DOMContentLoaded", async () => {
-        if (!hubitatCredentialsAreValid(true)) return;
-
-        const dropdown = document.getElementById("hubitatFileDropdown");
-        dropdown.style.display = "inline-block";
-        dropdown.innerHTML     = "<option>Loading…</option>";
-
-        let files = [];
-        try {
-          files = await fetchHubitatFiles();
-        } catch (err) {
-          dropdown.innerHTML = "<option>Failed to load flows</option>";
-          console.error("Error fetching flow list:", err);
-          return;
-        }
-
-        if (!files.length) {
-          dropdown.innerHTML = "<option>No .json files found</option>";
-        } else {
-          dropdown.innerHTML = "<option value=''>Pick a flow…</option>";
-          files.forEach(f => {
-            const opt = document.createElement("option");
-            opt.value       = f;
-            opt.textContent = f.replace(/\.json$/i, "");
-            dropdown.appendChild(opt);
-          });
-        }
-
-        // ─── wire up selection ───────────────────────────────────────────────
-        dropdown.onchange = async function() {
-          const fileName = this.value.trim();
-          if (!fileName) {
-            alert("Please select a flow file.");
-            return;
-          }
-
-          // 1) Pull credentials
-          const appId = document.getElementById("hubitatAppId").value.trim();
-          const token = document.getElementById("hubitatToken").value.trim();
-          if (!appId || !token) {
-            alert("Missing Hubitat App ID or Token.");
-            return;
-          }
-
-          // 2) Fetch raw JSON text from Hubitat
-          const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
-          const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
-          try {
-            const res = await fetch(fileUrl);
-            const raw = await res.text();
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}: ${raw}`);
-            }
-
-            // 3) Parse or auto‑fix common JSON issues
-            let data;
-            try {
-              data = JSON.parse(raw);
-            } catch (err) {
-              // 3a) Log the parse error
-              logAction(
-                `⚠️ JSON parse error for "${fullName}": ${err.message}. Attempting auto‑fix…`,
-                "warn"
-              );
-
-              // 3b) Apply extended fixes:
-              const fixed = raw
-                // strip UTF‑8 BOM
-                .replace(/^\uFEFF/, "")
-                // remove single‑line comments
-                .replace(/\/\/.*$/gm, "")
-                // remove multi‑line comments
-                .replace(/\/\*[\s\S]*?\*\//g, "")
-                // remove trailing commas in objects/arrays
-                .replace(/,\s*([}\]])/g, "$1")
-                // quote unquoted keys
-                .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
-                // convert single‑quoted strings to double
-                .replace(/'([^']*)'/g, '"$1"')
-                // convert NaN or Infinity to null
-                .replace(/\bNaN\b/g, "null")
-                .replace(/\bInfinity\b/g, "null");
-
-              try {
-                data = JSON.parse(fixed);
-                // 3c) Log the successful auto‑fix
-                logAction(
-                  `🔧 Auto‑fixed JSON on load for "${fullName}"`,
-                  "info"
-                );
-              } catch (err2) {
-                alert(
-                  "❌ JSON load failed even after auto‑fix:\n" +
-                  err2.message
-                );
-                return;
-              }
-            }
-
-            // 4) Import into editor and refresh UI
-            editor.import(data);
-            patchFlowWithDeviceLabels(data, window.devices);
-            document.getElementById("flowName").textContent = fileName;
-            markFlowNeedsSave(false);
-            logAction(`Loaded “${fileName}” from Hubitat.`, "success");
-            zoomDrawflowToFit();
-
-            // 5) Update Test‑Flow status panel
-            checkIfFlowIsInUse(fileName, appId, token);
-
-            // 6) Highlight last run if present
-            try {
-              const allTraces = await fetchHubitatFileContent("FE_flowtrace.json");
-              const runsForThisFlow = Array.isArray(allTraces)
-                ? allTraces.filter(t => t.flowFile === `${fullName}`)
-                : [];
-              if (runsForThisFlow.length > 0) {
-                highlightOnlyLatestRun(runsForThisFlow);
-              } else {
-                logAction(`No previous runs found for ${fileName}`, "info");
-              }
-            } catch (err) {
-              logAction("Unable to load last flow trace: " + err.message, "warn");
-            }
-
-          } catch (e) {
-            alert("❌ Failed to load: " + e.message);
-            logAction("Error loading file: " + e, "error");
-          }
-        };
-
-        // ── NODE CLICK SELECTION HANDLER ─────────────────────────────────────────
-        document.addEventListener('click', e => {
-          // look for the nearest .drawflow-node element
-          const nodeEl = e.target.closest('.drawflow-node');
-          if (!nodeEl || !editor) return;
-
-          // strip off the "node-" prefix to get the ID
-          const nodeId = nodeEl.id.replace(/^node-/, '');
-          if (!nodeId) return;
-
-          // set the selected_id so Test will pick it up
-          editor.selected_id = nodeId;
-
-          // optional: log your selection so you know it worked
-          //logAction(`🖱️ Selected node ${nodeId}`, 'info');
-        });
-      });
-
-      async function fetchDevicesFromApp() {
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          return [];
-        }
-        try {
-          const url = `/apps/api/${appId}/devices?access_token=${token}`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          return data;
-        } catch (e) {
-          logAction("Failed to fetch devices: " + e.message, "error");
-          return [];
-        }
-      }
-
-      var loadBtn = document.getElementById("loadDevices");
-        if (loadBtn) {
-          loadBtn.onclick = async () => {
-            logAction("loadDevices button clicked.");
-            await fetchModesFromAppFile();
-            devices = await fetchDevicesFromApp();
-            devices.forEach(dev => {
-              if (Array.isArray(dev.attributes)) {
-                const attrMap = {};
-                dev.attributes.forEach(a => {
-                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
-                });
-                dev.attributes = attrMap;
-              }
-            });
-            devices.push(TIME_DEVICE);
-            devices.push(MODE_DEVICE);
-            devices.push(VARIABLE_DEVICE);
-            window.devices = devices;
-
-            // Set current mode on Home Location device
-            const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
-            const currentMode = currentModeObj ? currentModeObj.name : "";
-            const modeDev = window.devices.find(d => d.id === "__mode__");
-            if (modeDev) {
-              modeDev.attributes.mode = currentMode;
-            }
-
-            // --- PATCH: force field sync after import/undo ---
-            setTimeout(() => {
-              // 1. Always pick a node to edit
-              let selected = editor.selected_id;
-              if (!selected) {
-                // If nothing selected, pick the first node in the flow (if any)
-                const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-                  ? Object.keys(editor.drawflow.Home.data)
-                  : [];
-                if (allIds.length) {
-                  selected = allIds[0];
-                  editor.selected_id = selected;
-                }
-              }
-              if (selected) {
-                // Always refresh the editor panel to match current node data
-                window.renderEditor(editor.getNodeFromId(selected));
-              } else {
-                document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-              }
-            }, 10);
-            logAction("Devices loaded: " + devices.length);
-          };
-        }
-
-      document.getElementById("sendFlow").onclick = async () => {
-        // 1) Validate credentials & editor
-        if (!hubitatCredentialsAreValid(true) || !editor) return;
-
-        // 2) Determine filename (if empty, prompt for one like Save As)
-        const dd     = document.getElementById("hubitatFileDropdown");
-        const fl     = dd.value.trim();
-        let flowName = fl.endsWith(".json") ? fl.slice(0, -5) : fl;
-        if (!flowName) {
-          // Prompt for new name
-          let name = prompt("Save flow as:", "");
-          if (!name) return;  // user cancelled
-
-          // Sanitize and validate
-          name = sanitizeFlowName(name);
-          if (!isValidFlowName(name)) {
-            alert("Invalid flow name. Only letters, numbers, underscores, and dashes allowed.");
-            return;
-          }
-
-          // Update display & use that name
-          flowName = name;
-          document.getElementById("flowName").textContent = flowName;
-        }
-
-        // 3) Export & prepare payload
-        let flowObj;
-        try {
-          flowObj = editor.export();
-          if (window.flowVars?.getLocalVars) flowObj.variables = window.flowVars.getLocalVars();
-        } catch (e) {
-          alert("🛑 Failed to export flow:\n" + e);
-          return;
-        }
-
-        // 4) Serialize to JSON
-        let payloadText;
-        try {
-          payloadText = JSON.stringify({ flowName, ...flowObj }, null, 2);
-        } catch (e) {
-          alert("🛑 Flow data could not be serialized to JSON:\n" + e);
-          return;
-        }
-
-        // 5) Pre‑upload validation + extended auto‑fix
-        try {
-          JSON.parse(payloadText);
-        } catch (e) {
-          logAction(`⚠️ JSON serialization error for "${flowName}.json": ${e.message}. Applying auto‑fix…`, "warn");
-          payloadText = payloadText
-            .replace(/^\uFEFF/, "")                    // strip BOM
-            .replace(/\/\/.*$/gm, "")                  // remove single‑line comments
-            .replace(/\/\*[\s\S]*?\*\//g, "")          // remove multi‑line comments
-            .replace(/,\s*([}\]])/g, "$1")             // remove trailing commas
-            .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":') // quote unquoted keys
-            .replace(/'([^']*)'/g, '"$1"')             // single → double quotes
-            .replace(/\bNaN\b/g, "null")               // NaN → null
-            .replace(/\bInfinity\b/g, "null");         // Infinity → null
-
-          try {
-            JSON.parse(payloadText);
-            logAction(`🔧 Auto‑fixed JSON before upload`, "info");
-          } catch (e2) {
-            alert("🛑 Could not auto‑fix JSON:\n" + e2.message);
-            return;
-          }
-        }
-
-        // 6) Upload to Hubitat
-        await uploadToHubitatFile(`${flowName}.json`, payloadText);
-
-        // 7) Refresh dropdown and select just‑saved file
-        await reloadFlowDropdown(`${flowName}.json`);
-
-        // 8) Post‑save fetch & verify + extended auto‑fix if needed
-        try {
-          let savedText = await fetchHubitatFileContent(`${flowName}.json`);
-          if (typeof savedText !== "string") {
-            savedText = JSON.stringify(savedText, null, 2);
-          }
-
-          try {
-            JSON.parse(savedText);
-            logAction(`✅ Verified valid JSON for "${flowName}.json"`, "info");
-          } catch {
-            logAction(`⚠️ Saved JSON malformed for "${flowName}.json". Applying auto‑fix…`, "warn");
-            const fixedSaved = savedText
-              .replace(/^\uFEFF/, "")
-              .replace(/\/\/.*$/gm, "")
-              .replace(/\/\*[\s\S]*?\*\//g, "")
-              .replace(/,\s*([}\]])/g, "$1")
-              .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
-              .replace(/'([^']*)'/g, '"$1"')
-              .replace(/\bNaN\b/g, "null")
-              .replace(/\bInfinity\b/g, "null");
-
-            // re‑parse (will throw if still bad)
-            JSON.parse(fixedSaved);
-
-            logAction(`🔧 Auto‑fixed saved JSON for "${flowName}.json"`, "info");
-            await uploadToHubitatFile(`${flowName}.json`, fixedSaved);
-            logAction(`🔁 Re‑uploaded fixed JSON`, "info");
-          }
-        } catch (e) {
-          alert("⚠️ Could not validate saved JSON:\n" + e);
-        }
-
-        // 9) Clear dirty flag & log success
-        markFlowNeedsSave(false);
-        logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
-      };
-
-      // --- Auto device and tile refresh every 5 seconds ---
-      setInterval(async () => {
-        // Only run if credentials are filled and devices are loaded
-        const appIdEl = document.getElementById("hubitatAppId");
-        const tokenEl = document.getElementById("hubitatToken");
-        if (!(appIdEl && appIdEl.value && tokenEl && tokenEl.value)) return;
-        const devices = await fetchDevicesFromApp();
-        devices.forEach(dev => {
-          if (Array.isArray(dev.attributes)) {
-            const attrMap = {};
-            dev.attributes.forEach(a => {
-              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
-            });
-            dev.attributes = attrMap;
-          }
-        });
-        devices.push(TIME_DEVICE);
-        devices.push(MODE_DEVICE);
-        devices.push(VARIABLE_DEVICE);
-        window.devices = devices;
-
-        // Set current mode on Home Location device
-        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
-        const currentMode = currentModeObj ? currentModeObj.name : "";
-        const modeDev = window.devices.find(d => d.id === "__mode__");
-        if (modeDev) {
-          modeDev.attributes.mode = currentMode;
-        }
-
-        // Update all node tiles
-        const data = editor.drawflow.drawflow.Home?.data;
-        if (data && Object.keys(data).length > 0) {
-          Object.values(data).forEach(node => {
-            if (["device", "condition", "eventTrigger"].includes(node.name) && node.data && node.data.deviceId) {
-              let dev = devices.find(d => d.id == node.data.deviceId);
-              node.data.deviceLabel = dev ? (dev.label || dev.name || node.data.deviceId) : node.data.deviceId;
-            }
-            if (editor && typeof editor.updateNodeHtmlFromId === "function") {
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            }
-          });
-          // Redraw node lines (optional nudge)
-          Object.values(data).forEach(node => {
-            editor.moveNodeTo(node.id, node.pos_x + 1, node.pos_y);
-          });
-          setTimeout(() => {
-            Object.values(data).forEach(node => {
-              editor.moveNodeTo(node.id, node.pos_x - 1, node.pos_y);
-            });
-          }, 30);
-          //logAction("Tiles auto-refreshed.");
-        }
-      }, 5000); // every 5 seconds
-
-    });
-
-    document.addEventListener("DOMContentLoaded", function() {
-      if (window.flowVars && window.flowVars.renderManager) {
-        flowVars.renderManager(document.getElementById('variableManager'), { globalVars: false });
-      }
-    });
-
-    async function uploadToHubitatFile(filename, contents, opts = {}) {
-      const appId = document.getElementById("hubitatAppId")?.value.trim();
-      const token = document.getElementById("hubitatToken")?.value.trim();
-      if (!appId || !token) { alert("Missing Hubitat appId/token"); throw new Error("Missing Hubitat appId/token"); }
-      const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(filename)}`;
-      let body = contents;
-      if (typeof contents !== "string") body = JSON.stringify(contents, null, 2);
-
-      const res = await fetch(url, {
-          method: "POST",
-          body: body,
-          headers: { "Content-Type": opts.mimeType || "application/json" }
-      });
-      if (!res.ok) {
-          alert("Failed to upload file to Hubitat: " + (await res.text()));
-          throw new Error("Failed to upload file");
-      } else {
-        await reloadHubitatApp();
-      }
-      return await res.json().catch(() => true); // works for both JSON and blank responses
-    }
-
-    async function fetchModesFromAppFile() {
-      if (typeof fetchHubitatVarFileContent !== "function") return [];
-      try {
-        const txt = await fetchHubitatVarFileContent("FE_flowModes.json");
-        if (!txt) { window.hubitatModes = []; return []; }
-        const obj = JSON.parse(txt);
-        window.hubitatModes = obj.modes || [];
-        logAction("Loaded modes: " + window.hubitatModes.map(m => m.name).join(", "));
-        return window.hubitatModes;
-      } catch (e) {
-        logAction("Failed to load FE_flowModes.json: " + e, "error");
-        window.hubitatModes = [];
-        return [];
-      }
-    }
-
-    // --- ONLY highlight the last-executed flow's path ---
-
-    // === Helper: Get and save Hubitat IP ===
-    function getHubitatIP() {
-      let ip = localStorage.getItem("hubitat_ip");
-      if (!ip && window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) ip = window.location.hostname;
-      if (!ip) ip = prompt("Enter Hubitat IP address:", "192.168.1.XX") || "";
-      if (ip) localStorage.setItem("hubitat_ip", ip);
-      return ip;
-    }
-
-    // === Highlight only the most recent real flow execution ===
-    function highlightOnlyLatestRun(activeFlows) {
-        // clear previous node highlights
-        document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
-                .forEach(n => n.classList.remove('executed','last-executed'));
-        // clear previous path highlights
-        document.querySelectorAll('.main-path')
-                .forEach(p => { p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('highlighted'); });
-
-        let latestRun = null, latestTs = 0;
-        (activeFlows || []).forEach(flow => {
-            // only real steps (nodeId truthy)
-            const realSteps = flow.steps.filter(s => s.nodeId);
-            if (!realSteps.length) return;
-            const ts = realSteps[realSteps.length - 1].timestamp;
-            if (ts > latestTs) {
-                latestTs = ts;
-                latestRun = realSteps;
-            }
-        });
-        if (!latestRun) return;
-
-        // highlight nodes
-        latestRun.forEach((step, idx) => {
-            const el = document.getElementById(`node-${step.nodeId}`);
-            if (el) {
-                el.classList.add('executed');
-                if (idx === latestRun.length - 1) el.classList.add('last-executed');
-            }
-        });
-
-        // highlight connecting paths
-        for (let i = 0; i < latestRun.length - 1; i++) {
-            const from = latestRun[i].nodeId, to = latestRun[i+1].nodeId;
-            let path = document.querySelector(`.connection.node_out_node-${from}.node_in_node-${to} .main-path`)
-                    || document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
-            if (path) {
-                path.setAttribute('stroke','limegreen');
-                path.setAttribute('style','stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
-                path.classList.add('highlighted');
-            }
+			
+			section(getFormat("header-green", " Per-Flow Logging")) {
+				if (settings?.flowFiles) {
+					input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+					if(logEnable) {
+						def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
+						input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
+						if (perFlowLogEnabled) {
+							paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
+						}
+					}
+				} else {
+					paragraph "Select at least one Flow JSON file to enable per-flow logging."
+				}
+			}
+			section() {
+				paragraph getFormat("line")
+				paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
+			}
         }
     }
+}
 
-      function markExportNeeded(needed = true) {
-        const btn = document.getElementById('exportVarsBtn');
-        if (!btn) return;
-        if (needed) {
-          btn.classList.add('need-export');
-        } else {
-          btn.classList.remove('need-export');
+def installed() { 
+	initialize()
+}
+
+def updated() {
+	flowLog(fname, "In updated", "info")
+    initialize()
+}
+
+// ─── initialize() ─────────────────────────────────────────────────────────────
+private void initialize() {
+    if (!state.accessToken) {
+        createAccessToken()
+    }
+    state.appId  = app.id
+    state.token  = state.accessToken
+
+    // — clear everything once —
+    unsubscribe()
+    unschedule()
+
+	try {
+    	state.globalVarsCache = readFlowFile("FE_global_vars.json") ?: []
+	} catch (e) {
+		state.globalVarsCache = []
+	}
+
+    // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
+    state.timeJobs = state.timeJobs ?: [:]
+    state.timeSubs = state.timeSubs ?: [:]
+
+    // — sunrise/sunset still by subscription —
+    subscribe(location, "sunrise", "handleLocationTimeEvent", [filterEvents:false])
+    subscribe(location, "sunset",  "handleLocationTimeEvent", [filterEvents:false])
+
+    // — ONE poller for all HH:mm & dayOfWeek triggers —
+    schedule("0 * * ? * * *", "pollTimeTriggers")
+
+    // — load your flows as before —
+    state.activeFlows = [:]
+    settings.flowFiles?.each { fname ->
+        loadAndStartFlow(fname)
+    }
+}
+
+// ─── clearFlowTimeTriggers() ───────────────────────────────────────────────────
+private void clearFlowTimeTriggers(String fname) {
+    // ensure the maps exist
+    state.timeJobs = state.timeJobs ?: [:]
+    state.timeSubs = state.timeSubs ?: [:]
+
+    // 1a) unschedule just this flow’s cron jobs by jobName
+    (state.timeJobs[fname] ?: []).each { jobName ->
+        unschedule(jobName)
+    }
+    state.timeJobs.remove(fname)
+
+    // 1b) unsubscribe just this flow’s sunrise/sunset hooks
+    (state.timeSubs[fname] ?: []).each { evtName ->
+        unsubscribe(location, evtName, "handleLocationTimeEvent")
+    }
+    state.timeSubs.remove(fname)
+}
+
+// --- REST API ENDPOINTS ---
+mappings {
+    path("/runFlow")         { action: [POST: "apiRunFlow" ] }
+    path("/testFlow")        { action: [POST: "apiTestFlow" ] }
+    path("/devices")         { action: [GET: "apiGetDevices"] }
+    path("/uploadFile")      { action: [POST: "apiUploadFile"] }
+    path("/listFiles")       { action: [GET: "apiListFiles"] }
+    path("/getFile")         { action: [GET: "apiGetFile"] }
+    path("/getModes")        { action: [POST: "exportModesToFile"] }
+    path("/activeFlows")     { action: [GET: "apiActiveFlows"] }
+	path("/forceReload") 	 { action: [POST: "apiForceReload" ] }
+	path("/selectFlow") 	 { action: [POST: "apiSelectFlow"] }
+	path("/deselectFlow") 	 { action: [POST: "apiDeselectFlow"] }
+	path("/selectFlowLog") 	 { action: [POST: "apiSelectFlowLogging"] }
+	path("/deselectFlowLog") { action: [POST: "apiDeselectFlowLogging"] }
+	path("/settings") 		 { action: [GET: "apiGetSettings"] }
+	path("/deleteFile") 	 { action: [GET: "apiDeleteFlow", DELETE: "apiDeleteFlow"] }
+}
+
+// --- HANDLERS ---
+def handleLocationTimeEvent(evt) {
+    state.activeFlows.each { fname, flowObj ->
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
+        def matches = dataNodes.findAll { id, node ->
+            node.name == "eventTrigger" &&
+            node.data.deviceId == "__time__" &&
+            node.data.attribute == "timeOfDay" &&
+            (
+                // Exactly matches event
+                (node.data.comparator == "==" && node.data.value == evt.name) ||
+                // Between window starts or ends on this event
+                (node.data.comparator == "between" &&
+                 node.data.value instanceof List &&
+                 (node.data.value[0] == evt.name || node.data.value[1] == evt.name)) ||
+                // Value is a single string and matches
+                (node.data.value == evt.name) ||
+                // Value is a list and contains event
+                (node.data.value instanceof List && node.data.value.contains(evt.name))
+            )
         }
-      }
-
-      window.addEventListener("beforeunload", function (e) {
-        const saveBtn = document.getElementById('sendFlow');
-        if (saveBtn && saveBtn.classList.contains('need-save')) {
-          // Chrome requires returnValue to be set.
-          e.preventDefault();
-          e.returnValue = "You have unsaved changes to your Flow. Are you sure you want to leave?";
-          // Most browsers will show a generic message, but this ensures a dialog is triggered.
-          return e.returnValue;
+        matches.each { id, node ->
+            flowLog(fname, "Firing eventTrigger from location time event (${evt.name})", "debug")
+            evaluateNode(fname, id, [ name: evt.name, value: evt.value ])
         }
-      });
-      document.addEventListener("DOMContentLoaded", function() {
-        const header = document.getElementById("variableManagerHeader");
-        const content = document.getElementById("variableManager");
-        const arrow = document.getElementById("variableManagerArrow");
-        let open = false; // Start hidden
-
-        if (header && content && arrow) {
-          content.style.display = "none";
-          arrow.style.transform = "rotate(-90deg)";
-          header.onclick = function() {
-            open = !open;
-            content.style.display = open ? "" : "none";
-            arrow.style.transform = open ? "rotate(0deg)" : "rotate(-90deg)";
-          };
-        }
-
-        // Variable Inspector toggle
-        const invHeader  = document.getElementById("variableInspectorHeader");
-        const invContent = document.getElementById("variableInspectorContent");
-        const invArrow   = document.getElementById("variableInspectorArrow");
-        let invOpen = false;
-
-        if (invHeader && invContent && invArrow) {
-          invContent.style.display = "none";
-          invArrow.style.transform = "rotate(-90deg)";
-          invHeader.onclick = function() {
-            invOpen = !invOpen;
-            invContent.style.display = invOpen ? "" : "none";
-            invArrow.style.transform = invOpen ? "rotate(0deg)" : "rotate(-90deg)";
-          };
-        }
-      });
-
-      setInterval(() => {
-        document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
-          if (nodeEl._hasCtxMenu) return;
-          nodeEl._hasCtxMenu = true;
-
-          nodeEl.addEventListener('contextmenu', function(ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-
-            const nodeId = nodeEl.id.replace("node-", "");
-
-            // If the clicked node isn't in the current selection, bail out
-            if (!window._multiSelectedNodes.has(nodeId)) {
-              window._multiSelectedNodes.clear();
-              window._multiSelectedNodes.add(nodeId);
-              updateMultiSelectUI();
-            }
-
-            // Remove existing menu
-            document.getElementById('df-ctx-menu')?.remove();
-
-            // Create new menu
-            const menuDiv = document.createElement('div');
-            menuDiv.id = 'df-ctx-menu';
-            Object.assign(menuDiv.style, {
-              position: 'fixed',
-              left:   `${ev.clientX}px`,
-              top:    `${ev.clientY}px`,
-              zIndex: 9999,
-              background:   '#333',
-              color:        '#fff',
-              borderRadius: '8px',
-              padding:      '10px',
-              boxShadow:    '0 4px 10px #0008',
-              fontFamily:   'sans-serif',
-              minWidth:     '140px'
-            });
-
-            // Single-node menu
-            if (window._multiSelectedNodes.size === 1) {
-              // --- Edit Node ---
-              const editBtn = document.createElement('div');
-              editBtn.textContent = "Edit Node";
-              editBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              editBtn.onmouseenter = () => editBtn.style.background = "#555";
-              editBtn.onmouseleave = () => editBtn.style.background = "transparent";
-              editBtn.onclick = () => {
-                editor.selected_id = nodeId;
-                const node = editor.getNodeFromId(nodeId);
-                if (node) renderEditor(node);
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(editBtn);
-
-              // --- Delete Node ---
-              const delBtn = document.createElement('div');
-              delBtn.textContent = "Delete Node";
-              delBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              delBtn.onmouseenter = () => delBtn.style.background = "#555";
-              delBtn.onmouseleave = () => delBtn.style.background = "transparent";
-              delBtn.onclick = () => {
-                editor.removeNodeId("node-" + nodeId);
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(delBtn);
-
-              // --- Duplicate Node ---
-              const dupBtn = document.createElement('div');
-              dupBtn.textContent = "Duplicate Node";
-              dupBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              dupBtn.onmouseenter = () => dupBtn.style.background = "#555";
-              dupBtn.onmouseleave = () => dupBtn.style.background = "transparent";
-              dupBtn.onclick = () => {
-                const node = editor.getNodeFromId(nodeId);
-                if (!node) return;
-                const newNode = JSON.parse(JSON.stringify(node));
-                delete newNode.id;
-                newNode.pos_x += 60;
-                newNode.pos_y += 60;
-                newNode.outputs = {};
-                newNode.inputs  = {};
-                editor.addNode(
-                  newNode.name,
-                  newNode.inputs_count,
-                  newNode.outputs_count,
-                  newNode.pos_x,
-                  newNode.pos_y,
-                  newNode.class,
-                  newNode.data,
-                  newNode.html
-                );
-                menuDiv.remove();
-                setTimeout(forceFixPortsOnAllNodes, 5);
-              };
-              menuDiv.appendChild(dupBtn);
-            }
-
-            // Multi-node menu
-            if (window._multiSelectedNodes.size > 1) {
-              // --- Delete Selected Nodes ---
-              const multiDelBtn = document.createElement('div');
-              multiDelBtn.textContent = "Delete Selected Nodes";
-              multiDelBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              multiDelBtn.onmouseenter = () => multiDelBtn.style.background = "#555";
-              multiDelBtn.onmouseleave = () => multiDelBtn.style.background = "transparent";
-              multiDelBtn.onclick = () => {
-                deleteSelectedNodes();
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(multiDelBtn);
-
-              // --- Duplicate Selected Nodes ---
-              const multiDupBtn = document.createElement('div');
-              multiDupBtn.textContent = "Duplicate Selected Nodes";
-              multiDupBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              multiDupBtn.onmouseenter = () => multiDupBtn.style.background = "#555";
-              multiDupBtn.onmouseleave = () => multiDupBtn.style.background = "transparent";
-              multiDupBtn.onclick = () => {
-                duplicateSelectedNodes();
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(multiDupBtn);
-
-              // --- Lock Selected Nodes ---
-              const lockBtn = document.createElement('div');
-              lockBtn.textContent = "Lock Selected Nodes";
-              lockBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              lockBtn.onmouseenter = () => lockBtn.style.background = "#555";
-              lockBtn.onmouseleave = () => lockBtn.style.background = "transparent";
-              lockBtn.onclick = () => {
-                lockSelectedNodes(true);
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(lockBtn);
-
-              // --- Unlock Selected Nodes ---
-              const unlockBtn = document.createElement('div');
-              unlockBtn.textContent = "Unlock Selected Nodes";
-              unlockBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
-              unlockBtn.onmouseenter = () => unlockBtn.style.background = "#555";
-              unlockBtn.onmouseleave = () => unlockBtn.style.background = "transparent";
-              unlockBtn.onclick = () => {
-                lockSelectedNodes(false);
-                menuDiv.remove();
-              };
-              menuDiv.appendChild(unlockBtn);
-            }
-            document.body.appendChild(menuDiv);
-
-            // Auto-remove menu on outside click
-            setTimeout(() => {
-              document.addEventListener("click", function handler() {
-                menuDiv.remove();
-                document.removeEventListener("click", handler);
-              });
-            }, 10);
-          });
-        });
-      }, 1000);
-
-      // ---- SNAP TO GRID ----
-      const SNAP_GRID_SIZE = 20;
-      function snapToGrid(val, grid = SNAP_GRID_SIZE) {
-        return Math.round(val / grid) * grid;
-      }
-
-      function zoomDrawflowToFit(margin = 20) {
-        // 1) Gather node bounds
-        const nodes = document.querySelectorAll('.drawflow-node');
-        if (!nodes.length) return;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        nodes.forEach(node => {
-          const x = parseInt(node.style.left, 10) || 0;
-          const y = parseInt(node.style.top,  10) || 0;
-          const w = node.offsetWidth, h = node.offsetHeight;
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x + w);
-          maxY = Math.max(maxY, y + h);
-        });
-
-        // 2) Compute container size and desired zoom
-        const canvas   = document.getElementById('drawflow');
-        const cW       = canvas.offsetWidth;
-        const cH       = canvas.offsetHeight;
-        const flowW    = (maxX - minX) + margin * 2;
-        const flowH    = (maxY - minY) + margin * 2;
-        const zoom     = Math.min(cW / flowW, cH / flowH, 1);
-
-        // 3) Compute pan offsets:
-        //    • flush‑to‑left when zoomed out, else respect margin
-        const sideMargin = zoom < 1 ? 0 : margin;
-        const offsetX    = sideMargin - (minX * zoom);
-        //    • flush‑to‑top  when zoomed out, else respect margin
-        const topMargin  = zoom < 1 ? 0 : margin;
-        const offsetY    = topMargin  - (minY * zoom);
-
-        // 4) Apply transform
-        window.editor.zoom = zoom;
-        window.editor.precanvas.style.transform =
-          `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
-
-        // 5) Reset canvas coords so new nodes land on‑screen
-        if (window.editor) {
-          window.editor.canvas_x = 100;
-          window.editor.canvas_y = 100;
-          window.editor.pos_x    = 100;
-          window.editor.pos_y    = 100;
-        }
-      }
-
-      function checkIfFlowIsInUse(flowFileName, appId, token) {
-        fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`)
-          .then(resp => resp.json())
-          .then(list => {
-            const inUse       = list.filter(x => x.flowName === flowFileName + ".json");
-            const statusDiv   = document.getElementById("flowTestStatus");
-            const activateBtn = document.getElementById("activateFlowButton");
-            const logBtn      = document.getElementById("loggingButton");
-
-            // ── Update the “Activate Flow” button state ────────────────────
-            if (inUse.length > 0) {
-              activateBtn.textContent = "Activated";
-              activateBtn.style.backgroundColor = "#4CAF50";  // Green
-            } else {
-              activateBtn.textContent = "Deactivated";
-              activateBtn.style.backgroundColor = "#808080";  // Grey
-            }
-
-            if (inUse.length > 0) {
-              // Flow is active: check if logging is enabled
-              fetch(`/apps/api/${appId}/settings?access_token=${token}`)
-                .then(r => r.json())
-                .then(settings => {
-                  const loggingEnabled =
-                    Array.isArray(settings?.perFlowLogEnabled) &&
-                    settings.perFlowLogEnabled.includes(flowFileName + ".json");
-
-                  // ── Update the “Logging” button ────────────────────────────
-                  logBtn.textContent = loggingEnabled ? "Logging Enabled" : "Logging Disabled";
-                  logBtn.style.backgroundColor = loggingEnabled ? "#4CAF50" : "#808080";
-
-                  //hideTestUI();
-                  // ── Build the status panel UI ───────────────────────────────
-                  statusDiv.innerHTML = `
-                    <span id="flowName"
-                          style="display:inline-block; font-weight:bold; font-size:20px;">
-                      ${flowFileName.replace(/\.json$/i, "")}
-                    </span><br>
-                    <span style="font-size: 10px;">Flow is Active</span> |
-                    ${loggingEnabled
-                      ? "<span style='font-size: 10px;'>Logging is Enabled</span><br>"
-                      : "<span style='font-size: 10px;'>Logging is Disabled</span><br>"}
-                    <input id="testFlowInput" type="text"
-                          placeholder="Test value..."
-                          style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:120px; margin-right:8px;">
-                    <button id="testFlowBtn"
-                            style="background:#1b9b1b; color:#fff; border:none; padding:7px 10px; border-radius:5px; cursor:pointer; font-size:10px; margin-right:10px;">
-                      ▶️ Test
-                    </button><br>
-                    <label style="margin-left:8px; font-size:13px;">
-                      <input type="checkbox" id="dryRunCheckbox" />
-                      Dry Run
-                    </label>
-                    <br><small>To test this Flow, simply enter a value and click Test.</small>
-                  `;
-                  
-                  // ── TEST‑FLOW BUTTON HANDLER (auto‑pick first eventTrigger) ───────────────
-                  const testBtn        = document.getElementById("testFlowBtn");
-                  const testInput      = document.getElementById("testFlowInput");
-                  const dryRunCheckbox = document.getElementById("dryRunCheckbox");
-
-                  testBtn.onclick = async () => {
-                    // clear node highlights
-                    document.querySelectorAll(
-                      '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
-                    ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
-
-                    // clear path highlights
-                    document.querySelectorAll('.main-path.highlighted').forEach(path => {
-                      path.removeAttribute('stroke');
-                      path.removeAttribute('style');
-                      path.classList.remove('highlighted');
-                    });
-
-                    // 1) Normalize test value
-                    const raw = testInput.value.trim();
-                    if (!raw) {
-                      alert("Please enter a test value.");
-                      return;
-                    }
-                    let val = raw
-                      .toLowerCase()
-                      .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
-                        let hh = parseInt(h, 10) % 12;
-                        if (ampm === "pm") hh += 12;
-                        return (hh < 10 ? "0" + hh : hh) + ":" + m;
-                      });
-
-                    // 2) Pick the flow file
-                    const dropdown = document.getElementById("hubitatFileDropdown");
-                    let flow = dropdown.value.trim();
-                    if (!flow.endsWith(".json")) flow += ".json";
-                    if (!flow) {
-                      alert("Please select a flow to test.");
-                      return;
-                    }
-
-                    // 3) Credentials
-                    const appId = document.getElementById("hubitatAppId").value.trim();
-                    const token = document.getElementById("hubitatToken").value.trim();
-                    if (!appId || !token) {
-                      alert("Missing Hubitat App ID or Token.");
-                      return;
-                    }
-                    const dryRun = dryRunCheckbox.checked;
-
-                    // 4) Get dynamic sunrise/sunset times
-                    async function getDynamicSunTimes() {
-                      let lat = 42.36, lng = -71.06;
-                      try {
-                        if (navigator.geolocation) {
-                          const pos = await new Promise((resolve, reject) =>
-                            navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
-                          lat = pos.coords.latitude;
-                          lng = pos.coords.longitude;
-                        }
-                      } catch(e) {}
-                      try {
-                        if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
-                          const times = SunCalc.getTimes(new Date(), lat, lng);
-                          const pad = n => (n < 10 ? "0" : "") + n;
-                          return {
-                            sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
-                            sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
-                          };
-                        }
-                      } catch(e) {}
-                      return { sunrise: "06:00", sunset: "20:00" };
-                    }
-
-                    const SUN_TIMES = await getDynamicSunTimes();
-
-                    // 5) Find matching trigger node(s)
-                    const df   = editor.drawflow?.drawflow || editor.drawflow;
-                    const data = df?.Home?.data || {};
-
-                    const triggers = Object.entries(data).filter(([id, nd]) => {
-                      if (nd.name !== 'eventTrigger') return false;
-
-                      // --- TIME TRIGGERS ---
-                      if (nd.data.deviceId === "__time__") {
-                        // --- BETWEEN (ex: between sunrise and 12:00) ---
-                        if (nd.data.comparator === "between" && Array.isArray(nd.data.value)) {
-                          let [start, end] = nd.data.value.map(String);
-                          start = SUN_TIMES[start] || start;
-                          end   = SUN_TIMES[end]   || end;
-                          const toMins = t => {
-                            const [h, m] = (t + ":").split(":").map(Number);
-                            return h*60 + (m || 0);
-                          };
-                          const testMins  = toMins(val);
-                          const startMins = toMins(start);
-                          const endMins   = toMins(end);
-                          if (startMins <= endMins) {
-                            return testMins >= startMins && testMins <= endMins;
-                          } else {
-                            return testMins >= startMins || testMins <= endMins;
-                          }
-                        } else {
-                          // single time, sunrise, sunset
-                          if (val === "sunrise" || val === "sunset") {
-                            return nd.data.value === val;
-                          }
-                          let triggerVal = SUN_TIMES[nd.data.value] || nd.data.value;
-                          return String(triggerVal) === String(val);
-                        }
-                      }
-
-                      // --- DEVICE TRIGGERS W/KNOWN VALUES ---
-                      if (nd.data.attribute && window.ATTRIBUTE_KNOWN_VALUES && ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]) {
-                        return ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]
-                          .map(v => v.toLowerCase())
-                          .includes(val);
-                      }
-
-                      // --- FALLBACK: EXACT MATCH ---
-                      return String(nd.data.value).toLowerCase() === val;
-                    });
-
-                    if (!triggers.length) {
-                      alert(`No Trigger node matching test value "${val}" found.`);
-                      return;
-                    }
-
-                    // Honor user-selected node if it's a trigger, else pick the first match
-                    let selId = editor.selected_id;
-                    let node  = selId && editor.getNodeFromId(selId);
-                    if (!triggers.some(([id]) => id === selId)) {
-                      [selId, node] = triggers[0];
-                    }
-
-                    // 6) Gather deviceIds from that trigger node
-                    const deviceIds = Array.isArray(node.data.deviceIds)
-                      ? node.data.deviceIds
-                      : (node.data.deviceId ? [node.data.deviceId] : []);
-
-                    // 7) Build payload & invoke testFlow
-                    const payload = { flow, value: val, dryRun, deviceIds };
-                    console.log("[runFlow ▶] payload:", payload);
-
-                    logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
-                      ` on ${deviceIds.length} device(s) with value "${val}"`,
-                      "info"
-                    );
-
-                    try {
-                      const res = await fetch(
-                        `/apps/api/${appId}/testFlow?access_token=${token}`, {
-                          method:  "POST",
-                          headers: { 'Content-Type':'application/json' },
-                          body:    JSON.stringify(payload)
-                        }
-                      );
-                      if (!res.ok) throw new Error(await res.text());
-                      const result = await res.json();
-                      logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
-                    }
-                    catch (err) {
-                      logAction(`❌ Test failed: ${err}`, "error");
-                    }
-                  };
-                })
-                .catch(err => {
-                  console.error("Error fetching logging settings:", err);
-                  logBtn.textContent = "Logging Disabled";
-                  logBtn.style.backgroundColor = "#808080";
-                });
-            } else {
-              // No flow active → clear status panel & reset logging button
-              statusDiv.innerHTML = `
-                <span id="flowName"
-                      style="display:inline-block; font-weight:bold; font-size:20px;">
-                  ${flowFileName.replace(/\.json$/i, "")}
-                </span>
-                <br><br>
-                <span style="color:#b00; font-weight:600;">
-                  Activate Flow in Hubitat to enable Testing
-                </span>
-              `;
-              logBtn.textContent = "Logging Disabled";
-              logBtn.style.backgroundColor = "#808080";
-            }
-          })
-          .catch(e => {
-            // On error, revert to safe defaults
-            const activateBtn = document.getElementById("activateFlowButton");
-            const logBtn      = document.getElementById("loggingButton");
-            activateBtn.textContent = "Deactivated";
-            activateBtn.style.backgroundColor = "#808080";
-            logBtn.textContent      = "Logging Disabled";
-            logBtn.style.backgroundColor = "#808080";
-            document.getElementById("flowTestStatus").innerHTML =
-              `<span style="color:#b00;">Failed to check flow status.</span>`;
-            console.error("Failed to fetch active flows:", e);
-          });
-      }
-
-      function getNextNodePosition() {
-        // Always use current visible canvas/grid size
-        const grid = document.getElementById("drawflow");
-        const cW = grid.offsetWidth;
-        const cH = grid.offsetHeight;
-
-        // Start in top-right, move down for each new node
-        const col = window.nextNodeCol;
-        const idx = window.nextNodeIndex;
-
-        // Each column, 160px to the left
-        const x = cW - window.nodeStartMargin - (col * 180);
-        const y = window.nodeStartMargin + (idx * window.nodeYIncrement);
-
-        // Move to next column if near bottom (using grid height or a limit)
-        if (y + window.nodeYIncrement > cH - window.nodeStartMargin) {
-          window.nextNodeCol += 1;
-          window.nextNodeIndex = 0;
-          return getNextNodePosition();
-        } else {
-          window.nextNodeIndex += 1;
-          return { x, y };
-        }
-      }
-
-      // Call this to reset placement after loading/clearing a flow
-      function resetNodePlacement() {
-        window.nextNodeCol = 0;
-        window.nextNodeIndex = 0;
-      }
-
-      function getTopLeftOnScreenCoords(margin = 28) {
-        const grid = document.getElementById('drawflow');
-        let pan = { x: 0, y: 0 };
-        let zoom = 1;
-        if (window.editor && window.editor.precanvas && window.editor.precanvas.style.transform) {
-          const match = window.editor.precanvas.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([\d.]+)\)/);
-          if (match) {
-            pan.x = parseFloat(match[1]);
-            pan.y = parseFloat(match[2]);
-            zoom = parseFloat(match[3]);
-          }
-        }
-        // Add cumulative offset for each new node
-        let x = ((margin + window.newNodeOffsetX - pan.x) / zoom);
-        let y = ((margin + window.newNodeOffsetY - pan.y) / zoom);
-        return { x, y };
-      }
-
-      // ── Enhanced Flow‑Path Highlighting (nodes + green lines) ─────────────────
-      function highlightFlowPath(run) {
-        if (!run || !Array.isArray(run.steps)) return;
-
-        // 1) Clear previous node highlights
-        document.querySelectorAll('.drawflow-node.flow-path')
-          .forEach(el => el.classList.remove('flow-path'));
-
-        // 2) Clear previous path highlights
-        document.querySelectorAll('.main-path.highlighted')
-          .forEach(path => {
-            path.removeAttribute('stroke');
-            path.removeAttribute('style');
-            path.classList.remove('highlighted');
-          });
-
-        // 3) Gather unique node IDs in execution order
-        const nodeIds = [];
-        run.steps.forEach(s => {
-          if (s.nodeId && !nodeIds.includes(s.nodeId)) {
-            nodeIds.push(s.nodeId);
-          }
-        });
-
-        // 4) Highlight each node and the connecting path to the next
-        nodeIds.forEach((id, idx) => {
-          // highlight node
-          const nodeEl = document.getElementById(`node-${id}`);
-          if (nodeEl) nodeEl.classList.add('flow-path');
-
-          // highlight connecting line
-          const nextId = nodeIds[idx + 1];
-          if (nextId) {
-            const pathEl = document.querySelector(
-              `.connection.node_out_node-${id}.node_in_node-${nextId} .main-path`
-            );
-            if (pathEl) {
-              pathEl.setAttribute('stroke', 'limegreen');
-              pathEl.setAttribute(
-                'style',
-                'stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;'
-              );
-              pathEl.classList.add('highlighted');
-            }
-          }
-        });
-
-        // 5) Update minimap if present
-        if (typeof renderMinimap === 'function') {
-          renderMinimap();
-        }
-      }
-
-      function highlightFlowPathDelayed(run, delayMs = 100) {
-        setTimeout(() => highlightFlowPath(run), delayMs);
-      }
-  
-      let flowTracePollInterval = null;
-
-      async function pollFlowTraceUntilEnd() {
-        const rawName = document.getElementById('flowName').textContent.trim();
-        const flowFile = rawName.toLowerCase().endsWith('.json')
-            ? rawName
-            : rawName + '.json';
-
-        if (flowTracePollInterval) {
-            clearInterval(flowTracePollInterval);
-        }
-
-        flowTracePollInterval = setInterval(async () => {
-            try {
-                // fetchHubitatFileContent returns parsed JSON already
-                const traces = await fetchHubitatFileContent('FE_flowtrace.json');
-                const runs = Array.isArray(traces)
-                    ? traces.filter(t => t.flowFile === flowFile)
-                    : [];
-                if (!runs.length) return;
-
-                const run = runs[0];
-
-                // highlight the running path
-                highlightFlowPath(run);
-
-                const last = run.steps[run.steps.length - 1] || {};
-                if (last.nodeType === 'endOfFlow') {
-                    // stop polling
-                    clearInterval(flowTracePollInterval);
-                    flowTracePollInterval = null;
-                    flowTracePollingActive = false;
-                    logAction('🔄 Flow trace finished', 'info');
-
-                    // re-select the original trigger node so it stays highlighted
-                    if (window._lastTriggerId != null) {
-                        window.editor.selected_id = window._lastTriggerId;
-                    }
-                }
-            } catch (e) {
-                console.error('Error polling FE_flowtrace.json', e);
-                clearInterval(flowTracePollInterval);
-                flowTracePollInterval = null;
-            }
-        }, 500);
-      }
-      
-      async function fetchHubitatFileContent(fileName) {
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          throw new Error("Missing credentials");
-        }
-        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
-        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
-        try {
-          const response = await fetch(fileUrl);
-          const raw = await response.text();
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${raw}`);
-          }
-          try {
-            return JSON.parse(raw);
-          } catch (err) {
-            throw new Error("File is not valid JSON: " + raw);
-          }
-        } catch (e) {
-          logAction("Failed to fetch file content: " + e.message, "error");
-          throw e;
-        }
-      }
-
-      document.addEventListener("DOMContentLoaded", function () {
-        const drawflow = document.getElementById("drawflow");
-        const img = document.getElementById("drawflow-bg-image");
-        const fileInput = document.getElementById("bgImageFile");
-        const slider = document.getElementById('gridBrightnessSlider');
-        const bgImageBtn = document.getElementById('bgImageBtn');
-        const snapToGridToggle = document.getElementById('snapToGridToggle');
-
-        // --- Open file picker on button click
-        bgImageBtn.onclick = function() {
-          fileInput.click();
-        };
-
-        // --- Storage helpers ---
-        function savePrefs(obj) {
-          localStorage.setItem("fe_bg_prefs", JSON.stringify(obj));
-        }
-        function loadPrefs() {
-          try {
-            return JSON.parse(localStorage.getItem("fe_bg_prefs")) || {};
-          } catch (e) { return {}; }
-        }
-
-        // --- Restore settings from storage
-        let prefs = loadPrefs();
-        if (prefs.bgImage && prefs.bgImageType === "file") {
-          img.src = prefs.bgImage;
-          drawflow.classList.add('image-bg');
-          img.style.display = "";
-        }
-        if (prefs.imageBrightness) {
-          img.style.opacity = prefs.imageBrightness;
-          slider.value = prefs.imageBrightness;
-        }
-        if (prefs.snapToGrid !== undefined) {
-          snapToGridToggle.checked = !!prefs.snapToGrid;
-        }
-
-        // --- File picker: load and display image
-        fileInput.addEventListener("change", function () {
-          const file = fileInput.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-              img.src = e.target.result;
-              drawflow.classList.add('image-bg');
-              img.style.display = "";
-              let p = loadPrefs();
-              p.bgImage = e.target.result;
-              p.bgImageType = "file";
-              savePrefs(p);
-            };
-            reader.readAsDataURL(file);
-          }
-        });
-
-        // --- Brightness slider
-        slider.addEventListener('input', function () {
-          const val = String(Math.min(1, Math.max(0, Number(slider.value))));
-          img.style.opacity = val;
-          let p = loadPrefs();
-          p.imageBrightness = val;
-          savePrefs(p);
-          markFlowNeedsSave(true)
-        });
-
-        // --- Snap to grid: remember setting
-        snapToGridToggle.addEventListener('change', function () {
-          let p = loadPrefs();
-          p.snapToGrid = snapToGridToggle.checked;
-          savePrefs(p);
-          markFlowNeedsSave(true)
-        });
-      });
-
-      // Full PATCH: prevent fetch error AND popup - Thanks to WarlockWeary
-      // Replace fetchHubitatVarFileContent if it's missing
-      if (typeof fetchHubitatVarFileContent !== "function") {
-        window.fetchHubitatVarFileContent = async function(filename) {
-          console.warn("Stub: Pretending to load file:", filename);
-          return ""; // Return empty content
-        };
-      }
-
-      // Also patch uploadToHubitatFile if missing to avoid other issues
-      if (typeof uploadToHubitatFile !== "function") {
-        window.uploadToHubitatFile = async function(filename, content, options) {
-          console.warn("Stub: Pretending to upload file:", filename);
-          return true;
-        };
-      }
-
-      // Patch alert if message is "Failed to get file: null"
-      const originalAlert = window.alert;
-      window.alert = function(message) {
-        if (typeof message === "string" && message.includes("Failed to get file: null")) {
-          console.warn("Suppressed alert:", message);
-        } else {
-          originalAlert(message);
-        }
-      };
-
-      // Load globals now that patch is safe
-      window.addEventListener("DOMContentLoaded", function() {
-        autoLoadGlobalVarsFromHubitat();
-      });
-        
-      function forceFixPortsOnAllNodes() {
-        const module = window.editor.module || "Home";
-        const nodes = window.editor.drawflow.drawflow[module].data;
-        let changed = false;
-        Object.entries(nodes).forEach(([id, node]) => {
-          let t = (node.name || '').toLowerCase();
-          let fix = false;
-
-          if (t === 'eventtrigger' || t === 'schedule') {
-            // 0 input, 1 output
-            if (Object.keys(node.inputs).length !== 0) {
-              node.inputs = {};
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 1) {
-              node.outputs = { "output_1": { connections: [] } };
-              fix = true;
-            }
-          } else if (t === 'condition' || t === 'not' || t === 'and' || t === 'or' || t === 'notmatchingvar') {
-            // 1 input, 2 outputs
-            if (Object.keys(node.inputs).length !== 1) {
-              node.inputs = { "input_1": { connections: [] } };
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 2) {
-              node.outputs = {
-                "output_1": { connections: [] },
-                "output_2": { connections: [] }
-              };
-              fix = true;
-            }
-          } else if (t === 'donothing' || t === 'repeat') {
-            // 1 input, 0 outputs
-            if (Object.keys(node.inputs).length !== 1) {
-              node.inputs = { "input_1": { connections: [] } };
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 0) {
-              node.outputs = {};
-              fix = true;
-            }
-          } else if (t === 'comment') {
-            // 0 input, 0 outputs
-            if (Object.keys(node.inputs).length !== 0) {
-              node.inputs = {};
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 0) {
-              node.outputs = {};
-              fix = true;
-            }
-          } else {
-            // All others: 1 input, 1 output
-            if (Object.keys(node.inputs).length !== 1) {
-              node.inputs = { "input_1": { connections: [] } };
-              fix = true;
-            }
-            if (Object.keys(node.outputs).length !== 1) {
-              node.outputs = { "output_1": { connections: [] } };
-              fix = true;
-            }
-          }
-
-          if (fix) changed = true;
-        });
-        if (changed) {
-          window.editor.import(window.editor.export());
-        }
-      }
-
-      document.getElementById('bgImageBtn').onclick = function() {
-        document.getElementById('bgImageFile').click();
-      };
-
-      document.getElementById('bgImageFile').onchange = function(e) {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(evt) {
-            const img = document.getElementById('drawflow-bg-image');
-            img.src = evt.target.result;
-            img.style.display = '';
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-
-      document.getElementById('gridBrightnessSlider').addEventListener('input', function(e) {
-        document.getElementById('drawflow-bg-image').style.opacity = e.target.value;
-      });
-
-      //*****************************************************
-      //  Export a Flow
-      document.getElementById("exportAnonFlow").onclick = function() {
-        if (!editor || !editor.export) return;
-
-        // 1) Export the current flow
-        let flow = editor.export();
-
-        // 2) Strip out any device references
-        if (flow?.drawflow?.Home?.data) {
-          Object.values(flow.drawflow.Home.data).forEach(node => {
-            if (node.data) {
-              node.data.deviceId    = "";
-              node.data.deviceIds   = [];
-              node.data.deviceLabel = "";
-            }
-          });
-        }
-
-        // 3) Build the blob & URL
-        const blob = new Blob([JSON.stringify(flow, null, 2)], { type: "application/json" });
-        const url  = URL.createObjectURL(blob);
-
-        // 4) Determine filename from your <span id="flowName">…</span>
-        const rawName = document.getElementById("flowName").textContent.trim();
-        // If it ends in “.json”, drop that
-        const base    = rawName.toLowerCase().endsWith(".json")
-                      ? rawName.slice(0, -5)
-                      : rawName;
-        const name    = base || "flow";  // fallback
-
-        // 5) Trigger download
-        const a = document.createElement("a");
-        a.href     = url;
-        a.download = `${name}_anonymized.json`;
-        a.click();
-
-        // 6) Cleanup
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      };
-
-      if (
-        window.flowTraceSocket &&
-        window.flowTraceSocket.readyState === WebSocket.OPEN
-      ) {
-        window.flowTraceSocket.close();
-        logAction("Closed old ws", "info")
-      }
-    </script>
-    <script>
-      // A global Set to track selected nodes for multi-select
-      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-
-      // Call this to update visual selection UI
-      function updateNodeSelectionUI() {
-        document.querySelectorAll('.drawflow-node').forEach(node => {
-          const id = node.getAttribute('id');
-          if (window._multiSelectedNodes.has(id)) {
-            node.classList.add('multi-selected');
-          } else {
-            node.classList.remove('multi-selected');
-          }
-        });
-      }
-
-      function attachNodeClickHandlers() {
-        document.querySelectorAll('.drawflow-node').forEach(node => {
-          // Remove any old handler to avoid duplicate bindings
-          node.onclick = null;
-
-          node.addEventListener('click', function(event) {
-            const id = node.getAttribute('id');
-
-            if (event.ctrlKey || event.metaKey) {
-              // --- Ctrl/Cmd-click: Toggle selection ---
-              if (window._multiSelectedNodes.has(id)) {
-                window._multiSelectedNodes.delete(id);
-              } else {
-                window._multiSelectedNodes.add(id);
-              }
-            } else {
-              // --- Regular click: Single select only ---
-              window._multiSelectedNodes.clear();
-              window._multiSelectedNodes.add(id);
-            }
-
-            updateNodeSelectionUI();
-
-            // Optional: handle editor.selected_id if needed
-            if (!event.ctrlKey && !event.metaKey) {
-              if (window.editor) window.editor.selected_id = id;
-            }
-          });
-        });
-      }
-
-      window.addEventListener('DOMContentLoaded', function() {
-        const W = 240, H = 140;
-        const MINIMAP_ID = 'minimap-container';
-        const CANVAS_ID = 'minimap-canvas';
-        const STORAGE_KEY = "fe_minimap_pos";
-
-        // Show minimap on load
-        const container = document.getElementById(MINIMAP_ID);
-        container.style.display = '';
-
-        // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
-        let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
-
-        // Load position from storage (if any)
-        function restoreMinimapPosition() {
-          try {
-            const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (pos && typeof pos.left === "number" && typeof pos.top === "number") {
-              container.style.left = pos.left + "px";
-              container.style.top = pos.top + "px";
-              container.style.right = "auto";
-              container.style.bottom = "auto";
-            } else {
-              container.style.right = "28px";
-              container.style.bottom = "24px";
-            }
-          } catch(e) {
-            // fallback
-            container.style.right = "28px";
-            container.style.bottom = "24px";
-          }
-        }
-        restoreMinimapPosition();
-
-        container.addEventListener('mousedown', function(e) {
-          // Only drag if clicking the container or canvas, not the inner label
-          if (e.target.id !== MINIMAP_ID && e.target.id !== CANVAS_ID) return;
-          isDragging = true;
-          startX = e.clientX;
-          startY = e.clientY;
-          const rect = container.getBoundingClientRect();
-          origX = rect.left;
-          origY = rect.top;
-          container.style.transition = "none";
-          e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', function(e) {
-          if (!isDragging) return;
-          const dx = e.clientX - startX;
-          const dy = e.clientY - startY;
-          const newLeft = origX + dx;
-          const newTop = origY + dy;
-          container.style.left = newLeft + "px";
-          container.style.top = newTop + "px";
-          container.style.right = "auto";
-          container.style.bottom = "auto";
-          // Save live while dragging
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: newLeft, top: newTop }));
-        });
-
-        document.addEventListener('mouseup', function() {
-          if (isDragging) {
-            isDragging = false;
-            container.style.transition = "";
-            // Save one more time in case of final position
-            const rect = container.getBoundingClientRect();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
-          }
-        });
-
-        // Set initial left/top if not set
-        container.style.position = "fixed";
-        if (!container.style.left && !container.style.top) {
-          container.style.right = "28px";
-          container.style.bottom = "24px";
-        }
-
-        // ---- REALISTIC MINIMAP DRAWING ----
-
-        function getNodeStyleAndLabel(id, n) {
-          const el = document.getElementById('node-' + id);
-          let bg = '#3ad688', border = '#222', txt = '';
-          if (el) {
-            const comp = window.getComputedStyle(el);
-            bg = comp.backgroundColor || bg;
-            border = comp.borderColor || border;
-            // Use best label from tile
-            const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
-            if (tile) {
-              txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
-            } else {
-              txt = el.textContent.trim().split('\n')[0].substring(0, 6);
-            }
-          } else if (n.data && n.data.label) {
-            txt = n.data.label.substring(0, 6);
-          } else if (n.name) {
-            txt = n.name.substring(0, 6);
-          } else {
-            txt = id;
-          }
-          return { bg, border, txt };
-        }
-
-        function renderMinimap() {
-          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
-          const nodes = Object.entries(data);
-
-          if (!nodes.length) return;
-
-          // Compute bounding box
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          nodes.forEach(([id, n]) => {
-            minX = Math.min(minX, n.pos_x);
-            minY = Math.min(minY, n.pos_y);
-            maxX = Math.max(maxX, n.pos_x + 170);
-            maxY = Math.max(maxY, n.pos_y + 80);
-          });
-          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
-          const scaleX = W / Math.max(1, maxX - minX);
-          const scaleY = H / Math.max(1, maxY - minY);
-          const scale = Math.min(scaleX, scaleY);
-
-          const ctx = document.getElementById(CANVAS_ID).getContext('2d');
-          ctx.clearRect(0, 0, W, H);
-
-          // Draw connections
-          nodes.forEach(([id, n]) => {
-            Object.values(n.outputs || {}).forEach(out => {
-              (out.connections || []).forEach(conn => {
-                const target = data[conn.node];
-                if (!target) return;
-
-                const x1 = Math.round((n.pos_x - minX + 80) * scale);
-                const y1 = Math.round((n.pos_y - minY + 35) * scale);
-                const x2 = Math.round((target.pos_x - minX + 80) * scale);
-                const y2 = Math.round((target.pos_y - minY + 35) * scale);
-
-                // Find the real DOM path element
-                const pathEl = document.querySelector(
-                  `.connection.node_out_node-${id}.node_in_node-${conn.node} .main-path,
-                  .connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
-                );
-
-                // Style based on whether it's highlighted upstream
-                if (pathEl && pathEl.classList.contains('highlighted')) {
-                  ctx.strokeStyle = "limegreen";
-                  ctx.globalAlpha  = 1;
-                  ctx.lineWidth    = 2;
+    }
+}
+
+def apiDeleteFlow() {
+    def fname = params.name
+    if (!fname) {
+        render status: 400, contentType: "application/json",
+               data: '{"error":"Missing file name"}'
+        return
+    }
+    if (!fname.toLowerCase().endsWith('.json')) {
+        fname += '.json'
+    }
+    deleteHubFile(fname)
+    updated()
+    flowLog(fname, "File has been deleted from File Manager", "info")
+
+    render contentType: "application/json",
+           data: groovy.json.JsonOutput.toJson([result: "File deleted"])
+}
+
+def apiGetSettings() {
+    def keys = ["perFlowLogEnabled", "logEnable", "flowFiles"]
+    def out = [:]
+    keys.each { out[it] = settings[it] }
+    render contentType: "application/json", data: JsonOutput.toJson(out)
+}
+
+def apiSelectFlow() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    if (!validOptions.contains(fname)) {
+		flowLog(fname, "Stopped - Flow file not found", "error")
+        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
+        return
+    }
+
+    def existing = settings?.flowFiles ?: []
+    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
+
+    app.updateSetting("flowFiles", [type: "enum", value: newList])
+
+    updated()
+	flowLog(fname, "File has been selected and ENABLED in app", "info")
+    render contentType: "application/json", data: '{"result":"Flow selected and enabled in app"}'
+}
+
+def apiDeselectFlow() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+	
+    if (!fname) {
+        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
+        return
+    }
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    def existing = settings?.flowFiles ?: []
+    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+
+    app.updateSetting("flowFiles", [type: "enum", value: newList])
+    updated()
+	flowLog(fname, "File has been de-selected and DISABLED in app", "info")
+    render contentType: "application/json", data: '{"result":"Flow deselected in app"}'
+}
+
+def apiSelectFlowLogging() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    if (!validOptions.contains(fname)) {
+		flowLog(fname, "Stopped - Flow file not found", "error")
+        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
+        return
+    }
+
+    def existing = settings?.perFlowLogEnabled ?: []
+    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
+    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
+    updated()
+	flowLog(fname, "Logging has been enabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Logging enabled in app"}'
+}
+
+def apiDeselectFlowLogging() {
+    def fn = request?.JSON?.flow
+	def fname = fn + ".json"
+	
+    if (!fname) {
+        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
+        return
+    }
+
+    getFileList()
+    def validOptions = state.jsonList ?: []
+    def existing = settings?.perFlowLogEnabled ?: []
+    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+
+    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
+    updated()
+	flowLog(fname, "Logging has been disabled in app", "info")
+    render contentType: "application/json", data: '{"result":"Logging disabled in app"}'
+}
+
+def apiForceReload() {
+	flowLog(fname, "In apiForceReload", "debug")
+    updated()
+    render contentType: "application/json", data: '{"result":"App reloaded (updated() called)"}'
+}
+
+def recheckAllTriggers() {
+    state.activeFlows?.each { fname, flowObj ->
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
+        dataNodes.each { id, node ->
+            if (node.name == "eventTrigger" && node.data.deviceId == "__time__") {
+                def attr         = node.data.attribute
+                def expected     = node.data.value
+                def comparator   = node.data.comparator
+                def curValue
+                if (attr == "currentTime") {
+                    curValue = new Date().format("HH:mm", location.timeZone)
+                } else if (attr == "dayOfWeek") {
+                    curValue = new Date().format("EEEE", location.timeZone)
                 } else {
-                  ctx.strokeStyle = "#888";
-                  ctx.globalAlpha  = 0.85;
-                  ctx.lineWidth    = 1.2;
+                    return
                 }
-
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.bezierCurveTo(
-                  x1 + 32, y1,
-                  x2 - 32, y2,
-                  x2, y2
-                );
-                ctx.stroke();
-              });
-            });
-          });
-
-          // Draw nodes with real color, border, label, and flow-path highlights
-          nodes.forEach(([id, n]) => {
-            const x = Math.round((n.pos_x - minX) * scale);
-            const y = Math.round((n.pos_y - minY) * scale);
-            const w = Math.max(30, Math.round(120 * scale));
-            const h = Math.max(18, Math.round(48  * scale));
-
-            // grab base style & label
-            let { bg, border, txt } = getNodeStyleAndLabel(id, n);
-
-            // if this node is in the active flow-path, force green
-            const nodeEl = document.getElementById('node-' + id);
-            if (nodeEl && nodeEl.classList.contains('flow-path')) {
-              bg     = 'limegreen';
-              border = 'limegreen';
+                if (evaluateComparator(curValue, expected, comparator)) {
+                    // Fire just this node
+                    evaluateNode(fname, id, [ name: attr, value: curValue ])
+                }
             }
+        }
+    }
+}
 
-            // draw the box
-            ctx.save();
-            ctx.globalAlpha = 0.93;
-            ctx.fillStyle   = bg;
-            ctx.strokeStyle = border;
-            ctx.lineWidth   = 1.8;
-            ctx.beginPath();
-            ctx.moveTo(x+4, y);
-            ctx.lineTo(x+w-4, y);
-            ctx.quadraticCurveTo(x+w, y, x+w, y+4);
-            ctx.lineTo(x+w, y+h-4);
-            ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
-            ctx.lineTo(x+4, y+h);
-            ctx.quadraticCurveTo(x, y+h, x, y+h-4);
-            ctx.lineTo(x, y+4);
-            ctx.quadraticCurveTo(x, y, x+4, y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            ctx.restore();
+def apiRunFlow() {
+	flowLog(fname, "---------- In apiRunFlow ----------", "info")
+    def json = request?.JSON
+    def fname = json?.flow
+    if (!fname || !state.activeFlows[fname]) {
+        render status: 404, data: '{"error":"Flow not found"}'
+        return
+    }
+    
+    def flowObj = state.activeFlows[fname]
+    def flow = flowObj.flow
+    if (!flow) {
+        render status: 404, data: '{"error":"Flow not loaded"}'
+        return
+    }
+    
+    def dataNodes = flow.drawflow?.Home?.data ?: [:]
+    def triggered = 0
+    dataNodes.each { id, node ->
+        if (node.name == "eventTrigger") {
+			def expectedValue = node.data.value
+			def expectedPattern = node.data.clickPattern
+			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
+			def eventPattern = (evt instanceof Map) ? evt.pattern : null
 
-            // Highlight selected node(s)
-            const isSelected =
-              (window._multiSelectedNodes && window._multiSelectedNodes.has(String(id))) ||
-              (editor.selected_id && String(editor.selected_id) === String(id));
-            if (isSelected) {
-              ctx.save();
-              ctx.shadowColor = "#00fff7";
-              ctx.shadowBlur  = 10;
-              ctx.strokeStyle = "#00fff7";
-              ctx.lineWidth   = 4;
-              ctx.globalAlpha = 0.92;
-              ctx.beginPath();
-              ctx.moveTo(x+4, y);
-              ctx.lineTo(x+w-4, y);
-              ctx.quadraticCurveTo(x+w, y, x+w, y+4);
-              ctx.lineTo(x+w, y+h-4);
-              ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
-              ctx.lineTo(x+4, y+h);
-              ctx.quadraticCurveTo(x, y+h, x, y+h-4);
-              ctx.lineTo(x, y+4);
-              ctx.quadraticCurveTo(x, y, x+4, y);
-              ctx.closePath();
-              ctx.stroke();
-              ctx.restore();
+			// Strict value match (if set)
+			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
+				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
+				return
+			}
+			// Strict pattern match (if set)
+			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
+				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
+				return
+			}
+
+			// If matches, proceed as normal
+			evaluateNode(fname, id, [name: "apiRunFlow", value: "API Run", pattern: eventPattern])
+			if(!triggered) triggered = 0
+			triggered++
+		}
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([result: "Flow triggered", triggered: triggered])
+}
+
+def apiTestFlow() {
+    def json   = request?.JSON
+    def fname  = json?.flow
+    def value  = json?.value?.toString()
+    def dryRun = (json?.dryRun as Boolean) ?: false
+
+    if (!fname || !state.activeFlows[fname]) {
+        render status: 404, contentType: "application/json",
+               data: JsonOutput.toJson([ error: "Flow not found" ])
+        return
+    }
+    flowLog(fname, "----- In apiTestFlow - dryRun: ${dryRun} -----", "info")
+
+    // Persist dry‑run flag for evaluateNode()
+    state.activeFlows[fname].testDryRun = dryRun
+
+    def flowObj   = state.activeFlows[fname]
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+
+    dataNodes.each { nodeId, node ->
+        if (node.name != "eventTrigger") return
+
+        // gather one or more deviceIds (or "__time__")
+        def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+                         node.data.deviceIds :
+                         [ node.data.deviceId ]
+
+        devIds.each { devId ->
+            if (devId == "__time__") {
+                // ── TEST MODE: use the 'value' string (HH:mm) as the event time ──
+                Date testDate = new Date()
+                def parts = value.tokenize(':')
+                if (parts.size() == 2) {
+                    testDate.hours   = parts[0].toInteger()
+                    testDate.minutes = parts[1].toInteger()
+                }
+                // build a fake time event that carries the node's value list
+                def evt = [
+                    name:           node.data.attribute,     // "timeOfDay"
+                    value:          node.data.value,         // e.g. [sunrise, 20:00]
+                    date:           testDate,
+                    descriptionText:"Simulated time trigger at ${value}"
+                ]
+                handleEvent(evt, fname)
             }
+            else {
+                // ── DEVICE TEST: fire through the normal device path ─────────────
+                def device = getDeviceById(devId)
+                if (!device) return
 
-            // Draw label
-            ctx.save();
-            ctx.font         = `bold ${Math.max(9, Math.round(h / 2.3))}px sans-serif`;
-            ctx.fillStyle    = "#181d20";
-            ctx.globalAlpha  = 1.0;
-            ctx.textAlign    = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(txt, x + w/2, y + h/2);
-            ctx.restore();
-          });
-
-          // Draw viewport rectangle
-          const precanvas = document.querySelector('.drawflow');
-          if (precanvas) {
-            const transform = window.getComputedStyle(precanvas).transform;
-            let translateX = 0, translateY = 0, scaleDF = 1;
-            if (transform && transform !== "none") {
-              const match = transform.match(/matrix\(([^)]+)\)/);
-              if (match) {
-                const parts = match[1].split(',');
-                scaleDF      = parseFloat(parts[0]);
-                translateX   = parseFloat(parts[4]);
-                translateY   = parseFloat(parts[5]);
-              }
+                def evt = [
+                    device:         device,
+                    name:           node.data.attribute,
+                    value:          value,
+                    descriptionText:"Simulated ${node.data.attribute} → ${value}"
+                ]
+                handleEvent(evt, fname)
             }
-            const rect   = document.getElementById('drawflow').getBoundingClientRect();
-            const flowW  = rect.width, flowH = rect.height;
-            const visX   = (-translateX) / scaleDF;
-            const visY   = (-translateY) / scaleDF;
-            const vx     = (visX - minX) * scale;
-            const vy     = (visY - minY) * scale;
-            const vw     = flowW / scaleDF * scale;
-            const vh     = flowH / scaleDF * scale;
-            ctx.save();
-            ctx.strokeStyle = "#f4e43a";
-            ctx.globalAlpha = 0.9;
-            ctx.lineWidth   = 2;
-            ctx.strokeRect(vx, vy, vw, vh);
-            ctx.restore();
-          }
+        }
+    }
+
+    render contentType: "application/json",
+           data: JsonOutput.toJson([
+               result: "Flow ${fname} triggered${dryRun ? ' (dry run)' : ''}",
+               dryRun: dryRun
+           ])
+}
+
+// ---- Main Event Handler ----
+def handleEvent(evt, fname) {
+	flowLog(fname, "In handleEvent - evt: ${evt}", "debug")
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+
+    // ── If already running, cancel it ──────────────────────────────────────
+    if (flowObj.isRunning) {
+        flowLog(fname, "----- Cancelling previous run; starting new -----", "warn")
+
+        // 1) Cancel any scheduled helpers
+        unschedule("clearTapTracker")
+        unschedule("clearHoldTracker")
+
+        // 2) Emit a cancel trace
+        try {
+            notifyFlowTrace(fname, null, "cancelled")
+        } catch (ex) {
+            log.warn "[${fname}] Failed to write cancel‑trace: $ex"
         }
 
-        function hookMinimapEvents() {
-          if (!window.editor) return;
-          window.editor.on('nodeMoved', renderMinimap);
-          window.editor.on('nodeCreated', renderMinimap);
-          window.editor.on('nodeRemoved', renderMinimap);
-          window.editor.on('connectionCreated', renderMinimap);
-          window.editor.on('connectionRemoved', renderMinimap);
-          window.editor.on('import', renderMinimap);
-          window.editor.on('zoom', renderMinimap);
-          setInterval(renderMinimap, 2000);
+        // 3) Clear per‑run trackers
+        flowObj.tapTracker?.clear()
+        flowObj.holdTracker?.clear()
+    }
+
+    // ── Mark running & reset trackers ──────────────────────────────────────
+    flowObj.isRunning   = true
+    flowObj.tapTracker  = [:]
+    flowObj.holdTracker = [:]
+
+    // ── Locate & fire trigger nodes ────────────────────────────────────────
+    def triggerNodes = getTriggerNodes(fname, evt)
+    triggerNodes.each { triggerId, triggerNode ->
+        def pattern = triggerNode.data.clickPattern ?: "single"
+        // UI‑test override
+        if (evt instanceof Map && evt.pattern && evt.pattern == pattern) {
+            flowLog(fname, "Forcing '${pattern}' trigger (UI Test)", "debug")
+            evaluateNode(fname, triggerId, evt)
+            return
         }
+        switch(pattern) {
+            case "single":
+                flowLog(fname, "Single‑tap trigger", "debug")
+                evaluateNode(fname, triggerId, evt)
+                break
+            case "double":
+            case "triple":
+                // … your existing tap/hold logic here …
+                handleTapHoldPattern(fname, triggerId, triggerNode, evt)
+                break
+            default:
+				flowLog(fname, "----- Trigger -  triggerId: ${triggerId} = evt: ${evt} -----", "info")
+                evaluateNode(fname, triggerId, evt)
+        }
+    }
 
-        document.getElementById(CANVAS_ID).addEventListener('click', function(e){
-          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
-          const nodes = Object.values(data);
-          if (!nodes.length) return;
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          nodes.forEach(n => {
-            minX = Math.min(minX, n.pos_x);
-            minY = Math.min(minY, n.pos_y);
-            maxX = Math.max(maxX, n.pos_x + 170);
-            maxY = Math.max(maxY, n.pos_y + 80);
-          });
-          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
-          const scaleX = W / Math.max(1, maxX - minX);
-          const scaleY = H / Math.max(1, maxY - minY);
-          const scale = Math.min(scaleX, scaleY);
-          const x = e.offsetX / scale + minX;
-          const y = e.offsetY / scale + minY;
-          const precanvas = document.querySelector('.drawflow');
-          if (precanvas) {
-            let scaleDF = 1;
-            const transform = window.getComputedStyle(precanvas).transform;
-            if (transform && transform !== "none") {
-              const match = transform.match(/matrix\(([^)]+)\)/);
-              if (match) scaleDF = parseFloat(match[1].split(',')[0]);
+    // ── End‑of‑flow cleanup ────────────────────────────────────────────────
+    try {
+        notifyFlowTrace(fname, null, "endOfFlow")
+    } catch (ex) {
+        log.warn "[${fname}] Failed to write end‑of‑flow trace: $ex"
+    } finally {
+        flowObj.isRunning = false
+    }
+}
+
+// ---- Node Evaluation (ALL node types, with delay logic preserved) ----
+def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
+	testDryRun = state.activeFlows[fname].testDryRun
+	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${testDryRun}", "info")
+    def flowObj = state.activeFlows[fname]
+    if (!visited) visited = new HashSet()
+			if (visited.contains(nodeId)) return null
+    visited << nodeId
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+    def node = dataNodes[nodeId]
+    if (!node) return null
+	
+	try {
+		notifyFlowTrace(fname, nodeId, node?.name)
+	} catch (e) {
+		log.warn "Failed to write flow trace: $e"
+	}
+
+    switch (node.name) {
+		case "eventTrigger":
+			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
+
+			// ── 1) Comparator & expected value ───────────────────────────────────
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+
+			// ── 2) AND/OR logic defaulting to OR ────────────────────────────────
+			def logic = (node.data.logic?.toString() ?: "or").toLowerCase()
+
+			// ── 3) Build list of device IDs ─────────────────────────────────────
+			List<String> devIds = []
+			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds.collect { it.toString() }
+			} else if (node.data.deviceId) {
+				devIds = [ node.data.deviceId.toString() ]
+			} else {
+				flowLog(fname, "eventTrigger: no deviceId(s) defined", "warn")
+				return
+			}
+
+			// ── 4) Strict value & pattern matching ──────────────────────────────
+			def expectedValue   = node.data.value
+			def expectedPattern = node.data.clickPattern
+			def eventValue      = (evt instanceof Map) ? evt.value        : evt?.value
+			def eventPattern    = (evt instanceof Map) ? evt.pattern      : null
+
+			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
+				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
+				return
+			}
+			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
+				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
+				return
+			}
+
+			// ── 5) DEVICE‑FILTER & AND‑MODE ONLY FOR REAL EVENTS ────────────────
+			if (!(evt instanceof Map)) {
+				// 5a) Figure out which device actually fired
+				String incomingId = null
+				if (evt.deviceId != null) {
+					incomingId = evt.deviceId.toString()
+				}
+				// map sunrise/sunset → "__time__"
+				else if (evt?.name in ["sunrise","sunset"]) {
+					incomingId = "__time__"
+				}
+
+				// 5b) Drop anything not in our devIds
+				if (!(incomingId in devIds)) {
+					flowLog(fname, "eventTrigger: event from ${incomingId} not in ${devIds}", "debug")
+					return
+				}
+
+				// 5c) If AND‑mode, require ALL devices’ currentValues to match
+				if (logic in ["and","all"]) {
+					boolean allMatch = devIds.every { devId ->
+						def device = getDeviceById(devId)
+						def actual = device ? device.currentValue(node.data.attribute) : null
+						evaluateComparator(actual, expected, comparator ?: '==')
+					}
+					flowLog(fname, "eventTrigger AND across ${devIds} ⇒ ${allMatch}", "debug")
+					if (!allMatch) {
+						return
+					}
+				}
+			}
+
+			// ── 6) Time‑of‑day “between” filter (only if __time__ is in devIds) ─
+			if ("__time__" in devIds &&
+				node.data.attribute == "timeOfDay" &&
+				comparator?.toLowerCase() == "between") {
+
+				Date now      = (evt.date as Date) ?: new Date()
+				int actualMin = now.hours * 60 + now.minutes
+
+				List bounds = (node.data.value instanceof List)
+					? node.data.value
+					: [ node.data.value.toString() ]
+
+				if (bounds.size() == 2) {
+					int lowMin  = toTimeMinutes(bounds[0].toString())
+					int highMin = toTimeMinutes(bounds[1].toString())
+					flowLog(fname, "timeOfDay between → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
+					if (!(actualMin >= lowMin && actualMin <= highMin)) {
+						flowLog(fname, "timeOfDay outside range, skipping", "debug")
+						return
+					}
+				} else {
+					log.warn "timeOfDay 'between' needs two values, got ${bounds}"
+					return
+				}
+			}
+
+			// ── 7) All checks passed—fire downstream ──────────────────────────────
+			node.outputs?.each { outName, outObj ->
+				outObj.connections?.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			}
+			break
+
+		case "condition":
+			flowLog(fname, "In evaluateNode - condition", "debug")
+			try {
+				def attr       = node.data.attribute
+				def comparator = node.data.comparator?.toLowerCase()
+				def expected   = resolveVars(fname, node.data.value)
+				def logic      = (node.data.logic?.toString() ?: "or").toLowerCase()
+				boolean passes = false
+
+				// 1) TIME‑RANGE (“between”) always uses real clock
+				if ((attr in ["currentTime","timeOfDay"]) && comparator == "between") {
+					Date now      = new Date()
+					int  actualMin = now.hours * 60 + now.minutes
+
+					List bounds = (node.data.value instanceof List)
+								  ? node.data.value
+								  : [ node.data.value?.toString() ]
+					if (bounds.size() == 2) {
+						int lowMin  = toTimeMinutes(bounds[0].toString())
+						int highMin = toTimeMinutes(bounds[1].toString())
+						passes = (actualMin >= lowMin && actualMin <= highMin)
+						flowLog(fname, "---------- In evaluateNode-condition1 -------start", "info")
+						flowLog(fname, "In evaluateNode-condition1: actualMin: ${actualMin} | lowMin: ${lowMin} | highMin: ${highMin} | passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition1 ---------end", "info")
+					} else {
+						log.warn "Condition 'between' on ${attr} needs two values, got ${bounds}"
+						passes = false
+					}
+				}
+				// 2) incomingValue override for all other comparators
+				else if (incomingValue != null) {
+					passes = evaluateComparator(incomingValue, expected, comparator)
+					flowLog(fname, "---------- In evaluateNode-condition2 -------start", "info")
+					flowLog(fname, "In evaluateNode-condition2: incomingValue: ${incomingValue} | expected: ${expected} | comparator: ${comparator} | passes: ${passes}", "info")
+					flowLog(fname, "---------- In evaluateNode-condition2 ---------end", "info")
+				}
+				// 3) Multi‑device AND/OR logic for real attributes
+				else {
+					def devIds = []
+					if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+						devIds = node.data.deviceIds
+					} else if (node.data.deviceId) {
+						devIds = [ node.data.deviceId ]
+					}
+
+					if (logic in ["and","all"]) {
+						flowLog(fname, "---------- In evaluateNode-condition-and -------start", "info")
+						passes = devIds.every { devId ->
+							def device = getDeviceById(devId)
+							def actual = device ? device.currentValue(attr) : null
+							flowLog(fname, "In evaluateNode-condition-and: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
+							evaluateComparator(actual, expected, comparator ?: '==')
+						}
+						flowLog(fname, "In evaluateNode-condition-and: passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition-and ---------end", "info")
+					} else {
+						flowLog(fname, "---------- In evaluateNode-condition-or -------start", "info")
+						passes = devIds.any { devId ->
+							def device = getDeviceById(devId)
+							def actual = device ? device.currentValue(attr) : null
+							flowLog(fname, "In evaluateNode-condition-or: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
+							evaluateComparator(actual, expected, comparator ?: '==')
+						}
+						flowLog(fname, "In evaluateNode-condition-or: passes: ${passes}", "info")
+						flowLog(fname, "---------- In evaluateNode-condition-or -------end", "info")
+					}
+				}
+
+				// 4) Route based on result
+				if (passes) {
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				} else {
+					node.outputs?.output_2?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}
+			} catch (e) {
+				log.error getExceptionMessageWithLine(e)
+			}
+			break
+		
+        case "device":
+			flowLog(fname, "In evaluateNode - device (dryRun=${testDryRun})", "debug")
+			// collect device IDs
+			def devIds = []
+			if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
+			else if (node.data.deviceIds)          devIds = [node.data.deviceIds]
+			else if (node.data.deviceId)           devIds = [node.data.deviceId]
+
+			def cmd = resolveVars(fname, node.data.command)
+			def val = resolveVars(fname, node.data.value)
+
+			if (cmd == "toggle") {
+				flowLog(fname, "In evaluateNode - toggle (dryRun=${testDryRun})", "debug")
+				devIds.each { devId ->
+					def device = getDeviceById(devId)
+					if (device && device.hasCommand("on") && device.hasCommand("off")) {
+						def currentVal = device.currentValue("switch")
+						if (currentVal == "on") {
+							device.off()
+						} else {
+							device.on()
+						}
+					} else {
+						flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
+					}
+				}
+				// continue downstream
+				node.outputs?.output_1?.connections?.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			} else {
+				devIds.each { devId ->
+					def device = getDeviceById(devId)
+					if (device && cmd) {
+						if (val != null && val != "") {
+							if(testDryRun) {
+								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd} - val: {val}", "debug")
+							} else {
+								if (cmd == "setLevel" || cmd == "setColorTemperature") {
+									device."${cmd}"(val.toInteger())
+								} else {
+									device."${cmd}"(val)
+								}
+							}
+						} else {
+							if(testDryRun) {
+								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd}", "debug")
+							} else {
+								device."${cmd}"()
+							}
+						}
+					}
+				}
+				// continue downstream
+				node.outputs?.output_1?.connections?.each { conn ->
+					evaluateNode(fname, conn.node, evt, null, visited)
+				}
+			}
+			return
+
+        case "notification":
+			flowLog(fname, "In evaluateNode - notification (dryRun=${testDryRun})", "debug")
+			if(testDryRun) {
+				flowLog(fname, "Dry Run: fname: ${fname} - node.data: ${node.data} - evt: {evt}", "debug")
+			} else {
+				sendNotification(fname, node.data, evt)
+			}
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+			}
+            break
+
+        case "delayMin":
+			flowLog(fname, "In evaluateNode - delayMin", "debug")
+            def min = (node.data.delayMin ?: 1) as Integer
+            pauseExecution(min * 60000)
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
             }
-            const main = document.getElementById('drawflow');
-            const rect = main.getBoundingClientRect();
-            const targetX = -(x - rect.width/2/scaleDF) * scaleDF;
-            const targetY = -(y - rect.height/2/scaleDF) * scaleDF;
-            precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
-          }
-        });
+            break
 
-        hookMinimapEvents();
-        setTimeout(renderMinimap, 1000);
-      });
+        case "delay":
+		flowLog(fname, "In evaluateNode - delayMs: ${node.data.delayMs} - node: ${node.data}", "debug")
+            def ms = (node.data.ms ?: 1000) as Integer
+            pauseExecution(ms)
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
 
-      // *********************************************
-      // Multi-select Node
-      window.addEventListener('DOMContentLoaded', function() {
-        window._multiSelectedNodes = new Set();
-        let dragStart = null, dragMoving = false;
+        case "setVariable":
+			flowLog(fname, "In evaluateNode - setVariable (dryRun=${testDryRun})", "debug")
+			def varName = resolveVars(fname, node.data.varName)
+			def varValue = resolveVars(fname, node.data.varValue)
+			if(testDryRun) {
+				flowLog(fname, "Dry Run: fname: ${fname} - varName: ${varName} - varValue: {varValue}", "debug")
+			} else {
+				setVariable(fname, varName, varValue)
+			}
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
 
-        function attachNodeListeners() {
-          document.querySelectorAll('.drawflow-node').forEach(el => {
-            if (el._multiNodeHandled) return; // Only attach once
-            el._multiNodeHandled = true;
-
-            // After you’ve rendered your nodes, attach this to each one:
-            document.querySelectorAll('.drawflow-node').forEach(el => {
-              el.addEventListener('mousedown', function(e) {
-                // Only left‑click starts selection/drag
-                if (e.button !== 0) return;
-
-                // --- PATCH: Let Drawflow handle port connections natively ---
-                if (e.target.classList.contains('input') ||
-                    e.target.classList.contains('output')) {
-                  return;
-                }
-
-                const nodeId = this.id.replace('node-', '');
-                const node   = window.editor.getNodeFromId(nodeId);
-
-                // --- PATCH: Prevent drag if node is locked ---
-                if (node?.data?.locked) {
-                  // Ctrl/Cmd = toggle multi‑select on locked node
-                  if (e.ctrlKey || e.metaKey) {
-                    if (window._multiSelectedNodes.has(nodeId)) {
-                      window._multiSelectedNodes.delete(nodeId);
-                    } else {
-                      window._multiSelectedNodes.add(nodeId);
+        case "saveDeviceState":
+			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
+            def devId = node.data.deviceId
+            if (devId) {
+                def device = getDeviceById(devId)
+                if (device) {
+                    def devState = [:]
+                    device.supportedAttributes.each { attr ->
+                        try {
+                            def val = device.currentValue(attr.name)
+                            if (val != null) devState[attr.name] = val
+                        } catch (e) {}
                     }
-                    updateMultiSelectUI();
-                    e.stopPropagation();
-                    e.preventDefault();
-                    return;
-                  }
-                  // Single‑select the locked node (no drag)
-                  window._multiSelectedNodes.clear();
-                  window._multiSelectedNodes.add(nodeId);
-                  updateMultiSelectUI();
-                  e.stopPropagation();
-                  e.preventDefault();
-                  return;
+					if(testDryRun) {
+						flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
+					} else {
+						flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
+						flowObj.savedDeviceStates[devId] = devState
+					}
                 }
-                // --- end locked‑node patch ---
+            }
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
 
-                // --- Multi‑select handling (unlocked nodes) ---
-                if (e.ctrlKey || e.metaKey) {
-                  if (window._multiSelectedNodes.has(nodeId)) {
-                    window._multiSelectedNodes.delete(nodeId);
-                  } else {
-                    window._multiSelectedNodes.add(nodeId);
-                  }
-                  updateMultiSelectUI();
-                  e.stopPropagation();
-                  e.preventDefault();
-                  return;
+        case "restoreDeviceState":
+			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${testDryRun})", "debug")
+			def devId = node.data.deviceId
+			if (devId) {
+				def device = getDeviceById(devId)
+				def devState = flowObj.savedDeviceStates?.get(devId)
+				if(testDryRun) {
+					flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
+				} else {
+					if (device && devState) {
+						devState.each { attrName, attrValue ->
+							try {
+								def cmd = "set${attrName.capitalize()}"
+								if (device.hasCommand(cmd)) {
+									device."${cmd}"(attrValue)
+								} else if (attrName == "switch" && device.hasCommand(attrValue)) {
+									device."${attrValue}"()
+								}
+							} catch (e) {}		
+						}
+					}
+				}
+			}
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
+
+        case "notMatchingVar":
+			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
+			// 1) Resolve variable name
+			def varName = resolveVars(fname, node.data.varName)
+			// 2) Gather device IDs
+			def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
+						  node.data.deviceIds :
+						  (node.data.deviceId ? [node.data.deviceId] : [])
+			// 3) Filter devices by the “Not” condition
+			def attr       = node.data.attribute
+			def comparator = node.data.comparator
+			def expected   = resolveVars(fname, node.data.value)
+			def newLines   = []
+			devIds.each { devId ->
+				def device = getDeviceById(devId)
+				if (device) {
+					def curVal = device.currentValue(attr)
+					// only include when **NOT** matching
+					if (!evaluateComparator(curVal, expected, comparator)) {
+						def name = device.displayName ?: device.name
+						newLines << "${name}:${curVal}"
+					}
+				}
+			}
+			// 4) Merge or overwrite
+			def appendMode = node.data.append as Boolean
+			def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
+			def lines      = existing ? existing.split('\n') as List : []
+			if (appendMode) {
+				newLines.each { nl ->
+					def id = nl.split(':')[0]
+					def idx = lines.findIndexOf { it.split(':')[0] == id }
+					if (idx >= 0) lines[idx] = nl else lines << nl
+				}
+			} else {
+				lines = newLines
+			}
+			// 5) Save back into in-memory vars
+			flowObj.vars = flowObj.vars ?: [:]
+			flowObj.vars[varName] = lines.join('\n')
+			flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
+			// 6) Continue downstream (only “true” path used here)
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			return
+
+		case "AND":
+			flowLog(fname, "In evaluateNode - AND", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "OR":
+			flowLog(fname, "In evaluateNode - OR", "debug")
+            def passes = (incomingValue == true)
+            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
+            return passes
+
+        case "NOT":
+			flowLog(fname, "In evaluateNode - NOT", "debug")
+            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
+            def result = !evaluateNode(fname, input, evt, null, visited)
+            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
+            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
+            return result
+		
+		case "doNothing":
+			flowLog(fname, "In evaluateNode - doNothing", "debug")
+			break
+		
+		case "repeat":
+			flowLog(fname, "In evaluateNode - repeat", "debug")
+			// flowObj is already declared in this scope; just initialize its repeatCounts map:
+			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
+
+			// Pull the repeat mode ("count" or "until")
+			def mode = node.data.repeatMode ?: "count"
+
+			if (mode == "count") {
+				// —— COUNT mode ——
+				def repeatMax = (node.data.repeatMax ?: 1) as Integer
+				def count     = (flowObj.repeatCounts[nodeId.toString()] ?: 0) as Integer
+
+				if (count < repeatMax) {
+					flowObj.repeatCounts[nodeId.toString()] = count + 1
+					flowLog(fname, "Repeat node (count): iteration ${count+1} of ${repeatMax}", "info")
+					// loop back
+					recheckAllTriggers(fname)
+				} else {
+					flowLog(fname, "Repeat node (count): reached ${repeatMax}, moving on.", "info")
+					flowObj.repeatCounts[nodeId.toString()] = 0
+					// fire downstream once
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}
+			}
+			else if (mode == "until") {
+				// —— UNTIL mode ——
+				def devIds = []
+				if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+					devIds = node.data.deviceIds
+				} else if (node.data.deviceId) {
+					devIds = [node.data.deviceId]
+				}
+				def attr       = node.data.attribute
+				def comparator = node.data.comparator
+				def expected   = resolveVars(fname, node.data.value)
+
+				// Determine currentValue
+				def currentValue = null
+				if (evt?.name == attr && evt.value != null) {
+					currentValue = evt.value
+				} else if (devIds && devIds[0]) {
+					currentValue = getDeviceById(devIds[0])?.currentValue(attr)
+				}
+
+				// Evaluate the condition
+				def passes = evaluateComparator(currentValue, expected, comparator)
+				if (!passes) {
+					flowLog(fname, "Repeat node (until): condition not met (${attr} ${comparator} ${expected}), looping.", "info")
+					recheckAllTriggers(fname)
+				} else {
+					flowLog(fname, "Repeat node (until): condition met, moving on.", "info")
+					node.outputs?.output_1?.connections?.each { conn ->
+						evaluateNode(fname, conn.node, evt, null, visited)
+					}
+				}
+			}
+			else {
+				log.warn "Unknown repeatMode ‘${mode}’ in Repeat node – skipping."
+			}
+			break
+
+        default:
+            log.warn "Unknown node type: ${node.name}"
+    }
+}
+
+def apiGetDevices() {
+    def output = []
+    settings.masterDeviceList?.each { dev ->
+        output << [
+            id: dev.id,
+            label: dev.displayName ?: dev.label ?: dev.name,
+            name: dev.name,
+            attributes: dev.supportedAttributes?.collect { attr ->
+                [
+                    name: attr.name,
+                    currentValue: dev.currentValue(attr.name)
+                ]
+            } ?: [],
+            commands: dev.supportedCommands?.collect { it.name } ?: []
+        ]
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(output)
+}
+
+def apiUploadFile() {
+    def name = params.name
+    if (!name) {
+        render status: 400, text: "Missing file name"
+        return
+    }
+    def body = request?.body ?: request?.JSON
+    if (!body) {
+        render status: 400, text: "Missing file data"
+        return
+    }
+    try {
+        def fileText = (body instanceof String) ? body : groovy.json.JsonOutput.toJson(body)
+        uploadHubFile(name, fileText.getBytes("UTF-8"))
+        render contentType: "application/json", data: '{"result":"Upload successful"}'
+    } catch (e) {
+        render status: 500, text: "Error: ${e}"
+    }
+}
+
+def apiListFiles() {
+    def fileList = []
+    def uri = "http://127.0.0.1:8080/hub/fileManager/json";
+    try {
+        httpGet([uri: uri]) { resp ->
+            if (resp != null) {
+                def json = resp.data
+                json.files.each { rec ->
+                    if (
+                        rec.name?.toLowerCase()?.endsWith(".json") &&
+                        !(rec.name?.startsWith("FE_")) &&
+                        !(rec.name?.startsWith("var_"))
+                    ) {
+                        fileList << rec.name
+                    }
                 }
-
-                // --- Single‑select handling (unlocked node) ---
-                if (!window._multiSelectedNodes.has(nodeId)) {
-                  window._multiSelectedNodes.clear();
-                  window._multiSelectedNodes.add(nodeId);
-                  updateMultiSelectUI();
-                }
-
-                // --- Determine which nodes to drag ---
-                let dragSet;
-                if (window._multiSelectedNodes.size > 1 &&
-                    window._multiSelectedNodes.has(nodeId)) {
-                  dragSet = Array.from(window._multiSelectedNodes);
-                } else {
-                  dragSet = [nodeId];
-                }
-
-                // If any selected node is locked, cancel drag
-                if (dragSet.some(id => {
-                  const n = window.editor.getNodeFromId(id);
-                  return n?.data?.locked;
-                })) {
-                  return;
-                }
-
-                // --- INITIATE GROUP DRAG ---
-                dragStart = {
-                  baseX: e.clientX,
-                  baseY: e.clientY,
-                  positions: dragSet.map(id => {
-                    const d = window.editor.drawflow.drawflow.Home.data[id];
-                    return { id, x: d.pos_x, y: d.pos_y };
-                  })
-                };
-                dragMoving = false;
-                document.body.style.userSelect = "none";
-                e.preventDefault();
-                e.stopPropagation();
-              });
-            });
-          });
+            }
         }
-        let animationFrame = null;
+    } catch (e) {
+        log.error e
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([files: fileList.sort()])
+}
 
-        document.addEventListener('mousemove', function(e){
-          if (!dragStart) return;
-          const dx = e.clientX - dragStart.baseX;
-          const dy = e.clientY - dragStart.baseY;
-          if (Math.abs(dx) + Math.abs(dy) > 1) dragMoving = true;
-          dragStart.positions.forEach(pos => {
-            const newX = pos.x + dx;
-            const newY = pos.y + dy;
-            const data = window.editor.drawflow.drawflow.Home.data[pos.id];
-            data.pos_x = newX;
-            data.pos_y = newY;
-            // Use only Drawflow API for node move & redraw
-            if (window.editor && typeof window.editor.moveNodeTo === "function") {
-              window.editor.moveNodeTo(Number(pos.id), newX, newY);
-            }
-          });
-        });
-
-        document.addEventListener('mouseup', function(e){
-          dragStart = null;
-          dragMoving = false;
-        });
-
-        // Ensure every node has handler after creation/import
-        if (window.editor) {
-          window.editor.on('nodeCreated', function() {
-            setTimeout(attachNodeListeners, 1);
-            updateMultiSelectUI();
-          });
-          window.editor.on('import', function() {
-            setTimeout(attachNodeListeners, 1);
-            updateMultiSelectUI();
-          });
-          window.editor.on('nodeRemoved', function(id) {
-            window._multiSelectedNodes.delete(String(id));
-            updateMultiSelectUI();
-          });
+def apiGetFile() {
+    def name = params.name
+    if (!name) {
+        render status: 400, text: "Missing file name"
+        return
+    }
+    def fileData = null
+    try {
+        def url = "http://127.0.0.1:8080/local/${name}"
+        httpGet([uri: url, contentType: 'text/plain']) { resp ->
+            fileData = resp.data?.text
         }
-        // Initial attach for existing nodes
-        setTimeout(attachNodeListeners, 100);
-      });
-
-      function getMultiSelectedNodeIds() {
-        return Array.from(window._multiSelectedNodes || []);
-      }
-
-      // *******************************************
-
-      function deleteSelectedNodes() {
-        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
-        // Make a COPY of the selected IDs array
-        const toDelete = Array.from(window._multiSelectedNodes);
-        // Clear selection BEFORE deleting
-        window._multiSelectedNodes.clear();
-        // Now delete each node by id (call the same logic as single node delete)
-        toDelete.forEach(id => {
-          try {
-            if (editor && typeof editor.removeNodeId === "function") {
-              editor.removeNodeId("node-" + id);  // <-- THIS LINE FIXES IT
-            }
-          } catch (e) {
-            // log or ignore, just in case node is already gone
-          }
-        });
-        markFlowNeedsSave(true);
-        // After delete, update editor UI
-        setTimeout(() => {
-          // Try to select a remaining node
-          let remainingIds = [];
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-            remainingIds = Object.keys(editor.drawflow.Home.data);
-          }
-          if (remainingIds.length) {
-            editor.selected_id = remainingIds[0];
-            window.renderEditor(editor.getNodeFromId(remainingIds[0]));
-          } else {
-            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          }
-        }, 10);
-      }
-
-      function duplicateSelectedNodes() {
-        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
-        const toDuplicate = Array.from(window._multiSelectedNodes).map(String);
-        const offsetStep = 40;
-        let offset = 0;
-        const newIds = [];
-
-        toDuplicate.forEach(id => {
-          const orig = editor.getNodeFromId(id);
-          if (!orig) return;
-          const newData = JSON.parse(JSON.stringify(orig.data));
-          const nId = editor.addNode(
-            orig.name,
-            1, // inputs
-            1, // outputs
-            orig.pos_x + offset + offsetStep,
-            orig.pos_y + offset + offsetStep,
-            orig.class,
-            newData,
-            orig.html
-          );
-          newIds.push(nId);
-          offset += offsetStep;
-        });
-
-        // Select all the new nodes
-        if (newIds.length) {
-          window._multiSelectedNodes = new Set(newIds.map(String));
-          editor.selected_id = newIds[0];
-          window.renderEditor(editor.getNodeFromId(editor.selected_id));
-          markFlowNeedsSave(true);
+        if (!fileData) {
+            render status: 404, text: "File not found or empty"
+            return
         }
-      }
-
-      function hideContextMenu() {
-        const cm = document.querySelector('.context-menu');
-        if (cm) cm.remove();
-      }
-
-      function lockSelectedNodes(lockState) {
-        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
-        Array.from(window._multiSelectedNodes).forEach(id => {
-          const node = editor.getNodeFromId(id);
-          if (node) {
-            node.data.locked = !!lockState;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          }
-        });
-      }
-
-      document.addEventListener("DOMContentLoaded", function() {
-        const toolbar = document.getElementById("controls");
-        const toggleBtn = document.getElementById("toggleToolbarBtn");
-        let toolbarVisible = true;
-        toggleBtn.onclick = function() {
-          toolbarVisible = !toolbarVisible;
-          toolbar.style.display = toolbarVisible ? "" : "none";
-          toggleBtn.innerHTML = toolbarVisible ? "▲ Hide Toolbar" : "▼ Show Toolbar";
-        };
-      });
-
-      document.addEventListener("DOMContentLoaded", function() {
-        const toolbar2 = document.getElementById("nodeControls");
-        const toggleBtn2 = document.getElementById("toggleToolbar2Btn");
-        let toolbarVisible2 = true;
-        toggleBtn2.onclick = function() {
-          toolbarVisible2 = !toolbarVisible2;
-          toolbar2.style.display = toolbarVisible2 ? "" : "none";
-          toggleBtn2.innerHTML = toolbarVisible2 ? "▲ Hide Node Controls" : "▼ Show Node Controls";
-        };
-      });
-
-      // Align Left: Use the left X of the first selected node
-      document.getElementById("alignLeftBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorX = anchor.pos_x;
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_x = anchorX;
-              editor.moveNodeTo(n.id, anchorX, n.pos_y);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      // Align Right: Use the right edge of the first selected node
-      document.getElementById("alignRightBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorRight = anchor.pos_x + 160; // 160 = node width in px
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_x = anchorRight - 160; // align right edge
-              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      // Align Top: Use the top Y of the first selected node
-      document.getElementById("alignTopBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorY = anchor.pos_y;
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_y = anchorY;
-              editor.moveNodeTo(n.id, n.pos_x, anchorY);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      // Align Bottom: Use the bottom edge of the first selected node
-      document.getElementById("alignBottomBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorBottom = anchor.pos_y + 60; // 60 = node height in px
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_y = anchorBottom - 60; // align bottom edge
-              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      // Align Center X (horizontal center): Use center X of first node
-      document.getElementById("alignCenterBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorCenterX = anchor.pos_x + 160 / 2; // node width
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_x = anchorCenterX - 160 / 2;
-              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      // Align Middle Y (vertical center): Use center Y of first node
-      document.getElementById("alignMiddleBtn").onclick = function() {
-        const sel = Array.from(window._multiSelectedNodes || []);
-        if (sel.length < 2) return;
-        const anchorId = sel[0];
-        const anchor = editor.getNodeFromId(anchorId);
-        if (!anchor) return;
-        const anchorMiddleY = anchor.pos_y + 60 / 2; // node height
-        sel.forEach(id => {
-          if (id !== anchorId) {
-            const n = editor.getNodeFromId(id);
-            if (n) {
-              n.pos_y = anchorMiddleY - 60 / 2;
-              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
-            }
-          }
-        });
-        markFlowNeedsSave(true);
-      };
-
-      async function reloadHubitatApp(opts = {}) {
-        const appId = document.getElementById("hubitatAppId")?.value.trim();
-        const token = document.getElementById("hubitatToken")?.value.trim();
-        if (!appId || !token) { 
-          alert("Missing Hubitat appId/token"); 
-          throw new Error("Missing Hubitat appId/token"); 
-        }
-        const url = `/apps/api/${appId}/forceReload?access_token=${token}`;
-        console.log("Reload App Fetch:", url);
-        const res = await fetch(url, {
-          method: "POST",
-          body: JSON.stringify({ action: "reload" }),
-          headers: { "Content-Type": opts.mimeType || "application/json" }
-        });
-        if (!res.ok) {
-          alert("Failed to reload app: " + (await res.text()));
-          throw new Error("Failed to reload app");
-        }
-        return await res.json().catch(() => true);
-      }
-
-      document.addEventListener("DOMContentLoaded", function() {
-        const canvas = document.getElementById("drawflow");
-        if (canvas) {
-          canvas.addEventListener("mousedown", function(e) {
-            if (e.target === canvas) {
-              window._multiSelectedNodes.clear();
-              editor.selected_id = null;
-              document.querySelectorAll('.drawflow-node').forEach(el => {
-                el.classList.remove('selected-multi');
-                el.classList.remove('selected');
-              });
-              // We still deselect, but leave the Node Editor alone here.
-            }
-          });
-        }
-      });
-
-      // ── Logging Button Click Handler ─────────────────────────────────────────────
-      document.getElementById("loggingButton").addEventListener("click", async () => {
-        const btn      = document.getElementById("loggingButton");
-        const flowName = document.getElementById("hubitatFileDropdown").value.trim();
-        const token    = document.getElementById("hubitatToken").value.trim();
-        const appId    = document.getElementById("hubitatAppId").value.trim();
-
-        // 1) Validate credentials & selection
-        if (!hubitatCredentialsAreValid(true)) return;
-        if (!flowName) {
-          logAction("No Flow selected to change logging", "error");
-          return;
-        }
-
-        // 2) Determine desired action
-        const isEnabled = btn.textContent.trim() === "Logging Enabled";
-        const action    = isEnabled ? "deselectFlowLog" : "selectFlowLog";
-        const url       = `/apps/api/${appId}/${action}?access_token=${token}`;
-
-        // 3) Disable button to prevent double‑clicks
-        btn.disabled = true;
         try {
-          // 4) Call Hubitat API with JSON body
-          const response = await fetch(url, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ flow: flowName })
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status} ${response.statusText}`);
-          }
-          const result = await response.json();
-
-          // 5) Log success
-          logAction(
-            isEnabled
-              ? `❎ Logging disabled: ${result.result || "OK"}`
-              : `✅ Logging enabled:   ${result.result || "OK"}`,
-            "info"
-          );
-
-          // 6) Re‑sync both buttons’ state
-          await checkIfFlowIsInUse(flowName, appId, token);
-        } catch (err) {
-          logAction(`❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`, "error");
-        } finally {
-          // 7) Re‑enable button
-          btn.disabled = false;
+            def obj = new groovy.json.JsonSlurper().parseText(fileData)
+            render contentType: "application/json", data: groovy.json.JsonOutput.toJson(obj)
+        } catch (ex) {
+            render contentType: "text/plain", text: fileData
         }
-      });
+    } catch (e) {
+        render status: 500, text: "Error: ${e}"
+    }
+}
 
-      document.getElementById("saveAsFlow").onclick = async function() {
-        // 1) Sanity check
-        if (!hubitatCredentialsAreValid(true) || typeof editor.export !== "function") {
-          return;
-        }
+def exportModesToFile() {
+    def currentMode = [ id: "current", name: location.mode]
+    def modeList = location.modes.collect { [ id: it.id, name: it.name ] } + currentMode
+    def json = groovy.json.JsonOutput.toJson([ modes: modeList ])
+    uploadHubFile("FE_flowModes.json",json.getBytes())
+    render contentType: "application/json", data: '{"result":"Modes exported"}'
+}
 
-        // 2) Prompt for the new name (no “.json”)
-        const flowNameEl = document.getElementById("flowName");
-        let current = flowNameEl.textContent.trim();
-        if (current.toLowerCase().endsWith(".json")) {
-          current = current.slice(0, -5);
-        }
-        let name = prompt("Save flow as:", current);
-        if (!name) return;  // user cancelled
+def apiActiveFlows() {
+    def list = []
+    (state.activeFlows ?: [:]).each { flowName, flowObj ->
+        list << [
+            flowName: flowName,
+            flow: flowObj?.flow ?: null,
+            fileName: flowObj?.fileName ?: flowName
+        ]
+    }
+    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(list)
+}
 
-        // 3) Sanitize the name
-        name = name
-          .replace(/\s+/g, "_")
-          .replace(/[^a-zA-Z0-9_\-]/g, "")
-          .replace(/_{2,}/g, "_")
-          .replace(/^_+|_+$/g, "");
+def flowLog(fname, msg, level = "info") {
+	if(logEnable) {
+		if (settings?.perFlowLogEnabled && !(settings.perFlowLogEnabled.contains(fname))) return
+		def prefix = "[${fname}]"
+		switch(level) {
+			case "warn":  log.warn "${prefix} ${msg}"; break
+			case "error": log.error "${prefix} ${msg}"; break
+			case "debug": log.debug "${prefix} ${msg}"; break
+			default:      log.info "${prefix} ${msg}"
+		}
+	}
+}
 
-        // 4) Export & upload under name + ".json"
-        const data = editor.export();
-        data.flowName = name;
-        if (window.flowVars?.getLocalVars) {
-          data.variables = flowVars.getLocalVars();
-        }
-        await uploadToHubitatFile(`${name}.json`, JSON.stringify(data, null, 2));
+def loadAndStartFlow(fname) {
+    def flow = readFlowFile(fname)
+    if(!flow) return
 
-        // 5) Update the on-page display to the bare name (no .json)
-        flowNameEl.textContent = name;
+    state.activeFlows[fname] = [
+        flow: flow,
+        lastVarValues: [:],
+        varCtx: [:],
+        tapTracker: [:],
+        holdTracker: [:],
+        savedDeviceStates: [:],
+        flowVars: [],
+        globalVars: [],
+        vars: [:]
+    ]
+    loadVariables(fname)
+    subscribeToTriggers(fname)
+	scheduleTimeBasedTriggers(fname)
+}
 
-        await reloadFlowDropdown(`${name}.json`);
-        markFlowNeedsSave(false);
-        logAction(`Saved flow as "${name}" to Hubitat File Manager.`, "success");
-      };
-
-      // — Delete current flow and then clear UI + reload dropdown —
-      document.getElementById("deleteFlowAppBtn").onclick = async function() {
-        // 1) grab credentials and the selected filename
-        const token    = document.getElementById("hubitatToken").value.trim();
-        const appId    = document.getElementById("hubitatAppId").value.trim();
-        const dropdown = document.getElementById("hubitatFileDropdown");
-        const fileName = dropdown.value.trim();
-
-        if (!token || !appId || !fileName) {
-          return logAction("Missing Token, App ID, or selected Flow", "error");
-        }
-
-        // 2) build the delete URL
-        const url = `/apps/api/${appId}/deleteFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
-
-        // 3) confirm
-        if (!confirm(`Really delete "${fileName}" from Hubitat? This cannot be undone.`)) {
-          return;
-        }
-
-        // 4) perform the DELETE
-        try {
-          const res = await fetch(url, { method: "DELETE" });
-          if (!res.ok) throw new Error(await res.text());
-          logAction(`✅ Deleted "${fileName}" from Hubitat File Manager.`, "success");
-
-          // 5) clear the displayed flow name
-          document.getElementById("flowName").textContent = "";
-
-          // 6) clear the canvas & undo/redo state
-          editor.clear();
-          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
-          window.undoStack = [JSON.stringify(editor.export())];
-          window.redoStack = [];
-
-          // 7) reset any “in-use” flags and re-load globals
-          checkIfFlowIsInUse("new", appId, token);
-          await autoLoadGlobalVarsFromHubitat();
-          await reloadFlowDropdown("");
-
-          markFlowNeedsSave(false);
-          logAction("Cleared workspace after deletion.", "info");
-        } catch (e) {
-          logAction("❌ Failed to delete file: " + e, "error");
-        }
-      };
-
-      document.getElementById("renameFlow").onclick = async function() {
-        // 1) Validate credentials & editor
-        if (!hubitatCredentialsAreValid(true) || typeof editor?.export !== "function") {
-          return;
-        }
-
-        // 2) Get old name and prompt for new
-        const flowNameEl = document.getElementById("flowName");
-        const oldName    = flowNameEl.textContent.trim();
-        let newName      = prompt("Rename flow to:", oldName);
-        if (!newName || newName === oldName) {
-          return;
-        }
-
-        // 3) Sanitize newName (underscores, letters, numbers, dashes only)
-        newName = newName
-          .replace(/\s+/g, "_")
-          .replace(/[^a-zA-Z0-9_\-]/g, "")
-          .replace(/_{2,}/g, "_")
-          .replace(/^_+|_+$/g, "");
-
-        // 4) Export and overwrite flowName in JSON
-        const data = editor.export();
-        data.flowName = newName;
-        if (window.flowVars?.getLocalVars) {
-          data.variables = window.flowVars.getLocalVars();
-        }
-
-        // 5) Upload under the new filename
-        await uploadToHubitatFile(newName + ".json", JSON.stringify(data, null, 2));
-
-        // 6) Delete the old file
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        await fetch(
-          `/apps/api/${appId}/deleteFile?access_token=${token}&name=${encodeURIComponent(oldName)}`,
-          { method: "DELETE" }
-        );
-        await reloadHubitatApp();
-
-        // 7) Reflect the change in the UI
-        flowNameEl.textContent = newName;
-        const oldFilename = oldName + ".json";
-        const newFilename = newName + ".json";
-
-        await reloadFlowDropdown(`${newName}.json`);
-
-        markFlowNeedsSave(false);
-        logAction(`Renamed "${oldName}" → "${newName}" in Hubitat File Manager.`, "success");
-      };
-
-      // ── AUTO-SHOW & RESTORE ───────────────────────────────────────
-      window.addEventListener('load', function() {
-        const mm = document.getElementById('minimap-container');
-        if (!mm) return console.error('❌ minimap-container not found');
-        // restore last pos or default
-        try {
-          const pos = JSON.parse(localStorage.getItem('fe_minimap_pos'));
-          if (pos && pos.left != null && pos.top != null) {
-            mm.style.left = pos.left + 'px';
-            mm.style.top  = pos.top  + 'px';
-          }
-        } catch(_){}  
-        mm.style.display = 'block';
-        // re-render if available
-        if (typeof renderMinimap === 'function') renderMinimap();
-      });
-
-      // ── DRAG & PERSIST POSITION ───────────────────────────────────
-      (function enableMinimapDrag() {
-        const mm = document.getElementById('minimap-container');
-        if (!mm) return;
-        let dragging = false,
-            start   = { x: 0, y: 0 },
-            origin  = { x: 0, y: 0 };
-
-        mm.addEventListener('mousedown', e => {
-          dragging      = true;
-          start.x       = e.clientX;
-          start.y       = e.clientY;
-          origin.x      = mm.offsetLeft;
-          origin.y      = mm.offsetTop;
-          mm.style.cursor = 'move';
-          e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', e => {
-          if (!dragging) return;
-          const dx = e.clientX - start.x;
-          const dy = e.clientY - start.y;
-          mm.style.left = origin.x + dx + 'px';
-          mm.style.top  = origin.y + dy + 'px';
-        });
-
-        document.addEventListener('mouseup', () => {
-          if (!dragging) return;
-          dragging = false;
-          mm.style.cursor = 'pointer';
-          // save new position
-          localStorage.setItem('fe_minimap_pos',
-            JSON.stringify({
-              left: mm.offsetLeft,
-              top:  mm.offsetTop
-            })
-          );
-        });
-      })();
-   
-      // ── Trigger‑Match Logging WebSocket ─────────────────────────────────────────
-      function startFlowTraceStream() {
-        // don’t re‑open if already open
-        if (
-          window.flowTraceSocket &&
-          window.flowTraceSocket.readyState === WebSocket.OPEN
-        ) return;
-
-        const appId = document.getElementById('hubitatAppId').value.trim();
-        const token = document.getElementById('hubitatToken').value.trim();
-
-        const ip    = getHubitatIP();
-        if (!ip) {
-          logAction('⚠️ Missing IP for TriggerLog WS', 'warn');
-          return;
-        }
-
-        window.flowTraceSocket = new WebSocket(`ws://${ip}/eventsocket`);
-
-        window.flowTraceSocket.addEventListener('open', () => {
-          logAction('🔍 [TriggerLog] WebSocket opened', 'info');
-        });
-
-        window.flowTraceSocket.addEventListener('message', ({ data }) => {
-          let evt;
-          try {
-            evt = JSON.parse(data);
-          } catch {
-            return;
-          }
-
-          // ── Handle our fake "flowTraceUpdated" Location event ──────────────────────
-          if (evt.name === 'flowTraceUpdated') {
-            // clear any existing highlights
-            document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
-              .forEach(n => n.classList.remove('executed','last-executed'));
-            document.querySelectorAll('.main-path')
-              .forEach(p => {
-                p.removeAttribute('stroke');
-                p.removeAttribute('style');
-                p.classList.remove('highlighted');
-              });
-
-            if (!flowTracePollingActive) {
-              logAction('⚡ Triggered', 'info');
-              flowTracePollingActive = true;
-            }
-            pollFlowTraceUntilEnd();
-            return;
-          }
-
-          // ── Existing device‐trigger logic ─────────────────────────────────────────
-          if (evt.source !== 'DEVICE' || !evt.name || !evt.deviceId) return;
-          clearAllSelections();
-          const nodes =
-            editor?.drawflow?.Home?.data ||
-            editor?.drawflow?.drawflow?.Home?.data;
-          if (!nodes) return;
-
-          const match = Object.values(nodes).find(n => {
-            const rawIds = Array.isArray(n.data.deviceIds)
-              ? n.data.deviceIds
-              : [n.data.deviceId];
-            return rawIds.map(x => Number(x)).includes(Number(evt.deviceId))
-                && n.data.attribute === evt.name;
-          });
-
-          if (match) {
-            window.editor.selected_id = match.id;
-            // clear previous highlights
-            document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
-              .forEach(n => n.classList.remove('executed','last-executed'));
-            document.querySelectorAll('.main-path')
-              .forEach(p => {
-                p.removeAttribute('stroke');
-                p.removeAttribute('style');
-                p.classList.remove('highlighted');
-              });
-
-            logAction(
-              `⚡ Trigger on node ${match.id}: ` +
-              `${evt.displayName} → ${evt.value}`,
-              'info'
-            );
-            pollFlowTraceUntilEnd();
-          }
-        });
-
-        window.flowTraceSocket.addEventListener('error', err =>
-          console.error('❌ WebSocket error', err)
-        );
-      }
-
-      document.addEventListener('DOMContentLoaded', startFlowTraceStream);
-
-      // Clear Trace
-      document.getElementById('clearTraceBtn').addEventListener('click', () => {
-        // clear node highlights
-        document.querySelectorAll(
-          '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
-        ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
-
-        // clear path highlights
-        document.querySelectorAll('.main-path.highlighted').forEach(path => {
-          path.removeAttribute('stroke');
-          path.removeAttribute('style');
-          path.classList.remove('highlighted');
-        });
-
-        // stop live‑polling if active
-        if (typeof flowTracePollInterval !== 'undefined' && flowTracePollInterval) {
-          clearInterval(flowTracePollInterval);
-          flowTracePollInterval = null;
-        }
-
-        logAction('🗑️ Trace cleared', 'info');
-      });
-
-      function hideTestUI() {
-        const statusDiv = document.getElementById('flowTestStatus');
-        if (!statusDiv) return;
-
-        const testBtn      = statusDiv.querySelector('#testFlowBtn');
-        const testInput    = statusDiv.querySelector('#testFlowInput');
-        const dryRunLabel  = statusDiv.querySelector('#dryRunCheckbox')?.closest('label');
-
-        const selNode = editor.getNodeFromId(editor.selected_id);
-        const isMulti = selNode?.name === 'eventTrigger'
-                    && Array.isArray(selNode.data.deviceIds)
-                    && selNode.data.deviceIds.length > 1;
-
-        if (isMulti) {
-          if (testBtn)     testBtn.hidden     = true;
-          if (testInput)   testInput.hidden   = true;
-          if (dryRunLabel) dryRunLabel.hidden = true;
-
-          if (!statusDiv.querySelector('#testNaMsg')) {
-            const naMsg = document.createElement('div');
-            naMsg.id          = 'testNaMsg';
-            naMsg.textContent = 'Testing not Available';
-            naMsg.style       = 'font-size:12px;color:#b00;margin:8px 0;';
-            statusDiv.appendChild(naMsg);
-          }
-        } else {
-          if (testBtn)     testBtn.hidden     = false;
-          if (testInput)   testInput.hidden   = false;
-          if (dryRunLabel) dryRunLabel.hidden = false;
-          const naMsg = statusDiv.querySelector('#testNaMsg');
-          if (naMsg) naMsg.remove();
-        }
-      }
-
-      /**
-       * Returns a CSS style string to outline in red any node whose required inputs are missing.
-       * Supports all built‑in tile types.
-       *
-       * @param {string} type  The node type (e.g. "eventTrigger", "device", "schedule", etc.)
-       * @param {object} data  The node’s data object
-       * @returns {string}     A CSS style (e.g. "border:2px solid #fa2b2b;") or "" if no error
-       */
-      function getErrorStyle(type, data) {
-        const t = (type || "").toLowerCase();
-        let hasError = false;
-
-        switch (t) {
-          // ── Logic & Comment nodes: never error ─────────────────────────────────
-          case "donothing":
-          case "and":
-          case "or":
-          case "not":
-          case "comment":
-            break;
-
-          // ── Delay nodes: require numeric duration ───────────────────────────────
-          case "delay":
-            if (typeof data.ms !== "number" || isNaN(data.ms)) {
-              hasError = true;
-            }
-            break;
-          case "delaymin":
-            if (typeof data.delayMin !== "number" || isNaN(data.delayMin)) {
-              hasError = true;
-            }
-            break;
-
-          // ── Save/Restore Device State: require a device ─────────────────────────
-          case "savedevicestate":
-          case "restoredevicestate":
-            if (!data.deviceId) {
-              hasError = true;
-            }
-            break;
-
-          // ── Schedule: must have at least one of cron, repeatDays, or time ───────
-          case "schedule":
-            if (
-              !data.cron &&
-              (!Array.isArray(data.repeatDays) || data.repeatDays.length === 0) &&
-              !data.time
-            ) {
-              hasError = true;
-            }
-            break;
-
-          // ── Repeat Until/Max: different requirements by mode ─────────────────────
-          case "repeat":
-            if (data.repeatMode === "until") {
-              if (!data.deviceId || !data.attribute || !data.comparator) {
-                hasError = true;
-              } else if (data.comparator === "between") {
+def getFileList() {
+    state.jsonList = []
+    try {
+        def uri = "http://127.0.0.1:8080/hub/fileManager/json"
+        httpGet([uri: uri]) { resp ->
+            def json = resp.data
+            json.files.each { rec ->
                 if (
-                  !Array.isArray(data.value) ||
-                  !data.value[0] ||
-                  !data.value[1]
+                    rec.name?.toLowerCase()?.endsWith(".json") &&
+                    !(rec.name?.startsWith("FE_")) &&
+                    !(rec.name?.startsWith("var_"))
                 ) {
-                  hasError = true;
+                    state.jsonList << rec.name
                 }
-              } else if (
-                data.comparator !== "changes" &&
-                (data.value === undefined || data.value === "")
-              ) {
-                hasError = true;
-              }
+            }
+        }
+    } catch (e) {
+		flowLog(fname, "getFileList error: $e", "error")
+    }
+	state.jsonList = state.jsonList.sort { it?.toLowerCase() }
+}
+
+def readFlowFile(fname) {
+    def uri     = "http://127.0.0.1:8080/local/${fname}"
+    def jsonStr = ""
+    try {
+        httpGet([uri: uri, contentType: "text/plain"]) { resp ->
+            jsonStr = resp.data?.text
+        }
+        if (!jsonStr) return null
+
+        // 1) Try normal parse
+        try {
+            return new JsonSlurper().parseText(jsonStr)
+        }
+        catch (parseEx) {
+            // 2) Log the error, then attempt auto‑fix
+            flowLog(fname, "JSON parse error: ${parseEx.message}. Attempting auto‑fix…", "warn")
+
+            def fixed = jsonStr
+                .replaceAll(/^\uFEFF/, "")                    // strip BOM
+                .replaceAll(/\/\/.*$/, "")                    // remove single‑line comments
+                .replaceAll(/\/\*[\s\S]*?\*\//, "")           // remove multi‑line comments
+                .replaceAll(/,\s*([}\]])/, '$1')              // remove trailing commas
+                .replaceAll(/(['"])?([A-Za-z_][\w]*)\1\s*:/, '"$2":') // quote unquoted keys
+                .replaceAll(/'([^']*)'/, '"$1"')              // convert single → double quotes
+                .replaceAll(/\bNaN\b/, "null")                // NaN → null
+                .replaceAll(/\bInfinity\b/, "null")           // Infinity → null
+
+            // 3) Re‑parse the fixed text
+            def obj = new JsonSlurper().parseText(fixed)
+            flowLog(fname, "Auto‑fixed JSON on load for \"${fname}\"", "info")
+            return obj
+        }
+    }
+    catch (e) {
+        flowLog(fname, "readFlowFile(${fname}) error: ${e}", "error")
+        return null
+    }
+}
+
+def getDeviceById(id) {
+    return settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
+}
+
+def loadVariables(fname) {
+    def flowObj = state.activeFlows[fname]
+    flowObj.varCtx = [:]
+    // Load global vars from file
+    def globalVars = []
+    try {
+        globalVars = readFlowFile("FE_global_vars.json") ?: []
+    } catch (e) {
+        flowLog(fname, "Could not load FE_global_vars.json: $e", "warn")
+    }
+    // Store in flowObj for compatibility, if you want
+    flowObj.globalVars = globalVars
+    // Build variable context
+    globalVars.each { v ->
+        flowObj.varCtx[v.name] = resolveVarValue(fname, v)
+    }
+}
+
+def getGlobalVars(fname) {
+    def flowObj = state.activeFlows[fname]
+    flowObj.globalVars = []
+    try {
+        def uri = "http://127.0.0.1:8080/local/FE_global_vars.json"
+        httpGet([uri: uri, contentType: "text/html; charset=UTF-8"]) { resp ->
+            def jsonStr = resp.data?.text
+            if (!jsonStr) return
+            flowObj.globalVars = new JsonSlurper().parseText(jsonStr)
+        }
+    } catch (e) {
+        flowObj.globalVars = []
+    }
+}
+
+def resolveVarValue(fname, v, _visited = []) {
+    if (!v || !v.name) return ""
+    if (_visited.contains(v.name)) return "ERR:Circular"
+    _visited += v.name
+    def val = v.value
+    if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
+        return evalExpression(fname, val, _visited)
+    }
+    if (val ==~ /^-?\d+(\.\d+)?$/) return val.contains(".") ? val.toDouble() : val.toInteger()
+    if ("$val".toLowerCase() == "true" || "$val".toLowerCase() == "false") return "$val".toLowerCase() == "true"
+    return val
+}
+
+def evalExpression(fname, expr, _visited = []) {
+    expr = expr.replaceAll(/\$\((\w+)\)/) { full, vname ->
+        def flowObj = state.activeFlows[fname]
+        def v = (flowObj.flowVars + flowObj.globalVars).find { it.name == vname }
+        return v ? resolveVarValue(fname, v, _visited) : "null"
+    }
+    return expr
+}
+
+String resolveVars(fname, str) {
+    if (!str || !(str instanceof String)) return str
+    def flowObj = state.activeFlows[fname]
+    def pattern = /\$\((\w+)\)|\$\{(\w+)\}/
+    def out = str.replaceAll(pattern) { all, v1, v2 ->
+        def var = v1 ?: v2
+        flowObj.vars?.get(var)?.toString() ?:
+        flowObj.flowVars?.find { it.name == var }?.value?.toString() ?:
+        flowObj.globalVars?.find { it.name == var }?.value?.toString() ?:
+        flowObj.varCtx?.get(var)?.toString() ?:
+        ""
+    }
+    return out
+}
+
+def subscribeToTriggers(String fname) {
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+    dataNodes.each { nodeId, node ->
+        if (node.name != "eventTrigger") return
+
+        // — Mode triggers —
+        if (node.data.deviceId == "__mode__") {
+            subscribe(location, "mode") { evt ->
+                handleEvent(evt, fname)
+            }
+        }
+        // — Physical device triggers —
+        else if (node.data.deviceId != "__time__") {
+            def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ? node.data.deviceIds : [ node.data.deviceId ]
+            devIds.each { devId ->
+                def device = getDeviceById(devId)
+                if (device) subscribe(device, node.data.attribute, "genericDeviceHandler")
+            }
+        }
+        // — note: __time__ handled separately below —
+    }
+}
+
+def genericDeviceHandler(evt) {
+    state.activeFlows.each { fname, flowObj ->
+        def triggerNodes = getTriggerNodes(fname, evt)
+        if (triggerNodes && triggerNodes.size() > 0) {
+            handleEvent(evt, fname)
+        }
+    }
+}
+
+private void scheduleTimeBasedTriggers(String fname) {
+    // 1) Clear this flow’s old cron closures & subscriptions
+    clearFlowTimeTriggers(fname)
+
+    // 2) Initialize per‑flow registry for subscriptions
+    state.timeSubs = state.timeSubs ?: [:]
+    state.timeSubs[fname] = []
+
+    // 3) Walk every "__time__" eventTrigger node in this flow
+    def dataNodes = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
+    dataNodes.each { nodeId, node ->
+        if (node.name != 'eventTrigger' || node.data.deviceId != '__time__') return
+
+        // Only subscribe sunrise/sunset here
+        if (node.data.attribute == 'timeOfDay') {
+            def times = node.data.value instanceof List ? node.data.value : [ node.data.value ]
+            times.each { raw ->
+                String s = raw.toString()
+                if (s == 'sunrise' || s == 'sunset') {
+                    subscribe(
+                        location,
+                        s,
+                        'handleLocationTimeEvent',
+                        [ filterEvents: false, data: [ fname: fname, nodeId: nodeId ] ]
+                    )
+                    state.timeSubs[fname] << s
+                }
+            }
+        }
+    }
+}
+
+def pollTimeTriggers() {
+    // current HH:mm and weekday
+    def now       = new Date()
+    def nowHHmm   = now.format('HH:mm', location.timeZone)
+    def todayDOW  = now.format('EEEE', location.timeZone)
+
+    state.activeFlows.each { fname, flowObj ->
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
+        dataNodes.each { nodeId, node ->
+            if (node.name!='eventTrigger' || node.data.deviceId!='__time__') return
+
+            def attr   = node.data.attribute
+            def values = node.data.value instanceof List ? node.data.value : [ node.data.value ]
+
+            switch(attr) {
+                // fixed HH:mm  
+                case 'timeOfDay':
+                    if (values.any{ it.toString()==nowHHmm }) {
+                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
+                    }
+                    break
+
+                // legacy currentTime  
+                case 'currentTime':
+                    def txt = values[0].toString()
+                    if (txt == nowHHmm) {
+                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
+                    }
+                    break
+
+                // day of week, e.g. "Monday"  
+                case 'dayOfWeek':
+                    if (values.any{ it.toString()==todayDOW }) {
+                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
+                    }
+                    break
+            }
+        }
+    }
+}
+
+def handleTimeTrigger(Map data) {
+    String fname  = data.fname
+    String nodeId = data.nodeId
+
+    notifyFlowTrace(fname, nodeId, "eventTrigger")
+
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+    def node = flowObj.flow.drawflow?.Home?.data[nodeId]
+    if (!node) return
+
+    def evt = [
+        name : node.data.attribute,
+        value: node.data.value,
+        date : new Date()
+    ]
+    handleEvent(evt, fname)
+}
+
+// ---- Variable trigger polling and tap/hold clear helpers ----
+def checkVariableTriggers() {
+    def globalVars = state.globalVarsCache ?: []
+    state.activeFlows.each { fname, flowObj ->
+        def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
+            node?.name == "eventTrigger" &&
+            (node.data?.deviceId == "__variable__" ||
+             (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
+        }
+		if (!nodes) return
+        def globalMap = globalVars.collectEntries { [(it.name): it.value] }
+
+        nodes.each { id, node ->
+            def varName   = node.data?.variableName
+			if (!varName) {
+				log.warn "In checkVariableTriggers - Missing varName in node ${id}: ${node.data}"
+				return
+			}
+
+            def curValue  = globalMap[varName]
+            def lastValue = flowObj.lastVarValues[varName] ?: "firstrunforthisvar"
+            def comparator = node.data?.comparator ?: '=='
+            def expected   = node.data?.value
+			
+			flowLog(varName, "curValue: ${curValue} - comparator: ${comparator} - lastValue: ${lastValue}", "debug")
+            if (evaluateComparator(curValue, expected, comparator) && curValue != lastValue) {
+                flowObj.lastVarValues[varName] = curValue
+                evaluateNode(fname, id, [ name: varName, value: curValue ])
+            }
+        }
+    }
+}
+
+def clearTapTracker(data) {
+    def fname = data.fname
+    def flowObj = state.activeFlows[fname]
+    if (flowObj) flowObj.tapTracker.remove("${data.devId}:${data.attr}")
+}
+
+def clearHoldTracker(data) {
+    def fname = data.fname
+    def flowObj = state.activeFlows[fname]
+    if (flowObj) flowObj.holdTracker.remove("${data.devId}:${data.attr}")
+}
+
+def getTriggerNodes(String fname, evt) {
+    def flowObj   = state.activeFlows[fname]
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+
+    // Mode triggers stay the same
+    if (evt.name == "mode") {
+        return dataNodes.findAll { id, node ->
+            node.name == "eventTrigger" &&
+            node.data.deviceId == "__mode__" &&
+            node.data.attribute == "mode"
+        }
+    }
+
+    // Everything else: device AND __time__ triggers
+    return dataNodes.findAll { id, node ->
+        if (node.name != "eventTrigger") return false
+
+        // pull out your list of device IDs (could be a single or many)
+        def devIds = []
+        if (node.data.deviceIds instanceof List && node.data.deviceIds) {
+            devIds = node.data.deviceIds
+        } else if (node.data.deviceId) {
+            devIds = [ node.data.deviceId ]
+        }
+
+        // 1) time‐based test: if this node is a "__time__" trigger
+        if (devIds.contains("__time__") && node.data.attribute == evt.name) {
+            return true
+        }
+
+        // 2) real device test: only if evt.device is non‐null
+        if (evt.device && devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name) {
+            return true
+        }
+
+        return false
+    }
+}
+
+void notifyFlowTrace(flowFile, nodeId, nodeType) {
+    if (!flowFile) return
+
+    // initialize list of runs
+    if (!state.flowTraces) state.flowTraces = []
+
+    // get or create a runId for this invocation
+    def runId = state.lastRunId
+    if (nodeType == "eventTrigger" || !runId || state.lastFlowFile != flowFile) {
+        // new run for this flowFile
+        runId             = "${now()}_${new Random().nextInt(1000000)}"
+        state.lastRunId   = runId
+        state.lastFlowFile = flowFile
+
+        // ── KEEP only one run per flowFile: remove any existing trace for this flowFile
+        state.flowTraces.removeAll { it.flowFile == flowFile }
+
+        // ── start fresh steps for this run
+        state.flowTraces << [
+            runId:    runId,
+            flowFile: flowFile,
+            steps:    []
+        ]
+    }
+
+    // locate our run object
+    def thisFlow = state.flowTraces.find { it.runId == runId }
+    if (!thisFlow) {
+        thisFlow = [
+            runId:    runId,
+            flowFile: flowFile,
+            steps:    []
+        ]
+        state.flowTraces << thisFlow
+    }
+
+    // append this step
+    def trace = [
+        flowFile:  flowFile,
+        nodeId:    nodeId,
+        nodeType:  nodeType,
+        timestamp: new Date().time
+    ]
+    thisFlow.steps << trace
+
+    // optional: cap number of steps per run
+    if (thisFlow.steps.size() > 40) {
+        thisFlow.steps = thisFlow.steps[-40..-1]
+    }
+
+    // write ALL last‐runs back to FE_flowtrace.json
+    saveFlow("FE_flowtrace.json", state.flowTraces)
+
+    // ── NEW: emit a Location event so the Editor will detect and poll for the updated trace
+    sendLocationEvent(
+        name:           "flowTraceUpdated",
+        value:          new Date().time,
+        descriptionText:"Flow trace updated for ${flowFile}"
+    )
+}
+
+void saveFlow(fName, fData) {
+	String listJson = JsonOutput.toJson(fData) as String
+	uploadHubFile("${fName}",listJson.getBytes())
+}
+
+// ---- Notification support ----
+def sendNotification(fname, data, evt) {
+	flowLog(fname, "In sendNotification - data: ${data} - evt: ${evt}", "debug")
+    def msg = data.message ?: ""
+    msg = expandWildcards(fname, msg, evt)
+	if(data.notificationType == "speech") {
+		data.targetDeviceId.each { it ->
+        	def speaker = getDeviceById(it)
+			flowLog(fname, "In sendNotification - Going to Speak on - ${speaker}")
+			if (speaker) speaker.speak(msg)
+		}
+	} else {
+		data.targetDeviceId.each { it ->
+        	def push = getDeviceById(it)
+			flowLog(fname, "In sendNotification - Going to Push to - ${push}")
+			if (push) push.deviceNotification(msg)
+		}
+    }
+}
+
+def expandWildcards(fname, msg, evt) {
+    flowLog(fname, "In expandWildcards - msg: ${msg} - evt: ${evt}", "debug")
+    // Standard event fields
+    def device    = evt?.device?.displayName ?: ""
+    def attribute = evt?.name ?: ""
+    def value     = evt?.value ?: ""
+    def nowDate   = new Date()
+    def time24    = nowDate.format("HH:mm")
+    def time12    = nowDate.format("h:mm a")
+    def date      = nowDate.format("MM-dd-yyyy")
+
+    // Build map of simple wildcards
+    def wilds = [
+        "{device}"        : device,
+        "{attribute}"     : attribute,
+        "{value}"         : value,
+        "{time24}"        : time24,
+        "{time12}"        : time12,
+        "{date}"          : date,
+        "{now}"           : nowDate.toString(),
+        "{variableName}"  : attribute,
+        "{variableValue}" : value
+    ]
+    // Apply all of the above
+    wilds.each { k, v ->
+        msg = msg.replace(k, v instanceof Closure ? v() : v)
+    }
+
+    // Handle {var:VARname} syntax (legacy and explicit variable lookup)
+    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, varName ->
+        getVarValue(fname, varName)
+    }
+
+    flowLog(fname, "In expandWildcards - msg: ${msg}", "debug")
+    return msg
+}
+
+def getVarValue(fname, vname) {
+	flowLog(fname, "In getVarValue - vname: ${vname}", "debug")
+    def flowObj = state.activeFlows[fname]
+    return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
+}
+
+def setVariable(fname, varName, varValue) {
+    flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
+    def flowObj = state.activeFlows[fname]
+
+    // Load the latest global vars from file
+    def globalVars = []
+    try {
+        globalVars = readFlowFile("FE_global_vars.json") ?: []
+        //flowLog(fname, "Loaded globalVars from file: " + globalVars*.name, "debug")
+    } catch (e) {
+        flowLog(fname, "Could not load global vars from file, falling back to local: $e", "warn")
+    }
+
+    flowObj.flowVars = flowObj.flowVars ?: []
+    def isGlobal = globalVars.any { it.name == varName }
+    flowLog(fname, "In setVariable - isGlobal: ${isGlobal}", "debug")
+    def updated = false
+
+    if (isGlobal) {
+		flowLog(fname, "In setVariable - Parsing vars", "debug")
+        // Update in loaded list
+        globalVars.each { v ->
+            if (v.name == varName) {
+                v.value = varValue
+                updated = true
+            }
+        }
+        // Save the new list to file
+		if (updated) {
+			flowLog(fname, "In setVariable - Saving vars", "debug")
+			saveGlobalVarsToFile(globalVars)
+			state.globalVarsCache = globalVars
+			checkVariableTriggers()
+		}
+    } else {
+        // Update or add as local
+        flowObj.flowVars.each { v ->
+            if (v.name == varName) {
+                v.value = varValue
+                updated = true
+            }
+        }
+        if (!updated) {
+            flowObj.flowVars << [name: varName, value: varValue]
+        }
+    }
+
+    // Always update context maps
+    flowObj.vars = flowObj.vars ?: [:]
+    flowObj.varCtx = flowObj.varCtx ?: [:]
+    flowObj.vars[varName] = varValue
+    flowObj.varCtx[varName] = varValue
+}
+
+def saveGlobalVarsToFile(globals) {
+    flowLog(fname, "In saveGlobalVarsToFile – globals: ${globals}", "debug")
+
+    // 1) upload the JSON to FE_global_vars.json
+    def fileName   = "FE_global_vars.json"
+    def jsonString = JsonOutput.toJson(globals)
+    uploadHubFile(fileName, jsonString.getBytes("UTF-8"))
+
+    // 2) fire a LOCATION event so Maker‑API will push it over WebSocket
+    sendLocationEvent(
+        name:           "globalVarsUpdated",
+        value:          new Date().time,
+        descriptionText: "Flow‑Engine: global‑vars file updated"
+    )
+    flowLog(fname, "Dispatched globalVarsUpdated location event", "debug")
+}
+
+// --- Comparators ---
+def evaluateComparator(actual, expected, cmp) {
+    // normalize operator and log each invocation
+    String op = (cmp ?: '').toString().toLowerCase()
+
+    switch(op) {
+        case '==':
+            return "$actual" == "$expected"
+        case '!=':
+            return "$actual" != "$expected"
+        case '>':
+            return toDouble(actual) > toDouble(expected)
+        case '<':
+            return toDouble(actual) < toDouble(expected)
+        case '>=':
+            return toDouble(actual) >= toDouble(expected)
+        case '<=':
+            return toDouble(actual) <= toDouble(expected)
+        case 'between':
+            // build a two‑element list from expected
+            List bounds
+            if (expected instanceof List) {
+                bounds = expected
             } else {
-              if (
-                typeof data.repeatMax !== "number" ||
-                isNaN(data.repeatMax) ||
-                data.repeatMax < 1
-              ) {
-                hasError = true;
-              }
+                bounds = expected.toString()
+                                 .replaceAll(/[\[\]\s]/, '')
+                                 .split(',')
+                                 .toList()
             }
-            break;
-
-          // ── Variable assignment: require name and value ─────────────────────────
-          case "setvariable":
-            if (!data.varName || data.varValue === undefined || data.varValue === "") {
-              hasError = true;
+            if (bounds.size() == 2) {
+                double low  = toDouble(bounds[0])
+                double high = toDouble(bounds[1])
+                double val  = toDouble(actual)
+                return (val >= low && val <= high)
             }
-            break;
+            log.warn "evaluateComparator: 'between' requires exactly 2 values, got ${bounds}"
+            return false
+        case 'contains':
+            return "$actual".toLowerCase().contains("$expected".toLowerCase())
+        case 'notcontains':
+            return !"$actual".toLowerCase().contains("$expected".toLowerCase())
+        case 'startswith':
+            return "$actual".toLowerCase().startsWith("$expected".toLowerCase())
+        case 'endswith':
+            return "$actual".toLowerCase().endsWith("$expected".toLowerCase())
+        case 'empty':
+            return !actual
+        case 'istrue':
+            return actual == true || "$actual" == "true"
+        case 'isfalse':
+            return actual == false || "$actual" == "false"
+        default:
+            return "$actual" == "$expected"
+    }
+}
 
-          // ── NotMatchingVar: need target devices and an output variable ──────────
-          case "notmatchingvar":
-            const targetsNMV = Array.isArray(data.targetDeviceId)
-              ? data.targetDeviceId
-              : [data.targetDeviceId];
-            if (
-              targetsNMV.length === 0 ||
-              targetsNMV.every(id => !id) ||
-              !data.outputVar
-            ) {
-              hasError = true;
-            }
-            break;
+// helper to coerce any value into a double
+private double toDouble(x) {
+    if (x instanceof Number) {
+        return ((Number)x).doubleValue()
+    }
+    String s = x?.toString()?.trim()
+    if (!s) return 0.0
+    try {
+        return Double.parseDouble(s)
+    } catch (Exception e) {
+        log.warn "toDouble: cannot convert '${s}' to a number"
+        return 0.0
+    }
+}
 
-          // ── Notification: must pick at least one device and supply a message ────
-          case "notification":
-            const targetsNOT = Array.isArray(data.targetDeviceId)
-              ? data.targetDeviceId
-              : [data.targetDeviceId];
-            if (
-              targetsNOT.length === 0 ||
-              targetsNOT.every(id => !id) ||
-              !data.message
-            ) {
-              hasError = true;
-            }
-            break;
+private int toTimeMinutes(String value) {
+    if (value == "sunrise" || value == "sunset") {
+        def ss = getSunriseAndSunset()
+        Date dt = (value == "sunrise") ? ss.sunrise : ss.sunset
+        return dt.hours * 60 + dt.minutes
+    }
+    // otherwise assume “HH:mm”
+    def parts = value.tokenize(':')
+    return (parts[0].toInteger() * 60) + parts[1].toInteger()
+}
 
-          // ── Device Action: need device(s) and a command ────────────────────────
-          case "device":
-            const devs = Array.isArray(data.deviceIds)
-              ? data.deviceIds
-              : data.deviceId
-              ? [data.deviceId]
-              : [];
-            if (devs.length === 0 || devs.every(id => !id) || !data.command) {
-              hasError = true;
-            }
-            break;
+// ── Helper to coerce String or Number into an Integer ───────────────────
+private Integer parseIntValue(val, Integer defaultVal = 0) {
+    try {
+        if (val instanceof Number) return val as Integer
+        if (val != null)           return val.toString().toInteger()
+    } catch (e) {
+        log.warn "Could not parse time value '${val}', defaulting to ${defaultVal}"
+    }
+    return defaultVal
+}
 
-          // ── Event Trigger & Condition: device, attribute, comparator, value ─────
-          case "eventtrigger":
-          case "condition":
-            if (!data.deviceId || !data.attribute || !data.comparator) {
-              hasError = true;
-            } else if (data.comparator === "between") {
-              if (
-                !Array.isArray(data.value) ||
-                !data.value[0] ||
-                !data.value[1]
-              ) {
-                hasError = true;
-              }
-            } else if (
-              data.comparator !== "changes" &&
-              (data.value === undefined || data.value === "")
-            ) {
-              hasError = true;
-            }
-            break;
+def getFormat(type, myText=null, page=null) {
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid #000000;box-shadow: 2px 3px #8B8F8F;border-radius: 5px'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;' />"
+}
 
-          // ── Unknown types: assume valid ─────────────────────────────────────────
-          default:
-            break;
-        }
-
-        return hasError ? "border:2px solid #fa2b2b;" : "";
-      }
-
-      function clearAllSelections() {
-        // 1) Clear multi‑select on canvas
-        window._multiSelectedNodes.clear();
-        updateMultiSelectUI();
-      }
-      
-      async function getDynamicSunTimes() {
-        // 1. Try to use browser geolocation
-        let lat = 42.36, lng = -71.06; // Boston fallback
-        try {
-          if (navigator.geolocation) {
-            const pos = await new Promise((resolve, reject) =>
-              navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
-            lat = pos.coords.latitude;
-            lng = pos.coords.longitude;
-          }
-        } catch(e) {
-          // Could not get geolocation, will use default coords
-        }
-
-        // 2. Try to use SunCalc for sunrise/sunset
-        try {
-          if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
-            const times = SunCalc.getTimes(new Date(), lat, lng);
-            const pad = n => (n < 10 ? "0" : "") + n;
-            return {
-              sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
-              sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
-            };
-          }
-        } catch(e) {
-          // SunCalc failed, will use hardcoded times
-        }
-
-        // 3. Fallback to static times if everything else fails
-        return { sunrise: "06:00", sunset: "20:00" };
-      }
-
-      function getOS() {
-        if (navigator.userAgentData && navigator.userAgentData.platform) {
-          const p = navigator.userAgentData.platform.toLowerCase();
-          if (p.includes('mac')) return 'mac';
-          if (p.includes('win')) return 'windows';
-          if (p.includes('linux')) return 'linux';
-          return 'other';
-        }
-        const p = navigator.platform.toLowerCase();
-        if (p.includes('mac')) return 'mac';
-        if (p.includes('win')) return 'windows';
-        if (p.includes('linux')) return 'linux';
-        return 'other';
-      }
-
-      const os = getOS();
-      if (os === 'mac') {
-        document.getElementById('multiSelectTip-mac').style.display = '';
-      } else {
-        document.getElementById('multiSelectTip-win').style.display = '';
-      }
-
-      // Always only register this once!
-      (function() {
-        const button       = document.getElementById("activateFlowButton");
-        const flowDropdown = document.getElementById("hubitatFileDropdown");
-
-        // Remove any previous handler, just in case
-        button.replaceWith(button.cloneNode(true));
-        const newButton = document.getElementById("activateFlowButton");
-
-        newButton.addEventListener("click", async () => {
-          const flowName = flowDropdown?.value?.trim() || "";
-          const token    = document.getElementById("hubitatToken")?.value.trim()  || "";
-          const appId    = document.getElementById("hubitatAppId")?.value.trim()  || "";
-
-          // 1) Validate inputs
-          if (!hubitatCredentialsAreValid(true)) {
-            logAction("Missing App ID or Token", "error");
-            return;
-          }
-          if (!flowName) {
-            logAction("No Flow selected to activate/deactivate", "error");
-            return;
-          }
-
-          // 2) Decide endpoint
-          const isActive = newButton.textContent.trim() === "Activated";
-          const action   = isActive ? "deselectFlow" : "selectFlow";
-          const url      = `/apps/api/${appId}/${action}?access_token=${token}`;
-
-          // 3) Disable to prevent double‐clicks
-          newButton.disabled = true;
-          try {
-            // ── Send the flow name in the POST body ──
-            const response = await fetch(url, {
-              method:  "POST",
-              headers: { "Content-Type": "application/json" },
-              body:    JSON.stringify({ flow: flowName })
-            });
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status} ${response.statusText}`);
-            }
-            const result = await response.json();
-
-            // 4) Log success
-            logAction(
-              isActive
-                ? `❎ Flow deactivated: ${result.result || JSON.stringify(result)}`
-                : `✅ Flow activated:   ${result.result || JSON.stringify(result)}`,
-              "info"
-            );
-
-            // 5) Refresh UI state (ALWAYS use checkIfFlowIsInUse for UI!)
-            await checkIfFlowIsInUse(flowName, appId, token);
-
-          } catch (err) {
-            logAction(`❌ Toggle failed: ${err}`, "error");
-          } finally {
-            newButton.disabled = false;
-          }
-        });
-      })();
-
-      function buildVariableTriggerEditor(pickerDiv, node, appendOnly) {
-        // Remove existing variable trigger panel(s)
-        const oldPanels = pickerDiv.querySelectorAll('.variable-trigger-panel');
-        oldPanels.forEach(panel => panel.remove());
-
-        // Only clear the whole panel if not appending (legacy/compat)
-        if (!appendOnly) pickerDiv.innerHTML = "";
-
-        const container = document.createElement("div");
-        container.className = "variable-trigger-panel";
-
-        // Label: Variable Name
-        const varLabel = document.createElement("label");
-        varLabel.textContent = "Variable Name";
-        varLabel.style.display = "block";
-        container.appendChild(varLabel);
-
-        // Dropdown: Variable Names (from global + flow)
-        const varSelect = document.createElement("select");
-        varSelect.style.display = "block";
-        varSelect.style.marginBottom = "12px";
-        const vars = [
-          ...(Array.isArray(window.FE_flowvars) ? window.FE_flowvars.map(v => v.name) : []),
-          ...(Array.isArray(window.FE_global_vars) ? window.FE_global_vars.map(v => v.name) : [])
-        ];
-        varSelect.innerHTML =
-          `<option value="" ${!node.data.variableName ? "selected" : ""}>(none)</option>` +
-          vars.map(v =>
-            `<option value="${v}" ${node.data.variableName === v ? "selected" : ""}>${v}</option>`
-          ).join("");
-        varSelect.onchange = () => {
-          node.data.variableName = varSelect.value;
-          editor.updateNodeDataFromId(node.id, node.data);
-          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
-          markFlowNeedsSave(true);
-        };
-        container.appendChild(varSelect);
-
-        // Comparator picker
-        renderComparatorPicker(container, node, ["==", "!=", ">", "<", ">=", "<=", "between"], {
-          "==": "equals", "!=": "not equals",
-          ">": ">", "<": "<", ">=": "≥", "<=": "≤", "between": "between"
-        }, () => {
-          node.data.comparator = container.querySelector("select:last-of-type").value;
-          node.data.value = "";
-          editor.updateNodeDataFromId(node.id, node.data);
-          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
-          markFlowNeedsSave(true);
-        });
-
-        // Value input (or two if "between")
-        const between = node.data.comparator === "between";
-        renderValueField(container, node, [], () => {
-          editor.updateNodeDataFromId(node.id, node.data);
-          markFlowNeedsSave(true);
-        }, between);
-
-        // Finally, append to the editor panel (device picker always above!)
-        pickerDiv.appendChild(container);
-      }
-
-      function logAction(msg, type = "info") {
-        const logLines = document.getElementById("logLines");
-        if (logLines) {
-          logLines.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
-          logLines.scrollTop = logLines.scrollHeight;
-        }
-      }
-
-      document.getElementById('clearLogBtn').onclick = function () {
-        const logLines = document.getElementById('logLines');
-        if (logLines) logLines.innerHTML = "";
-      };
-
-    </script>
-</body>
-</html>
+def installCheck(){
+    state.appInstalled = app.getInstallationState() 
+    if(state.appInstalled != 'COMPLETE'){
+        section{paragraph "Please hit 'Done' to install '${app.label}' app "}
+    } else {
+        //if(logEnable) log.info "App Installed OK"
+    }
+}
