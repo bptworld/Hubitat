@@ -225,7 +225,11 @@ async function fetchHubitatVarFileContent(fileName) {
       arr.push({ name:"", value:"", type:"String" });
       renderVarsList(opts.globalVars ? "global" : "flow");
       notifyVarsChange();
-      if (opts.globalVars) markExportNeeded(true);
+      if (opts.globalVars) {
+        markExportNeeded(true);
+      } else {
+        markFlowNeedsSave(true)
+      }
     };
     if (opts.globalVars) {
       // Export global variables to Hubitat
@@ -334,7 +338,6 @@ async function fetchHubitatVarFileContent(fileName) {
     for (let v of others) {
       if (v.value && regex.test(v.value)) return true;
     }
-    // Could check node fields too (user responsibility to call this)
     return false;
   }
 
