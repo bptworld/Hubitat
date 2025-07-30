@@ -77,6 +77,14 @@
             "required": true
         },
         {
+            "id": "5201d802-d22e-440d-8cb3-39d7025028b9",
+            "name": "FE_flow_vars.json",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/FE_flow_vars.json",
+            "description": "UI File",
+            "required": true
+        },
+        {
             "id": "429adb62-6288-4bfe-9934-0735f76cff04",
             "name": "FE_flowtrace.json",
             "namespace": "BPTWorld",
