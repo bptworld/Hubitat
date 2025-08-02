@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.038</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.040</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -208,14 +208,16 @@
           style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
                   border-top:1px solid #333; padding-top:10px; font-family:monospace;
                   font-size:12px;">
-        <span style="display:inline-block;">Logs:</span>
-        <button id="clearLogBtn"
-                style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
-                      background:#808080;color:#fff;border:none;display:inline-block;">
-          Clear Log
-        </button>
-        <br>
+          <div id="logHeader" style="position:sticky;top:0;z-index:2;background:#232a2d;padding-bottom:4px;">
+          <span style="display:inline-block;">Logs:</span>
+          <button id="clearLogBtn"
+                  style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
+                        background:#808080;color:#fff;border:none;display:inline-block;">
+            Clear Log
+          </button>
+        </div>
         <div id="logLines"></div>
+
       </div>
     </div>
   </div>
@@ -277,6 +279,29 @@
       checkIfFlowIsInUse(focus, appId, token);
     }
 
+    // ADD THIS AFTER reloadFlowDropdown (not inside)
+    document.getElementById("hubitatFileDropdown").addEventListener("change", async function() {
+      const file = this.value.trim();
+      if (!file) return;
+
+      // --- SET CURRENT FLOW FILE FOR VARS ---
+      if (window.flowVars && typeof window.flowVars.setCurrentFlowFile === "function") {
+        window.flowVars.setCurrentFlowFile(file);
+      } else if (window.flowVars) {
+        window.flowVars._currentFlowFile = file;
+      }
+
+      // --- LOAD FLOW JSON FROM HUBITAT ---
+      try {
+        const txt = await fetchHubitatFileContent(file + ".json");
+        if (txt) {
+          restoreFlowFromJson(txt);
+        }
+      } catch (e) {
+        alert("Failed to load flow: " + e.message);
+      }
+    });
+
     function sanitizeFlowName(name) {
       return name
         .trim()
@@ -286,6 +311,32 @@
         .replace(/^_+|_+$/g, "");
     }
  
+    async function refreshVarsAndInspector() {
+      // Reload global vars
+      const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+      if (txt) {
+        let arr = JSON.parse(txt);
+        if (Array.isArray(arr)) {
+          window.FE_global_vars = arr;
+        }
+      }
+
+      // Reload flow vars
+      const allTxt = await fetchHubitatVarFileContent("FE_flow_vars.json");
+      if (allTxt) {
+        let allObj = JSON.parse(allTxt);
+        window.FE_flowvars = allObj;
+        if (window.flowVars) {
+          window.flowVars.allFlowVars = allObj;
+          let file = window.flowVars.getCurrentFlowFile?.();
+          if (file && allObj[file]) {
+            window.flowVars.flowVars = allObj[file];
+          }
+        }
+      }
+      renderVariableInspector();
+    }
+
     var devices = [];
     window.editor = null;
     window._multiSelectedNodes = new Set();
@@ -302,7 +353,7 @@
     window.newNodeOffsetLimit = 10;
 
     window.FE_global_var_names = [];
-    window.FE_flowvars = [];
+    window.FE_flowvars = {};
     window.FE_global_vars = [];
 
     window.nodeStartMargin = 40;
@@ -343,7 +394,9 @@
       if (window.undoStack.length && window.undoStack[window.undoStack.length-1] === state) {
         return;
       }
-      window.undoStack.push(state);
+      window.redoStack.push(
+        typeof state === "string" ? state : JSON.stringify(state)
+      );
       window.redoStack = [];
     }
 
@@ -351,7 +404,7 @@
       logAction("doUndo button clicked.");
       if (window.undoStack.length < 2) return;
       const current = window.undoStack.pop();
-      window.redoStack.push(current);
+      window.redoStack.push(typeof current === "string" ? current : JSON.stringify(current));
       const prev = window.undoStack[window.undoStack.length-1];
       if (prev) {
         restoreFlowFromJson(prev);
@@ -369,8 +422,109 @@
       }
     }
 
+    function renderVariableInspector() {
+      const container = document.getElementById("variableInspectorContent");
+      if (!container) return;
+      container.innerHTML = "";
+      let html = "";
+
+      // ---- GLOBAL VARIABLES ----
+      let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+      html += `<div style="color:#eee;margin-bottom:3px;">
+        <b>Global Variables</b>
+        <button id="importGlobalVarsBtn" style="margin-left:12px;font-size:10px;padding:3px 5px;
+          border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+          Update Vars
+        </button>
+      </div>`;
+      if (globals.length) {
+        globals
+          .slice() // don't mutate original
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          .forEach(v => {
+            html += `<div style="margin-left:8px;">
+              <span style="color:#eec150;">${v.name}</span> = 
+              <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
+            </div>`;
+          });
+      } else {
+        html += `<div style="color:#888;margin-left:8px;">(No global vars)</div>`;
+      }
+
+      // ---- FLOW VARIABLES ----
+      let flowFile = window.flowVars?.getCurrentFlowFile?.();
+      // !! Always read from freshly loaded FE_flowvars !!
+      let flowVarsArr = (flowFile && window.FE_flowvars)
+          ? window.FE_flowvars[flowFile] || [] : [];
+     
+      html += `<hr style="margin:8px 0;border-top:1px solid #333;">`;
+      html += `<div style="color:#eee;margin-bottom:3px;">
+        <b>Flow Variables</b>
+        <span style="font-size:11px;color:#888;margin-left:12px;">${flowFile ? flowFile : "(none loaded)"}</span>
+      </div>`;
+      if (flowVarsArr && flowVarsArr.length) {
+        flowVarsArr
+          .slice()
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          .forEach(v => {
+            html += `<div style="margin-left:8px;">
+              <span style="color:#81e1ff;">${v.name}</span> = 
+              <span style="color:#8be66a;">${JSON.stringify(v.value)}</span>
+            </div>`;
+          });
+      } else {
+        html += `<div style="color:#888;margin-left:8px;">(No flow vars for this flow)</div>`;
+      }
+
+      container.innerHTML = html;
+
+      // Update Vars button
+      const btn = document.getElementById("importGlobalVarsBtn");
+      if (btn) {
+        btn.onclick = async () => {
+          await refreshVarsAndInspector();
+        };
+      }
+    }
+
+    function patchFlowWithDeviceLabels(flow, devices) {
+      // Support both new and legacy JSON paths
+      const dataNodes =
+        (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data)
+          ? flow.drawflow.Home.data
+          : (flow && flow.drawflow && flow.drawflow.drawflow &&
+            flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data)
+            ? flow.drawflow.drawflow.Home.data
+            : {};
+
+      // Ensure "notMatchingVar" nodes get a default outputVar label
+      Object.values(dataNodes).forEach(node => {
+        const name = (node.name || "").toLowerCase();
+        if (name === "notmatchingvar") {
+          if (!node.data.outputVar || node.data.outputVar === "undefined") {
+            node.data.outputVar = "Devices to a Variable";
+          }
+        }
+      });
+
+      // Tag any device-based node with its human-readable label
+      Object.values(dataNodes).forEach(node => {
+        const type = (node.name || "").toLowerCase();
+        if (["device", "condition", "eventtrigger"].includes(type) &&
+            node.data && node.data.deviceId) {
+          const dev = devices.find(d => d.id == node.data.deviceId);
+          node.data.deviceLabel = dev
+            ? (dev.label || dev.name)
+            : node.data.deviceId;
+        }
+      });
+    }
+    
     async function restoreFlowFromJson(jsonStr) {
       try {
+        if (typeof jsonStr !== "string") {
+          jsonStr = JSON.stringify(jsonStr); // Convert to string if needed
+        }
         if (!window.devices || !window.devices.length) {
           if (typeof fetchDevicesFromApp === "function") {
             window.devices = await fetchDevicesFromApp();
@@ -392,7 +546,7 @@
         if (editor && typeof editor.import === "function") {
           editor.import(flow);
           patchFlowWithDeviceLabels(flow, window.devices);
-          
+
           const nodes =
             editor.drawflow?.Home?.data ||
             editor.drawflow?.drawflow?.Home?.data ||
@@ -400,7 +554,6 @@
           Object.values(nodes).forEach(n => {
             const el = document.getElementById(`node-${n.id}`);
             if (!el) return;
-            // n.name is "eventTrigger", "condition", "device", etc.
             el.setAttribute('data-node-type', n.name);
           });
           attachNodeClickHandlers();
@@ -426,6 +579,9 @@
               document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
             }
           }, 10);
+
+          // ------- The only variable/inspector refresh you need -------
+          await refreshVarsAndInspector();
         }
       } catch (e) {
         logAction("Undo/Redo failed to restore flow: " + e, "error");
@@ -547,107 +703,6 @@
         logBox.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
         logBox.scrollTop = logBox.scrollHeight;
       }
-    }
-
-    function renderVariableInspector() {
-      const container = document.getElementById("variableInspectorContent");
-      if (!container) return;
-      let html = "";
-
-      let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-      if (globals.length) {
-        html += `<div style="color:#eee;margin-bottom:3px;">
-          <b>Global Variables</b>
-          <button id="importGlobalVarsBtn" style="margin-left:12px;font-size:10px;padding:3px 5px;
-            border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
-            Update Vars
-          </button>
-        </div>`;
-        globals.forEach(v => {
-          html += `<div style="margin-left:8px;">
-            <span style="color:#eec150;">${v.name}</span> = 
-            <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
-          </div>`;
-        });
-      }
-
-      container.innerHTML = html;
-
-      // Always (re)attach handler after DOM update:
-      const btn = document.getElementById("importGlobalVarsBtn");
-      if (btn) {
-        btn.onclick = async () => {
-          try {
-            const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-            if (!txt) { alert("No FE_global_vars.json found on Hubitat."); return; }
-            let arr = JSON.parse(txt);
-            if (Array.isArray(arr)) {
-              window.FE_global_vars = arr;
-              renderVariableInspector(); // This line is OK! Button handler is reset every render
-              if (typeof notifyVarsChange === "function") notifyVarsChange();
-              logAction("Imported " + arr.length + " global vars", "success");
-            } else {
-              alert("File does not contain an array.");
-            }
-          } catch (e) {
-            alert("Failed to import: " + e.message);
-          }
-        };
-      }
-    }
-
-    async function autoLoadGlobalVarsFromHubitat(retries = 8) {
-      // 0) sanity check
-      if (typeof fetchHubitatVarFileContent !== "function") {
-        throw new Error("fetchHubitatVarFileContent not available");
-      }
-
-      // 1) fetch the file
-      let txt;
-      try {
-        txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-      } catch (e) {
-        if (retries > 0) {
-          // transient error, retry
-          return setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
-        }
-        //logAction("Error fetching FE_global_vars.json – aborting globals load", "error");
-        return;
-      }
-
-      // 2) if not found or empty, skip globals entirely
-      if (!txt || !txt.trim()) {
-        //logAction("FE_global_vars.json not found – skipping globals load", "warn");
-        return;
-      }
-
-      // 3) parse (or abort on invalid JSON)
-      let parsed;
-      try {
-        parsed = JSON.parse(txt);
-        logAction("Auto-loaded FE_global_vars.json", "info");
-      } catch (e) {
-        console.warn("FE_global_vars.json is invalid JSON – aborting globals load", e);
-        return;
-      }
-
-      // 4) populate in-memory state and UI
-      window.FE_global_vars      = parsed;
-      window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
-
-      if (window.flowVars?.setGlobalVars) {
-        flowVars.setGlobalVars(parsed);
-      }
-      if (window.flowVars?.renderManager) {
-        flowVars.renderManager(
-          document.getElementById("variableManager"),
-          { globalVars: true }
-        );
-      }
-      if (editor?.selected_id) {
-        renderEditor(editor.getNodeFromId(editor.selected_id));
-      }
-      renderVariableInspector();
     }
  
     const TIME_DEVICE = {
@@ -1532,39 +1587,6 @@
         }
       }, 350);
 
-      function patchFlowWithDeviceLabels(flow, devices) {
-        // Support both new and legacy JSON paths
-        const dataNodes =
-          (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data)
-            ? flow.drawflow.Home.data
-            : (flow && flow.drawflow && flow.drawflow.drawflow &&
-              flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data)
-              ? flow.drawflow.drawflow.Home.data
-              : {};
-
-        // Ensure "notMatchingVar" nodes get a default outputVar label
-        Object.values(dataNodes).forEach(node => {
-          const name = (node.name || "").toLowerCase();
-          if (name === "notmatchingvar") {
-            if (!node.data.outputVar || node.data.outputVar === "undefined") {
-              node.data.outputVar = "Devices to a Variable";
-            }
-          }
-        });
-
-        // Tag any device-based node with its human-readable label
-        Object.values(dataNodes).forEach(node => {
-          const type = (node.name || "").toLowerCase();
-          if (["device", "condition", "eventtrigger"].includes(type) &&
-              node.data && node.data.deviceId) {
-            const dev = devices.find(d => d.id == node.data.deviceId);
-            node.data.deviceLabel = dev
-              ? (dev.label || dev.name)
-              : node.data.deviceId;
-          }
-        });
-      }
-
       window.ATTRIBUTE_KNOWN_VALUES = {
         "contact":        ["open", "closed"],
         "switch":         ["on", "off"],
@@ -2243,7 +2265,9 @@
               // 3) Rebuild only the condition pickers in place
               const pickerDiv = document.getElementById("condition-pickers-" + node.id);
               pickerDiv.innerHTML = "";
-              if (!buildTimeDevicePicker(pickerDiv, node)) {
+              if (node.data.deviceId === "__variable__") {
+                buildVariableTriggerEditor(pickerDiv, node, true);
+              } else if (!buildTimeDevicePicker(pickerDiv, node)) {
                 renderConditionDeviceFields(
                   pickerDiv,
                   node,
@@ -2264,6 +2288,10 @@
           el.appendChild(pickerDiv);
 
           // 4) Initial build of time-or-condition fields
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(pickerDiv, node, true);
+            return;
+          }
           if (buildTimeDevicePicker(pickerDiv, node)) {
             return;
           }
@@ -2494,9 +2522,16 @@
           varSelect.style.width = "98%";
 
           // gather flow & global var names
-          const flowVarNames   = (window.FE_flowvars   || []).map(v => v.name);
-          const globalVarNames = window.FE_global_var_names || [];
-          const allVarNames    = Array.from(new Set([...flowVarNames, ...globalVarNames]));
+          const flowVars   = (window.flowVars?.getVars?.("flow")   || []);
+          const globalVars = (window.flowVars?.getVars?.("global") || []);
+          const varSourceMap = {}; // name -> "flow" or "global"
+          flowVars.forEach(v => varSourceMap[v.name] = "flow");
+          globalVars.forEach(v => {
+            if (!varSourceMap[v.name]) varSourceMap[v.name] = "global";
+          });
+          const allVarNames = Array.from(new Set([...flowVars.map(v=>v.name), ...globalVars.map(v=>v.name)]))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
           // build options
           allVarNames.forEach(name => {
@@ -3618,6 +3653,8 @@
                 return;
               }
             }
+            await window.flowVars?.setCurrentFlow?.(fileName);
+            renderVariableInspector();
 
             // 4) Import into editor and refresh UI
             editor.import(data);
@@ -4314,6 +4351,9 @@
                     ${loggingEnabled
                       ? "<span style='font-size: 10px;'>Logging is Enabled</span><br>"
                       : "<span style='font-size: 10px;'>Logging is Disabled</span><br>"}
+
+                    <div id="lastRunLine" style="font-size:10px;color:#e7e7e7;margin-top:3px;"></div>
+
                     <input id="testFlowInput" type="text"
                           placeholder="Test value..."
                           style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:120px; margin-right:8px;">
@@ -4470,8 +4510,6 @@
 
                     // 7) Build payload & invoke testFlow
                     const payload = { flow, value: val, dryRun, deviceIds };
-                    console.log("[runFlow ▶] payload:", payload);
-
                     logAction(
                       `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
                       ` on ${deviceIds.length} device(s) with value "${val}"`,
@@ -4515,6 +4553,7 @@
               logBtn.textContent = "Logging Disabled";
               logBtn.style.backgroundColor = "#808080";
             }
+            pollFlowTraceUntilEnd();
           })
           .catch(e => {
             // On error, revert to safe defaults
@@ -4649,38 +4688,57 @@
         }
 
         flowTracePollInterval = setInterval(async () => {
-            try {
-                // fetchHubitatFileContent returns parsed JSON already
-                const traces = await fetchHubitatFileContent('FE_flowtrace.json');
-                const runs = Array.isArray(traces)
-                    ? traces.filter(t => t.flowFile === flowFile)
-                    : [];
-                if (!runs.length) return;
+          try {
+              const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+              const runs = Array.isArray(traces)
+                  ? traces.filter(t => t.flowFile === flowFile)
+                  : [];
 
-                const run = runs[0];
+              if (!runs.length) {
+                  return;
+              }
 
-                // highlight the running path
-                highlightFlowPath(run);
+              const run = runs[0];
 
-                const last = run.steps[run.steps.length - 1] || {};
-                if (last.nodeType === 'endOfFlow') {
-                    // stop polling
-                    clearInterval(flowTracePollInterval);
-                    flowTracePollInterval = null;
-                    flowTracePollingActive = false;
-                    logAction('🔄 Flow trace finished', 'info');
-
-                    // re-select the original trigger node so it stays highlighted
-                    if (window._lastTriggerId != null) {
-                        window.editor.selected_id = window._lastTriggerId;
-                    }
+              let timestamp = null;
+              if (run.timestamp) {
+                timestamp = run.timestamp;
+              } else if (run.runId && run.runId.match(/^\d{13}/)) {
+                timestamp = parseInt(run.runId.split("_")[0], 10);
+              }
+              if (timestamp) {
+                const d = new Date(timestamp);
+                const date = d.toLocaleDateString(undefined, {year: "numeric", month: "short", day: "numeric"});
+                const time = d.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+                const targetDiv = document.getElementById("lastRunLine");
+                if (targetDiv) {
+                  targetDiv.textContent = `Last Run: ${date} - ${time}`;
                 }
-            } catch (e) {
-                console.error('Error polling FE_flowtrace.json', e);
-                clearInterval(flowTracePollInterval);
-                flowTracePollInterval = null;
-            }
-        }, 500);
+              } else {
+                console.log("No valid timestamp found in run object");
+              }
+
+              // highlight the running path
+              highlightFlowPath(run);
+
+              const last = run.steps[run.steps.length - 1] || {};
+              if (last.nodeType === 'endOfFlow') {
+                  clearInterval(flowTracePollInterval);
+                  flowTracePollInterval = null;
+                  flowTracePollingActive = false;
+                  logAction('🔄 Flow trace finished', 'info');
+
+                  if (window._lastTriggerId != null) {
+                      window.editor.selected_id = window._lastTriggerId;
+                  }
+                  await refreshVarsAndInspector();
+              }
+          } catch (e) {
+              console.error('Error polling FE_flowtrace.json', e);
+              clearInterval(flowTracePollInterval);
+              flowTracePollInterval = null;
+          }
+      }, 500);
       }
       
       async function fetchHubitatFileContent(fileName) {
@@ -6425,30 +6483,36 @@
       })();
 
       function buildVariableTriggerEditor(pickerDiv, node, appendOnly) {
-        // Remove existing variable trigger panel(s)
+        if (!node.data.variableName) node.data.variableName = "";
+        if (!node.data.comparator) node.data.comparator = "==";
+        if (node.data.value === undefined) node.data.value = "";
+
         const oldPanels = pickerDiv.querySelectorAll('.variable-trigger-panel');
         oldPanels.forEach(panel => panel.remove());
 
-        // Only clear the whole panel if not appending (legacy/compat)
         if (!appendOnly) pickerDiv.innerHTML = "";
 
         const container = document.createElement("div");
         container.className = "variable-trigger-panel";
 
-        // Label: Variable Name
         const varLabel = document.createElement("label");
         varLabel.textContent = "Variable Name";
         varLabel.style.display = "block";
         container.appendChild(varLabel);
 
-        // Dropdown: Variable Names (from global + flow)
+        const flowFile = window.flowVars?.getCurrentFlowFile?.() || "";
+        const flowVars = Array.isArray(window.FE_flowvars?.[flowFile]) ? window.FE_flowvars[flowFile] : [];
+
+        const vars = [
+          ...flowVars.map(v => v.name),
+          ...(Array.isArray(window.FE_global_vars) ? window.FE_global_vars.map(v => v.name) : [])
+        ].filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
         const varSelect = document.createElement("select");
         varSelect.style.display = "block";
         varSelect.style.marginBottom = "12px";
-        const vars = [
-          ...(Array.isArray(window.FE_flowvars) ? window.FE_flowvars.map(v => v.name) : []),
-          ...(Array.isArray(window.FE_global_vars) ? window.FE_global_vars.map(v => v.name) : [])
-        ];
+
         varSelect.innerHTML =
           `<option value="" ${!node.data.variableName ? "selected" : ""}>(none)</option>` +
           vars.map(v =>
@@ -6462,7 +6526,6 @@
         };
         container.appendChild(varSelect);
 
-        // Comparator picker
         renderComparatorPicker(container, node, ["==", "!=", ">", "<", ">=", "<=", "between"], {
           "==": "equals", "!=": "not equals",
           ">": ">", "<": "<", ">=": "≥", "<=": "≤", "between": "between"
@@ -6474,14 +6537,12 @@
           markFlowNeedsSave(true);
         });
 
-        // Value input (or two if "between")
         const between = node.data.comparator === "between";
         renderValueField(container, node, [], () => {
           editor.updateNodeDataFromId(node.id, node.data);
           markFlowNeedsSave(true);
         }, between);
 
-        // Finally, append to the editor panel (device picker always above!)
         pickerDiv.appendChild(container);
       }
 
@@ -6499,5 +6560,19 @@
       };
 
     </script>
+    <script>
+      window.addEventListener("load", function () {
+        // Wait until the FE_flowvars.js is parsed and credentials are in place
+        function tryInitVars() {
+          if (typeof window.initVariablesAfterCreds === "function") {
+            window.initVariablesAfterCreds();
+          } else {
+            setTimeout(tryInitVars, 50);
+          }
+        }
+        tryInitVars();
+      });
+    </script>
+
 </body>
 </html>
