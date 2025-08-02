@@ -1240,17 +1240,46 @@ def getDeviceById(id) {
 def loadVariables(fname) {
     def flowObj = state.activeFlows[fname]
     flowObj.varCtx = [:]
-    // Load global vars from file
+
+    // 1. Load global vars
     def globalVars = []
     try {
         globalVars = readFlowFile("FE_global_vars.json") ?: []
     } catch (e) {
         flowLog(fname, "Could not load FE_global_vars.json: $e", "warn")
     }
-    // Store in flowObj for compatibility, if you want
-    flowObj.globalVars = globalVars
-    // Build variable context
-    globalVars.each { v ->
+
+    // 2. Load flow vars for this flow from FE_flow_vars.json
+    def flowVarsMap = [:]
+    try {
+        def bareName = normalizeFlowName(fname)
+		def allFlowVars = readFlowFile("FE_flow_vars.json") ?: [:]
+		flowVarsMap = allFlowVars[bareName] ?: []
+    } catch (e) {
+        flowLog(fname, "Could not load FE_flow_vars.json: $e", "warn")
+    }
+	flowObj.flowVars = flowVarsMap
+
+    // 3. Merge: Override globalVars with any per-flow var by name
+    def mergedVars = []
+    def flowVarNames = flowVarsMap*.name as Set
+    // Add/override any globalVars with matching flow var
+    globalVars.each { g ->
+        def fv = flowVarsMap.find { it.name == g.name }
+        mergedVars << (fv ?: g)
+    }
+    // Add any flow-only vars (not in global)
+    flowVarsMap.each { fv ->
+        if (!(globalVars*.name).contains(fv.name)) {
+            mergedVars << fv
+        }
+    }
+
+    // 4. Store for compatibility
+    flowObj.globalVars = mergedVars
+
+    // 5. Build variable context (as before)
+    mergedVars.each { v ->
         flowObj.varCtx[v.name] = resolveVarValue(fname, v)
     }
 }
@@ -1361,14 +1390,27 @@ private void scheduleTimeBasedTriggers(String fname) {
             times.each { raw ->
                 String s = raw.toString()
                 if (s == 'sunrise' || s == 'sunset') {
-                    subscribe(
-                        location,
-                        s,
-                        'handleLocationTimeEvent',
-                        [ filterEvents: false, data: [ fname: fname, nodeId: nodeId ] ]
-                    )
-                    state.timeSubs[fname] << s
-                }
+					def offset = node.data.offsetMin ?: 0
+					if (offset == 0) {
+						// Normal behavior: subscribe to actual event
+						subscribe(
+							location,
+							s,
+							'handleLocationTimeEvent',
+							[ filterEvents: false, data: [ fname: fname, nodeId: nodeId ] ]
+						)
+						state.timeSubs[fname] << s
+					} else {
+						// Offset: schedule at offset from sunrise/sunset
+						def now = new Date()
+						def baseTime = getSunriseAndSunset()[s]
+						if (baseTime) {
+							def targetTime = new Date(baseTime.getTime() + (offset * 60 * 1000))
+							schedule(targetTime, "handleOffsetSunEvent", [data: [ fname: fname, nodeId: nodeId, eventName: s, offset: offset ]])
+							state.timeSubs[fname] << "${s}_offset_${offset}"
+						}
+					}
+				}
             }
         }
     }
@@ -1648,57 +1690,43 @@ def getVarValue(fname, vname) {
 }
 
 def setVariable(fname, varName, varValue) {
-    flowLog(fname, "In setVariable - varName: ${varName} - varValue: ${varValue}", "debug")
     def flowObj = state.activeFlows[fname]
+    def didSet = false
+    def bareName = normalizeFlowName(fname) // always remove .json
 
-    // Load the latest global vars from file
-    def globalVars = []
-    try {
-        globalVars = readFlowFile("FE_global_vars.json") ?: []
-        //flowLog(fname, "Loaded globalVars from file: " + globalVars*.name, "debug")
-    } catch (e) {
-        flowLog(fname, "Could not load global vars from file, falling back to local: $e", "warn")
-    }
-
-    flowObj.flowVars = flowObj.flowVars ?: []
-    def isGlobal = globalVars.any { it.name == varName }
-    flowLog(fname, "In setVariable - isGlobal: ${isGlobal}", "debug")
-    def updated = false
-
-    if (isGlobal) {
-		flowLog(fname, "In setVariable - Parsing vars", "debug")
-        // Update in loaded list
-        globalVars.each { v ->
-            if (v.name == varName) {
-                v.value = varValue
-                updated = true
-            }
-        }
-        // Save the new list to file
-		if (updated) {
-			flowLog(fname, "In setVariable - Saving vars", "debug")
-			saveGlobalVarsToFile(globalVars)
-			state.globalVarsCache = globalVars
-			checkVariableTriggers()
-		}
+    // 1. Try to set in flowVars for this flow
+    def flowVars = flowObj?.flowVars ?: []
+    def fv = flowVars.find { it.name == varName }
+    if (fv) {
+        fv.value = varValue
+        didSet = true
+        // Save to FE_flow_vars.json
+        def allFlowVars = readFlowFile("FE_flow_vars.json") ?: [:]
+        allFlowVars[bareName] = flowVars
+        def jsonString = groovy.json.JsonOutput.toJson(allFlowVars)
+        uploadHubFile("FE_flow_vars.json", jsonString.getBytes("UTF-8"))
+        flowLog(fname, "Set FLOW variable '${varName}' to '${varValue}'", "info")
     } else {
-        // Update or add as local
-        flowObj.flowVars.each { v ->
-            if (v.name == varName) {
-                v.value = varValue
-                updated = true
-            }
-        }
-        if (!updated) {
-            flowObj.flowVars << [name: varName, value: varValue]
+        // 2. Try to set in globalVars
+        def globalVars = state.globalVarsCache ?: []
+        def gv = globalVars.find { it.name == varName }
+        if (gv) {
+            gv.value = varValue
+            def jsonString = groovy.json.JsonOutput.toJson(globalVars)
+            uploadHubFile("FE_global_vars.json", jsonString.getBytes("UTF-8"))
+            flowLog(fname, "Set GLOBAL variable '${varName}' to '${varValue}'", "info")
+            didSet = true
         }
     }
+	loadVariables(fname)
+    if (!didSet) {
+        flowLog(fname, "Variable '${varName}' not found in flow or global vars", "warn")
+    }
+}
 
-    // Always update context maps
-    flowObj.vars = flowObj.vars ?: [:]
-    flowObj.varCtx = flowObj.varCtx ?: [:]
-    flowObj.vars[varName] = varValue
-    flowObj.varCtx[varName] = varValue
+// Helper
+def normalizeFlowName(fname) {
+    return fname?.replaceAll(/(?i)\.json$/, '')
 }
 
 def saveGlobalVarsToFile(globals) {
@@ -1809,6 +1837,18 @@ private Integer parseIntValue(val, Integer defaultVal = 0) {
         log.warn "Could not parse time value '${val}', defaulting to ${defaultVal}"
     }
     return defaultVal
+}
+
+def handleOffsetSunEvent(data) {
+    def fname  = data.fname
+    def nodeId = data.nodeId
+    def evt = [
+        name : data.eventName,
+        value: data.eventName,
+        date : new Date(),
+        offset: data.offset
+    ]
+    handleEvent(evt, fname)
 }
 
 def getFormat(type, myText=null, page=null) {
