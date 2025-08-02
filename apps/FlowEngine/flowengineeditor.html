@@ -312,17 +312,46 @@
     }
  
     async function refreshVarsAndInspector() {
-      // Reload global vars
-      const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+      // === Check and load FE_global_vars.json ===
+      let txt = null;
+      try {
+        txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+      } catch (e) {
+        txt = null;
+      }
+
       if (txt) {
         let arr = JSON.parse(txt);
         if (Array.isArray(arr)) {
           window.FE_global_vars = arr;
         }
+      } else {
+        const create = confirm("The FE_global_vars.json file was not found.\n\nClick OK to create a new blank one, or Cancel to try again.");
+        if (create) {
+          try {
+            await uploadToHubitatFile("FE_global_vars.json", "[]");
+            alert("Blank FE_global_vars.json created.");
+            await refreshVarsAndInspector(); // reload after creating
+            return;
+          } catch (e) {
+            alert("Failed to create FE_global_vars.json:\n" + e);
+            return;
+          }
+        } else {
+          // Try again (could add limit but matches above logic)
+          await refreshVarsAndInspector();
+          return;
+        }
       }
 
-      // Reload flow vars
-      const allTxt = await fetchHubitatVarFileContent("FE_flow_vars.json");
+      // === Check and load FE_flow_vars.json ===
+      let allTxt = null;
+      try {
+        allTxt = await fetchHubitatVarFileContent("FE_flow_vars.json");
+      } catch (e) {
+        allTxt = null; // treat as missing
+      }
+
       if (allTxt) {
         let allObj = JSON.parse(allTxt);
         window.FE_flowvars = allObj;
@@ -333,8 +362,21 @@
             window.flowVars.flowVars = allObj[file];
           }
         }
+        renderVariableInspector();
+      } else {
+        const create = confirm("The FE_flow_vars.json file was not found.\n\nClick OK to create a new blank one, or Cancel to try again.");
+        if (create) {
+          try {
+            await uploadToHubitatFile("FE_flow_vars.json", "{}");
+            alert("Blank FE_flow_vars.json created.");
+            await refreshVarsAndInspector();
+          } catch (e) {
+            alert("Failed to create FE_flow_vars.json:\n" + e);
+          }
+        } else {
+          await refreshVarsAndInspector();
+        }
       }
-      renderVariableInspector();
     }
 
     var devices = [];
