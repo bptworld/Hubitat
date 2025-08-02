@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.040</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.041</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -4021,8 +4021,10 @@
       try {
         const txt = await fetchHubitatVarFileContent("FE_flowModes.json");
         if (!txt) { window.hubitatModes = []; return []; }
-        const obj = JSON.parse(txt);
-        window.hubitatModes = obj.modes || [];
+        let obj = JSON.parse(txt);
+        // Fix: allow file to be either an array, or an object with .modes
+        let modes = Array.isArray(obj) ? obj : (obj.modes || []);
+        window.hubitatModes = modes;
         logAction("Loaded modes: " + window.hubitatModes.map(m => m.name).join(", "));
         return window.hubitatModes;
       } catch (e) {
