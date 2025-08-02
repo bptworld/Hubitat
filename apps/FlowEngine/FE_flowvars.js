@@ -1,67 +1,73 @@
-// FE_flowvars.js - Full Advanced Variable/Expression Engine for FlowEngine
+// FE_flowvars.js – Per-Flow Variable/Expression Engine for FlowEngine
+
+async function autoLoadGlobalVarsFromHubitat(retries = 8) {
+  let txt;
+  try {
+    txt = await fetchHubitatVarFileContent("FE_global_vars.json");
+  } catch (e) {
+    if (retries > 0) return setTimeout(() => autoLoadGlobalVarsFromHubitat(retries - 1), 300);
+    return;
+  }
+  if (!txt || !txt.trim()) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(txt);
+  } catch (e) {
+    return;
+  }
+  window.FE_global_vars      = parsed;
+  window.FE_global_var_names = parsed.map(v => v.name).filter(Boolean);
+
+  if (window.flowVars?.setGlobalVars) flowVars.setGlobalVars(parsed);
+  if (window.flowVars?.renderManager) flowVars.renderManager(document.getElementById("variableManager"), { globalVars: true });
+  if (editor?.selected_id) renderEditor(editor.getNodeFromId(editor.selected_id));
+  renderVariableInspector();
+}
 
 // --- Hubitat File Manager helpers for variables ---
-async function uploadVarsToHubitat(varsArr, fileName) {
+async function uploadVarsToHubitat(obj, fileName) {
   const appId = document.getElementById("hubitatAppId")?.value.trim();
   const token = document.getElementById("hubitatToken")?.value.trim();
   if (!appId || !token) { alert("Missing Hubitat appId/token"); return false; }
   const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
   const res = await fetch(url, {
     method: "POST",
-    body: JSON.stringify(varsArr),
+    body: JSON.stringify(obj),
     headers: { "Content-Type": "application/json" }
   });
-  if (res.ok) return true;
-  alert("Failed to upload vars to Hubitat: " + (await res.text()));
-  return false;
-}
-async function fetchHubitatVarFiles() {
-  const appId = document.getElementById("hubitatAppId")?.value.trim();
-  const token = document.getElementById("hubitatToken")?.value.trim();
-  if (!appId || !token) { alert("Missing Hubitat appId/token"); return []; }
-  const url = `/apps/api/${appId}/listFiles?access_token=${token}`;
-  const res = await fetch(url);
-  if (!res.ok) { alert("Failed to list files on Hubitat: " + (await res.text())); return []; }
-  const arr = await res.json();
-  // PATCH: handle both plain array and {files:[...]}
-  const fileArr = Array.isArray(arr) ? arr : arr.files;
-  if (!fileArr) return [];
-  return fileArr.filter(x => x.endsWith('.json'));
+  if (res.ok) {
+    logAction(fileName + " Loaded Sucessefully")
+    return true;
+  } else {
+    alert("Failed to upload vars to Hubitat: " + (await res.text()));
+    return false;
+  }
 }
 
 async function fetchHubitatVarFileContent(fileName) {
   const appId = document.getElementById("hubitatAppId")?.value.trim();
   const token = document.getElementById("hubitatToken")?.value.trim();
-
-  if (!appId || !token) {
-    alert("Missing Hubitat appId/token");
-    return null;
-  }
-
-  if (!fileName || fileName === "null") {
-    alert("No file selected to fetch.");
-    return null;
-  }
-
+  if (!appId || !token) { alert("Missing Hubitat appId/token"); return null; }
+  if (!fileName || fileName === "null") { alert("No file selected to fetch."); return null; }
   const url = `/apps/api/${appId}/getFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
   const res = await fetch(url);
-  if (!res.ok) {
-    alert("Failed to get file: " + (await res.text()));
-    return null;
-  }
+  if (!res.ok) { alert("Failed to get file: " + (await res.text())); return null; }
   return await res.text();
 }
 
+// --- Core Variable Engine ---
 (function() {
   // Expose to global scope
   const root = window.flowVars = {};
 
   // --- STATE ---
-  let flowVars = [];
   let globalVars = [];
-  let managerEl = null;  // Root UI element
-  let ctx = {};          // Current eval context (all vars)
-  let listeners = [];    // For external change notifications
+  let flowVars   = []; // only for the currently loaded flow
+  let allFlowVars = {}; // { "FlowName.json": [ ... ], ... }
+  let currentFlowFile = null; // "FlowName.json"
+  let managerEl = null;
+  let ctx = {};
+  let listeners = [];
 
   // --- TYPE & UTILS ---
   function parseType(val) {
@@ -75,14 +81,12 @@ async function fetchHubitatVarFileContent(fileName) {
     return "String";
   }
 
-  // Utility: escape HTML (for safe tooltips)
   function htmlEscape(str) {
     return String(str).replace(/[&<>"']/g, function(m) {
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
     });
   }
 
-  // Utility: colors for types
   function typeColor(type) {
     return ({
       "Expression": "#e8b84a",
@@ -92,12 +96,9 @@ async function fetchHubitatVarFileContent(fileName) {
       "Object": "#fa8"
     })[type] || "#fff";
   }
-
-  // Utility: highlight errors
   function errorColor(err) { return err ? "#f33" : "#b7ffac"; }
 
   // --- SAFE EVALUATOR ---
-  // Built-ins for expressions
   const safeFns = {
     now: () => Date.now(),
     dayOfWeek: () => (new Date()).getDay(),
@@ -108,17 +109,11 @@ async function fetchHubitatVarFileContent(fileName) {
     floor: Math.floor,
     ceil: Math.ceil,
     clamp: (v, mn, mx) => Math.max(mn, Math.min(mx, v)),
-    // Add your own as needed!
   };
   function safeEval(expr, context = {}) {
     try {
-      // Disallow unsafe words!
       if (/window|document|Function|eval|require|process|global/.test(expr)) throw new Error("Unsafe!");
-      // Replace $(foo) with context.foo
-      expr = expr.replace(/\$\((\w+)\)/g, (_, n) =>
-        (n in context) ? JSON.stringify(context[n]) : 'undefined'
-      );
-      // Bind safe functions and context vars
+      expr = expr.replace(/\$\((\w+)\)/g, (_, n) => (n in context) ? JSON.stringify(context[n]) : 'undefined');
       let sandbox = Object.assign({}, safeFns, context);
       let f = new Function(...Object.keys(sandbox), `return (${expr})`);
       return f(...Object.values(sandbox));
@@ -126,15 +121,13 @@ async function fetchHubitatVarFileContent(fileName) {
       return `ERR: ${e.message}`;
     }
   }
-  // --- DEPENDENCY GRAPH ---
-  // Extract $(foo) variable references from a string/expression
+
   function extractDeps(str) {
     let out = [];
     String(str).replace(/\$\((\w+)\)/g, (_, n) => { out.push(n); return n; });
     return out;
   }
 
-  // Check for circular dependencies (DFS)
   function hasCircular(varName, getVars, seen = {}) {
     if (seen[varName]) return true;
     seen[varName] = true;
@@ -144,52 +137,37 @@ async function fetchHubitatVarFileContent(fileName) {
     return deps.some(dep => hasCircular(dep, getVars, {...seen}));
   }
 
-  // --- VALUE RESOLUTION (with dependency/expr) ---
   function getVarResolved(v, visited = {}) {
     if (!v || !v.name) return '';
-    // Circular reference check
     if (visited[v.name]) return 'ERR: Circular!';
     visited[v.name] = true;
-    // Expressions
     if (parseType(v.value) === "Expression") {
-      try {
-        updateCtx();
-        return safeEval(v.value, ctx);
-      } catch (e) {
-        return `ERR: ${e.message}`;
-      }
+      try { updateCtx(); return safeEval(v.value, ctx); }
+      catch (e) { return `ERR: ${e.message}`; }
     }
-    // Numbers/booleans
     if (parseType(v.value) === "Number") return parseFloat(v.value);
     if (parseType(v.value) === "Boolean") return /^true$/i.test(v.value);
-    // Plain string
     return v.value;
   }
 
-  // --- CONTEXT EVALUATION ---
   function updateCtx() {
     ctx = {};
     (globalVars || []).forEach(v => ctx[v.name] = getVarResolved(v));
-    (flowVars || []).forEach(v => ctx[v.name] = getVarResolved(v));
+    (flowVars   || []).forEach(v => ctx[v.name] = getVarResolved(v));
   }
 
-  // --- EVENT LISTENERS FOR VAR CHANGES (external modules can subscribe) ---
   function onVarsChange(fn) { listeners.push(fn); }
   function notifyVarsChange() { listeners.forEach(fn => fn(flowVars, globalVars)); }
 
-  // --- AUTOCOMPLETE SUGGESTIONS (for UI fields) ---
   function suggestVars(fragment, scope = "all") {
-    // scope: all, flow, global
     let arr = (scope === "global") ? globalVars :
               (scope === "flow") ? flowVars :
               [...globalVars, ...flowVars];
     return arr.map(v => v.name).filter(n => n.startsWith(fragment));
   }
 
-  // --- TOOLTIP for variable reference (can wire up to any field) ---
   function makeVarTooltip(varName) {
-    let v = flowVars.find(vv => vv.name === varName) ||
-            globalVars.find(vv => vv.name === varName);
+    let v = flowVars.find(vv => vv.name === varName) || globalVars.find(vv => vv.name === varName);
     if (!v) return `<span style="color:#f33;">[not found]</span>`;
     let type = parseType(v.value);
     let val = getVarResolved(v);
@@ -202,6 +180,50 @@ async function fetchHubitatVarFileContent(fileName) {
       </span>
     `;
   }
+
+  function isVarUsed(name, arr) {
+    let regex = new RegExp("\\$\\(" + name + "\\)", "g");
+    let others = (arr === flowVars) ? [...flowVars] : [...globalVars];
+    for (let v of others) {
+      if (v.value && regex.test(v.value)) return true;
+    }
+    return false;
+  }
+
+  // --- FLOW VARS FILE HANDLING ---
+  async function loadAllFlowVarsFile() {
+    try {
+      const txt = await fetchHubitatVarFileContent("FE_flow_vars.json");
+      if (!txt) return {};
+      const obj = JSON.parse(txt);
+      return (typeof obj === "object" && obj) ? obj : {};
+    } catch(e) {
+      return {};
+    }
+  }
+
+  async function saveAllFlowVarsFile() {
+    await uploadVarsToHubitat(allFlowVars, "FE_flow_vars.json");
+  }
+
+  async function setCurrentFlowVars(flowFile) {
+    currentFlowFile = flowFile;
+    if (!flowFile) { flowVars = []; notifyVarsChange(); return; }
+    if (!allFlowVars[flowFile]) allFlowVars[flowFile] = [];
+    flowVars = allFlowVars[flowFile];
+    notifyVarsChange();
+    if (managerEl) renderVarsList("flow");
+  }
+
+  async function loadFlowVarsFor(flowFile) {
+    // Loads flow vars for a flow name, or creates empty
+    if (!allFlowVars[flowFile]) allFlowVars[flowFile] = [];
+    flowVars = allFlowVars[flowFile];
+    currentFlowFile = flowFile;
+    notifyVarsChange();
+    if (managerEl) renderVarsList("flow");
+  }
+
   // --- VARIABLE MANAGER SIDEBAR UI ---
   function renderManager(el, opts = {}) {
     managerEl = el;
@@ -228,7 +250,9 @@ async function fetchHubitatVarFileContent(fileName) {
       if (opts.globalVars) {
         markExportNeeded(true);
       } else {
-        markFlowNeedsSave(true)
+        allFlowVars[currentFlowFile] = flowVars;
+        saveAllFlowVarsFile();
+        markFlowNeedsSave(true);
       }
     };
     if (opts.globalVars) {
@@ -238,13 +262,12 @@ async function fetchHubitatVarFileContent(fileName) {
         let fileName = "FE_global_vars.json";
         let ok = await uploadVarsToHubitat(arr, fileName);
         if (ok) {
-          markExportNeeded(false); // Set back to green!
+          markExportNeeded(false);
           logAction("Global variables exported to Hubitat as " + fileName, "success");
         }
       };
       // Import global variables from Hubitat
       document.getElementById('importVarsBtn').onclick = async () => {
-        // Instantly fetch FE_global_vars.json from Hubitat, no picker
         try {
           const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
           if (!txt) return;
@@ -262,7 +285,6 @@ async function fetchHubitatVarFileContent(fileName) {
         }
       };
     }
-
     document.getElementById('switchScopeBtn').onclick = () => {
       opts.globalVars = !opts.globalVars;
       renderManager(managerEl, opts);
@@ -282,13 +304,11 @@ async function fetchHubitatVarFileContent(fileName) {
         </div>`;
       return;
     }
-
     arr.forEach((v, i) => {
       const type       = parseType(v.value);
       const valDisplay = getVarResolved(v);
       const circ       = hasCircular(v.name, () => arr);
       const used       = isVarUsed(v.name, arr) || false;
-
       vlist.innerHTML += `
         <div style="margin-bottom:3px;${circ ? 'background:#441919;' : ''}">
           <input
@@ -322,52 +342,44 @@ async function fetchHubitatVarFileContent(fileName) {
     });
   }
 
-  // And ensure your setVarVal re‑renders the list:
-  root.setVarVal = function(scope, i, val) {
-    const arr = scope === "global" ? globalVars : flowVars;
-    arr[i].value = val;
-    renderVarsList(scope);
-    notifyVarsChange();
-    if (scope === "global") markExportNeeded(true);
-  };
-
-  // --- VARIABLE USAGE DETECTION (across all scopes) ---
-  function isVarUsed(name, arr) {
-    let regex = new RegExp("\\$\\(" + name + "\\)", "g");
-    let others = (arr === flowVars) ? [...flowVars] : [...globalVars];
-    for (let v of others) {
-      if (v.value && regex.test(v.value)) return true;
-    }
-    return false;
-  }
-
   // --- INLINE UI EVENTS FOR VARS ---
   root.setVarName = function(scope, i, name) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr[i].name = name;
     notifyVarsChange();
-    if (scope === "global") markExportNeeded(true);
+    if (scope === "global") {
+      markExportNeeded(true);
+    } else {
+      allFlowVars[currentFlowFile] = flowVars;
+      saveAllFlowVarsFile();
+      markFlowNeedsSave(true);
+    }
   };
   root.setVarVal = function(scope, i, val) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr[i].value = val;
-    // now re‑draw the list so the type badge updates
     renderVarsList(scope);
     notifyVarsChange();
-    if (scope === "global") markExportNeeded(true);
+    if (scope === "global") {
+      markExportNeeded(true);
+    } else {
+      allFlowVars[currentFlowFile] = flowVars;
+      saveAllFlowVarsFile();
+      markFlowNeedsSave(true);
+    }
   };
   root.delVar = function(scope, i) {
     let arr = scope === "global" ? globalVars : flowVars;
     arr.splice(i,1);
     renderVarsList(scope);
     notifyVarsChange();
-    if (scope === "global") markExportNeeded(true);
-  };
-
-  // --- AUTOCOMPLETE: For UI input fields ---
-  // Suggests variable names for a given fragment (call in keyup/input)
-  root.suggest = function(fragment, scope = "all") {
-    return suggestVars(fragment, scope);
+    if (scope === "global") {
+      markExportNeeded(true);
+    } else {
+      allFlowVars[currentFlowFile] = flowVars;
+      saveAllFlowVarsFile();
+      markFlowNeedsSave(true);
+    }
   };
 
   // --- PUBLIC API ---
@@ -385,28 +397,44 @@ async function fetchHubitatVarFileContent(fileName) {
   root.isVarUsed = isVarUsed;
   root.onVarsChange = onVarsChange;
   root.suggestVars = suggestVars;
+  root.updateCtx = updateCtx;
+  root.getVars = function(scope="all") {
+    if (scope === "global") return globalVars;
+    if (scope === "flow") return flowVars;
+    return [...globalVars, ...flowVars];
+  };
 
-  // --- OPTIONAL: Hook for custom field autocomplete/tooltip integration ---
-  // Example: in your input field's oninput:
-  //   let suggestions = flowVars.suggest(this.value);
-  // Example: onmouseover for $(foo): show flowVars.varTooltip("foo")
+  root.setGlobalVars = function(arr) {
+    globalVars.length = 0;
+    if (Array.isArray(arr)) for (const v of arr) globalVars.push(v);
+    updateCtx();
+    notifyVarsChange();
+  };
 
-  // --- FINAL CLEANUP ---
-  
-    root.updateCtx = updateCtx;
-    root.getVars = function(scope="all") {
-      if (scope === "global") return globalVars;
-      if (scope === "flow") return flowVars;
-      return [...globalVars, ...flowVars];
-    };
+  // --- Flow variable access/refresh ---
+  root.loadAllFlowVarsFile = async function() {
+    allFlowVars = await loadAllFlowVarsFile();
+    // If current flow is set, load its vars
+    if (currentFlowFile) await loadFlowVarsFor(currentFlowFile);
+  };
+  root.setCurrentFlow = async function(flowFile) {
+    await loadAllFlowVarsFile();
+    await setCurrentFlowVars(flowFile);
+  };
+  root.saveAllFlowVarsFile = saveAllFlowVarsFile;
+  root.getFlowVarsFor = function(flowFile) {
+    return allFlowVars[flowFile] || [];
+  };
+  root.getCurrentFlowFile = function() {
+    return currentFlowFile;
+  };
 
-    // Set the globalVars array safely (for when loading from file!)
-    root.setGlobalVars = function(arr) {
-      globalVars.length = 0;
-      if (Array.isArray(arr)) for (const v of arr) globalVars.push(v);
-      updateCtx();
-      notifyVarsChange();
-    };
+  // --- Initialization: load all flow vars at startup ---
+  window.initVariablesAfterCreds = async function() {
+    logAction("Loading Vars...", "info")
+    await autoLoadGlobalVarsFromHubitat();      // Loads globals and updates UI
+    await window.flowVars?.loadAllFlowVarsFile?.(); // Loads all flow vars
+  };
 
   updateCtx();
 })();
