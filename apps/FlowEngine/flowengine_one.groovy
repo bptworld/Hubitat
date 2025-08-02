@@ -1120,10 +1120,10 @@ def apiGetFile() {
 }
 
 def exportModesToFile() {
-    def currentMode = [ id: "current", name: location.mode]
+    def currentMode = [ id: "current", name: location.mode ]
     def modeList = location.modes.collect { [ id: it.id, name: it.name ] } + currentMode
-    def json = groovy.json.JsonOutput.toJson([ modes: modeList ])
-    uploadHubFile("FE_flowModes.json",json.getBytes())
+    def json = groovy.json.JsonOutput.toJson(modeList)
+    uploadHubFile("FE_flowModes.json", json.getBytes())
     render contentType: "application/json", data: '{"result":"Modes exported"}'
 }
 
