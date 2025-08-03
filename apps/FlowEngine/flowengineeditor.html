@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.045</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.046</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -819,7 +819,7 @@
       const attrSelect = document.createElement("select");
       attrSelect.style = "display:block;margin-bottom:12px";
       attrSelect.innerHTML =
-        `<option value=""${!node.data.attribute ? " selected" : ""}>(none)</option>` +
+        `<option value=""${!node.data.attribute ? " selected" : ""}>(select)</option>` +
         [
           { key: "timeOfDay",   label: "Time of Day"  },
           { key: "dayOfWeek",   label: "Day of Week"  },
@@ -851,7 +851,7 @@
       const cmpSelect = document.createElement("select");
       cmpSelect.style = "display:block;margin-bottom:12px";
       cmpSelect.innerHTML =
-        `<option value=""${!node.data.comparator ? " selected" : ""}>(none)</option>` +
+        `<option value=""${!node.data.comparator ? " selected" : ""}>(select)</option>` +
         ["==","!=","<","<=" ,">",">=","between"]
           .map(cmp =>
             `<option value="${cmp}"${node.data.comparator===cmp ? " selected" : ""}>${cmp==="==" ? "equals" : cmp}</option>`
@@ -935,7 +935,7 @@
           const startSelect = document.createElement("select");
           startSelect.style = "display:block;margin-bottom:8px";
           startSelect.innerHTML =
-            `<option value=""${!startVal ? " selected" : ""}>(none)</option>` +
+            `<option value=""${!startVal ? " selected" : ""}>(select)</option>` +
             ["sunrise","sunset"].map(opt =>
               `<option value="${opt}"${startVal===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
             ).join("");
@@ -950,7 +950,7 @@
           const endSelect = document.createElement("select");
           endSelect.style = "display:block;margin-bottom:12px";
           endSelect.innerHTML =
-            `<option value=""${!endVal ? " selected" : ""}>(none)</option>` +
+            `<option value=""${!endVal ? " selected" : ""}>(select)</option>` +
             ["sunrise","sunset","custom"].map(opt =>
               `<option value="${opt}"${
                 (opt!=="custom" ? endVal===opt : (endVal && !["sunrise","sunset"].includes(endVal)))
@@ -1021,7 +1021,7 @@
           const todSelect = document.createElement("select");
           todSelect.style = "display:block;margin-bottom:12px";
           todSelect.innerHTML =
-            `<option value=""${!node.data.value ? " selected" : ""}>(none)</option>` +
+            `<option value=""${!node.data.value ? " selected" : ""}>(select)</option>` +
             ["sunrise","sunset"].map(opt =>
               `<option value="${opt}"${node.data.value===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
             ).join("");
@@ -1130,9 +1130,9 @@
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
-      // inject a "(none)" default, selected when node.data.attribute is falsy
+      // inject a "(select)" default, selected when node.data.attribute is falsy
       sel.innerHTML =
-        `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+        `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
         Object.keys(dev.attributes)
           .map(attr =>
             `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
@@ -1153,9 +1153,9 @@
       const sel = document.createElement("select");
       sel.style.display = "block";
       sel.style.marginBottom = "12px";
-      // inject "(none)" default
+      // inject "(select)" default
       sel.innerHTML =
-        `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+        `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
         comparators
           .map(cmp =>
             `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
@@ -1194,7 +1194,7 @@
         sel.style.marginBottom = "12px";
         sel.className = "value-field";
         sel.innerHTML =
-          `<option value="" ${!node.data.value ? "selected" : ""}>(none)</option>` +
+          `<option value="" ${!node.data.value ? "selected" : ""}>(select)</option>` +
           knownValues
             .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
             .join("");
@@ -1883,7 +1883,7 @@
         const attrSel = document.createElement("select");
         attrSel.style = "display:block;margin-bottom:12px";
         attrSel.innerHTML =
-          `<option value="" ${!node.data.attribute ? "selected" : ""}>(none)</option>` +
+          `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
           sharedAttrs
             .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
             .join("");
@@ -1908,7 +1908,7 @@
         const logicSel = document.createElement("select");
         logicSel.style = "display:block;margin-bottom:12px";
         logicSel.innerHTML =
-          `<option value="" ${!node.data.logic ? "selected" : ""}>(none)</option>` +
+          `<option value="" ${!node.data.logic ? "selected" : ""}>(select)</option>` +
           ["and", "or"]
             .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
             .join("");
@@ -1930,7 +1930,7 @@
         const cmpSel = document.createElement("select");
         cmpSel.style = "display:block;margin-bottom:12px";
         cmpSel.innerHTML =
-          `<option value="" ${!node.data.comparator ? "selected" : ""}>(none)</option>` +
+          `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
           ["==","!=","<","<=",">",">=","between","changes"]
             .map(c => {
               const label = c === "==" ? "equals" : c;
@@ -1981,7 +1981,7 @@
           const valSel = document.createElement("select");
           valSel.style = "display:block;margin-bottom:12px";
           valSel.innerHTML =
-            `<option value="">(none)</option>` +
+            `<option value="">(select)</option>` +
             known
               .map(v =>
                 `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
@@ -2658,7 +2658,7 @@
           // build options
           const noneOpt = document.createElement("option");
           noneOpt.value = "";
-          noneOpt.textContent = "(none)";
+          noneOpt.textContent = "(select)";
           if (!node.data.varName) noneOpt.selected = true;
           varSelect.appendChild(noneOpt);
 
@@ -6700,7 +6700,7 @@
         varSelect.style.marginBottom = "12px";
 
         varSelect.innerHTML =
-          `<option value="" ${!node.data.variableName ? "selected" : ""}>(none)</option>` +
+          `<option value="" ${!node.data.variableName ? "selected" : ""}>(select)</option>` +
           vars.map(v =>
             `<option value="${v}" ${node.data.variableName === v ? "selected" : ""}>${v}</option>`
           ).join("");
