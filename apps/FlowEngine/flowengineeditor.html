@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.044</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.045</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -1442,8 +1442,8 @@
           preview = preview
             .replace(/\{device\}/g, deviceLabel)
             .replace(/\{value\}/g, deviceValue)
-            .replace(/\{variableName\}/g, selectedVarName)
-            .replace(/\{variableValue\}/g, selectedVarValue)
+            .replace(/\{variableName\}/g, selectedVarName ? selectedVarName : "[not found]")
+            .replace(/\{variableValue\}/g, (selectedVarValue !== undefined && selectedVarValue !== "") ? selectedVarValue : "[not found]")
             .replace(/\{([a-zA-Z0-9_]+)\}/g, (m, v) => {
               if (["device", "value", "variableName", "variableValue"].includes(v)) return m;
               let flowFile = window.flowVars?.getCurrentFlowFile?.();
@@ -1451,7 +1451,7 @@
               let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
               let flowVal = flowVars.find(obj => obj.name === v)?.value;
               let globalVal = globalVars.find(obj => obj.name === v)?.value;
-              return flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+              return flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "[not found]");
             });
         }
 
@@ -2656,6 +2656,12 @@
             .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
           // build options
+          const noneOpt = document.createElement("option");
+          noneOpt.value = "";
+          noneOpt.textContent = "(none)";
+          if (!node.data.varName) noneOpt.selected = true;
+          varSelect.appendChild(noneOpt);
+
           allVarNames.forEach(name => {
             const opt = document.createElement("option");
             opt.value       = name;
@@ -2663,18 +2669,6 @@
             if (node.data.varName === name) opt.selected = true;
             varSelect.appendChild(opt);
           });
-
-          varSelect.onchange = () => {
-            node.data.varName = varSelect.value;
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(
-              node.id,
-              nodeTileHtml(node.name, node.data, node.id)
-            );
-            renderVariableInspector();
-            markFlowNeedsSave(true);
-          };
-
           el.appendChild(varSelect);
 
           // Value
@@ -6768,4 +6762,3 @@
 
 </body>
 </html>
-
