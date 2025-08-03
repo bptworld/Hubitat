@@ -227,21 +227,52 @@ async function fetchHubitatVarFileContent(fileName) {
   // --- VARIABLE MANAGER SIDEBAR UI ---
   function renderManager(el, opts = {}) {
     managerEl = el;
-    let html = `<hr><b>Variables</b>
+    let html = `
+      <hr>
+      <div style="display:flex;align-items:center;">
+        <b>Variables</b>
+        <button id="maintVarsBtn" title="Show maintenance options" style="margin-left:20px;font-size:11px;padding:1px 9px;border-radius:7px;cursor:pointer;background:#aaa;color:#232a2d;border:none;box-shadow:0 1px 4px #0003;">Maintenance</button>
+      </div>
+      <div id="maintVarsRow" style="display:none;margin:7px 0 8px 0;">
+        <button id="clearGlobalVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;margin-left:15px;">Delete Global Vars</button><br>
+        <button id="clearFlowVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;margin-left:15px;">Delete Flow Vars</button>
+        <hr>
+        </div>
       <div>
         <button id="addVarBtn" title="Add a new variable">Add</button>
-    <button id="switchScopeBtn" title="Toggle single/global variables view">${opts.globalVars ? "Show Flow Vars" : "Show Global Vars"}</button>
-    ${opts.globalVars ? `
-      <br><br><b>Global Variable Options</b><br><hr>
-      <button id="exportVarsBtn" title="Export global variables to a file">Export</button>
-      <button id="importVarsBtn" title="Import global variables from a file">Import</button>
-      <hr>
-    ` : "<br><br><b>Flow Variable Options</b><br><hr>"}
-  </div>
-  <div id="varsList" style="margin-top:10px;"></div>
-`
+        <button id="switchScopeBtn" title="Toggle single/global variables view">${opts.globalVars ? "Show Flow Vars" : "Show Global Vars"}</button>
+        ${opts.globalVars ? `
+          <br><br><b>Global Variable Options</b><br><hr>
+          <button id="exportVarsBtn" title="Export global variables to a file">Export</button>
+          <button id="importVarsBtn" title="Import global variables from a file">Import</button>
+          <hr>
+        ` : "<br><br><b>Flow Variable Options</b><br><hr>"}
+      </div>
+      <div id="varsList" style="margin-top:10px;"></div>
+    `;
     el.innerHTML = html;
     renderVarsList(opts.globalVars ? "global" : "flow");
+
+    // Maint button: toggle
+    document.getElementById("maintVarsBtn").onclick = () => {
+      const row = document.getElementById("maintVarsRow");
+      row.style.display = row.style.display === "none" ? "block" : "none";
+    };
+    // Clear Global Vars
+    document.getElementById("clearGlobalVarsBtn").onclick = async () => {
+      if (!confirm("This can't be undone. Are you sure you want to delete ALL Global Vars and reset the file?")) return;
+      await uploadToHubitatFile("FE_global_vars.json", "[]");
+      alert("FE_global_vars.json has been cleared.");
+      if (typeof refreshVarsAndInspector === "function") refreshVarsAndInspector();
+    };
+    // Clear Flow Vars
+    document.getElementById("clearFlowVarsBtn").onclick = async () => {
+      if (!confirm("This can't be undone. Are you sure you want to delete ALL Flow Vars and reset the file?")) return;
+      await uploadToHubitatFile("FE_flow_vars.json", "{}");
+      alert("FE_flow_vars.json has been cleared.");
+      if (typeof refreshVarsAndInspector === "function") refreshVarsAndInspector();
+    };
+
     document.getElementById('addVarBtn').onclick = () => {
       let arr = opts.globalVars ? globalVars : flowVars;
       arr.push({ name:"", value:"", type:"String" });
