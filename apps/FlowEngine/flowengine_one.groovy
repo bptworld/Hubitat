@@ -1646,7 +1646,7 @@ void saveFlow(fName, fData) {
 def sendNotification(fname, data, evt) {
 	flowLog(fname, "In sendNotification - data: ${data} - evt: ${evt}", "debug")
     def msg = data.message ?: ""
-    msg = expandWildcards(fname, msg, evt)
+    msg = expandWildcards(fname, msg, evt, data)
 	if(data.notificationType == "speech") {
 		data.targetDeviceId.each { it ->
         	def speaker = getDeviceById(it)
@@ -1662,37 +1662,53 @@ def sendNotification(fname, data, evt) {
     }
 }
 
-def expandWildcards(fname, msg, evt) {
+def expandWildcards(fname, msg, evt, nodeData = null) {
     flowLog(fname, "In expandWildcards - msg: ${msg} - evt: ${evt}", "debug")
-    // Standard event fields
-    def device    = evt?.device?.displayName ?: ""
-    def attribute = evt?.name ?: ""
-    def value     = evt?.value ?: ""
-    def nowDate   = new Date()
-    def time24    = nowDate.format("HH:mm")
-    def time12    = nowDate.format("h:mm a")
-    def date      = nowDate.format("MM-dd-yyyy")
+    def nowDate = new Date()
+    def flowObj = state.activeFlows[fname]
 
-    // Build map of simple wildcards
+    // Support all the Editor’s actual field names
+    def varName = nodeData?.msgVarName ?: nodeData?.variableName ?: nodeData?.varName ?: ""
+    def varVal  = "[not found]"
+
+    // DEBUG: See all available vars and varName
+    flowLog(fname, "expandWildcards: available vars: flowObj.vars=${flowObj?.vars}, varCtx=${flowObj?.varCtx}, flowVars=${flowObj?.flowVars}, globalVars=${flowObj?.globalVars}", "debug")
+    flowLog(fname, "expandWildcards: requested varName='${varName}', nodeData=${nodeData}", "debug")
+
+    if ((nodeData?.useMsgVar || nodeData?.useVariableInMsg) && varName) {
+        varVal =
+            (flowObj.vars?.get(varName)?.toString()) ?:
+            (flowObj.varCtx?.get(varName)?.toString()) ?:
+            (flowObj.flowVars?.find{ it.name == varName }?.value?.toString()) ?:
+            (flowObj.globalVars?.find{ it.name == varName }?.value?.toString()) ?:
+            "[not found]"
+    } else {
+        varName = "[not found]"
+        varVal  = "[not found]"
+    }
+
     def wilds = [
-        "{device}"        : device,
-        "{attribute}"     : attribute,
-        "{value}"         : value,
-        "{time24}"        : time24,
-        "{time12}"        : time12,
-        "{date}"          : date,
+        "{device}"        : evt?.device?.displayName ?: "",
+        "{attribute}"     : evt?.name ?: "",
+        "{value}"         : evt?.value ?: "",
+        "{time24}"        : nowDate.format("HH:mm"),
+        "{time12}"        : nowDate.format("h:mm a"),
+        "{date}"          : nowDate.format("MM-dd-yyyy"),
         "{now}"           : nowDate.toString(),
-        "{variableName}"  : attribute,
-        "{variableValue}" : value
+        "{variableName}"  : varName,
+        "{variableValue}" : varVal
     ]
-    // Apply all of the above
     wilds.each { k, v ->
         msg = msg.replace(k, v instanceof Closure ? v() : v)
     }
-
-    // Handle {var:VARname} syntax (legacy and explicit variable lookup)
-    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, varName ->
-        getVarValue(fname, varName)
+    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, vname ->
+        def vval =
+            (flowObj.vars?.get(vname)?.toString()) ?:
+            (flowObj.varCtx?.get(vname)?.toString()) ?:
+            (flowObj.flowVars?.find{ it.name == vname }?.value?.toString()) ?:
+            (flowObj.globalVars?.find{ it.name == vname }?.value?.toString()) ?:
+            "[not found]"
+        vval
     }
 
     flowLog(fname, "In expandWildcards - msg: ${msg}", "debug")
