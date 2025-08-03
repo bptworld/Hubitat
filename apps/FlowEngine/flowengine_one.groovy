@@ -202,7 +202,7 @@ def handleLocationTimeEvent(evt) {
         }
         matches.each { id, node ->
             flowLog(fname, "Firing eventTrigger from location time event (${evt.name})", "debug")
-            evaluateNode(fname, id, [ name: evt.name, value: evt.value ])
+            evaluateNode(fname, id, [ name: evt.name, value: evt.name ])
         }
     }
 }
@@ -412,21 +412,20 @@ def apiTestFlow() {
     dataNodes.each { nodeId, node ->
         if (node.name != "eventTrigger") return
 
-        // gather one or more deviceIds (or "__time__")
+        // gather one or more deviceIds (or "__time__" or "__variable__")
         def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
                          node.data.deviceIds :
                          [ node.data.deviceId ]
 
         devIds.each { devId ->
             if (devId == "__time__") {
-                // ── TEST MODE: use the 'value' string (HH:mm) as the event time ──
+                // (existing time test code)
                 Date testDate = new Date()
                 def parts = value.tokenize(':')
                 if (parts.size() == 2) {
                     testDate.hours   = parts[0].toInteger()
                     testDate.minutes = parts[1].toInteger()
                 }
-                // build a fake time event that carries the node's value list
                 def evt = [
                     name:           node.data.attribute,     // "timeOfDay"
                     value:          node.data.value,         // e.g. [sunrise, 20:00]
@@ -435,8 +434,17 @@ def apiTestFlow() {
                 ]
                 handleEvent(evt, fname)
             }
+            else if (devId == "__variable__") {
+                // New: Simulate a variable event for testing
+                def evt = [
+                    name: node.data.variableName ?: node.data.varName ?: "variable",
+                    value: value,
+                    descriptionText:"Simulated variable trigger: ${value}"
+                ]
+                handleEvent(evt, fname)
+            }
             else {
-                // ── DEVICE TEST: fire through the normal device path ─────────────
+                // (existing device test logic)
                 def device = getDeviceById(devId)
                 if (!device) return
 
@@ -1534,11 +1542,11 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-    // Everything else: device AND __time__ triggers
+    // Everything else: device, time, and variable triggers
     return dataNodes.findAll { id, node ->
         if (node.name != "eventTrigger") return false
 
-        // pull out your list of device IDs (could be a single or many)
+        // Gather device IDs (could be a single or many)
         def devIds = []
         if (node.data.deviceIds instanceof List && node.data.deviceIds) {
             devIds = node.data.deviceIds
@@ -1546,12 +1554,20 @@ def getTriggerNodes(String fname, evt) {
             devIds = [ node.data.deviceId ]
         }
 
-        // 1) time‐based test: if this node is a "__time__" trigger
+        // 1) Time-based: "__time__" triggers (attribute must match event)
         if (devIds.contains("__time__") && node.data.attribute == evt.name) {
             return true
         }
 
-        // 2) real device test: only if evt.device is non‐null
+        // 2) Variable-based: "__variable__" triggers (variableName/varName/attribute must match event)
+        if (devIds.contains("__variable__")) {
+            def varName = node.data.variableName ?: node.data.varName ?: node.data.attribute
+            if (varName == evt.name) {
+                return true
+            }
+        }
+
+        // 3) Real device: must have evt.device and attribute match
         if (evt.device && devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name) {
             return true
         }
