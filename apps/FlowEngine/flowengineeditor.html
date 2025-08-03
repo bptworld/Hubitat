@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.042</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.043</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -1363,7 +1363,6 @@
       }
 
       if (t === "notification") {
-        const errorStyle = getErrorStyle(type, data);
         let devLabels = [];
         let ids = Array.isArray(data.targetDeviceId) ? data.targetDeviceId : [data.targetDeviceId];
         (ids || []).forEach(id => {
@@ -1376,17 +1375,98 @@
           ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
           : "";
         const notifType = data.notificationType === "speech" ? "Speech" : "Push";
-        const msg       = data.message || "";
+        const msg = data.message || "";
+
+        let preview = msg;
+        if (window.globalShowStatus && msg) {
+          const df = editor.drawflow?.drawflow || editor.drawflow;
+          const nodes = df?.Home?.data || {};
+
+          // Find first eventTrigger node (device OR variable)
+          let triggerNode = Object.values(nodes).find(n =>
+            n.name === "eventTrigger" && n.data &&
+            (
+              (n.data.deviceId && n.data.deviceId !== "__variable__") ||
+              (Array.isArray(n.data.deviceIds) && n.data.deviceIds[0] && n.data.deviceIds[0] !== "__variable__") ||
+              n.data.deviceId === "__variable__" ||
+              (Array.isArray(n.data.deviceIds) && n.data.deviceIds[0] === "__variable__")
+            )
+          );
+
+          let deviceLabel = "";
+          let deviceValue = "";
+
+          if (triggerNode) {
+            // --------- Variable Trigger ---------
+            if (
+              triggerNode.data.deviceId === "__variable__" ||
+              (Array.isArray(triggerNode.data.deviceIds) && triggerNode.data.deviceIds[0] === "__variable__")
+            ) {
+              // Variable name
+              deviceLabel = triggerNode.data.varName || triggerNode.data.variableName || "";
+              // Look up value from flow vars, then global vars
+              let flowFile = window.flowVars?.getCurrentFlowFile?.();
+              let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+              let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+              let flowVal = flowVars.find(obj => obj.name === deviceLabel)?.value;
+              let globalVal = globalVars.find(obj => obj.name === deviceLabel)?.value;
+              deviceValue = flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+            } else {
+              // --------- Standard Device Trigger ---------
+              const dev = (window.devices || []).find(d => d.id == triggerNode.data.deviceId);
+              deviceLabel = dev ? (dev.label || dev.name) : (triggerNode.data.deviceLabel || triggerNode.data.deviceId);
+
+              const attr = triggerNode.data.attribute;
+              if (attr) {
+                if (typeof getCurrentValue === "function") {
+                  deviceValue = getCurrentValue(triggerNode.data.deviceId, attr);
+                } else if (dev && dev.attributes && dev.attributes[attr] !== undefined) {
+                  deviceValue = dev.attributes[attr];
+                }
+              }
+            }
+          }
+
+          // --- Start by getting the selected variable, if any ---
+          let selectedVarName = (data.useMsgVar && data.msgVarName) ? data.msgVarName : "";
+          let selectedVarValue = "";
+          if (selectedVarName) {
+            let flowFile = window.flowVars?.getCurrentFlowFile?.();
+            let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+            let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+            let flowVal = flowVars.find(obj => obj.name === selectedVarName)?.value;
+            let globalVal = globalVars.find(obj => obj.name === selectedVarName)?.value;
+            selectedVarValue = flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+          }
+
+          preview = preview
+            .replace(/\{device\}/g, deviceLabel)
+            .replace(/\{value\}/g, deviceValue)
+            .replace(/\{variableName\}/g, selectedVarName)
+            .replace(/\{variableValue\}/g, selectedVarValue)
+            .replace(/\{([a-zA-Z0-9_]+)\}/g, (m, v) => {
+              if (["device", "value", "variableName", "variableValue"].includes(v)) return m;
+              let flowFile = window.flowVars?.getCurrentFlowFile?.();
+              let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+              let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+              let flowVal = flowVars.find(obj => obj.name === v)?.value;
+              let globalVal = globalVars.find(obj => obj.name === v)?.value;
+              return flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+            });
+        }
 
         return `
           <div class="notification-tile">
             ${notifType} Notifications<br>
-          <span style="font-size:11px">
-            Device: ${devLabelStr}<br>
-            ${msg ? `Message: "${msg}"<br>` : ""}
-          </span>
-          ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
-        </div>`;
+            <span style="font-size:11px">
+              Device: ${devLabelStr}<br>
+              ${msg ? `Message: "${msg}"<br>` : ""}
+              <hr>
+              ${window.globalShowStatus && msg ? `<b>Preview:</b> "${preview}"<br>` : ""}
+            </span>
+            ${lockedHtml}
+          </div>
+        `;
       }
 
       // ---- Combined rendering for Event Trigger & Condition ----
@@ -2956,6 +3036,7 @@
           const type = typeSelect.value || node.data.notificationType || "push";
           const deviceLabel = document.createElement("label");
           deviceLabel.textContent = (type === "speech") ? "Speaker Device" : "Notification Device";
+          deviceLabel.style.display = "block";
           el.appendChild(deviceLabel);
 
           // Filter device list for Notification (push) or Speech
@@ -2973,14 +3054,12 @@
               (d.capabilities && d.capabilities.includes("Notification"))
             );
           }
-          // fallback: if none found, show all devices as an option (prevents blank dropdown)
           if (filteredDevices.length === 0) filteredDevices = devices;
           filteredDevices.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
           const devSelect = document.createElement("select");
           devSelect.multiple = true;
-          devSelect.size = Math.min(8, filteredDevices.length); // Show up to 8
+          devSelect.size = Math.min(8, filteredDevices.length);
 
-          // Support both array and legacy string for selected devices
           const selectedIds = Array.isArray(node.data.targetDeviceId)
             ? node.data.targetDeviceId
             : node.data.targetDeviceId
@@ -3001,7 +3080,7 @@
           };
           el.appendChild(devSelect);
 
-          // Message label & inpu
+          // --- Message label & input ---
           const msgLabel = document.createElement("label");
           msgLabel.textContent = "Message";
           msgLabel.style.display = "block";
@@ -3017,30 +3096,99 @@
             node.data.message = msgInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
             markFlowNeedsSave(true);
+            updateStatusPreview();
           };
           el.appendChild(msgInput);
 
-        const wildcardMsg = document.createElement("div");
-        wildcardMsg.style.fontSize = "13px";
-        wildcardMsg.style.marginTop = "7px";
-        wildcardMsg.style.color = "#b7cdfd";
-        wildcardMsg.innerHTML =
-          '<b><u>Wildcards:</u></b><br>' +
-          '<b>{device}</b> – Event device name/label<br>' +
-          '<b>{value}</b> – Event value<br>' +
-          '<b>{text}</b> – Event description or text<br>' +
-          '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
-          '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
-          '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
-          '<b>{now}</b> – Current system date & time (now)<br>' +
-          '<b>{variableName}</b> – Selected variable name<br>' +
-          '<b>{variableValue}</b> – Selected variable value<br>' +
-          '<span style="color:#eee;">Example: {variableName} = {variableValue} at {time12} on {date}</span>';
-        el.appendChild(wildcardMsg);
+          // --- New: Use Variable in Msg checkbox ---
+          const varRow = document.createElement("div");
+          varRow.style = "margin-top:10px;margin-bottom:4px;";
+          const varCheckbox = document.createElement("input");
+          varCheckbox.type = "checkbox";
+          varCheckbox.id = "msgVarCheckbox";
+          varCheckbox.checked = !!node.data.useMsgVar;
+          varCheckbox.style.marginRight = "4px";
+          varCheckbox.onchange = () => {
+            node.data.useMsgVar = varCheckbox.checked;
+            if (!varCheckbox.checked) {
+              node.data.msgVarName = "";
+            }
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+            renderEditor(node);
+          };
+          varRow.appendChild(varCheckbox);
 
-          return;
+          const varLabel = document.createElement("label");
+          varLabel.htmlFor = "msgVarCheckbox";
+          varLabel.textContent = "Use Variable in Msg";
+          varRow.appendChild(varLabel);
+
+          el.appendChild(varRow);
+
+          // --- New: Variable Name dropdown if checked ---
+          let varDropdown;
+          if (varCheckbox.checked) {
+            const varDiv = document.createElement("div");
+            varDiv.style = "margin:5px 0 8px 0;";
+
+            const ddLabel = document.createElement("label");
+            ddLabel.textContent = "Variable Name";
+            ddLabel.style.marginRight = "8px";
+            varDiv.appendChild(ddLabel);
+
+            // Combine and sort flow and global variables
+            let flowFile = window.flowVars?.getCurrentFlowFile?.();
+            let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+            let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+            let allVars = [...flowVars, ...globalVars];
+            let varNames = [...new Set(allVars.map(v => v.name))].sort((a, b) => a.localeCompare(b));
+
+            varDropdown = document.createElement("select");
+            varDropdown.style.minWidth = "120px";
+            varDropdown.style.marginLeft = "2px";
+
+            // Option to require a selection
+            varDropdown.appendChild(new Option("-- Select --", ""));
+            varNames.forEach(vn => {
+              let opt = document.createElement("option");
+              opt.value = vn;
+              opt.textContent = vn;
+              if (vn === node.data.msgVarName) opt.selected = true;
+              varDropdown.appendChild(opt);
+            });
+
+            varDropdown.onchange = () => {
+              node.data.msgVarName = varDropdown.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              updateStatusPreview();
+            };
+
+            varDiv.appendChild(varDropdown);
+            el.appendChild(varDiv);
+          }
+
+          // --- Wildcard/Variable info ---
+          const wildcardMsg = document.createElement("div");
+          wildcardMsg.style.fontSize = "13px";
+          wildcardMsg.style.marginTop = "7px";
+          wildcardMsg.style.color = "#b7cdfd";
+          wildcardMsg.innerHTML =
+            '<b><u>Wildcards:</u></b><br>' +
+            '<b>{device}</b> – Event device name/label<br>' +
+            '<b>{value}</b> – Event value<br>' +
+            '<b>{text}</b> – Event description or text<br>' +
+            '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
+            '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
+            '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
+            '<b>{now}</b> – Current system date & time (now)<br>' +
+            '<b>{variableName}</b> – Selected variable name<br>' +
+            '<b>{variableValue}</b> – Selected variable value<br>' +
+            '<span style="color:#eee;">Example: {device} has become {value} at {time12} on {date}</span>';
+          el.appendChild(wildcardMsg);
         }
-    
+  
         const previewChip = document.createElement("div");
         previewChip.className = "current-value";
         previewChip.style.marginLeft = "2px";
@@ -4517,10 +4665,10 @@
                         } else {
                           // single time, sunrise, sunset
                           if (val === "sunrise" || val === "sunset") {
-                            return nd.data.value === val;
+                            return (nd.data.value || "").toLowerCase() === val; // lowercase compare
                           }
                           let triggerVal = SUN_TIMES[nd.data.value] || nd.data.value;
-                          return String(triggerVal) === String(val);
+                          return String(triggerVal).toLowerCase() === String(val); // lowercase compare
                         }
                       }
 
@@ -4531,7 +4679,7 @@
                           .includes(val);
                       }
 
-                      // --- FALLBACK: EXACT MATCH ---
+                      // --- FALLBACK: EXACT MATCH (lowercase both sides) ---
                       return String(nd.data.value).toLowerCase() === val;
                     });
 
