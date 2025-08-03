@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.046</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.047</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -2670,6 +2670,16 @@
             varSelect.appendChild(opt);
           });
           el.appendChild(varSelect);
+
+          // --- THIS ENSURES IT SAVES EVERY TIME ---
+          function saveVarNameChange() {
+            node.data.varName = varSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          }
+          varSelect.onchange = saveVarNameChange;
+          varSelect.onblur   = saveVarNameChange;
 
           // Value
           const valLabel = document.createElement("label");
