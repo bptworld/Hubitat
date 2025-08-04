@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.047</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.048</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -200,7 +200,7 @@
       <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
         <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
           <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Hide/Show/Add Variables
+          Add/Delete Variables
         </div>
         <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
       </div>
@@ -295,7 +295,14 @@
       try {
         const txt = await fetchHubitatFileContent(file + ".json");
         if (txt) {
-          restoreFlowFromJson(txt);
+          await restoreFlowFromJson(txt);
+
+          // --- FIX: Call Live Flow Status Check after restoring the flow! ---
+          const appId = document.getElementById("hubitatAppId").value.trim();
+          const token = document.getElementById("hubitatToken").value.trim();
+          if (file && appId && token) {
+            checkIfFlowIsInUse(file, appId, token);
+          }
         }
       } catch (e) {
         alert("Failed to load flow: " + e.message);
@@ -310,7 +317,7 @@
         .replace(/_{2,}/g, "_")
         .replace(/^_+|_+$/g, "");
     }
- 
+
     async function refreshVarsAndInspector() {
       // === Check and load FE_global_vars.json ===
       let txt = null;
@@ -481,9 +488,10 @@
       </div>`;
       if (globals.length) {
         globals
-          .slice() // don't mutate original
+          .slice()
           .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
           .forEach(v => {
+            if (!v || typeof v !== "object" || !v.name) return;
             html += `<div style="margin-left:8px;">
               <span style="color:#eec150;">${v.name}</span> = 
               <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
@@ -495,10 +503,9 @@
 
       // ---- FLOW VARIABLES ----
       let flowFile = window.flowVars?.getCurrentFlowFile?.();
-      // !! Always read from freshly loaded FE_flowvars !!
       let flowVarsArr = (flowFile && window.FE_flowvars)
           ? window.FE_flowvars[flowFile] || [] : [];
-     
+    
       html += `<hr style="margin:8px 0;border-top:1px solid #333;">`;
       html += `<div style="color:#eee;margin-bottom:3px;">
         <b>Flow Variables</b>
@@ -509,6 +516,7 @@
           .slice()
           .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
           .forEach(v => {
+            if (!v || typeof v !== "object" || !v.name) return;
             html += `<div style="margin-left:8px;">
               <span style="color:#81e1ff;">${v.name}</span> = 
               <span style="color:#8be66a;">${JSON.stringify(v.value)}</span>
@@ -598,7 +606,6 @@
             if (!el) return;
             el.setAttribute('data-node-type', n.name);
           });
-          attachNodeClickHandlers();
 
           if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
             Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
@@ -629,34 +636,6 @@
         logAction("Undo/Redo failed to restore flow: " + e, "error");
       }
     }
-
-    // -- MULTI-NODE SELECTION HANDLER --
-    document.getElementById("drawflow").addEventListener("click", function(e) {
-      const nodeElem = e.target.closest('.drawflow-node');
-      if (!nodeElem) return;
-      const nodeId = nodeElem.id.replace(/^node-/, "");
-      if (!nodeId) return;
-      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-
-      if (e.ctrlKey || e.metaKey) {
-        // Toggle selection
-        if (window._multiSelectedNodes.has(nodeId)) {
-          window._multiSelectedNodes.delete(nodeId);
-        } else {
-          window._multiSelectedNodes.add(nodeId);
-        }
-      } else {
-        // Single-select
-        window._multiSelectedNodes.clear();
-        window._multiSelectedNodes.add(nodeId);
-      }
-
-      // Update visual highlighting
-      updateMultiSelectUI();
-
-      // Still keep editor.selected_id in sync for property panel, etc.
-      editor.selected_id = nodeId;
-    });
 
     function markFlowNeedsSave(needed = true) {
       const btn = document.getElementById('sendFlow');
@@ -1327,10 +1306,37 @@
         const errorStyle = getErrorStyle(type, data);
         let vName = data.varName || "Variable";
         let vValue = data.varValue || "Value";
+
+        // --- Find variable type and current value ---
+        let varScope = "";
+        let currentValue = "";
+        // Look for global or flow variable match
+        let flowFile = window.flowVars?.getCurrentFlowFile?.();
+        let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+        let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+        let found = flowVars.find(obj => obj.name === vName);
+        if (found) {
+          varScope = "Flow Variable";
+          currentValue = found.value;
+        } else {
+          found = globalVars.find(obj => obj.name === vName);
+          if (found) {
+            varScope = "Global Variable";
+            currentValue = found.value;
+          } else {
+            varScope = "Variable Not Found";
+            currentValue = "";
+          }
+        }
+        if (currentValue === undefined) currentValue = "";
+
         return `<div class="setVariable-tile">
           Set Variable<br>
           <span style="font-size:11px">
             ${vName} = ${vValue}
+            <hr style="margin:4px 0;border-top:1px solid #888;">
+            <span>${varScope}</span><br>
+            <span>Current: <span>${JSON.stringify(currentValue)}</span></span>
           </span>
           ${(data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : "")}
         </div>`;
@@ -1616,10 +1622,11 @@
 
     function updateMultiSelectUI() {
       document.querySelectorAll('.drawflow-node').forEach(el => {
-        el.classList.remove('selected-multi');
-        const nodeId = el.id.replace(/^node-/, '');
-        if (window._multiSelectedNodes?.has(nodeId)) {
-          el.classList.add('selected-multi');
+        const nodeId = el.id.replace(/^node-/, "");
+        if (window._multiSelectedNodes && window._multiSelectedNodes.has(nodeId)) {
+          el.classList.add('multi-selected');
+        } else {
+          el.classList.remove('multi-selected');
         }
       });
     }
@@ -2063,7 +2070,7 @@
             buildVariableTriggerEditor(el, node, true); // append variable picker
             return;
           }
-        };
+        }
 
         if (node.name === "condition") {
           // Device picker always rendered first!
@@ -3004,7 +3011,7 @@
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               markFlowNeedsSave(true);
             },
-            false // single-select
+            true // multi-select
           );
           return;
         }
@@ -3247,43 +3254,78 @@
       })();
 
       if (editor && editor.on) {
-        editor.on('all', function(event, ...args) { 
-        //console.log("DRAWFLOW EVENT:", event, args); 
-      });
+        editor.on('all', function(event, ...args) {
+          //console.log("DRAWFLOW EVENT:", event, args);
+        });
 
-      editor.on('nodeCreated', pushUndoState);
-      editor.on('nodeRemoved', pushUndoState);
-      editor.on('nodeMoved', pushUndoState);
-      editor.on('nodeDataChanged', pushUndoState);
+        editor.on('nodeCreated', pushUndoState);
+        editor.on('nodeRemoved', pushUndoState);
+        editor.on('nodeMoved', pushUndoState);
+        editor.on('nodeDataChanged', pushUndoState);
 
-      // --- SNAP TO GRID: add this below ---
-      editor.on('nodeMoved', function(id) {
-        // Only snap if toggle is checked
-        var snapActive = document.getElementById("snapToGridToggle")?.checked;
-        if (!snapActive) return;
+        // --- SNAP TO GRID: add this below ---
+        editor.on('nodeMoved', function(id) {
+          // Only snap if toggle is checked
+          var snapActive = document.getElementById("snapToGridToggle")?.checked;
+          if (!snapActive) return;
 
-        const nodeEl = document.getElementById("node-" + id);
-        if (!nodeEl) {
-          console.log("Node element not found by id: node-" + id);
+          const nodeEl = document.getElementById("node-" + id);
+          if (!nodeEl) {
+            console.log("Node element not found by id: node-" + id);
+            return;
+          }
+
+          let left = parseInt(nodeEl.style.left, 10) || 0;
+          let top = parseInt(nodeEl.style.top, 10) || 0;
+          let snappedLeft = Math.round(left / 20) * 20;
+          let snappedTop = Math.round(top / 20) * 20;
+
+          if (left !== snappedLeft || top !== snappedTop) {
+            nodeEl.style.left = snappedLeft + "px";
+            nodeEl.style.top = snappedTop + "px";
+            if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data[id]) {
+              editor.drawflow.Home.data[id].pos_x = snappedLeft;
+              editor.drawflow.Home.data[id].pos_y = snappedTop;
+            }
+            //console.log("SNAPPED NODE " + id + " to (" + snappedLeft + ", " + snappedTop + ")");
+          }
+        });
+      }
+
+      document.getElementById("drawflow").addEventListener("mousedown", function(e) {
+        const nodeElem = e.target.closest('.drawflow-node');
+
+        // --- Multi-select with Ctrl/Cmd ---
+        if ((e.ctrlKey || e.metaKey) && nodeElem) {
+          const nodeId = nodeElem.id.replace(/^node-/, "");
+          if (!nodeId) return;
+          window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+          if (window._multiSelectedNodes.has(nodeId)) {
+            window._multiSelectedNodes.delete(nodeId);
+          } else {
+            window._multiSelectedNodes.add(nodeId);
+          }
+          updateNodeSelectionUI();
+          e.preventDefault();
+          e.stopPropagation();
           return;
         }
 
-        let left = parseInt(nodeEl.style.left, 10) || 0;
-        let top = parseInt(nodeEl.style.top, 10) || 0;
-        let snappedLeft = Math.round(left / 20) * 20;
-        let snappedTop = Math.round(top / 20) * 20;
+        // --- Clear all selections and close editor when clicking background ---
+        if (!nodeElem && !(e.ctrlKey || e.metaKey)) {
+          window._multiSelectedNodes = new Set();
+          updateNodeSelectionUI();
+          if (window.editor) window.editor.selected_id = null;
 
-        if (left !== snappedLeft || top !== snappedTop) {
-          nodeEl.style.left = snappedLeft + "px";
-          nodeEl.style.top = snappedTop + "px";
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data[id]) {
-            editor.drawflow.Home.data[id].pos_x = snappedLeft;
-            editor.drawflow.Home.data[id].pos_y = snappedTop;
+          // The real node editor in your app is "nodeEditor"!
+          const nodeEditor = document.getElementById("nodeEditor");
+          if (nodeEditor) {
+            nodeEditor.innerHTML = "Click a node to edit";
+            nodeEditor.style.display = "";
           }
-          //console.log("SNAPPED NODE " + id + " to (" + snappedLeft + ", " + snappedTop + ")");
+          return;
         }
       });
-    }
 
       // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
@@ -3316,7 +3358,6 @@
       }
       editor.reroute = true;
       editor.start();
-      attachNodeClickHandlers();
 
       editor.on('nodeMoved', function(id) {
         markFlowNeedsSave(true);
@@ -3345,17 +3386,6 @@
       editor.on("nodeSelected", function (id) {
         editor.selected_id = id;
         renderEditor(editor.getNodeFromId(id));
-      });
-
-      document.getElementById("drawflow").addEventListener("click", function(e) {
-        if (!e.target.closest(".drawflow-node")) {
-          window._multiSelectedNodes.clear();
-          editor.selected_id = null;
-          updateMultiSelectUI();
-        // Close the Node Editor when clicking on blank canvas:
-        const panel = document.getElementById("nodeEditor");
-        if (panel) panel.style.display = 'none';
-        }
       });
 
       document.getElementById("undoBtn").onclick = doUndo;
@@ -3504,7 +3534,6 @@
 
         // 5) Final bookkeeping
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addDevice finished.");
       };
@@ -3544,7 +3573,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addCondition finished.");
       };
@@ -3584,7 +3612,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addTrigger finished.");
       };
@@ -3606,7 +3633,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addComment finished.");
       };
@@ -3628,7 +3654,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addSetVariable finished.");
       };
@@ -3652,7 +3677,6 @@
           window.newNodeOffsetY = 0;
           window.newNodeCounter = 0;
         }
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addNotification finished.");
       };
@@ -3676,7 +3700,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addDoNothing finished.");
       };
@@ -3698,7 +3721,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addDelay finished.");
       };
@@ -3720,7 +3742,6 @@
           window.newNodeCounter = 0;
         }
         markFlowNeedsSave(true);
-        attachNodeClickHandlers();
         updateNodeSelectionUI();
         logAction("addDelayMin finished.");
       };
@@ -5223,37 +5244,6 @@
           } else {
             node.classList.remove('multi-selected');
           }
-        });
-      }
-
-      function attachNodeClickHandlers() {
-        document.querySelectorAll('.drawflow-node').forEach(node => {
-          // Remove any old handler to avoid duplicate bindings
-          node.onclick = null;
-
-          node.addEventListener('click', function(event) {
-            const id = node.getAttribute('id');
-
-            if (event.ctrlKey || event.metaKey) {
-              // --- Ctrl/Cmd-click: Toggle selection ---
-              if (window._multiSelectedNodes.has(id)) {
-                window._multiSelectedNodes.delete(id);
-              } else {
-                window._multiSelectedNodes.add(id);
-              }
-            } else {
-              // --- Regular click: Single select only ---
-              window._multiSelectedNodes.clear();
-              window._multiSelectedNodes.add(id);
-            }
-
-            updateNodeSelectionUI();
-
-            // Optional: handle editor.selected_id if needed
-            if (!event.ctrlKey && !event.metaKey) {
-              if (window.editor) window.editor.selected_id = id;
-            }
-          });
         });
       }
 
