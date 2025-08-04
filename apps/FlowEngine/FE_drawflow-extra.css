@@ -196,7 +196,7 @@ button:hover { background: #02c258; }
   color: #000 !important;
   opacity: 1 !important;
 }
-.drawflow-node.selected-multi {
+.drawflow-node.multi-selected {
   outline: 5px solid #00fff7 !important;
   box-shadow: 0 0 0 3px #212c34, 0 0 0 0 transparent !important;
   border-radius: 14px !important;
