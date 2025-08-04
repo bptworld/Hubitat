@@ -212,7 +212,7 @@ async function fetchHubitatVarFileContent(fileName) {
     if (!allFlowVars[flowFile]) allFlowVars[flowFile] = [];
     flowVars = allFlowVars[flowFile];
     notifyVarsChange();
-    if (managerEl) renderVarsList("flow");
+    window.updateDeleteVarDropdown && updateDeleteVarDropdown();
   }
 
   async function loadFlowVarsFor(flowFile) {
@@ -221,197 +221,190 @@ async function fetchHubitatVarFileContent(fileName) {
     flowVars = allFlowVars[flowFile];
     currentFlowFile = flowFile;
     notifyVarsChange();
-    if (managerEl) renderVarsList("flow");
   }
 
-  // --- VARIABLE MANAGER SIDEBAR UI ---
   function renderManager(el, opts = {}) {
     managerEl = el;
     let html = `
       <hr>
       <div style="display:flex;align-items:center;">
         <b>Variables</b>
-        <button id="maintVarsBtn" title="Show maintenance options" style="margin-left:20px;font-size:11px;padding:1px 9px;border-radius:7px;cursor:pointer;background:#aaa;color:#232a2d;border:none;box-shadow:0 1px 4px #0003;">Maintenance</button>
+        <button id="maintVarsBtn" title="Show maintenance options"
+          style="margin-left:8px;font-size:11px;padding:1px 9px;border-radius:7px;cursor:pointer;background:#aaa;color:#232a2d;border:none;box-shadow:0 1px 4px #0003;">
+          Maintenance
+        </button>
       </div>
       <div id="maintVarsRow" style="display:none;margin:7px 0 8px 0;">
-        <button id="clearGlobalVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;margin-left:15px;">Delete Global Vars</button><br>
-        <button id="clearFlowVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;margin-left:15px;">Delete Flow Vars</button>
-        <hr>
-        </div>
-      <div>
-        <button id="addVarBtn" title="Add a new variable">Add</button>
-        <button id="switchScopeBtn" title="Toggle single/global variables view">${opts.globalVars ? "Show Flow Vars" : "Show Global Vars"}</button>
-        ${opts.globalVars ? `
-          <br><br><b>Global Variable Options</b><br><hr>
-          <button id="exportVarsBtn" title="Export global variables to a file">Export</button>
-          <button id="importVarsBtn" title="Import global variables from a file">Import</button>
-          <hr>
-        ` : "<br><br><b>Flow Variable Options</b><br><hr>"}
+        <button id="clearGlobalVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;margin-right:12px;">Clear Global Vars</button>
+        <button id="clearFlowVarsBtn" style="font-size:11px;padding:2px 12px;border-radius:7px;cursor:pointer;background:#888;color:#fff;border:none;">Clear Flow Vars</button>
       </div>
-      <div id="varsList" style="margin-top:10px;"></div>
+      <br><b>Add New Variable</b><br><hr>
+      <div id="newVarRow" style="display:flex;flex-direction:column;gap:8px;margin:12px 0 8px 0;align-items:flex-start;">
+        <label for="newVarScope">Scope</label>
+        <select id="newVarScope" style="width:110px;font-size:13px;">
+          <option value="">(select)</option>
+          <option value="flow">Flow</option>
+          <option value="global">Global</option>
+        </select>
+        <label for="newVarName" style="margin-top:5px;">Variable Name</label>
+        <input id="newVarName" placeholder="Variable Name" style="width:180px;font-size:13px;padding:2px 5px;">
+        <label for="newVarValue" style="margin-top:5px;">Initial Value</label>
+        <input id="newVarValue" placeholder="Initial Value" style="width:180px;font-size:13px;padding:2px 5px;">
+        <label for="newVarType" style="margin-top:5px;">Type</label>
+        <select id="newVarType" style="width:110px;font-size:13px;">
+          <option value="">(select)</option>
+          <option value="String">String</option>
+          <option value="Number">Number</option>
+          <option value="Boolean">Boolean</option>
+        </select>
+        <button id="saveNewVarBtn" style="background:#1d9d53;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;margin-top:12px;">Save</button>
+      </div>
+      <hr>
+      <b>Delete a Variable</b><br>
+      <div id="deleteVarRow" style="display:flex;flex-direction:column;gap:8px;margin:10px 0 0 0;align-items:flex-start;">
+        <label for="deleteVarSelect">Variable Name</label>
+        <select id="deleteVarSelect" style="width:210px;font-size:13px;">
+          <option value="">(select)</option>
+        </select>
+        <button id="deleteVarBtn" style="background:#e64b4b;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;">Delete</button>
+      </div>
     `;
-    el.innerHTML = html;
-    renderVarsList(opts.globalVars ? "global" : "flow");
 
-    // Maint button: toggle
+    el.innerHTML = html;
+
+    // --- Maint toggle ---
     document.getElementById("maintVarsBtn").onclick = () => {
       const row = document.getElementById("maintVarsRow");
       row.style.display = row.style.display === "none" ? "block" : "none";
     };
-    // Clear Global Vars
     document.getElementById("clearGlobalVarsBtn").onclick = async () => {
-      if (!confirm("This can't be undone. Are you sure you want to delete ALL Global Vars and reset the file?")) return;
+      if (!confirm("This can not be undone. Are you sure you want to clear ALL Global Vars?")) return;
       await uploadToHubitatFile("FE_global_vars.json", "[]");
       alert("FE_global_vars.json has been cleared.");
-      if (typeof refreshVarsAndInspector === "function") refreshVarsAndInspector();
+      if (typeof refreshVarsAndInspector === "function") await refreshVarsAndInspector();
     };
-    // Clear Flow Vars
     document.getElementById("clearFlowVarsBtn").onclick = async () => {
-      if (!confirm("This can't be undone. Are you sure you want to delete ALL Flow Vars and reset the file?")) return;
+      if (!confirm("This can not be undone. Are you sure you want to clear ALL Flow Vars?")) return;
       await uploadToHubitatFile("FE_flow_vars.json", "{}");
       alert("FE_flow_vars.json has been cleared.");
-      if (typeof refreshVarsAndInspector === "function") refreshVarsAndInspector();
+      if (typeof refreshVarsAndInspector === "function") await refreshVarsAndInspector();
     };
 
-    document.getElementById('addVarBtn').onclick = () => {
-      let arr = opts.globalVars ? globalVars : flowVars;
-      arr.push({ name:"", value:"", type:"String" });
-      renderVarsList(opts.globalVars ? "global" : "flow");
-      notifyVarsChange();
-      if (opts.globalVars) {
-        markExportNeeded(true);
-      } else {
-        allFlowVars[currentFlowFile] = flowVars;
-        saveAllFlowVarsFile();
-        markFlowNeedsSave(true);
+    // --- Sanitize fields on blur ---
+    document.getElementById("newVarName").onblur = function () {
+      let sanitized = this.value.replace(/[^a-zA-Z0-9_-]/g, "");
+      if (this.value && this.value !== sanitized) {
+        alert("Variable Name can only use letters, numbers, _ or -");
+        this.value = sanitized;
       }
     };
-    if (opts.globalVars) {
-      // Export global variables to Hubitat
-      document.getElementById('exportVarsBtn').onclick = async () => {
-        let arr = globalVars;
-        let fileName = "FE_global_vars.json";
-        let ok = await uploadVarsToHubitat(arr, fileName);
-        if (ok) {
-          markExportNeeded(false);
-          logAction("Global variables exported to Hubitat as " + fileName, "success");
+    document.getElementById("newVarValue").onblur = function () {
+      let sanitized = String(this.value).replace(/['"]/g, ""); // Remove all quotes
+      sanitized = sanitized.replace(/[^\w\s\-.,:;!?@#$/\\()[\]{}=+*<>]/g, "");
+      if (this.value && this.value !== sanitized) {
+        alert("Removed quotes and special characters from value.");
+        this.value = sanitized;
+      }
+    };
+
+    // --- Save new variable ---
+    document.getElementById('saveNewVarBtn').onclick = async () => {
+      const scope = document.getElementById("newVarScope").value;
+      let name  = document.getElementById("newVarName").value.trim();
+      let value = document.getElementById("newVarValue").value;
+      const type  = document.getElementById("newVarType").value;
+      if (!scope) return alert("Select variable scope (Flow or Global).");
+      if (!name) return alert("Enter a variable name.");
+      if (!type) return alert("Select a variable type.");
+
+      // Sanitize again before save for safety
+      name = name.replace(/[^a-zA-Z0-9_-]/g, "");
+      value = String(value).replace(/['"]/g, ""); // Remove all quotes
+      value = value.replace(/[^\w\s\-.,:;!?@#$/\\()[\]{}=+*<>]/g, "");
+
+      if (!name) return alert("Variable Name can only use letters, numbers, _ or -");
+
+      if (type === "Number") value = Number(value);
+      if (type === "Boolean") value = (value === "true" || value === "1");
+
+      const vObj = { name, value, type };
+      if (scope === "global") {
+        globalVars.push(vObj);
+        await uploadVarsToHubitat(globalVars, "FE_global_vars.json");
+      } else {
+        allFlowVars[currentFlowFile] = allFlowVars[currentFlowFile] || [];
+        allFlowVars[currentFlowFile].push(vObj);
+        await saveAllFlowVarsFile();
+      }
+      // Clear inputs
+      document.getElementById("newVarScope").value = "";
+      document.getElementById("newVarName").value = "";
+      document.getElementById("newVarValue").value = "";
+      document.getElementById("newVarType").value = "";
+      if (typeof refreshVarsAndInspector === "function") await refreshVarsAndInspector();
+      // Also update the delete dropdown
+      updateDeleteVarDropdown();
+    };
+
+    // --- Handle Delete button ---
+    document.getElementById('deleteVarBtn').onclick = async () => {
+      const val = document.getElementById("deleteVarSelect").value;
+      if (!val) return alert("Choose a variable to delete.");
+      if (!confirm("This can not be undone. Are you sure?")) return;
+      const [scope, name] = val.split("|");
+      let changed = false;
+      if (scope === "global") {
+        const idx = globalVars.findIndex(v => v.name === name);
+        if (idx > -1) {
+          globalVars.splice(idx, 1);
+          await uploadVarsToHubitat(globalVars, "FE_global_vars.json");
+          changed = true;
         }
-      };
-      // Import global variables from Hubitat
-      document.getElementById('importVarsBtn').onclick = async () => {
-        try {
-          const txt = await fetchHubitatVarFileContent("FE_global_vars.json");
-          if (!txt) return;
-          let arr = JSON.parse(txt);
-          if (Array.isArray(arr)) {
-            globalVars = arr;
-            renderVarsList("global");
-            notifyVarsChange();
-            logAction("Imported " + arr.length + " global vars", "success");
-          } else {
-            alert("File does not contain an array.");
-          }
-        } catch(e) {
-          alert("Failed to import: " + e.message);
+      } else if (scope === "flow" && currentFlowFile && Array.isArray(allFlowVars[currentFlowFile])) {
+        const idx = allFlowVars[currentFlowFile].findIndex(v => v.name === name);
+        if (idx > -1) {
+          allFlowVars[currentFlowFile].splice(idx, 1);
+          await saveAllFlowVarsFile();
+          changed = true;
         }
-      };
-    }
-    document.getElementById('switchScopeBtn').onclick = () => {
-      opts.globalVars = !opts.globalVars;
-      renderManager(managerEl, opts);
+      }
+      if (changed) {
+        alert("Variable deleted.");
+        if (typeof refreshVarsAndInspector === "function") await refreshVarsAndInspector();
+        updateDeleteVarDropdown();
+      } else {
+        alert("Variable not found or could not be deleted.");
+      }
     };
   }
 
-  function renderVarsList(scope = "flow") {
-    updateCtx();
-    const arr   = scope === "global" ? globalVars : flowVars;
-    const vlist = managerEl.querySelector('#varsList');
-    vlist.innerHTML = '';
-    if (arr.length === 0) {
-      vlist.innerHTML = `
-        <div style="color:#aaa; margin-top:10px;">
-          There are no ${scope === "global" ? "Global" : "Local"} variables.
-          <br><hr>
-        </div>`;
-      return;
+  // --- Populate Delete Variable dropdown ---
+  function updateDeleteVarDropdown() {
+    const sel = document.getElementById("deleteVarSelect");
+    if (!sel) return;
+    // Build list: all globals, all flow vars for active flow
+    let arr = [];
+    (globalVars || []).forEach(v => arr.push({ name: v.name, scope: "global" }));
+    if (allFlowVars && currentFlowFile && Array.isArray(allFlowVars[currentFlowFile])) {
+      allFlowVars[currentFlowFile].forEach(v => arr.push({ name: v.name, scope: "flow" }));
     }
-    arr.forEach((v, i) => {
-      const type       = parseType(v.value);
-      const valDisplay = getVarResolved(v);
-      const circ       = hasCircular(v.name, () => arr);
-      const used       = isVarUsed(v.name, arr) || false;
-      vlist.innerHTML += `
-        <div style="margin-bottom:3px;${circ ? 'background:#441919;' : ''}">
-          <input
-            type="text"
-            value="${htmlEscape(v.name)}"
-            style="width:120px;${used ? '' : 'background:#ffffff;border:1.5px solid #b04343;'}"
-            placeholder="variable name"
-            oninput="flowVars.setVarName('${scope}', ${i}, this.value)"
-          >
-          <input
-            type="text"
-            value="${htmlEscape(v.value)}"
-            style="width:70px"
-            placeholder="value"
-            onchange="flowVars.setVarVal('${scope}', ${i}, this.value)"
-          >
-          <span style="font-size:12px; color:${typeColor(type)}">
-            ${type}
-          </span>
-          <span style="font-size:13px; color:${circ ? '#f33' : '#b7ffac'};">
-            ${circ
-              ? "ERR: Circular"
-              : (valDisplay !== undefined ? " = " + htmlEscape(valDisplay) : "")
-            }
-          </span>
-          <button
-            onclick="flowVars.delVar('${scope}', ${i})"
-            class="delvarbtn"
-          >✕</button>
-        </div>`;
+    // Remove dupes, then sort
+    const seen = {};
+    arr = arr.filter(v => {
+      if (!v.name || seen[v.name + v.scope]) return false;
+      seen[v.name + v.scope] = true;
+      return true;
+    });
+    arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+    sel.innerHTML = `<option value="">(select)</option>`;
+    arr.forEach(v => {
+      let label = v.name + (v.scope === "flow" ? " [Flow]" : " [Global]");
+      let value = v.scope + "|" + v.name;
+      sel.innerHTML += `<option value="${value}">${label}</option>`;
     });
   }
-
-  // --- INLINE UI EVENTS FOR VARS ---
-  root.setVarName = function(scope, i, name) {
-    let arr = scope === "global" ? globalVars : flowVars;
-    arr[i].name = name;
-    notifyVarsChange();
-    if (scope === "global") {
-      markExportNeeded(true);
-    } else {
-      allFlowVars[currentFlowFile] = flowVars;
-      saveAllFlowVarsFile();
-      markFlowNeedsSave(true);
-    }
-  };
-  root.setVarVal = function(scope, i, val) {
-    let arr = scope === "global" ? globalVars : flowVars;
-    arr[i].value = val;
-    renderVarsList(scope);
-    notifyVarsChange();
-    if (scope === "global") {
-      markExportNeeded(true);
-    } else {
-      allFlowVars[currentFlowFile] = flowVars;
-      saveAllFlowVarsFile();
-      markFlowNeedsSave(true);
-    }
-  };
-  root.delVar = function(scope, i) {
-    let arr = scope === "global" ? globalVars : flowVars;
-    arr.splice(i,1);
-    renderVarsList(scope);
-    notifyVarsChange();
-    if (scope === "global") {
-      markExportNeeded(true);
-    } else {
-      allFlowVars[currentFlowFile] = flowVars;
-      saveAllFlowVarsFile();
-      markFlowNeedsSave(true);
-    }
-  };
+  window.updateDeleteVarDropdown = updateDeleteVarDropdown;
 
   // --- PUBLIC API ---
   root.flowVars = flowVars;
@@ -421,7 +414,6 @@ async function fetchHubitatVarFileContent(fileName) {
   root.add = function(name, value, type, scope="flow") {
     let arr = scope === "global" ? globalVars : flowVars;
     arr.push({ name, value, type });
-    renderVarsList(scope);
     notifyVarsChange();
   };
   root.getResolved = getVarResolved;
@@ -463,7 +455,7 @@ async function fetchHubitatVarFileContent(fileName) {
   // --- Initialization: load all flow vars at startup ---
   window.initVariablesAfterCreds = async function() {
     logAction("Loading Vars...", "info")
-    await autoLoadGlobalVarsFromHubitat();      // Loads globals and updates UI
+    await autoLoadGlobalVarsFromHubitat();          // Loads globals and updates UI
     await window.flowVars?.loadAllFlowVarsFile?.(); // Loads all flow vars
   };
 
