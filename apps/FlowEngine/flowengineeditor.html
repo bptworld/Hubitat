@@ -59,7 +59,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.050</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.051</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -3115,7 +3115,6 @@
             node.data.message = msgInput.value;
             editor.updateNodeDataFromId(node.id, node.data);
             markFlowNeedsSave(true);
-            updateStatusPreview();
           };
           el.appendChild(msgInput);
 
@@ -3181,7 +3180,6 @@
               node.data.msgVarName = varDropdown.value;
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
-              updateStatusPreview();
             };
 
             varDiv.appendChild(varDropdown);
@@ -4599,6 +4597,11 @@
                   const dryRunCheckbox = document.getElementById("dryRunCheckbox");
 
                   testBtn.onclick = async () => {
+                    const saveBtn = document.getElementById("sendFlow");
+                    if (saveBtn && saveBtn.classList.contains("need-save")) {
+                      alert("Please save file before Testing.");
+                      return;
+                    }
                     // clear node highlights
                     document.querySelectorAll(
                       '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
