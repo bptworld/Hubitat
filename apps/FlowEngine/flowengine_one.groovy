@@ -1382,22 +1382,28 @@ def apiListVariables() {
     def f = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
     render contentType: "application/json",
            data: JsonOutput.toJson([globals: g, flows: f])}
-
 def apiSaveVariable() {
-    def json = request?.JSON
-    def name = json?.name
-    def type = json?.type ?: "String"
-    def value = json?.value
-    def scope = json?.scope ?: "global"  // "global" or flow name
+    def json  = request?.JSON ?: params
+    String scopeRaw = (json?.scope ?: 'global').toString()
+    String scope    = scopeRaw?.toLowerCase()
+    String name     = (json?.name  ?: '').toString()
+    String type     = (json?.type  ?: 'String').toString()
+    def    value    = json?.value
+
+    // Accept legacy 'scope: <flowName>' or modern 'scope: flow' + 'flow: <FlowName>'
+    String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
+
+    log.warn "flowParam: ${flowParam} - scope: ${scopeRaw} - name: ${name} - type: ${type} - value: ${value}"
 
     if (!name) {
-        render status:400, contentType:"application/json", data:'{"error":"Missing variable name"}'
+        render status:400, contentType:"application/json", data: '{"error":"Missing variable name"}'
         return
     }
 
-    if (scope == "global") {
-        def gvars = _ensureGlobalVarsList()
-        def existing = gvars.find { it.name == name }
+    // GLOBAL SCOPE
+    if (scope == 'global' || scope == 'globals') {
+        List gvars = _ensureGlobalVarsList()
+        def existing = gvars.find { (it?.name?.toString() ?: '') == name }
         if (existing) {
             existing.type  = type
             existing.value = value
@@ -1405,60 +1411,67 @@ def apiSaveVariable() {
             gvars << _mkVar(name, type, value)
         }
         state.globalVars = gvars
-    } else {
-        def fmap = _ensureFlowVarsMap()
-        def list = fmap[scope] ?: []
-        def existing = list.find { it.name == name }
-        if (existing) {
-            existing.type  = type
-            existing.value = value
-        } else {
-            list << _mkVar(name, type, value)
-        }
-        fmap[scope] = list
-        state.flowVars = fmap
+        try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
+        render contentType:"application/json",
+               data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"global" ])
+        return
     }
 
-    // Notify editor that vars changed
-    try {
-        notifyFlowTrace(scope, null, "varsUpdated")
-    } catch (e) {
-        log.warn "Failed to notify editor of variable update: $e"
+    // FLOW SCOPE
+    String key = (scope == 'flow') ? _bareFlow(flowParam) : _bareFlow(scopeRaw)
+    if (!key) {
+        render status:400, contentType:"application/json",
+               data: groovy.json.JsonOutput.toJson([ error:"Missing flow name for flow-scoped variable", scope: scopeRaw, flow: flowParam ])
+        return
     }
+
+    Map fmap = _ensureFlowVarsMap()
+    List list = (fmap[key] instanceof List) ? (fmap[key] as List) : []
+    def existing = list.find { (it?.name?.toString() ?: '') == name }
+    if (existing) {
+        existing.type  = type
+        existing.value = value
+    } else {
+        list << _mkVar(name, type, value)
+    }
+    fmap[key] = list
+    state.flowVars = fmap
+
+    try { notifyVarsUpdated('flow', key) } catch (e) { log.warn "notifyVarsUpdated(flow, ${key}) failed: $e" }
 
     render contentType:"application/json",
-           data: JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:scope ])
+           data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"flow", flow:key ])
 }
-
 def apiDeleteVariable() {
     def body  = request.JSON ?: params
-    String scope = (body.scope ?: '').toString()
+    String scopeRaw = (body.scope ?: '').toString()
+    String scope    = scopeRaw?.toLowerCase()
     String name  = (body.name  ?: '').toString()
     if (!scope || !name) { render status:400, text:"name/scope required"; return }
-	log.debug "apiDeleteVariable - scope: ${scope} - name:${name}"
+    log.debug "apiDeleteVariable - scope: ${scopeRaw} - name:${name}"
 
-    if (scope == 'global') {
-        def g = _ensureGlobalVarsList()
+    if (scope == 'global' || scope == 'globals') {
+        List g = _ensureGlobalVarsList()
         g.removeAll { (it?.name?.toString() ?: '') == name }
         state.globalVars = g
         try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
-        render contentType:"application/json", data: JsonOutput.toJson([ok:true, scope:'global'])
+        render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'global'])
         return
     }
 
     if (scope == 'flow') {
         String bare = _bareFlow(body.flow ?: '')
-        def fmap = _ensureFlowVarsMap()
+        Map fmap = _ensureFlowVarsMap()
         List arr = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
         arr.removeAll { (it?.name?.toString() ?: '') == name }
         if (arr && arr.size()) {
-        fmap[bare] = arr
-    } else {
-        fmap.remove(bare)
-    }
-    state.flowVars = fmap
+            fmap[bare] = arr
+        } else {
+            fmap.remove(bare)
+        }
+        state.flowVars = fmap
         try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
-        render contentType:"application/json", data: JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
+        render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
         return
     }
 
