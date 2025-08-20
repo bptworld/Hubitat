@@ -25,7 +25,7 @@
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Changes:
- *  1.0.0 - 07/22/25 - Initial Release
+ *  1.0.0 - 08/19/25 - Initial Release
  */
 
 import groovy.json.JsonSlurper
@@ -53,55 +53,114 @@ def mainPage() {
         if(state.appInstalled == 'COMPLETE') {
             section(getFormat("header-green", " <b>Device Master List:</b>")) {}
             section(" Master List", hideable: true, hidden: true) {
-				paragraph "Don't forget, if you add devices to your system after selecting all here.  You'll need to come back here and add the new devices, if you want to use them in Flow Engine."
+                paragraph "Don't forget, if you add devices to your system after selecting all here.  You'll need to come back here and add the new devices, if you want to use them in Flow Engine."
                 input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
             }
 
-			section(getFormat("header-green", " Flow Engine Editor Infomation")) {
-            	paragraph "This app is used to receive flow data from your Flow Engine Editor."
-				paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
-				paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
-				paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
-				paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
-				paragraph "<hr>"
-			}
-			
+            section(getFormat("header-green", " Flow Engine Editor Infomation")) {
+                paragraph "This app is used to receive flow data from your Flow Engine Editor."
+                paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
+                paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
+                paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
+                paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
+                paragraph "<hr>"
+            }
+
             section(getFormat("header-green", " Select Flow Files to Enable")) {
                 getFileList()
                 input "flowFiles", "enum", title: "Choose one or more Flow JSON files to Enable (to pause a Flow, simply remove from this list)", required: false, multiple: true, options: state.jsonList, submitOnChange: true
-				if (flowFiles) {
-					paragraph "<small><b>Flows are enabled for:</b><br>${flowFiles.join('<br>')}</small>"
+                if (flowFiles) {
+					input "showFiles", "bool", title: "Show List of Selected Flows", description: "Selected Flow List", defaultValue:false, submitOnChange:true
+                    if(showFiles) {
+                    	paragraph "<small><b>Flows are enabled for:</b><br>${flowFiles.join('<br>')}</small>"
+					}
+                }
+            }
+
+            section(getFormat("header-green", " Variables (State)")) {
+				input "showVars", "bool", title: "Show List of Variables", description: "Show Variables", defaultValue:false, submitOnChange:true
+				if(showVars) {
+					// Source of truth
+					List gvars = (state.globalVars instanceof List) ? state.globalVars : []
+					Map  fmap  = (state.flowVarsMap instanceof Map) ? state.flowVarsMap :
+								 (state.flowVars   instanceof Map) ? state.flowVars   : [:]
+
+					StringBuilder html = new StringBuilder()
+
+					// Globals
+					html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Global Variables</div>"
+					if (gvars && gvars.size()) {
+						def sortedG = gvars.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
+						sortedG.each { v ->
+							html << "<div>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
+						}
+					} else {
+						html << "<div style='margin-left:8px;color:#999'>(no global variables)</div>"
+					}
+
+					html << "<hr style='margin:8px 0;border:0;border-top:1px solid #444;'>"
+
+					
+
+// Flow maps — show each flow’s list (ONLY flows that actually have vars)
+Map nonEmpty = _pruneEmptyFlowKeys(fmap)
+def flowKeys = nonEmpty?.keySet()?.collect{ it?.toString() }?.sort{ (it ?: '').toLowerCase() } ?: []
+html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Flow Variables</div>"
+if (!flowKeys) {
+    html << "<div style='margin-left:8px;color:#999'>(no flow variables)</div>"
+} else {
+    flowKeys.each { flowName ->
+        List lst = (nonEmpty[flowName] instanceof List) ? (nonEmpty[flowName] as List) : []
+        def showName = flowName?.toString()
+        html << "<div style='margin:6px 0 2px 0; text-decoration:underline;'>${_hx(showName)}</div>"
+        def sortedF = lst.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
+        if (sortedF && sortedF.size()) {
+            sortedF.each { v ->
+                html << "<div style='margin-left:16px'>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
+            }
+        } else {
+            html << "<div style='margin-left:16px;color:#999'>(none)</div>"
+        }
+    }
+}
+paragraph html.toString()
 				}
             }
-			
-			section(getFormat("header-green", " Per-Flow Logging")) {
-				if (settings?.flowFiles) {
-					input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-					if(logEnable) {
-						def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
-						input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
-						if (perFlowLogEnabled) {
-							paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
-						}
-					}
-				} else {
-					paragraph "Select at least one Flow JSON file to enable per-flow logging."
-				}
-			}
-			section() {
-				paragraph getFormat("line")
-				paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
-			}
+
+            section(getFormat("header-green", " Per-Flow Logging")) {
+                if (settings?.flowFiles) {
+                    input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+                    if(logEnable) {
+                        def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
+                        input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
+                        if (perFlowLogEnabled) {
+                            paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
+                        }
+                    }
+                } else {
+                    paragraph "Select at least one Flow JSON file to enable per-flow logging."
+                }
+            }
+
+            section() {
+                paragraph getFormat("line")
+                paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
+            }
         }
     }
 }
 
 def installed() { 
-	initialize()
+	state.globalVars = (state.globalVars instanceof List) ? state.globalVars : []
+    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
+    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
+    initialize()
 }
 
 def updated() {
-	flowLog(fname, "In updated", "info")
+    // Ensure single source of truth for flow vars
+    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
+    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
     initialize()
 }
 
@@ -117,11 +176,9 @@ private void initialize() {
     unsubscribe()
     unschedule()
 
-	try {
-    	state.globalVarsCache = readFlowFile("FE_global_vars.json") ?: []
-	} catch (e) {
-		state.globalVarsCache = []
-	}
+	// State-first initialization (no file reads)
+	state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
+	state.flowVarsMap = (state.flowVarsMap instanceof Map ) ? state.flowVarsMap : [:]
 
     // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
     state.timeJobs = state.timeJobs ?: [:]
@@ -177,9 +234,58 @@ mappings {
 	path("/deselectFlowLog") { action: [POST: "apiDeselectFlowLogging"] }
 	path("/settings") 		 { action: [GET: "apiGetSettings"] }
 	path("/deleteFile") 	 { action: [GET: "apiDeleteFlow", DELETE: "apiDeleteFlow"] }
+	path("/saveVariable")    { action: [POST: "apiSaveVariable"] }
+	path("/deleteVariable")  { action: [POST: "apiDeleteVariable"] }
+	path("/variables") 		 { action: [GET: "apiListVariables"] }
 }
 
 // --- HANDLERS ---
+/* ===== Variable persistence in state (no JSON files) ===== */
+private String _bareFlow(Object flow) {
+    return (flow ?: '').toString().replaceAll(/(?i)\.json$/, '')
+}
+private List _ensureGlobalVarsList() {
+    if (!(state.globalVars instanceof List)) state.globalVars = []
+    return state.globalVars as List
+}
+private Map _ensureFlowVarsMap() {
+    if (!(state.flowVars instanceof Map)) state.flowVars = [:]
+    return state.flowVars as Map
+}
+private Map _mkVar(Object n, Object t, Object v) {
+    return [name:(n?:'').toString(), type:(t?:'String').toString(), value:v]
+}
+
+
+
+
+
+/** Remove any flow entries whose list is empty or has no named vars */
+private Map _pruneEmptyFlowKeys(Map fmapIn) {
+    Map fmap = (fmapIn instanceof Map) ? fmapIn : [:]
+    Map out = [:]
+    fmap.each { k, v ->
+        if (v instanceof List && v.any { it?.name }) {
+            out[k] = v
+        }
+    }
+    return out
+}
+
+/** Notify Editor that variables changed */
+private void notifyVarsUpdated(String scope, String flowName=null) {
+    try {
+        String flowFile = (scope == 'global') ? null : (_bareFlow(flowName ?: scope) + '.json')
+        sendLocationEvent(
+            name: "feTrace",
+            value: "varsUpdated",
+            descriptionText: "Vars updated for " + (flowFile ?: "GLOBAL"),
+            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now()])
+        )
+    } catch (e) {
+        log.warn "notifyVarsUpdated failed: $e"
+    }
+}
 def handleLocationTimeEvent(evt) {
     state.activeFlows.each { fname, flowObj ->
         def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
@@ -315,7 +421,7 @@ def apiDeselectFlowLogging() {
 }
 
 def apiForceReload() {
-	flowLog(fname, "In apiForceReload", "debug")
+    flowLog("APP", "In apiForceReload", "debug")  // was: flowLog(fname, ...)
     updated()
     render contentType: "application/json", data: '{"result":"App reloaded (updated() called)"}'
 }
@@ -1106,6 +1212,32 @@ def apiGetFile() {
         render status: 400, text: "Missing file name"
         return
     }
+
+    // ---- synthesize variable JSON from state (no disk I/O) ----
+    def lname = name?.toString()?.toLowerCase()
+    if (lname == "fe_global_vars.json") {
+        def globals = _ensureGlobalVarsList()
+        render contentType: "application/json",
+               data: groovy.json.JsonOutput.toJson(globals ?: [])
+        return
+    }
+    if (lname == "fe_flow_vars.json") {
+        Map fmap = _ensureFlowVarsMap()
+        List flat = []
+        fmap.each { k, arr ->
+            if (arr instanceof List) {
+                arr.each { v ->
+                    if (v?.name) flat << [flow: _bareFlow(k), name: v.name, type: v.type, value: v.value]
+                }
+            }
+        }
+        render contentType: "application/json",
+               data: groovy.json.JsonOutput.toJson(flat)
+        return
+    }
+    // -----------------------------------------------------------
+
+    // original behavior for all other files
     def fileData = null
     try {
         def url = "http://127.0.0.1:8080/local/${name}"
@@ -1245,66 +1377,146 @@ def getDeviceById(id) {
     return settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
 }
 
+def apiListVariables() {
+    def g = _ensureGlobalVarsList()
+    def f = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
+    render contentType: "application/json",
+           data: JsonOutput.toJson([globals: g, flows: f])}
+
+def apiSaveVariable() {
+    def json = request?.JSON
+    def name = json?.name
+    def type = json?.type ?: "String"
+    def value = json?.value
+    def scope = json?.scope ?: "global"  // "global" or flow name
+
+    if (!name) {
+        render status:400, contentType:"application/json", data:'{"error":"Missing variable name"}'
+        return
+    }
+
+    if (scope == "global") {
+        def gvars = _ensureGlobalVarsList()
+        def existing = gvars.find { it.name == name }
+        if (existing) {
+            existing.type  = type
+            existing.value = value
+        } else {
+            gvars << _mkVar(name, type, value)
+        }
+        state.globalVars = gvars
+    } else {
+        def fmap = _ensureFlowVarsMap()
+        def list = fmap[scope] ?: []
+        def existing = list.find { it.name == name }
+        if (existing) {
+            existing.type  = type
+            existing.value = value
+        } else {
+            list << _mkVar(name, type, value)
+        }
+        fmap[scope] = list
+        state.flowVars = fmap
+    }
+
+    // Notify editor that vars changed
+    try {
+        notifyFlowTrace(scope, null, "varsUpdated")
+    } catch (e) {
+        log.warn "Failed to notify editor of variable update: $e"
+    }
+
+    render contentType:"application/json",
+           data: JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:scope ])
+}
+
+def apiDeleteVariable() {
+    def body  = request.JSON ?: params
+    String scope = (body.scope ?: '').toString()
+    String name  = (body.name  ?: '').toString()
+    if (!scope || !name) { render status:400, text:"name/scope required"; return }
+	log.debug "apiDeleteVariable - scope: ${scope} - name:${name}"
+
+    if (scope == 'global') {
+        def g = _ensureGlobalVarsList()
+        g.removeAll { (it?.name?.toString() ?: '') == name }
+        state.globalVars = g
+        try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
+        render contentType:"application/json", data: JsonOutput.toJson([ok:true, scope:'global'])
+        return
+    }
+
+    if (scope == 'flow') {
+        String bare = _bareFlow(body.flow ?: '')
+        def fmap = _ensureFlowVarsMap()
+        List arr = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
+        arr.removeAll { (it?.name?.toString() ?: '') == name }
+        if (arr && arr.size()) {
+        fmap[bare] = arr
+    } else {
+        fmap.remove(bare)
+    }
+    state.flowVars = fmap
+        try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
+        render contentType:"application/json", data: JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
+        return
+    }
+
+    render status:400, text:"invalid scope"
+}
+
 def loadVariables(fname) {
     def flowObj = state.activeFlows[fname]
+    if (!flowObj) return
     flowObj.varCtx = [:]
 
-    // 1. Load global vars
-    def globalVars = []
+    // 1) globals from state
+    List globalVars = []
     try {
-        globalVars = readFlowFile("FE_global_vars.json") ?: []
+        globalVars = (_ensureGlobalVarsList() ?: []).findAll { it?.name }
     } catch (e) {
-        flowLog(fname, "Could not load FE_global_vars.json: $e", "warn")
+        flowLog(fname, "Could not load globals from state: $e", "warn")
+        globalVars = []
     }
 
-    // 2. Load flow vars for this flow from FE_flow_vars.json
-    def flowVarsMap = [:]
+    // 2) flow vars for this flow from state
+    // 2) flow vars for this flow from state
+    List flowVarsList = []
     try {
-        def bareName = normalizeFlowName(fname)
-		def allFlowVars = readFlowFile("FE_flow_vars.json") ?: [:]
-		flowVarsMap = allFlowVars[bareName] ?: []
+        String bareName = _bareFlow(fname)
+        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
+        List arr = (fmap[bareName] instanceof List) ? (fmap[bareName] as List) : []
+        flowVarsList = (arr ?: []).findAll { it?.name }
     } catch (e) {
-        flowLog(fname, "Could not load FE_flow_vars.json: $e", "warn")
+        flowLog(fname, "Could not load flow vars from state: $e", "warn")
+        flowVarsList = []
     }
-	flowObj.flowVars = flowVarsMap
+    flowObj.flowVars = flowVarsList
 
-    // 3. Merge: Override globalVars with any per-flow var by name
-    def mergedVars = []
-    def flowVarNames = flowVarsMap*.name as Set
-    // Add/override any globalVars with matching flow var
+    // 3) merge: flow overrides global by name
+    List mergedVars = []
+    Set gnames = (globalVars.collect { it?.name }.findAll { it }) as Set
     globalVars.each { g ->
-        def fv = flowVarsMap.find { it.name == g.name }
+        def fv = flowVarsList.find { it?.name == g?.name }
         mergedVars << (fv ?: g)
     }
-    // Add any flow-only vars (not in global)
-    flowVarsMap.each { fv ->
-        if (!(globalVars*.name).contains(fv.name)) {
-            mergedVars << fv
-        }
+    flowVarsList.each { fv ->
+        if (fv?.name && !gnames.contains(fv.name)) mergedVars << fv
     }
 
-    // 4. Store for compatibility
+    // 4) Store for compatibility
     flowObj.globalVars = mergedVars
 
-    // 5. Build variable context (as before)
+    // 5) Build variable context
     mergedVars.each { v ->
-        flowObj.varCtx[v.name] = resolveVarValue(fname, v)
+        if (v?.name) {
+            flowObj.varCtx[v.name] = resolveVarValue(fname, v)
+        }
     }
 }
 
-def getGlobalVars(fname) {
-    def flowObj = state.activeFlows[fname]
-    flowObj.globalVars = []
-    try {
-        def uri = "http://127.0.0.1:8080/local/FE_global_vars.json"
-        httpGet([uri: uri, contentType: "text/html; charset=UTF-8"]) { resp ->
-            def jsonStr = resp.data?.text
-            if (!jsonStr) return
-            flowObj.globalVars = new JsonSlurper().parseText(jsonStr)
-        }
-    } catch (e) {
-        flowObj.globalVars = []
-    }
+def getGlobalVars() {
+    return state.globalVars ?: []
 }
 
 def resolveVarValue(fname, v, _visited = []) {
@@ -1315,7 +1527,7 @@ def resolveVarValue(fname, v, _visited = []) {
     if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
         return evalExpression(fname, val, _visited)
     }
-    if (val ==~ /^-?\d+(\.\d+)?$/) return val.contains(".") ? val.toDouble() : val.toInteger()
+    if ("$val" ==~ /^-?\d+(\.\d+)?$/) return "$val".contains(".") ? val.toDouble() : val.toInteger()
     if ("$val".toLowerCase() == "true" || "$val".toLowerCase() == "false") return "$val".toLowerCase() == "true"
     return val
 }
@@ -1484,31 +1696,38 @@ def handleTimeTrigger(Map data) {
     handleEvent(evt, fname)
 }
 
-// ---- Variable trigger polling and tap/hold clear helpers ----
+// ---- Variable trigger polling (uses state.globalVars) ----
 def checkVariableTriggers() {
-    def globalVars = state.globalVarsCache ?: []
+    // Canonical source of truth
+    def globalVars = state.globalVars ?: []
+
     state.activeFlows.each { fname, flowObj ->
         def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
             node?.name == "eventTrigger" &&
-            (node.data?.deviceId == "__variable__" ||
-             (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__"))
+            (
+              node.data?.deviceId == "__variable__" ||
+              (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__")
+            )
         }
-		if (!nodes) return
+        if (!nodes) return
+
+        // Map: varName -> value for quick lookups
         def globalMap = globalVars.collectEntries { [(it.name): it.value] }
 
         nodes.each { id, node ->
-            def varName   = node.data?.variableName
-			if (!varName) {
-				log.warn "In checkVariableTriggers - Missing varName in node ${id}: ${node.data}"
-				return
-			}
+            def varName = node.data?.variableName
+            if (!varName) {
+                log.warn "In checkVariableTriggers - Missing varName in node ${id}: ${node.data}"
+                return
+            }
 
-            def curValue  = globalMap[varName]
-            def lastValue = flowObj.lastVarValues[varName] ?: "firstrunforthisvar"
+            def curValue   = globalMap[varName]
+            def lastValue  = flowObj.lastVarValues[varName] ?: "firstrunforthisvar"
             def comparator = node.data?.comparator ?: '=='
             def expected   = node.data?.value
-			
-			flowLog(varName, "curValue: ${curValue} - comparator: ${comparator} - lastValue: ${lastValue}", "debug")
+
+            flowLog(varName, "curValue: ${curValue} - comparator: ${comparator} - lastValue: ${lastValue}", "debug")
+
             if (evaluateComparator(curValue, expected, comparator) && curValue != lastValue) {
                 flowObj.lastVarValues[varName] = curValue
                 evaluateNode(fname, id, [ name: varName, value: curValue ])
@@ -1576,65 +1795,64 @@ def getTriggerNodes(String fname, evt) {
     }
 }
 
-void notifyFlowTrace(flowFile, nodeId, nodeType) {
+void notifyFlowTrace(String flowFile, def nodeId, String nodeType) {
     if (!flowFile) return
+    // One live run per flowFile
+    state._live = state._live ?: [:]
+    def live = state._live[flowFile] ?: [runId: null, prev: null, finished: false]
 
-    // initialize list of runs
-    if (!state.flowTraces) state.flowTraces = []
+    // Start a new run on first node or when file changes / ended
+    if (!live.runId || nodeType == "eventTrigger" || live.finished) {
+        live.runId   = "${now()}_${Math.abs(new Random().nextInt())}"
+        live.prev    = null
+        live.finished = false
+        state._live[flowFile] = live
 
-    // get or create a runId for this invocation
-    def runId = state.lastRunId
-    if (nodeType == "eventTrigger" || !runId || state.lastFlowFile != flowFile) {
-        // new run for this flowFile
-        runId             = "${now()}_${new Random().nextInt(1000000)}"
-        state.lastRunId   = runId
-        state.lastFlowFile = flowFile
-
-        // ── KEEP only one run per flowFile: remove any existing trace for this flowFile
+        sendLocationEvent(
+            name: "feTrace",
+            value: "start",
+            descriptionText: "Live trace start for ${flowFile}",
+            data: JsonOutput.toJson([type:"start", flowFile: flowFile, runId: live.runId, ts: now()])
+        )
+        // reset in-memory last run for this flow
+        state.flowTraces = (state.flowTraces instanceof List) ? state.flowTraces : []
         state.flowTraces.removeAll { it.flowFile == flowFile }
-
-        // ── start fresh steps for this run
-        state.flowTraces << [
-            runId:    runId,
-            flowFile: flowFile,
-            steps:    []
-        ]
+        state.flowTraces << [runId: live.runId, flowFile: flowFile, steps: []]
     }
 
-    // locate our run object
-    def thisFlow = state.flowTraces.find { it.runId == runId }
-    if (!thisFlow) {
-        thisFlow = [
-            runId:    runId,
-            flowFile: flowFile,
-            steps:    []
-        ]
-        state.flowTraces << thisFlow
+    // Append step to in-memory last run
+    def step = [flowFile: flowFile, nodeId: nodeId, nodeType: nodeType, timestamp: now()]
+    def thisFlow = state.flowTraces.find { it.flowFile == flowFile && it.runId == live.runId }
+    if (thisFlow) {
+        thisFlow.steps << step
+        if (thisFlow.steps.size() > 200) thisFlow.steps = thisFlow.steps[-200..-1]
     }
 
-    // append this step
-    def trace = [
-        flowFile:  flowFile,
-        nodeId:    nodeId,
-        nodeType:  nodeType,
-        timestamp: new Date().time
-    ]
-    thisFlow.steps << trace
-
-    // optional: cap number of steps per run
-    if (thisFlow.steps.size() > 40) {
-        thisFlow.steps = thisFlow.steps[-40..-1]
-    }
-
-    // write ALL last‐runs back to FE_flowtrace.json
-    saveFlow("FE_flowtrace.json", state.flowTraces)
-
-    // ── NEW: emit a Location event so the Editor will detect and poll for the updated trace
+    // Push live step (prev -> nodeId)
     sendLocationEvent(
-        name:           "flowTraceUpdated",
-        value:          new Date().time,
-        descriptionText:"Flow trace updated for ${flowFile}"
+        name: "feTrace",
+        value: "step",
+        descriptionText: "Live trace step for ${flowFile}",
+        data: JsonOutput.toJson([
+            type: "step", flowFile: flowFile, runId: live.runId,
+            nodeId: nodeId, prevNodeId: live.prev, nodeType: nodeType, ts: now()
+        ])
     )
+    live.prev = nodeId
+    state._live[flowFile] = live
+
+    // On end, finalize + write file once (for your Last Trace button)
+    if (nodeType == "endOfFlow") {
+        live.finished = true
+        state._live[flowFile] = live
+        saveFlow("FE_flowtrace.json", state.flowTraces)
+        sendLocationEvent(
+            name: "feTrace",
+            value: "end",
+            descriptionText: "Live trace end for ${flowFile}",
+            data: JsonOutput.toJson([type:"end", flowFile: flowFile, runId: live.runId, ts: now()])
+        )
+    }
 }
 
 void saveFlow(fName, fData) {
@@ -1721,39 +1939,35 @@ def getVarValue(fname, vname) {
     return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
 }
 
-def setVariable(fname, varName, varValue) {
-    def flowObj = state.activeFlows[fname]
-    def didSet = false
-    def bareName = normalizeFlowName(fname) // always remove .json
+def setVariable(String fname, String varName, def varValue) {
+    def bare = _bareFlow(fname)
 
-    // 1. Try to set in flowVars for this flow
-    def flowVars = flowObj?.flowVars ?: []
-    def fv = flowVars.find { it.name == varName }
+    // Ensure containers exist
+    state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
+    state.flowVars    = (state.flowVars    instanceof Map  ) ? state.flowVars    : [:]
+    def flowList = (state.flowVars[bare]   instanceof List ) ? state.flowVars[bare]   : []
+
+    // Try flow vars first
+    def fv = flowList.find { it?.name == varName }
     if (fv) {
         fv.value = varValue
-        didSet = true
-        // Save to FE_flow_vars.json
-        def allFlowVars = readFlowFile("FE_flow_vars.json") ?: [:]
-        allFlowVars[bareName] = flowVars
-        def jsonString = groovy.json.JsonOutput.toJson(allFlowVars)
-        uploadHubFile("FE_flow_vars.json", jsonString.getBytes("UTF-8"))
-        flowLog(fname, "Set FLOW variable '${varName}' to '${varValue}'", "info")
     } else {
-        // 2. Try to set in globalVars
-        def globalVars = state.globalVarsCache ?: []
-        def gv = globalVars.find { it.name == varName }
+        // Then try global vars
+        def gv = state.globalVars.find { it?.name == varName }
         if (gv) {
             gv.value = varValue
-            def jsonString = groovy.json.JsonOutput.toJson(globalVars)
-            uploadHubFile("FE_global_vars.json", jsonString.getBytes("UTF-8"))
-            flowLog(fname, "Set GLOBAL variable '${varName}' to '${varValue}'", "info")
-            didSet = true
+        } else {
+            flowLog(fname, "Variable '${varName}' not found in flow '${bare}' or globals; no update made.", "warn")
+            return
         }
     }
-	loadVariables(fname)
-    if (!didSet) {
-        flowLog(fname, "Variable '${varName}' not found in flow or global vars", "warn")
-    }
+
+    // Put the flow list back (in case it was missing)
+    state.flowVars[bare] = flowList
+
+    // Rebuild varCtx for this running flow
+    loadVariables(fname)
+    try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
 }
 
 // Helper
@@ -1761,21 +1975,34 @@ def normalizeFlowName(fname) {
     return fname?.replaceAll(/(?i)\.json$/, '')
 }
 
+// State-only replacement (keeps old name for compatibility)
 def saveGlobalVarsToFile(globals) {
-    flowLog(fname, "In saveGlobalVarsToFile – globals: ${globals}", "debug")
+    try {
+        // normalize to [{name,type,value}, ...]
+        List list = (globals instanceof List) ? globals.findAll { it?.name } : []
+        list = list.collect { v ->
+            [
+                name : (v.name ?: "").toString(),
+                type : (v.type ?: "String").toString(),
+                value: v.value
+            ]
+        }
 
-    // 1) upload the JSON to FE_global_vars.json
-    def fileName   = "FE_global_vars.json"
-    def jsonString = JsonOutput.toJson(globals)
-    uploadHubFile(fileName, jsonString.getBytes("UTF-8"))
+        // single source of truth: state
+        synchronized(this) {
+            state.globalVars = list
+        }
 
-    // 2) fire a LOCATION event so Maker‑API will push it over WebSocket
-    sendLocationEvent(
-        name:           "globalVarsUpdated",
-        value:          new Date().time,
-        descriptionText: "Flow‑Engine: global‑vars file updated"
-    )
-    flowLog(fname, "Dispatched globalVarsUpdated location event", "debug")
+        // optional: lightweight log + event so UI/Maker API listeners can refresh
+        flowLog("globals", "Updated GLOBAL vars in state (${list.size()})", "debug")
+        sendLocationEvent(
+            name: "globalVarsUpdated",
+            value: now(),
+            descriptionText: "Flow-Engine: global vars updated (state)"
+        )
+    } catch (e) {
+        log.warn "saveGlobalVarsToFile(state) failed: $e"
+    }
 }
 
 // --- Comparators ---
@@ -1881,6 +2108,15 @@ def handleOffsetSunEvent(data) {
         offset: data.offset
     ]
     handleEvent(evt, fname)
+}
+
+// Minimal HTML escape for safe rendering in paragraphs
+private String _hx(Object x) {
+    String s = x == null ? "" : x.toString()
+    s = s.replaceAll("&", "&amp;")
+         .replaceAll("<", "&lt;")
+         .replaceAll(">", "&gt;")
+    return s
 }
 
 def getFormat(type, myText=null, page=null) {
