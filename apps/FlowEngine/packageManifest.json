@@ -13,6 +13,14 @@
     "tags": ["Flow", "Tools & Utilities"],
     "files": [
         {
+            "id": "dafe4eea-a95e-4992-bf3f-9e2105d749cf",
+            "name": "favicon.ico",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/favicon.ico",
+            "description": "favicon",
+            "required": true
+        },
+        {
             "id": "f069a335-86f1-43c8-b2d9-7bd086517134",
             "name": "FE_pickr.es5.min.js",
             "namespace": "BPTWorld",
