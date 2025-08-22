@@ -134,7 +134,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.053</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.054</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -1030,6 +1030,31 @@ document.addEventListener('click', function(e){
     }
 
     
+
+// === Connection refresh helper (debounced) ===
+(function(){
+  if (window.__fe_refreshConnectionsInstalled) return;
+  window.__fe_refreshConnectionsInstalled = true;
+  let rafId = 0, rafId2 = 0;
+  window.refreshConnectionsSoon = function refreshConnectionsSoon(){
+    try { if (rafId) cancelAnimationFrame(rafId); if (rafId2) cancelAnimationFrame(rafId2); } catch(_){}
+    rafId = requestAnimationFrame(() => {
+      rafId2 = requestAnimationFrame(() => {
+        try {
+          if (window.editor && typeof window.editor.updateConnectionNodesAll === 'function') {
+            window.editor.updateConnectionNodesAll();
+          } else if (window.editor && typeof window.editor.updateConnectionNodes === 'function') {
+            // Fallback: touch every node
+            const data = (window.editor.drawflow && getHomeDataFrom(window.editor)) || {};
+            Object.keys(data).forEach(id => {
+              try { window.editor.updateConnectionNodes(id); } catch(_){}
+            });
+          }
+        } catch(_){}
+      });
+    });
+  };
+})();
 // === Viewport helpers: save/restore canvas pan into flow JSON (x,y only) ===
 function __fe_getViewport() {
   try {
@@ -4873,12 +4898,19 @@ statusDiv.innerHTML = `
                     return;
                   }
 
-                  // Honor user-selected node if it's a trigger, else pick the first match
-                  let selId = editor.selected_id;
-                  let node  = selId && editor.getNodeFromId(selId);
-                  if (!triggers.some(([id]) => id === selId)) {
-                    [selId, node] = triggers[0];
-                  }
+                  // Honor user-selected trigger only if it exists *in this flow*
+// Avoid calling getNodeFromId unless the id is valid in current data
+let selId = editor && editor.selected_id;
+let node  = null;
+if (selId && data && Object.prototype.hasOwnProperty.call(data, selId) &&
+    triggers.some(([id]) => id === selId)) {
+  node = data[selId]; // use current data snapshot
+} else if (triggers.length) {
+  [selId, node] = triggers[0];
+} else {
+  alert("No Event Trigger node found to Test.");
+  return;
+}
 
                   // 6) Gather deviceIds from that trigger node
                   const deviceIds = Array.isArray(node.data.deviceIds)
@@ -5573,13 +5605,14 @@ logBtn.textContent = "Logging Disabled";
           window.editor.on('zoom', renderMinimap);
           setInterval(renderMinimap, 2000);
         }
-
         document.getElementById(CANVAS_ID).addEventListener('click', function(e){
           const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
           if (!df || !df.Home || !getHomeDataFrom(df)) return;
           const data = getHomeDataFrom(df);
           const nodes = Object.values(data);
           if (!nodes.length) return;
+
+          // Compute world bounds used by minimap
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
           nodes.forEach(n => {
             minX = Math.min(minX, n.pos_x);
@@ -5590,32 +5623,111 @@ logBtn.textContent = "Logging Disabled";
           minX -= 40; minY -= 40; maxX += 40; maxY += 40;
           const scaleX = W / Math.max(1, maxX - minX);
           const scaleY = H / Math.max(1, maxY - minY);
-          const scale = Math.min(scaleX, scaleY);
+          const scale  = Math.min(scaleX, scaleY);
+
+          // Click -> world coordinate (unscaled layout pixels)
           const x = e.offsetX / scale + minX;
           const y = e.offsetY / scale + minY;
+
+          const container = document.getElementById('drawflow');
           const precanvas = document.querySelector('.drawflow');
-          if (precanvas) {
-            let scaleDF = 1;
-            const transform = window.getComputedStyle(precanvas).transform;
-            if (transform && transform !== "none") {
-              const match = transform.match(/matrix\(([^)]+)\)/);
-              if (match) scaleDF = parseFloat(match[1].split(',')[0]);
+          const bg        = document.getElementById('drawflow-bg-image');
+          if (!container || !precanvas) return;
+
+          // Scrollbar toggle (default ON unless storage '0')
+          let scrollbarsOn = true;
+          try { scrollbarsOn = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_){}
+
+          if (scrollbarsOn) {
+            // === Pure-scroll mode with scale=1 and padding to include negative coords ===
+            // Neutralize transform/zoom so scroll reflects actual content geometry
+            if (window.editor) {
+              window.editor.canvas_x = 0;
+              window.editor.canvas_y = 0;
+              if (typeof window.editor.zoom === "number") window.editor.zoom = 1;
             }
-            const main = document.getElementById('drawflow');
-            const rect = main.getBoundingClientRect();
-            const targetX = -(x - rect.width/2/scaleDF) * scaleDF;
-            const targetY = -(y - rect.height/2/scaleDF) * scaleDF;
+            precanvas.style.transform = 'translate(0px, 0px) scale(1)';
+            if (bg) bg.style.transform = '';
+
+            // Compute padding to shift world so minX/minY are visible at scrollLeft=0/scrollTop=0
+            const padLeft = Math.max(0, Math.ceil(-minX + 40));
+            const padTop  = Math.max(0, Math.ceil(-minY + 40));
+            const padRight = 40;
+            const padBottom = 40;
+
+            // Content box size (excluding padding)
+            const baseW = Math.max(container.clientWidth,  Math.ceil((maxX - minX) + 200));
+            const baseH = Math.max(container.clientHeight, Math.ceil((maxY - minY) + 200));
+
+            // Apply geometry
+            precanvas.style.paddingLeft = padLeft + 'px';
+            precanvas.style.paddingTop  = padTop + 'px';
+            precanvas.style.paddingRight = padRight + 'px';
+            precanvas.style.paddingBottom = padBottom + 'px';
+            precanvas.style.width  = baseW + 'px';
+            precanvas.style.height = baseH + 'px';
+
+            // Match background to total scrollable area so it scrolls with the flow
+            const totalW = baseW + padLeft + padRight;
+            const totalH = baseH + padTop  + padBottom;
+            if (bg) {
+              bg.style.display = 'block';
+              bg.style.width  = totalW + 'px';
+              bg.style.height = totalH + 'px';
+            }
+
+            // Center the clicked world point. Displayed coord = pad + (x - minX).
+            const targetLeft = Math.max(0, Math.min((padLeft + (x - minX)) - (container.clientWidth  / 2), container.scrollWidth  - container.clientWidth));
+            const targetTop  = Math.max(0, Math.min((padTop  + (y - minY)) - (container.clientHeight / 2), container.scrollHeight - container.clientHeight));
+
+            container.scrollLeft = targetLeft;
+            container.scrollTop  = targetTop;
+            refreshConnectionsSoon();
+          } else {
+            // === Fallback: transform-centering (keeps current zoom) ===
+            // Read current zoom from transform
+            let scaleDF = 1;
+            const tf = window.getComputedStyle(precanvas).transform;
+            if (tf && tf !== "none") {
+              const m = tf.match(/matrix\(([^)]+)\)/);
+              if (m) {
+                const parts = m[1].split(',');
+                scaleDF = parseFloat(parts[0]);
+              }
+            }
+            const rect = container.getBoundingClientRect();
+            const targetX = -(x - rect.width  / (2 * scaleDF)) * scaleDF;
+            const targetY = -(y - rect.height / (2 * scaleDF)) * scaleDF;
+            if (window.editor) { window.editor.canvas_x = targetX; window.editor.canvas_y = targetY; }
             precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
+            if (bg) bg.style.transform = `translate(${targetX}px, ${targetY}px)`;
+            refreshConnectionsSoon();
           }
         });
 
         hookMinimapEvents();
+        // Keep connectors aligned while scrolling
+        try {
+          const __dfScrollEl = document.getElementById('drawflow');
+          if (__dfScrollEl && !__dfScrollEl.__linesScrollHooked) {
+            __dfScrollEl.__linesScrollHooked = true;
+            let __last=0; let __pending=false;
+            __dfScrollEl.addEventListener('scroll', function(){
+              const now = performance.now();
+              if (now - __last > 32) {
+                __last = now;
+                refreshConnectionsSoon();
+              } else if (!__pending) {
+                __pending = true;
+                setTimeout(()=>{ __pending=false; refreshConnectionsSoon(); }, 34);
+              }
+            }, { passive: true });
+          }
+        } catch(_){}
+        
         setTimeout(renderMinimap, 1000);
       });
-
-      // *********************************************
-      // Multi-select Node
-      window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', function() {
         window._multiSelectedNodes = new Set();
         let dragStart = null, dragMoving = false;
 
@@ -5641,7 +5753,7 @@ logBtn.textContent = "Logging Disabled";
 
                 // --- PATCH: Prevent drag if node is locked ---
                 if (node?.data?.locked) {
-                  // Ctrl/Cmd = toggle multi‑select on locked node
+                  // Ctrl/Cmd = toggle multi‑select on locked node (no dragging)
                   if (e.ctrlKey || e.metaKey) {
                     if (window._multiSelectedNodes.has(nodeId)) {
                       window._multiSelectedNodes.delete(nodeId);
@@ -5649,28 +5761,7 @@ logBtn.textContent = "Logging Disabled";
                       window._multiSelectedNodes.add(nodeId);
                     }
                     updateMultiSelectUI();
-                    e.stopPropagation();
-                    e.preventDefault();
-                    return;
                   }
-                  // Single‑select the locked node (no drag)
-                  window._multiSelectedNodes.clear();
-                  window._multiSelectedNodes.add(nodeId);
-                  updateMultiSelectUI();
-                  e.stopPropagation();
-                  e.preventDefault();
-                  return;
-                }
-                // --- end locked‑node patch ---
-
-                // --- Multi‑select handling (unlocked nodes) ---
-                if (e.ctrlKey || e.metaKey) {
-                  if (window._multiSelectedNodes.has(nodeId)) {
-                    window._multiSelectedNodes.delete(nodeId);
-                  } else {
-                    window._multiSelectedNodes.add(nodeId);
-                  }
-                  updateMultiSelectUI();
                   e.stopPropagation();
                   e.preventDefault();
                   return;
@@ -9872,6 +9963,97 @@ document.addEventListener("click", (e)=>{
   saveScheduleNode(activeNodeId, { activeTab: btn.dataset.tab });
 });
 
+</script>
+
+<script>
+// === FE: Minimap click → center viewport using world mapping (Scroll Bars ON) ===
+(function FE_MINIMAP_CENTER_WORLD(){
+  function isScrollbarMode(){
+    try{
+      const c=document.getElementById('drawflow'); if(!c) return false;
+      const cs=getComputedStyle(c);
+      return (cs.overflowX!=='hidden'||cs.overflowY!=='hidden');
+    }catch(_){ return false; }
+  }
+  function getZoom(){
+    const ed=window.editor;
+    if (ed && typeof ed.zoom==='number') return ed.zoom;
+    const pc = ed && (ed.precanvas || document.querySelector('.drawflow'));
+    if (pc){
+      const m = getComputedStyle(pc).transform;
+      const a = /matrix\(([^)]+)\)/.exec(m||"");
+      if (a){ const parts=a[1].split(','); const s=parseFloat(parts[0]||'1'); if (s) return s; }
+    }
+    return 1;
+  }
+  function getBoundsForMinimap(){
+    // Mirror renderMinimap's logic exactly
+    const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+    if (!df || !df.Home || !window.getHomeDataFrom) return null;
+    const data = window.getHomeDataFrom(df);
+    const nodes = Object.entries(data||{});
+    if (!nodes.length) return null;
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    nodes.forEach(([id,n])=>{
+      minX = Math.min(minX, n.pos_x);
+      minY = Math.min(minY, n.pos_y);
+      maxX = Math.max(maxX, n.pos_x + 170);
+      maxY = Math.max(maxY, n.pos_y + 80);
+    });
+    minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+    return {minX, minY, maxX, maxY};
+  }
+  function centerAtWorld(worldX, worldY){
+    const cont=document.getElementById('drawflow'); if(!cont) return;
+    const z=getZoom();
+    const maxX=Math.max(0, cont.scrollWidth - cont.clientWidth);
+    const maxY=Math.max(0, cont.scrollHeight- cont.clientHeight);
+    let targetLeft = Math.round(worldX * z - cont.clientWidth/2);
+    let targetTop  = Math.round(worldY * z - cont.clientHeight/2);
+    if (targetLeft<0) targetLeft=0; if (targetLeft>maxX) targetLeft=maxX;
+    if (targetTop<0)  targetTop=0;  if (targetTop>maxY)  targetTop=maxY;
+    cont.scrollLeft = targetLeft;
+    cont.scrollTop  = targetTop;
+    try{ if (typeof window.__fe_syncPanFromScroll==='function') window.__fe_syncPanFromScroll(); }catch(_){}
+    try{ if (window.editor && typeof window.editor.updateConnectionNodesAll==='function') window.editor.updateConnectionNodesAll(); }catch(_){}
+    try{ if (typeof window.renderMinimap==='function') window.renderMinimap(); }catch(_){}
+  }
+
+  window.addEventListener('DOMContentLoaded', function(){
+    const mmOld=document.getElementById('minimap-canvas'); if(!mmOld) return;
+    // Replace to clear prior handlers that may use translate-pan
+    const p=mmOld.parentNode, mm=mmOld.cloneNode(true); p.replaceChild(mm, mmOld);
+
+    mm.addEventListener('click', function(ev){
+      if (!isScrollbarMode()) return; // leave legacy behavior when scrollbars off
+      ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.();
+
+      const bounds = getBoundsForMinimap(); if(!bounds) return;
+      const W = mm.width || 240, H = mm.height || 140;
+      const rect = mm.getBoundingClientRect();
+      const xCanvas = (ev.clientX - rect.left) * (mm.width ? (mm.width/rect.width) : 1);
+      const yCanvas = (ev.clientY - rect.top)  * (mm.height? (mm.height/rect.height): 1);
+
+      const worldW = Math.max(1, bounds.maxX - bounds.minX);
+      const worldH = Math.max(1, bounds.maxY - bounds.minY);
+      const scaleX = W / worldW;
+      const scaleY = H / worldH;
+      const scale  = Math.min(scaleX, scaleY);
+
+      // renderMinimap anchors at top-left (no centering offsets), so world = min + canvas/scale
+      let worldX = bounds.minX + xCanvas / scale;
+      let worldY = bounds.minY + yCanvas / scale;
+
+      // Clamp inside world bounds
+      if (worldX < bounds.minX) worldX = bounds.minX;
+      if (worldY < bounds.minY) worldY = bounds.minY;
+      if (worldX > bounds.maxX) worldX = bounds.maxX;
+      if (worldY > bounds.maxY) worldY = bounds.maxY;
+
+      centerAtWorld(worldX, worldY);
+    }, true); // capture=true
+  });
+})();
 </script>
 </body>
 </html>
