@@ -759,6 +759,15 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				}
 			}
 			break
+        case "schedule":
+            // Pass-through trigger for Schedule node – just continue downstream
+            flowLog(fname, "In evaluateNode - schedule (cron=" + (node?.data?.cron ?: node?.data?.scheduleSpec?.cronText) + ")", "debug")
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
+
+
 
 		case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
@@ -1221,20 +1230,23 @@ def apiGetFile() {
                data: groovy.json.JsonOutput.toJson(globals ?: [])
         return
     }
+    
     if (lname == "fe_flow_vars.json") {
-        Map fmap = _ensureFlowVarsMap()
-        List flat = []
+        // Return map-of-arrays: { "<flow>": [ {name,type,value}, ... ] }
+        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
+        Map out = [:]
         fmap.each { k, arr ->
-            if (arr instanceof List) {
-                arr.each { v ->
-                    if (v?.name) flat << [flow: _bareFlow(k), name: v.name, type: v.type, value: v.value]
-                }
+            String bare = _bareFlow(k)
+            List lst = (arr instanceof List) ? (arr as List) : []
+            out[bare] = lst.findAll{ it?.name }.collect { v ->
+                [ name: v.name, type: (v.type ?: "String"), value: v.value ]
             }
         }
         render contentType: "application/json",
-               data: groovy.json.JsonOutput.toJson(flat)
+               data: groovy.json.JsonOutput.toJson(out)
         return
     }
+
     // -----------------------------------------------------------
 
     // original behavior for all other files
@@ -1381,7 +1393,9 @@ def apiListVariables() {
     def g = _ensureGlobalVarsList()
     def f = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
     render contentType: "application/json",
-           data: JsonOutput.toJson([globals: g, flows: f])}
+           data: JsonOutput.toJson([globals: g, flows: f])
+}
+
 def apiSaveVariable() {
     def json  = request?.JSON ?: params
     String scopeRaw = (json?.scope ?: 'global').toString()
@@ -1389,11 +1403,11 @@ def apiSaveVariable() {
     String name     = (json?.name  ?: '').toString()
     String type     = (json?.type  ?: 'String').toString()
     def    value    = json?.value
-
+	log.warn "scope: ${scope} - name: ${name} - type: ${type} - value: ${value}"
+	
     // Accept legacy 'scope: <flowName>' or modern 'scope: flow' + 'flow: <FlowName>'
     String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
-
-    log.warn "flowParam: ${flowParam} - scope: ${scopeRaw} - name: ${name} - type: ${type} - value: ${value}"
+    //log.warn "flowParam: ${flowParam} - scope: ${scopeRaw} - name: ${name} - type: ${type} - value: ${value}"
 
     if (!name) {
         render status:400, contentType:"application/json", data: '{"error":"Missing variable name"}'
@@ -1411,7 +1425,9 @@ def apiSaveVariable() {
             gvars << _mkVar(name, type, value)
         }
         state.globalVars = gvars
-        try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
+        _refreshVarCaches(null);
+        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
+try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
         render contentType:"application/json",
                data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"global" ])
         return
@@ -1437,7 +1453,9 @@ def apiSaveVariable() {
     fmap[key] = list
     state.flowVars = fmap
 
-    try { notifyVarsUpdated('flow', key) } catch (e) { log.warn "notifyVarsUpdated(flow, ${key}) failed: $e" }
+        _refreshVarCaches(key);
+        state.flowVarsMap = state.flowVars;
+try { notifyVarsUpdated('flow', key) } catch (e) { log.warn "notifyVarsUpdated(flow, ${key}) failed: $e" }
 
     render contentType:"application/json",
            data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"flow", flow:key ])
@@ -1454,6 +1472,10 @@ def apiDeleteVariable() {
         List g = _ensureGlobalVarsList()
         g.removeAll { (it?.name?.toString() ?: '') == name }
         state.globalVars = g
+        _refreshVarCaches(null);
+        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
+        _refreshVarCaches(null);
+        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
         try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
         render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'global'])
         return
@@ -1470,7 +1492,9 @@ def apiDeleteVariable() {
             fmap.remove(bare)
         }
         state.flowVars = fmap
-        try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
+        _refreshVarCaches(bare);
+        state.flowVarsMap = state.flowVars;
+try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
         render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
         return
     }
@@ -1525,6 +1549,28 @@ def loadVariables(fname) {
         if (v?.name) {
             flowObj.varCtx[v.name] = resolveVarValue(fname, v)
         }
+    }
+}
+
+// Refresh variable caches for all flows, or a specific bare flow name
+private void _refreshVarCaches(Object targetBare = null) {
+    try {
+        Map af = (state.activeFlows instanceof Map) ? (state.activeFlows as Map) : [:]
+        String tBare = (targetBare != null) ? targetBare.toString() : null
+        def keys = af?.keySet() ?: []
+        for (def k : keys) {
+            String fname = k?.toString()
+            def fobj = af[k]
+            // Only refresh real flows that have a .flow (skip FE_flowtrace.json etc.)
+            if (!(fobj instanceof Map) || !fobj.containsKey('flow')) continue
+            String bare  = _bareFlow(fname)
+            //log.debug "In _refreshVarCaches - fname: ${fname} - bare: ${bare} - tBare: ${tBare} - targetBare: ${targetBare}"
+            if (tBare == null || tBare == bare) {
+                try { loadVariables(fname) } catch (Throwable ex) { log.warn "loadVariables(${fname}) failed: ${ex}" }
+            }
+        }
+    } catch (Throwable e) {
+        log.warn "_refreshVarCaches failed: ${e}"
     }
 }
 
@@ -1596,10 +1642,18 @@ def subscribeToTriggers(String fname) {
 }
 
 def genericDeviceHandler(evt) {
-    state.activeFlows.each { fname, flowObj ->
+    // Snapshot keys to avoid ConcurrentModificationException if handleEvent mutates state
+    def keys = (state.activeFlows?.keySet() ?: []) as List
+    keys.each { fname ->
+        def flowObj = state.activeFlows[fname]
+        if (!flowObj) return
         def triggerNodes = getTriggerNodes(fname, evt)
         if (triggerNodes && triggerNodes.size() > 0) {
-            handleEvent(evt, fname)
+            try {
+                handleEvent(evt, fname)
+            } catch (e) {
+                log.error "[${fname}] genericDeviceHandler error: ${e}"
+            }
         }
     }
 }
@@ -1688,6 +1742,27 @@ def pollTimeTriggers() {
             }
         }
     }
+
+    // Also run any Schedule Trigger nodes that match the current minute via cron
+    state.activeFlows.each { fname, flowObj ->
+        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
+        dataNodes.each { nodeId, node ->
+            def cronExpr = null
+            try {
+                // Detect schedule nodes by type/name/data
+                if (node?.data?.cron) cronExpr = node.data.cron?.toString()
+                if (!cronExpr) return
+            } catch (ignored) { return }
+
+            if (_cronMatchesNow(cronExpr, now)) {
+                // Fire the flow from this schedule trigger
+                notifyFlowTrace(fname, nodeId, "eventTrigger")
+                def evt = [ name: "schedule", value: cronExpr, date: now ]
+                handleEvent(evt, fname)
+            }
+        }
+    }
+
 }
 
 def handleTimeTrigger(Map data) {
@@ -1774,7 +1849,20 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-    // Everything else: device, time, and variable triggers
+    
+    // Schedule cron (Schedule node): route directly by matching cron text
+    if (evt?.name == "schedule") {
+        return dataNodes.findAll { id, node ->
+            try {
+                node?.name == "schedule" && (
+                    (node?.data?.cron?.toString() == evt?.value?.toString()) ||
+                    (node?.data?.scheduleSpec?.cronText?.toString() == evt?.value?.toString())
+                )
+            } catch (ignored) { false }
+        }
+    }
+
+// Everything else: device, time, and variable triggers
     return dataNodes.findAll { id, node ->
         if (node.name != "eventTrigger") return false
 
@@ -1866,11 +1954,6 @@ void notifyFlowTrace(String flowFile, def nodeId, String nodeType) {
             data: JsonOutput.toJson([type:"end", flowFile: flowFile, runId: live.runId, ts: now()])
         )
     }
-}
-
-void saveFlow(fName, fData) {
-	String listJson = JsonOutput.toJson(fData) as String
-	uploadHubFile("${fName}",listJson.getBytes())
 }
 
 // ---- Notification support ----
@@ -2144,4 +2227,146 @@ def installCheck(){
     } else {
         //if(logEnable) log.info "App Installed OK"
     }
+}
+
+/**
+ * Auto-register schedules after flows are loaded
+ */
+def afterFlowLoad() {
+    state.activeFlows?.each { fname, fobj ->
+        }
+}
+
+/**
+ * Unified saveFlow: persists flow JSON, updates state, and only re-registers schedules if cron set changed.
+ */
+private List _collectCronsFromFlow(Object flowObj) {
+    try {
+        def nodes = (flowObj?.nodes instanceof Collection) ? flowObj.nodes : []
+        def out = []
+        nodes.each { n ->
+            try {
+                if ((n?.type ?: n?.name) == "schedule") {
+                    def c = n?.data?.cron
+                    if (c) out << c.toString().trim()
+                }
+            } catch (ignored) {}
+        }
+        return out.unique().sort()
+    } catch (e) {
+        log.warn "collectCronsFromFlow: ${e}"
+        return []
+    }
+}
+
+def saveFlow(String fname, Object flowObj) {
+    if(!state.activeFlows) state.activeFlows = [:]
+    def prevObj   = state.activeFlows[fname]
+    def prevCrons = _collectCronsFromFlow(prevObj)
+    def newCrons  = _collectCronsFromFlow(flowObj)
+
+    // Persist flow JSON to Hubitat File Manager (legacy behavior)
+    try {
+        String listJson = groovy.json.JsonOutput.toJson(flowObj) as String
+        uploadHubFile("${fname}", listJson.getBytes("UTF-8"))
+    } catch (e) {
+        log.warn "saveFlow: upload failed for ${fname}: ${e}"
+    }
+
+    // Update in-memory state
+    state.activeFlows[fname] = flowObj
+
+    // Rebind schedules only if the cron set changed (including transitions to/from empty)
+    if (prevCrons != newCrons) {
+        // If the new set is empty, this will unschedule and register nothing
+	}
+}
+
+/**
+ * Ensure the per-minute poller is set (used for HH:mm, DOW, and cron schedule nodes).
+ */
+def refreshAllSchedules() {
+    try {
+        unschedule("pollTimeTriggers")     // clear just the minute poller if present
+    } catch (ignored) {}
+    schedule("0 * * ? * * *", "pollTimeTriggers")
+}
+
+/**
+ * Remove a flow without disturbing global schedules.
+ */
+def removeFlow(fname) {
+    if(state.activeFlows?.containsKey(fname)) {
+        state.activeFlows.remove(fname)
+        // Keep the minute poller; no global unschedule here
+        refreshAllSchedules()  // ensures poller continues to run
+    }
+}
+
+/**
+ * Evaluate a 5-field cron (m h dom mon dow) against the current time.
+ * Accepts basic wildcards (*), lists (1,2,5), ranges (1-5), and steps (15 or 1-30/2).
+ * If a 6-field input (s m h dom mon dow) is given, seconds are ignored.
+ */
+private boolean _cronMatchesNow(String cronExpr, Date now = new Date()) {
+    if (!cronExpr) return false
+    def parts = cronExpr.trim().split(/\s+/)
+    if (parts.size() == 6) {
+        // Quartz style without year: [sec min hour dom mon dow] -> drop seconds
+        parts = parts[1..5]
+    } else if (parts.size() != 5) {
+        // Try to normalize 5, otherwise bail
+        return false
+    }
+    def tz = location?.timeZone ?: TimeZone.getDefault()
+    int m   = now.format('m', tz) as int
+    int h   = now.format('H', tz) as int
+    int dom = now.format('d', tz) as int
+    int mon = now.format('M', tz) as int
+    int dow = (now.format('u', tz) as int) % 7  // 0=Sunday per cron tradition (convert from ISO 1..7)
+    def fields = [parts[0], parts[1], parts[2], parts[3], parts[4]]
+    def nowVals = [m, h, dom, mon, dow]
+
+    for (int i=0; i<5; i++) {
+        if (!_cronFieldMatches(fields[i], nowVals[i], i)) return false
+    }
+    return true
+}
+
+private boolean _cronFieldMatches(String field, int value, int idx) {
+    // idx: 0=min(0-59), 1=hour(0-23), 2=dom(1-31), 3=mon(1-12), 4=dow(0-6 Sun=0)
+    field = field?.trim()
+    if (!field) return false
+    if (field == "*") return true
+
+    boolean ok = false
+    field.split(",").each { token ->
+        token = token.trim()
+        if (!token) return
+
+        String base = token
+        int step = 1
+        if (token.contains("/")) {
+            def sp = token.split("/")
+            base = sp[0]
+            step = (sp[1] as int)
+            if (step <= 0) step = 1
+        }
+
+        // Determine min/max per field
+        int minV = (idx==0)?0:(idx==1)?0:(idx==2)?1:(idx==3)?1:0
+        int maxV = (idx==0)?59:(idx==1)?23:(idx==2)?31:(idx==3)?12:6
+
+        if (base == "*" || base == "?") {
+            if ((value - minV) % step == 0) { ok = true }
+        } else if (base.contains("-")) {
+            def rng = base.split("-")
+            int a = (rng[0] as int), b = (rng[1] as int)
+            if (value >= a && value <= b && ((value - a) % step == 0)) { ok = true }
+        } else {
+            int v = (base as int)
+            if (v == value || (step>1 && value>=v && ((value - v) % step == 0))) { ok = true }
+        }
+    }
+    return ok
 }
