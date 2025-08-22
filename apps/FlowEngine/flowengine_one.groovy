@@ -1,2372 +1,10257 @@
-/**
- *  **************** Flow Engine One ****************
- *  Design Usage:
- *  Feel the Flow
- *
- *  Copyright 2025 Bryan Turcotte (@bptworld)
- *
- *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
- *
- *  Remember...I am not a professional programmer, everything I do takes a lot of time and research!
- *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
- *
- *  Paypal at: https://paypal.me/bptworld
- *-------------------------------------------------------------------------------------------------------------------
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
- * ------------------------------------------------------------------------------------------------------------------------------
- *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
- * ------------------------------------------------------------------------------------------------------------------------------
- *  Changes:
- *  1.0.0 - 08/19/25 - Initial Release
- */
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="icon" href="favicon.ico">
+  <meta charset="UTF-8">
+  <title>Flow Engine Editor</title>
+  <!-- ── BLOCKING Hubitat Credentials Prompt & Validation ── -->
+  <script>
 
-import groovy.json.JsonSlurper
-import groovy.json.JsonOutput
-state.globalVarsCache = state.globalVarsCache ?: []
-
-definition(
-    name: "Flow Engine One",
-    namespace: "BPTWorld",
-    author: "Bryan Turcotte",
-    description: "Feel the Flow - Unified App, Multiple Flows, Multiple JSONs",
-    category: "Convenience",
-    iconUrl: "", iconX2Url: "", iconX3Url: "",
-    importUrl: "",
-    oauth: true
-)
-
-preferences {
-    page name: "mainPage", title: "", install: true, uninstall: true
-}
-
-def mainPage() {
-    dynamicPage(name: "mainPage") {
-        installCheck()
-        if(state.appInstalled == 'COMPLETE') {
-            section(getFormat("header-green", " <b>Device Master List:</b>")) {}
-            section(" Master List", hideable: true, hidden: true) {
-                paragraph "Don't forget, if you add devices to your system after selecting all here.  You'll need to come back here and add the new devices, if you want to use them in Flow Engine."
-                input "masterDeviceList", "capability.*", title: "Master List of Devices Used in this App <small><abbr title='Only devices selected here can be used in Flow Engine. This can be edited at anytime.'><b>- INFO -</b></abbr></small>", required:false, multiple:true, submitOnChange:true
-            }
-
-            section(getFormat("header-green", " Flow Engine Editor Infomation")) {
-                paragraph "This app is used to receive flow data from your Flow Engine Editor."
-                paragraph "Copy and paste this info into the Flow Engine Editor - appId: ${state.appId} - token: ${state.token}"
-                paragraph "<enter><b>Do not share your token with anyone, especially in screenshots!</b></center>"
-                paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
-                paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
-                paragraph "<hr>"
-            }
-
-            section(getFormat("header-green", " Select Flow Files to Enable")) {
-                getFileList()
-                input "flowFiles", "enum", title: "Choose one or more Flow JSON files to Enable (to pause a Flow, simply remove from this list)", required: false, multiple: true, options: state.jsonList, submitOnChange: true
-                if (flowFiles) {
-					input "showFiles", "bool", title: "Show List of Selected Flows", description: "Selected Flow List", defaultValue:false, submitOnChange:true
-                    if(showFiles) {
-                    	paragraph "<small><b>Flows are enabled for:</b><br>${flowFiles.join('<br>')}</small>"
-					}
-                }
-            }
-
-            section(getFormat("header-green", " Variables (State)")) {
-				input "showVars", "bool", title: "Show List of Variables", description: "Show Variables", defaultValue:false, submitOnChange:true
-				if(showVars) {
-					// Source of truth
-					List gvars = (state.globalVars instanceof List) ? state.globalVars : []
-					Map  fmap  = (state.flowVarsMap instanceof Map) ? state.flowVarsMap :
-								 (state.flowVars   instanceof Map) ? state.flowVars   : [:]
-
-					StringBuilder html = new StringBuilder()
-
-					// Globals
-					html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Global Variables</div>"
-					if (gvars && gvars.size()) {
-						def sortedG = gvars.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
-						sortedG.each { v ->
-							html << "<div>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
-						}
-					} else {
-						html << "<div style='margin-left:8px;color:#999'>(no global variables)</div>"
-					}
-
-					html << "<hr style='margin:8px 0;border:0;border-top:1px solid #444;'>"
-
-					
-
-// Flow maps — show each flow’s list (ONLY flows that actually have vars)
-Map nonEmpty = _pruneEmptyFlowKeys(fmap)
-def flowKeys = nonEmpty?.keySet()?.collect{ it?.toString() }?.sort{ (it ?: '').toLowerCase() } ?: []
-html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Flow Variables</div>"
-if (!flowKeys) {
-    html << "<div style='margin-left:8px;color:#999'>(no flow variables)</div>"
-} else {
-    flowKeys.each { flowName ->
-        List lst = (nonEmpty[flowName] instanceof List) ? (nonEmpty[flowName] as List) : []
-        def showName = flowName?.toString()
-        html << "<div style='margin:6px 0 2px 0; text-decoration:underline;'>${_hx(showName)}</div>"
-        def sortedF = lst.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
-        if (sortedF && sortedF.size()) {
-            sortedF.each { v ->
-                html << "<div style='margin-left:16px'>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
-            }
-        } else {
-            html << "<div style='margin-left:16px;color:#999'>(none)</div>"
-        }
-    }
-}
-paragraph html.toString()
-				}
-            }
-
-            section(getFormat("header-green", " Per-Flow Logging")) {
-                if (settings?.flowFiles) {
-                    input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-                    if(logEnable) {
-                        def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
-                        input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
-                        if (perFlowLogEnabled) {
-                            paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
-                        }
-                    }
-                } else {
-                    paragraph "Select at least one Flow JSON file to enable per-flow logging."
-                }
-            }
-
-            section() {
-                paragraph getFormat("line")
-                paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
-            }
-        }
-    }
-}
-
-def installed() { 
-	state.globalVars = (state.globalVars instanceof List) ? state.globalVars : []
-    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
-    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
-    initialize()
-}
-
-def updated() {
-    // Ensure single source of truth for flow vars
-    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
-    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
-    initialize()
-}
-
-// ─── initialize() ─────────────────────────────────────────────────────────────
-private void initialize() {
-    if (!state.accessToken) {
-        createAccessToken()
-    }
-    state.appId  = app.id
-    state.token  = state.accessToken
-
-    // — clear everything once —
-    unsubscribe()
-    unschedule()
-
-	// State-first initialization (no file reads)
-	state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
-	state.flowVarsMap = (state.flowVarsMap instanceof Map ) ? state.flowVarsMap : [:]
-
-    // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
-    state.timeJobs = state.timeJobs ?: [:]
-    state.timeSubs = state.timeSubs ?: [:]
-
-    // — sunrise/sunset still by subscription —
-    subscribe(location, "sunrise", "handleLocationTimeEvent", [filterEvents:false])
-    subscribe(location, "sunset",  "handleLocationTimeEvent", [filterEvents:false])
-
-    // — ONE poller for all HH:mm & dayOfWeek triggers —
-    schedule("0 * * ? * * *", "pollTimeTriggers")
-
-    // — load your flows as before —
-    state.activeFlows = [:]
-    settings.flowFiles?.each { fname ->
-        loadAndStartFlow(fname)
-    }
-}
-
-// ─── clearFlowTimeTriggers() ───────────────────────────────────────────────────
-private void clearFlowTimeTriggers(String fname) {
-    // ensure the maps exist
-    state.timeJobs = state.timeJobs ?: [:]
-    state.timeSubs = state.timeSubs ?: [:]
-
-    // 1a) unschedule just this flow’s cron jobs by jobName
-    (state.timeJobs[fname] ?: []).each { jobName ->
-        unschedule(jobName)
-    }
-    state.timeJobs.remove(fname)
-
-    // 1b) unsubscribe just this flow’s sunrise/sunset hooks
-    (state.timeSubs[fname] ?: []).each { evtName ->
-        unsubscribe(location, evtName, "handleLocationTimeEvent")
-    }
-    state.timeSubs.remove(fname)
-}
-
-// --- REST API ENDPOINTS ---
-mappings {
-    path("/runFlow")         { action: [POST: "apiRunFlow" ] }
-    path("/testFlow")        { action: [POST: "apiTestFlow" ] }
-    path("/devices")         { action: [GET: "apiGetDevices"] }
-    path("/uploadFile")      { action: [POST: "apiUploadFile"] }
-    path("/listFiles")       { action: [GET: "apiListFiles"] }
-    path("/getFile")         { action: [GET: "apiGetFile"] }
-    path("/getModes")        { action: [POST: "exportModesToFile"] }
-    path("/activeFlows")     { action: [GET: "apiActiveFlows"] }
-	path("/forceReload") 	 { action: [POST: "apiForceReload" ] }
-	path("/selectFlow") 	 { action: [POST: "apiSelectFlow"] }
-	path("/deselectFlow") 	 { action: [POST: "apiDeselectFlow"] }
-	path("/selectFlowLog") 	 { action: [POST: "apiSelectFlowLogging"] }
-	path("/deselectFlowLog") { action: [POST: "apiDeselectFlowLogging"] }
-	path("/settings") 		 { action: [GET: "apiGetSettings"] }
-	path("/deleteFile") 	 { action: [GET: "apiDeleteFlow", DELETE: "apiDeleteFlow"] }
-	path("/saveVariable")    { action: [POST: "apiSaveVariable"] }
-	path("/deleteVariable")  { action: [POST: "apiDeleteVariable"] }
-	path("/variables") 		 { action: [GET: "apiListVariables"] }
-}
-
-// --- HANDLERS ---
-/* ===== Variable persistence in state (no JSON files) ===== */
-private String _bareFlow(Object flow) {
-    return (flow ?: '').toString().replaceAll(/(?i)\.json$/, '')
-}
-private List _ensureGlobalVarsList() {
-    if (!(state.globalVars instanceof List)) state.globalVars = []
-    return state.globalVars as List
-}
-private Map _ensureFlowVarsMap() {
-    if (!(state.flowVars instanceof Map)) state.flowVars = [:]
-    return state.flowVars as Map
-}
-private Map _mkVar(Object n, Object t, Object v) {
-    return [name:(n?:'').toString(), type:(t?:'String').toString(), value:v]
-}
-
-
-
-
-
-/** Remove any flow entries whose list is empty or has no named vars */
-private Map _pruneEmptyFlowKeys(Map fmapIn) {
-    Map fmap = (fmapIn instanceof Map) ? fmapIn : [:]
-    Map out = [:]
-    fmap.each { k, v ->
-        if (v instanceof List && v.any { it?.name }) {
-            out[k] = v
-        }
-    }
-    return out
-}
-
-/** Notify Editor that variables changed */
-private void notifyVarsUpdated(String scope, String flowName=null) {
+// === SAFE HELPERS (idempotent) ===
+if (typeof getHomeFrom !== 'function') {
+  function getHomeFrom(o) {
     try {
-        String flowFile = (scope == 'global') ? null : (_bareFlow(flowName ?: scope) + '.json')
-        sendLocationEvent(
-            name: "feTrace",
-            value: "varsUpdated",
-            descriptionText: "Vars updated for " + (flowFile ?: "GLOBAL"),
-            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now()])
-        )
-    } catch (e) {
-        log.warn "notifyVarsUpdated failed: $e"
-    }
+      if (!o || typeof o !== "object") return { data: {} };
+      const df = o.drawflow || o;
+      if (!df) return { data: {} };
+      if (df.Home && typeof df.Home === "object") return df.Home;
+      if (df.drawflow && df.drawflow.Home && typeof df.drawflow.Home === "object") return df.drawflow.Home;
+    } catch (_){}
+    return { data: {} };
+  }
 }
-def handleLocationTimeEvent(evt) {
-    state.activeFlows.each { fname, flowObj ->
-        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
-        def matches = dataNodes.findAll { id, node ->
-            node.name == "eventTrigger" &&
-            node.data.deviceId == "__time__" &&
-            node.data.attribute == "timeOfDay" &&
-            (
-                // Exactly matches event
-                (node.data.comparator == "==" && node.data.value == evt.name) ||
-                // Between window starts or ends on this event
-                (node.data.comparator == "between" &&
-                 node.data.value instanceof List &&
-                 (node.data.value[0] == evt.name || node.data.value[1] == evt.name)) ||
-                // Value is a single string and matches
-                (node.data.value == evt.name) ||
-                // Value is a list and contains event
-                (node.data.value instanceof List && node.data.value.contains(evt.name))
-            )
-        }
-        matches.each { id, node ->
-            flowLog(fname, "Firing eventTrigger from location time event (${evt.name})", "debug")
-            evaluateNode(fname, id, [ name: evt.name, value: evt.name ])
-        }
-    }
+if (typeof getHomeDataFrom !== 'function') {
+  function getHomeDataFrom(o) {
+    const h = getHomeFrom(o);
+    return (h && h.data && typeof h.data === "object") ? h.data : {};
+  }
+}
+if (typeof hasHomeData !== 'function') {
+  function hasHomeData(o) {
+    const h = getHomeFrom(o);
+    return !!(h && h.data && typeof h.data === "object");
+  }
 }
 
-def apiDeleteFlow() {
-    def fname = params.name
-    if (!fname) {
-        render status: 400, contentType: "application/json",
-               data: '{"error":"Missing file name"}'
-        return
-    }
-    if (!fname.toLowerCase().endsWith('.json')) {
-        fname += '.json'
-    }
-    deleteHubFile(fname)
-    updated()
-    flowLog(fname, "File has been deleted from File Manager", "info")
 
-    render contentType: "application/json",
-           data: groovy.json.JsonOutput.toJson([result: "File deleted"])
+    /* legacy popup removed */
+document.addEventListener('click', function(e){
+  const resetBtn = e.target && e.target.closest ? e.target.closest('#fe-cron-reset') : null;
+  if (!resetBtn) return;
+  try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+  // reset all inputs inside popup
+  const modal = document.getElementById('fe-cron-modal');
+  if (modal) {
+    modal.querySelectorAll('select, input').forEach(function(el){
+      if (el.tagName === 'SELECT') {
+        el.selectedIndex = 0;
+      } else if (el.type === 'checkbox' || el.type === 'radio') {
+        el.checked = false;
+      } else {
+        el.value = '';
+      }
+    });
+  }
+  // Clear preview too
+  const prev = document.getElementById('fe-cron-preview');
+  if (prev) prev.innerHTML = '';
+});
+</script>
+
+  <link rel="stylesheet" href="FE_drawflow-css.min.css">
+  <link rel="stylesheet" href="FE_drawflow-extra.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
+  <script src="FE_flowvars.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+
+<style>
+/* Keep scheduler popup within viewport */
+#fe-cron-overlay{ position:fixed; inset:0; background:#0009; z-index:10000; display:none; }
+#fe-cron-modal{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  max-width: min(900px, 92vw); width: min(900px, 92vw);
+  max-height: 88vh; overflow:auto; border-radius:14px; }
+@media (max-width: 720px){
+  #fe-cron-modal{ max-width: 96vw; width: 96vw; max-height: 86vh; }
 }
-
-def apiGetSettings() {
-    def keys = ["perFlowLogEnabled", "logEnable", "flowFiles"]
-    def out = [:]
-    keys.each { out[it] = settings[it] }
-    render contentType: "application/json", data: JsonOutput.toJson(out)
+</style>
+<style>
+/* Preview limited to 3 lines with scrollbar */
+#fe-cron-preview{
+  display:block;
+  line-height:1.3;
+  max-height: calc(1.3em * 3 + 8px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  white-space:normal;   /* so <br> works */
+  font-family: ui-monospace, Consolas, monospace;
 }
+</style>
 
-def apiSelectFlow() {
-    def fn = request?.JSON?.flow
-	def fname = fn + ".json"
+</head>
+<body>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const a = (localStorage.getItem('hubitatAppId') || '').trim();
+    const t = (localStorage.getItem('hubitatToken') || '').trim();
+    const ai = document.getElementById('hubitatAppId');
+    const ti = document.getElementById('hubitatToken');
+    if (ai) ai.value = a;
+    if (ti) ti.value = t;
+    if (typeof updateHubitatButtonStates === 'function') {
+      updateHubitatButtonStates();
+    }
+  } catch (_){}
+});
+</script>
+  <div id="headline">
+    <div>
+      <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.055</small></div>
+      <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
+      <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
+      <select id="hubitatFileDropdown"
+        style="width:400px; display:inline-block;"
+        title="Pick a flow to load…">
+        <option value="">Loading…</option>
+      </select>
+      <span id="flowName" style="display:inline-block; width:400px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
 
-    getFileList()
-    def validOptions = state.jsonList ?: []
-    if (!validOptions.contains(fname)) {
-		flowLog(fname, "Stopped - Flow file not found", "error")
-        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
-        return
+      <div class="inline-div">
+        <button id="activateFlowButton"
+          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:6px;">
+          Deactivated
+        </button>
+        <button id="loggingButton"
+          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          Log Disabled
+        </button>
+      </div>
+      <button id="toggleToolbarBtn"
+      style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
+    ▲ Hide Toolbar
+      </button>
+      <button id="toggleToolbar2Btn"
+      style="position:absolute;top:8px;right:15px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
+    ▲ Hide Node Controls
+      </button>
+    </div>
+  </div>
+  <div id="controls">
+    <div style="margin-bottom:5px;"></div>
+      <div class="inline-div">
+        <small>Device Options</small><br>
+        <button id="loadDevices" title="Load all devices from Hubitat">Reload</button>
+      </div>
+      <b> | </b>
+      <div class="inline-div">
+        <small>Flow Options</small><br>
+        <button id="sendFlow" title="Save current flow to Hubitat">Save</button>
+        <button id="saveAsFlow" title="Save current flow under a new name">Save As</button>
+        <button id="exportAnonFlow" title="Export a clean flow for sharing">Export</button>
+        <button id="renameFlow" title="Rename current flow and file">Rename</button>
+        <button id="deleteFlowAppBtn" title="Delete current Flow from Hubitat">Delete</button>
+        <button id="newFlow" title="Start a new flow from scratch">New</button>
+      </div>
+      <b> | </b>
+      <div class="inline-div">
+        <small><label for="gridBrightnessSlider">Background Image/Brightness</label></small><br>
+        <button id="bgImageBtn" type="button">Image</button>
+        <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
+        <b> | </b>
+        <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:120px;">
+      </div>
+      <b> | </b>
+      <div class="inline-div">
+        <small>Align selected Nodes and/or </small>
+        <label style="user-select:none;">
+          <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
+          <small></small>Snap to grid</small>
+        </label>
+        <br>
+        <button id="alignLeftBtn"  title="Align Left">Left</button>
+        <button id="alignRightBtn" title="Align Right">Right</button>
+        <button id="alignTopBtn"   title="Align Top">Top</button>
+        <button id="alignBottomBtn" title="Align Bottom">Bottom</button>
+        <button id="alignCenterBtn"   title="Align Center">Center</button>
+        <button id="alignMiddleBtn"   title="Align Middle">Middle</button>
+      </div>
+    </div>
+  </div>
+  <div id="nodeControls">
+    <div style="margin-bottom:5px;">
+      <small style="display:block; text-align:center;">
+        ------- Add Nodes -------
+      </small>
+      <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
+      <button id="addTrigger" title="Add an Event Trigger node">Event Trigger</button>
+      <button id="addCondition" title="Add a Condition node">Condition</button>
+      <button id="addDevice" title="Action (Device)">Action</button>
+      <b> | </b>
+      <button id="addComment" title="Comment/Note">Comment</button>
+      <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
+      <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
+      <button id="addDeviceToVar" title="Add a Devices to a Variable node">Devices to Variable</button>
+      <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
+      <button id="addNotification" title="Add a Notification node">Notification</button>
+      <button id="addRepeat" title="Add a Repeat node">Repeat</button>
+      <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
+      <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
+      <button id="addSetVariable" title="Add a Set Variable node">Set Variable</button>
+      <b> | </b>
+      <button id="undoBtn" title="Undo last change">Undo</button>
+      <button id="redoBtn" title="Redo">Redo</button>
+      <b> | </b>
+      <button id="statusButton" title="Toggle node status badges"
+        style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:1px;">
+        Status Enabled
+      </button>
+      <button id="toggleScrollbarsBtn" title="Toggle canvas scrollbars on/off"
+        style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:1px;">
+        Scroll Bars
+      </button>
+      <b> | </b>
+      <button id="fitViewBtn" title="Fit & Dock (Top-Left)">Fit & Dock</button> <button id="dockBtn" title="Dock to top-left (no zoom)">Dock</button>
+    </div>
+  </div>
+  <div id="main">
+    <div id="drawflow">
+      <img id="drawflow-bg-image" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; pointer-events:none;">
+    </div>
+    <div id="editor"><div id="flowStatusBar" style="margin:0 0 10px 0; padding:6px 10px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; font-size:14px;"><div id="flowStatusName" style="font-weight:bold; font-size:24px; margin-bottom:4px;white-space:nowrap; overflow:hidden;white-space:nowrap; overflow:hidden;"></div><div id="flowStatusFlags" style="font-size:11px; color:#ddd;"></div><div id="lastRunLine" style="font-size:11px; color:#e7e7e7; margin-top:3px;"></div></div><div id="nodeEditorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:10px 10px 6px 10px; margin-bottom:12px;">
+
+<div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
+        <b>Node Editor</b>
+      </div>
+      <div>
+        <button id="lastTraceBtn"
+          style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+          Last Trace
+        </button>
+        <button id="clearTraceBtn"
+          style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+          Clear Trace
+        </button>
+      </div>
+      <div id="nodeEditor">Right Click a node to edit</div>
+      <div>
+        <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
+        <small id="multiSelectTip-win" style="display:none;">Use 'ctrl-click' to select multiple Devices</small>
+      </div>
+      <div><hr></div>
+      </div>
+<!-- Flow Tester (collapsible) -->
+<div id="flowTesterPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+  <div id="flowTesterHeader"
+       style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
+    <span id="flowTesterArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+    Flow Tester
+  </div>
+  <div id="flowTesterContent" style="display:none; font-size:13px; padding:0 10px 12px 10px;">
+    <!-- content is injected by checkIfFlowIsInUse(...) -->
+  </div>
+</div>
+<div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+        <div id="variableInspectorHeader"
+            style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
+          <span id="variableInspectorArrow"
+                style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Variable Inspector
+        </div>
+        <div id="variableInspectorContent"
+            style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
+        </div>
+      </div>
+      <div><hr></div>
+      <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+        <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+          <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Add/Delete Variables
+        </div>
+        <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
+      </div>
+      <div id="logBox"
+          style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
+                  border-top:1px solid #333; padding-top:10px; font-family:monospace;
+                  font-size:12px;">
+          <div id="logHeader" style="position:sticky;top:0;z-index:2;background:#232a2d;padding-bottom:4px;">
+          <span style="display:inline-block;">Logs:</span>
+          <button id="clearLogBtn"
+                  style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
+                        background:#808080;color:#fff;border:none;display:inline-block;">
+            Clear Log
+          </button>
+        </div>
+        <div id="logLines"></div>
+
+      </div>
+    </div>
+  </div>
+  <div id="minimap-container"
+    style="position:fixed; bottom:24px; right:28px; width:240px; height:140px; background:#181d20cc; border-radius:12px; z-index:9999; box-shadow:0 2px 10px #0008; border:2px solid #444; overflow:hidden; cursor:pointer; display:none;">
+    <canvas id="minimap-canvas" width="240" height="140"></canvas>
+    <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">minimap</div>
+  </div>
+  <script src="FE_drawflow-js.min.js"></script>
+  <script src="FE_html2canvas.min.js"></script>
+  <script>
+    // === SAFE HELPERS to access drawflow.Home across legacy/new JSON shapes ===
+    function getHomeFrom(o) {
+      try {
+        if (!o || typeof o !== "object") return { data: {} };
+        const df = o.drawflow || o;
+        if (!df) return { data: {} };
+        if (df.Home && typeof df.Home === "object") return df.Home;
+        if (df.drawflow && df.drawflow.Home && typeof df.drawflow.Home === "object") return df.drawflow.Home;
+      } catch (_) {}
+      return { data: {} };
+    }
+    function getHomeDataFrom(o) {
+      const h = getHomeFrom(o);
+      return (h && h.data && typeof h.data === "object") ? h.data : {};
+    }
+    function hasHomeData(o) {
+      const h = getHomeFrom(o);
+      return !!(h && h.data && typeof h.data === "object");
     }
 
-    def existing = settings?.flowFiles ?: []
-    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
-
-    app.updateSetting("flowFiles", [type: "enum", value: newList])
-
-    updated()
-	flowLog(fname, "File has been selected and ENABLED in app", "info")
-    render contentType: "application/json", data: '{"result":"Flow selected and enabled in app"}'
-}
-
-def apiDeselectFlow() {
-    def fn = request?.JSON?.flow
-	def fname = fn + ".json"
-	
-    if (!fname) {
-        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
-        return
+    // 1) Fetch the list of flow-files from Hubitat
+    async function fetchHubitatFiles() {
+      const appId = (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
+      const token = (document.getElementById("hubitatToken")?.value || localStorage.getItem('hubitatToken') || '').trim();
+      if (!appId || !token) {
+        console.error("Missing App ID or Token");
+        return [];
+      }
+      const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      return Array.isArray(body.files)
+        ? body.files.map(f => f.replace(/\.json$/i, ""))
+        : [];
     }
 
-    getFileList()
-    def validOptions = state.jsonList ?: []
-    def existing = settings?.flowFiles ?: []
-    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+    // 2) Globally-available: repopulate the dropdown
+    async function reloadFlowDropdown(selected) {
+      const dropdown = document.getElementById("hubitatFileDropdown");
+      if (!dropdown) return;
 
-    app.updateSetting("flowFiles", [type: "enum", value: newList])
-    updated()
-	flowLog(fname, "File has been de-selected and DISABLED in app", "info")
-    render contentType: "application/json", data: '{"result":"Flow deselected in app"}'
-}
+      dropdown.style.display = "inline-block";
+      dropdown.innerHTML = "<option value=''>Pick a Flow…</option>";
+      let files = [];
+      try {
+        files = await fetchHubitatFiles();
+      } catch (err) {
+        console.error("Error fetching flow list:", err);
+        return;
+      }
+      files.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value       = f;
+        opt.textContent = f;
+        dropdown.appendChild(opt);
+      });
 
-def apiSelectFlowLogging() {
-    def fn = request?.JSON?.flow
-	def fname = fn + ".json"
+      const focus = selected.replace(/\.json$/i, "");
+      dropdown.value = focus;
 
-    getFileList()
-    def validOptions = state.jsonList ?: []
-    if (!validOptions.contains(fname)) {
-		flowLog(fname, "Stopped - Flow file not found", "error")
-        render status: 404, contentType: "application/json", data: '{"error":"Flow file not found"}'
-        return
+      const token = document.getElementById("hubitatToken")?.value?.trim() || localStorage.getItem('hubitatToken') || "";
+      const appId = document.getElementById("hubitatAppId")?.value?.trim() || localStorage.getItem('hubitatAppId') || "";
+
+      if (focus) {
+        checkIfFlowIsInUse(focus, appId, token);
+      }
     }
 
-    def existing = settings?.perFlowLogEnabled ?: []
-    def newList = (existing + fname).unique().findAll { validOptions.contains(it) }
-    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
-    updated()
-	flowLog(fname, "Logging has been enabled in app", "info")
-    render contentType: "application/json", data: '{"result":"Logging enabled in app"}'
-}
+    // 3) Unified flow selection loader
+    async function onFlowSelected(file) {
+      if (!file) return;
 
-def apiDeselectFlowLogging() {
-    def fn = request?.JSON?.flow
-	def fname = fn + ".json"
-	
-    if (!fname) {
-        render status: 400, contentType: "application/json", data: '{"error":"Missing flow filename"}'
-        return
-    }
+      // Save as last opened
+      localStorage.setItem('lastFlow', file);
 
-    getFileList()
-    def validOptions = state.jsonList ?: []
-    def existing = settings?.perFlowLogEnabled ?: []
-    def newList = existing.findAll { it != fname && validOptions.contains(it) }
+      // --- Set current flow file for variables ---
+      if (window.flowVars?.setCurrentFlowVars) {
+        await window.flowVars.setCurrentFlowVars(file);
+      } else if (window.flowVars?.setCurrentFlowFile) {
+        await window.flowVars.setCurrentFlowFile(file);
+      } else if (window.flowVars) {
+        window.flowVars._currentFlowFile = file;
+      }
 
-    app.updateSetting("perFlowLogEnabled", [type: "enum", value: newList])
-    updated()
-	flowLog(fname, "Logging has been disabled in app", "info")
-    render contentType: "application/json", data: '{"result":"Logging disabled in app"}'
-}
+      const appId = (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
+      const token = (document.getElementById("hubitatToken")?.value || localStorage.getItem('hubitatToken') || '').trim();
+      if (!appId || !token) {
+        alert("Missing Hubitat App ID or Token.");
+        return;
+      }
 
-def apiForceReload() {
-    flowLog("APP", "In apiForceReload", "debug")  // was: flowLog(fname, ...)
-    updated()
-    render contentType: "application/json", data: '{"result":"App reloaded (updated() called)"}'
-}
+      // --- Load flow JSON (with auto-fix fallback) ---
+      const fullName = file.endsWith(".json") ? file : file + ".json";
+      let jsonText = "";
+      try {
+        jsonText = await fetchHubitatFileContent(fullName);
+      } catch (e) {
+        alert("Failed to load flow: " + e.message);
+        return;
+      }
 
-def recheckAllTriggers() {
-    state.activeFlows?.each { fname, flowObj ->
-        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
-        dataNodes.each { id, node ->
-            if (node.name == "eventTrigger" && node.data.deviceId == "__time__") {
-                def attr         = node.data.attribute
-                def expected     = node.data.value
-                def comparator   = node.data.comparator
-                def curValue
-                if (attr == "currentTime") {
-                    curValue = new Date().format("HH:mm", location.timeZone)
-                } else if (attr == "dayOfWeek") {
-                    curValue = new Date().format("EEEE", location.timeZone)
-                } else {
-                    return
-                }
-                if (evaluateComparator(curValue, expected, comparator)) {
-                    // Fire just this node
-                    evaluateNode(fname, id, [ name: attr, value: curValue ])
-                }
-            }
-        }
-    }
-}
-
-def apiRunFlow() {
-	flowLog(fname, "---------- In apiRunFlow ----------", "info")
-    def json = request?.JSON
-    def fname = json?.flow
-    if (!fname || !state.activeFlows[fname]) {
-        render status: 404, data: '{"error":"Flow not found"}'
-        return
-    }
-    
-    def flowObj = state.activeFlows[fname]
-    def flow = flowObj.flow
-    if (!flow) {
-        render status: 404, data: '{"error":"Flow not loaded"}'
-        return
-    }
-    
-    def dataNodes = flow.drawflow?.Home?.data ?: [:]
-    def triggered = 0
-    dataNodes.each { id, node ->
-        if (node.name == "eventTrigger") {
-			def expectedValue = node.data.value
-			def expectedPattern = node.data.clickPattern
-			def eventValue = (evt instanceof Map) ? evt.value : evt?.value
-			def eventPattern = (evt instanceof Map) ? evt.pattern : null
-
-			// Strict value match (if set)
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return
-			}
-			// Strict pattern match (if set)
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return
-			}
-
-			// If matches, proceed as normal
-			evaluateNode(fname, id, [name: "apiRunFlow", value: "API Run", pattern: eventPattern])
-			if(!triggered) triggered = 0
-			triggered++
-		}
-    }
-    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([result: "Flow triggered", triggered: triggered])
-}
-
-def apiTestFlow() {
-    def json   = request?.JSON
-    def fname  = json?.flow
-    def value  = json?.value?.toString()
-    def dryRun = (json?.dryRun as Boolean) ?: false
-
-    if (!fname || !state.activeFlows[fname]) {
-        render status: 404, contentType: "application/json",
-               data: JsonOutput.toJson([ error: "Flow not found" ])
-        return
-    }
-    flowLog(fname, "----- In apiTestFlow - dryRun: ${dryRun} -----", "info")
-
-    // Persist dry‑run flag for evaluateNode()
-    state.activeFlows[fname].testDryRun = dryRun
-
-    def flowObj   = state.activeFlows[fname]
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-
-    dataNodes.each { nodeId, node ->
-        if (node.name != "eventTrigger") return
-
-        // gather one or more deviceIds (or "__time__" or "__variable__")
-        def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-                         node.data.deviceIds :
-                         [ node.data.deviceId ]
-
-        devIds.each { devId ->
-            if (devId == "__time__") {
-                // (existing time test code)
-                Date testDate = new Date()
-                def parts = value.tokenize(':')
-                if (parts.size() == 2) {
-                    testDate.hours   = parts[0].toInteger()
-                    testDate.minutes = parts[1].toInteger()
-                }
-                def evt = [
-                    name:           node.data.attribute,     // "timeOfDay"
-                    value:          node.data.value,         // e.g. [sunrise, 20:00]
-                    date:           testDate,
-                    descriptionText:"Simulated time trigger at ${value}"
-                ]
-                handleEvent(evt, fname)
-            }
-            else if (devId == "__variable__") {
-                // New: Simulate a variable event for testing
-                def evt = [
-                    name: node.data.variableName ?: node.data.varName ?: "variable",
-                    value: value,
-                    descriptionText:"Simulated variable trigger: ${value}"
-                ]
-                handleEvent(evt, fname)
-            }
-            else {
-                // (existing device test logic)
-                def device = getDeviceById(devId)
-                if (!device) return
-
-                def evt = [
-                    device:         device,
-                    name:           node.data.attribute,
-                    value:          value,
-                    descriptionText:"Simulated ${node.data.attribute} → ${value}"
-                ]
-                handleEvent(evt, fname)
-            }
-        }
-    }
-
-    render contentType: "application/json",
-           data: JsonOutput.toJson([
-               result: "Flow ${fname} triggered${dryRun ? ' (dry run)' : ''}",
-               dryRun: dryRun
-           ])
-}
-
-// ---- Main Event Handler ----
-def handleEvent(evt, fname) {
-	flowLog(fname, "In handleEvent - evt: ${evt}", "debug")
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
-
-    // ── If already running, cancel it ──────────────────────────────────────
-    if (flowObj.isRunning) {
-        flowLog(fname, "----- Cancelling previous run; starting new -----", "warn")
-
-        // 1) Cancel any scheduled helpers
-        unschedule("clearTapTracker")
-        unschedule("clearHoldTracker")
-
-        // 2) Emit a cancel trace
+      let data;
+      try {
+        data = typeof jsonText === "string" ? JSON.parse(jsonText) : jsonText;
+      } catch (err) {
+        const fixed = String(jsonText)
+          .replace(/^\uFEFF/, "")
+          .replace(/\/\/.*$/gm, "")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/,\s*([}\]])/g, "$1")
+          .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
+          .replace(/'([^']*)'/g, '"$1"')
+          .replace(/\bNaN\b/g, "null")
+          .replace(/\bInfinity\b/g, "null");
         try {
-            notifyFlowTrace(fname, null, "cancelled")
-        } catch (ex) {
-            log.warn "[${fname}] Failed to write cancel‑trace: $ex"
+          data = JSON.parse(fixed);
+          logAction(`🔧 Auto-fixed JSON on load for "${fullName}"`, "info");
+        } catch (err2) {
+          alert("❌ JSON load failed even after auto-fix:<br>" + err2.message);
+          return;
+        }
+      }
+
+      // --- Import into editor / refresh UI ---
+      try {
+        if (window.editor?.import) {
+          editor.import(data);
+          try { const __vp = __fe_extractViewport(data); if (__vp) __fe_applyViewport(__vp); } catch(_) {}
+
+          if (Array.isArray(window.devices)) {
+            patchFlowWithDeviceLabels(data, window.devices);
+          }
+          // make the inspector show this flow's vars right now
+          try { await refreshVarsAndInspector(); } catch (_) {}
+        } else {
+          await restoreFlowFromJson(data); // this path already refreshes inside restoreFlowFromJson
         }
 
-        // 3) Clear per‑run trackers
-        flowObj.tapTracker?.clear()
-        flowObj.holdTracker?.clear()
+        document.getElementById("flowName").textContent = file;
+        try { var tn=document.getElementById("flowStatusName"); if(tn){ tn.textContent = file.replace(/\.json$/i,""); fitFlowName(); } } catch(_){ }
+        markFlowNeedsSave(false);
+        logAction(`Loaded “${file}” from Hubitat.`, "success");
+      } catch (e) {
+        alert("❌ Failed to render flow: " + e.message);
+        logAction("Error importing flow: " + e, "error");
+        return;
+      }
+
+      // --- Live status panel ---
+      try { checkIfFlowIsInUse(file, appId, token); } catch (_) {}
     }
 
-    // ── Mark running & reset trackers ──────────────────────────────────────
-    flowObj.isRunning   = true
-    flowObj.tapTracker  = [:]
-    flowObj.holdTracker = [:]
+    // 4) Bind dropdown change to unified loader
+    document.getElementById("hubitatFileDropdown").addEventListener("change", async function () {
+      const file = this.value.trim();
+      await onFlowSelected(file);
+    });
 
-    // ── Locate & fire trigger nodes ────────────────────────────────────────
-    def triggerNodes = getTriggerNodes(fname, evt)
-    triggerNodes.each { triggerId, triggerNode ->
-        def pattern = triggerNode.data.clickPattern ?: "single"
-        // UI‑test override
-        if (evt instanceof Map && evt.pattern && evt.pattern == pattern) {
-            flowLog(fname, "Forcing '${pattern}' trigger (UI Test)", "debug")
-            evaluateNode(fname, triggerId, evt)
-            return
-        }
-        switch(pattern) {
-            case "single":
-                flowLog(fname, "Single‑tap trigger", "debug")
-                evaluateNode(fname, triggerId, evt)
-                break
-            case "double":
-            case "triple":
-                // … your existing tap/hold logic here …
-                handleTapHoldPattern(fname, triggerId, triggerNode, evt)
-                break
-            default:
-				flowLog(fname, "----- Trigger -  triggerId: ${triggerId} = evt: ${evt} -----", "info")
-                evaluateNode(fname, triggerId, evt)
-        }
+    // 5) Auto-populate dropdown and optionally load last flow on page load (hardened)
+    // --- Helpers: wait for editor & validate flow JSON ---
+    async function waitForEditorReady(maxMs = 6000) {
+      const start = Date.now();
+      while (Date.now() - start < maxMs) {
+        if (window.editor && typeof window.editor.import === 'function') return true;
+        await new Promise(r => setTimeout(r, 60));
+      }
+      return false;
     }
 
-    // ── End‑of‑flow cleanup ────────────────────────────────────────────────
-    try {
-        notifyFlowTrace(fname, null, "endOfFlow")
-    } catch (ex) {
-        log.warn "[${fname}] Failed to write end‑of‑flow trace: $ex"
-    } finally {
-        flowObj.isRunning = false
-    }
-}
-
-// ---- Node Evaluation (ALL node types, with delay logic preserved) ----
-def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
-	testDryRun = state.activeFlows[fname].testDryRun
-	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${testDryRun}", "info")
-    def flowObj = state.activeFlows[fname]
-    if (!visited) visited = new HashSet()
-			if (visited.contains(nodeId)) return null
-    visited << nodeId
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    def node = dataNodes[nodeId]
-    if (!node) return null
-	
-	try {
-		notifyFlowTrace(fname, nodeId, node?.name)
-	} catch (e) {
-		log.warn "Failed to write flow trace: $e"
-	}
-
-    switch (node.name) {
-		case "eventTrigger":
-			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
-
-			// ── 1) Comparator & expected value ───────────────────────────────────
-			def comparator = node.data.comparator
-			def expected   = resolveVars(fname, node.data.value)
-
-			// ── 2) AND/OR logic defaulting to OR ────────────────────────────────
-			def logic = (node.data.logic?.toString() ?: "or").toLowerCase()
-
-			// ── 3) Build list of device IDs ─────────────────────────────────────
-			List<String> devIds = []
-			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-				devIds = node.data.deviceIds.collect { it.toString() }
-			} else if (node.data.deviceId) {
-				devIds = [ node.data.deviceId.toString() ]
-			} else {
-				flowLog(fname, "eventTrigger: no deviceId(s) defined", "warn")
-				return
-			}
-
-			// ── 4) Strict value & pattern matching ──────────────────────────────
-			def expectedValue   = node.data.value
-			def expectedPattern = node.data.clickPattern
-			def eventValue      = (evt instanceof Map) ? evt.value        : evt?.value
-			def eventPattern    = (evt instanceof Map) ? evt.pattern      : null
-
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return
-			}
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return
-			}
-
-			// ── 5) DEVICE‑FILTER & AND‑MODE ONLY FOR REAL EVENTS ────────────────
-			if (!(evt instanceof Map)) {
-				// 5a) Figure out which device actually fired
-				String incomingId = null
-				if (evt.deviceId != null) {
-					incomingId = evt.deviceId.toString()
-				}
-				// map sunrise/sunset → "__time__"
-				else if (evt?.name in ["sunrise","sunset"]) {
-					incomingId = "__time__"
-				}
-
-				// 5b) Drop anything not in our devIds
-				if (!(incomingId in devIds)) {
-					flowLog(fname, "eventTrigger: event from ${incomingId} not in ${devIds}", "debug")
-					return
-				}
-
-				// 5c) If AND‑mode, require ALL devices’ currentValues to match
-				if (logic in ["and","all"]) {
-					boolean allMatch = devIds.every { devId ->
-						def device = getDeviceById(devId)
-						def actual = device ? device.currentValue(node.data.attribute) : null
-						evaluateComparator(actual, expected, comparator ?: '==')
-					}
-					flowLog(fname, "eventTrigger AND across ${devIds} ⇒ ${allMatch}", "debug")
-					if (!allMatch) {
-						return
-					}
-				}
-			}
-
-			// ── 6) Time‑of‑day “between” filter (only if __time__ is in devIds) ─
-			if ("__time__" in devIds &&
-				node.data.attribute == "timeOfDay" &&
-				comparator?.toLowerCase() == "between") {
-
-				Date now      = (evt.date as Date) ?: new Date()
-				int actualMin = now.hours * 60 + now.minutes
-
-				List bounds = (node.data.value instanceof List)
-					? node.data.value
-					: [ node.data.value.toString() ]
-
-				if (bounds.size() == 2) {
-					int lowMin  = toTimeMinutes(bounds[0].toString())
-					int highMin = toTimeMinutes(bounds[1].toString())
-					flowLog(fname, "timeOfDay between → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
-					if (!(actualMin >= lowMin && actualMin <= highMin)) {
-						flowLog(fname, "timeOfDay outside range, skipping", "debug")
-						return
-					}
-				} else {
-					log.warn "timeOfDay 'between' needs two values, got ${bounds}"
-					return
-				}
-			}
-
-			// ── 7) All checks passed—fire downstream ──────────────────────────────
-			node.outputs?.each { outName, outObj ->
-				outObj.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
-				}
-			}
-			break
-        case "schedule":
-            // Pass-through trigger for Schedule node – just continue downstream
-            flowLog(fname, "In evaluateNode - schedule (cron=" + (node?.data?.cron ?: node?.data?.scheduleSpec?.cronText) + ")", "debug")
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-
-
-		case "condition":
-			flowLog(fname, "In evaluateNode - condition", "debug")
-			try {
-				def attr       = node.data.attribute
-				def comparator = node.data.comparator?.toLowerCase()
-				def expected   = resolveVars(fname, node.data.value)
-				def logic      = (node.data.logic?.toString() ?: "or").toLowerCase()
-				boolean passes = false
-
-				// 1) TIME‑RANGE (“between”) always uses real clock
-				if ((attr in ["currentTime","timeOfDay"]) && comparator == "between") {
-					Date now      = new Date()
-					int  actualMin = now.hours * 60 + now.minutes
-
-					List bounds = (node.data.value instanceof List)
-								  ? node.data.value
-								  : [ node.data.value?.toString() ]
-					if (bounds.size() == 2) {
-						int lowMin  = toTimeMinutes(bounds[0].toString())
-						int highMin = toTimeMinutes(bounds[1].toString())
-						passes = (actualMin >= lowMin && actualMin <= highMin)
-						flowLog(fname, "---------- In evaluateNode-condition1 -------start", "info")
-						flowLog(fname, "In evaluateNode-condition1: actualMin: ${actualMin} | lowMin: ${lowMin} | highMin: ${highMin} | passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition1 ---------end", "info")
-					} else {
-						log.warn "Condition 'between' on ${attr} needs two values, got ${bounds}"
-						passes = false
-					}
-				}
-				// 2) incomingValue override for all other comparators
-				else if (incomingValue != null) {
-					passes = evaluateComparator(incomingValue, expected, comparator)
-					flowLog(fname, "---------- In evaluateNode-condition2 -------start", "info")
-					flowLog(fname, "In evaluateNode-condition2: incomingValue: ${incomingValue} | expected: ${expected} | comparator: ${comparator} | passes: ${passes}", "info")
-					flowLog(fname, "---------- In evaluateNode-condition2 ---------end", "info")
-				}
-				// 3) Multi‑device AND/OR logic for real attributes
-				else {
-					def devIds = []
-					if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-						devIds = node.data.deviceIds
-					} else if (node.data.deviceId) {
-						devIds = [ node.data.deviceId ]
-					}
-
-					if (logic in ["and","all"]) {
-						flowLog(fname, "---------- In evaluateNode-condition-and -------start", "info")
-						passes = devIds.every { devId ->
-							def device = getDeviceById(devId)
-							def actual = device ? device.currentValue(attr) : null
-							flowLog(fname, "In evaluateNode-condition-and: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
-							evaluateComparator(actual, expected, comparator ?: '==')
-						}
-						flowLog(fname, "In evaluateNode-condition-and: passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition-and ---------end", "info")
-					} else {
-						flowLog(fname, "---------- In evaluateNode-condition-or -------start", "info")
-						passes = devIds.any { devId ->
-							def device = getDeviceById(devId)
-							def actual = device ? device.currentValue(attr) : null
-							flowLog(fname, "In evaluateNode-condition-or: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
-							evaluateComparator(actual, expected, comparator ?: '==')
-						}
-						flowLog(fname, "In evaluateNode-condition-or: passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition-or -------end", "info")
-					}
-				}
-
-				// 4) Route based on result
-				if (passes) {
-					node.outputs?.output_1?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				} else {
-					node.outputs?.output_2?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				}
-			} catch (e) {
-				log.error getExceptionMessageWithLine(e)
-			}
-			break
-		
-        case "device":
-			flowLog(fname, "In evaluateNode - device (dryRun=${testDryRun})", "debug")
-			// collect device IDs
-			def devIds = []
-			if (node.data.deviceIds instanceof List) devIds = node.data.deviceIds
-			else if (node.data.deviceIds)          devIds = [node.data.deviceIds]
-			else if (node.data.deviceId)           devIds = [node.data.deviceId]
-
-			def cmd = resolveVars(fname, node.data.command)
-			def val = resolveVars(fname, node.data.value)
-
-			if (cmd == "toggle") {
-				flowLog(fname, "In evaluateNode - toggle (dryRun=${testDryRun})", "debug")
-				devIds.each { devId ->
-					def device = getDeviceById(devId)
-					if (device && device.hasCommand("on") && device.hasCommand("off")) {
-						def currentVal = device.currentValue("switch")
-						if (currentVal == "on") {
-							device.off()
-						} else {
-							device.on()
-						}
-					} else {
-						flowLog(fname, "Device does not support on/off toggle: $devId", "warn")
-					}
-				}
-				// continue downstream
-				node.outputs?.output_1?.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
-				}
-			} else {
-				devIds.each { devId ->
-					def device = getDeviceById(devId)
-					if (device && cmd) {
-						if (val != null && val != "") {
-							if(testDryRun) {
-								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd} - val: {val}", "debug")
-							} else {
-								if (cmd == "setLevel" || cmd == "setColorTemperature") {
-									device."${cmd}"(val.toInteger())
-								} else {
-									device."${cmd}"(val)
-								}
-							}
-						} else {
-							if(testDryRun) {
-								flowLog(fname, "Dry Run: device: ${device} - cmd: ${cmd}", "debug")
-							} else {
-								device."${cmd}"()
-							}
-						}
-					}
-				}
-				// continue downstream
-				node.outputs?.output_1?.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
-				}
-			}
-			return
-
-        case "notification":
-			flowLog(fname, "In evaluateNode - notification (dryRun=${testDryRun})", "debug")
-			if(testDryRun) {
-				flowLog(fname, "Dry Run: fname: ${fname} - node.data: ${node.data} - evt: {evt}", "debug")
-			} else {
-				sendNotification(fname, node.data, evt)
-			}
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-			}
-            break
-
-        case "delayMin":
-			flowLog(fname, "In evaluateNode - delayMin", "debug")
-            def min = (node.data.delayMin ?: 1) as Integer
-            pauseExecution(min * 60000)
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-        case "delay":
-		flowLog(fname, "In evaluateNode - delayMs: ${node.data.delayMs} - node: ${node.data}", "debug")
-            def ms = (node.data.ms ?: 1000) as Integer
-            pauseExecution(ms)
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-        case "setVariable":
-			flowLog(fname, "In evaluateNode - setVariable (dryRun=${testDryRun})", "debug")
-			def varName = resolveVars(fname, node.data.varName)
-			def varValue = resolveVars(fname, node.data.varValue)
-			if(testDryRun) {
-				flowLog(fname, "Dry Run: fname: ${fname} - varName: ${varName} - varValue: {varValue}", "debug")
-			} else {
-				setVariable(fname, varName, varValue)
-			}
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-        case "saveDeviceState":
-			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
-            def devId = node.data.deviceId
-            if (devId) {
-                def device = getDeviceById(devId)
-                if (device) {
-                    def devState = [:]
-                    device.supportedAttributes.each { attr ->
-                        try {
-                            def val = device.currentValue(attr.name)
-                            if (val != null) devState[attr.name] = val
-                        } catch (e) {}
-                    }
-					if(testDryRun) {
-						flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
-					} else {
-						flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
-						flowObj.savedDeviceStates[devId] = devState
-					}
-                }
-            }
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-        case "restoreDeviceState":
-			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${testDryRun})", "debug")
-			def devId = node.data.deviceId
-			if (devId) {
-				def device = getDeviceById(devId)
-				def devState = flowObj.savedDeviceStates?.get(devId)
-				if(testDryRun) {
-					flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
-				} else {
-					if (device && devState) {
-						devState.each { attrName, attrValue ->
-							try {
-								def cmd = "set${attrName.capitalize()}"
-								if (device.hasCommand(cmd)) {
-									device."${cmd}"(attrValue)
-								} else if (attrName == "switch" && device.hasCommand(attrValue)) {
-									device."${attrValue}"()
-								}
-							} catch (e) {}		
-						}
-					}
-				}
-			}
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
-
-        case "notMatchingVar":
-			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
-			// 1) Resolve variable name
-			def varName = resolveVars(fname, node.data.varName)
-			// 2) Gather device IDs
-			def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ?
-						  node.data.deviceIds :
-						  (node.data.deviceId ? [node.data.deviceId] : [])
-			// 3) Filter devices by the “Not” condition
-			def attr       = node.data.attribute
-			def comparator = node.data.comparator
-			def expected   = resolveVars(fname, node.data.value)
-			def newLines   = []
-			devIds.each { devId ->
-				def device = getDeviceById(devId)
-				if (device) {
-					def curVal = device.currentValue(attr)
-					// only include when **NOT** matching
-					if (!evaluateComparator(curVal, expected, comparator)) {
-						def name = device.displayName ?: device.name
-						newLines << "${name}:${curVal}"
-					}
-				}
-			}
-			// 4) Merge or overwrite
-			def appendMode = node.data.append as Boolean
-			def existing   = flowObj.vars?.get(varName)?.toString() ?: ""
-			def lines      = existing ? existing.split('\n') as List : []
-			if (appendMode) {
-				newLines.each { nl ->
-					def id = nl.split(':')[0]
-					def idx = lines.findIndexOf { it.split(':')[0] == id }
-					if (idx >= 0) lines[idx] = nl else lines << nl
-				}
-			} else {
-				lines = newLines
-			}
-			// 5) Save back into in-memory vars
-			flowObj.vars = flowObj.vars ?: [:]
-			flowObj.vars[varName] = lines.join('\n')
-			flowLog(fname, "Saved ${lines.size()} entries to \${varName}", "info")
-			// 6) Continue downstream (only “true” path used here)
-			node.outputs?.output_1?.connections?.each { conn ->
-				evaluateNode(fname, conn.node, evt, null, visited)
-			}
-			return
-
-		case "AND":
-			flowLog(fname, "In evaluateNode - AND", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.true?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "OR":
-			flowLog(fname, "In evaluateNode - OR", "debug")
-            def passes = (incomingValue == true)
-            node.outputs?.output_1?.connections?.each { conn -> if (passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.output_2?.connections?.each { conn -> if (!passes) evaluateNode(fname, conn.node, evt, null, visited) }
-            return passes
-
-        case "NOT":
-			flowLog(fname, "In evaluateNode - NOT", "debug")
-            def input = node.inputs?.collect { k, v -> v.connections*.node }.flatten()?.getAt(0)
-            def result = !evaluateNode(fname, input, evt, null, visited)
-            node.outputs?.true?.connections?.each { conn -> if (result) evaluateNode(fname, conn.node, evt, null, visited) }
-            node.outputs?.false?.connections?.each { conn -> if (!result) evaluateNode(fname, conn.node, evt, null, visited) }
-            return result
-		
-		case "doNothing":
-			flowLog(fname, "In evaluateNode - doNothing", "debug")
-			break
-		
-		case "repeat":
-			flowLog(fname, "In evaluateNode - repeat", "debug")
-			// flowObj is already declared in this scope; just initialize its repeatCounts map:
-			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
-
-			// Pull the repeat mode ("count" or "until")
-			def mode = node.data.repeatMode ?: "count"
-
-			if (mode == "count") {
-				// —— COUNT mode ——
-				def repeatMax = (node.data.repeatMax ?: 1) as Integer
-				def count     = (flowObj.repeatCounts[nodeId.toString()] ?: 0) as Integer
-
-				if (count < repeatMax) {
-					flowObj.repeatCounts[nodeId.toString()] = count + 1
-					flowLog(fname, "Repeat node (count): iteration ${count+1} of ${repeatMax}", "info")
-					// loop back
-					recheckAllTriggers(fname)
-				} else {
-					flowLog(fname, "Repeat node (count): reached ${repeatMax}, moving on.", "info")
-					flowObj.repeatCounts[nodeId.toString()] = 0
-					// fire downstream once
-					node.outputs?.output_1?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				}
-			}
-			else if (mode == "until") {
-				// —— UNTIL mode ——
-				def devIds = []
-				if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-					devIds = node.data.deviceIds
-				} else if (node.data.deviceId) {
-					devIds = [node.data.deviceId]
-				}
-				def attr       = node.data.attribute
-				def comparator = node.data.comparator
-				def expected   = resolveVars(fname, node.data.value)
-
-				// Determine currentValue
-				def currentValue = null
-				if (evt?.name == attr && evt.value != null) {
-					currentValue = evt.value
-				} else if (devIds && devIds[0]) {
-					currentValue = getDeviceById(devIds[0])?.currentValue(attr)
-				}
-
-				// Evaluate the condition
-				def passes = evaluateComparator(currentValue, expected, comparator)
-				if (!passes) {
-					flowLog(fname, "Repeat node (until): condition not met (${attr} ${comparator} ${expected}), looping.", "info")
-					recheckAllTriggers(fname)
-				} else {
-					flowLog(fname, "Repeat node (until): condition met, moving on.", "info")
-					node.outputs?.output_1?.connections?.each { conn ->
-						evaluateNode(fname, conn.node, evt, null, visited)
-					}
-				}
-			}
-			else {
-				log.warn "Unknown repeatMode ‘${mode}’ in Repeat node – skipping."
-			}
-			break
-
-        default:
-            log.warn "Unknown node type: ${node.name}"
-    }
-}
-
-def apiGetDevices() {
-    def output = []
-    settings.masterDeviceList?.each { dev ->
-        output << [
-            id: dev.id,
-            label: dev.displayName ?: dev.label ?: dev.name,
-            name: dev.name,
-            attributes: dev.supportedAttributes?.collect { attr ->
-                [
-                    name: attr.name,
-                    currentValue: dev.currentValue(attr.name)
-                ]
-            } ?: [],
-            commands: dev.supportedCommands?.collect { it.name } ?: []
-        ]
-    }
-    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(output)
-}
-
-def apiUploadFile() {
-    def name = params.name
-    if (!name) {
-        render status: 400, text: "Missing file name"
-        return
-    }
-    def body = request?.body ?: request?.JSON
-    if (!body) {
-        render status: 400, text: "Missing file data"
-        return
-    }
-    try {
-        def fileText = (body instanceof String) ? body : groovy.json.JsonOutput.toJson(body)
-        uploadHubFile(name, fileText.getBytes("UTF-8"))
-        render contentType: "application/json", data: '{"result":"Upload successful"}'
-    } catch (e) {
-        render status: 500, text: "Error: ${e}"
-    }
-}
-
-def apiListFiles() {
-    def fileList = []
-    def uri = "http://127.0.0.1:8080/hub/fileManager/json";
-    try {
-        httpGet([uri: uri]) { resp ->
-            if (resp != null) {
-                def json = resp.data
-                json.files.each { rec ->
-                    if (
-                        rec.name?.toLowerCase()?.endsWith(".json") &&
-                        !(rec.name?.startsWith("FE_")) &&
-                        !(rec.name?.startsWith("var_"))
-                    ) {
-                        fileList << rec.name
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        log.error e
-    }
-    render contentType: "application/json", data: groovy.json.JsonOutput.toJson([files: fileList.sort()])
-}
-
-def apiGetFile() {
-    def name = params.name
-    if (!name) {
-        render status: 400, text: "Missing file name"
-        return
+    async function fetchFlowJsonChecked(fileBaseName) {
+      const full = fileBaseName.endsWith('.json') ? fileBaseName : fileBaseName + '.json';
+      let txt = await fetchHubitatFileContent(full); // existing fetcher
+      if (typeof txt === 'string') {
+        const cleaned = String(txt)
+          .replace(/^\uFEFF/, '')
+          .replace(/\/\/.*$/gm, '')
+          .replace(/\/*[\s\S]*?\*\//g, '')
+          .replace(/,\s*([}\]])/g, '$1');
+        txt = cleaned;
+      }
+      const data = typeof txt === 'string' ? JSON.parse(txt) : txt;
+      const df = data?.drawflow;
+      const hasHome = !!(df?.Home?.data || df?.drawflow?.Home?.data);
+      return { data, hasHome };
     }
 
-    // ---- synthesize variable JSON from state (no disk I/O) ----
-    def lname = name?.toString()?.toLowerCase()
-    if (lname == "fe_global_vars.json") {
-        def globals = _ensureGlobalVarsList()
-        render contentType: "application/json",
-               data: groovy.json.JsonOutput.toJson(globals ?: [])
-        return
-    }
-    
-    if (lname == "fe_flow_vars.json") {
-        // Return map-of-arrays: { "<flow>": [ {name,type,value}, ... ] }
-        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
-        Map out = [:]
-        fmap.each { k, arr ->
-            String bare = _bareFlow(k)
-            List lst = (arr instanceof List) ? (arr as List) : []
-            out[bare] = lst.findAll{ it?.name }.collect { v ->
-                [ name: v.name, type: (v.type ?: "String"), value: v.value ]
-            }
-        }
-        render contentType: "application/json",
-               data: groovy.json.JsonOutput.toJson(out)
-        return
-    }
-
-    // -----------------------------------------------------------
-
-    // original behavior for all other files
-    def fileData = null
-    try {
-        def url = "http://127.0.0.1:8080/local/${name}"
-        httpGet([uri: url, contentType: 'text/plain']) { resp ->
-            fileData = resp.data?.text
-        }
-        if (!fileData) {
-            render status: 404, text: "File not found or empty"
-            return
-        }
+    async function loadLastFlowWithRetry(fileBaseName, maxAttempts = 6) {
+      await waitForEditorReady(6000);
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        attempt++;
         try {
-            def obj = new groovy.json.JsonSlurper().parseText(fileData)
-            render contentType: "application/json", data: groovy.json.JsonOutput.toJson(obj)
-        } catch (ex) {
-            render contentType: "text/plain", text: fileData
-        }
-    } catch (e) {
-        render status: 500, text: "Error: ${e}"
-    }
-}
-
-def exportModesToFile() {
-    def currentMode = [ id: "current", name: location.mode ]
-    def modeList = location.modes.collect { [ id: it.id, name: it.name ] } + currentMode
-    def json = groovy.json.JsonOutput.toJson(modeList)
-    uploadHubFile("FE_flowModes.json", json.getBytes())
-    render contentType: "application/json", data: '{"result":"Modes exported"}'
-}
-
-def apiActiveFlows() {
-    def list = []
-    (state.activeFlows ?: [:]).each { flowName, flowObj ->
-        list << [
-            flowName: flowName,
-            flow: flowObj?.flow ?: null,
-            fileName: flowObj?.fileName ?: flowName
-        ]
-    }
-    render contentType: "application/json", data: groovy.json.JsonOutput.toJson(list)
-}
-
-def flowLog(fname, msg, level = "info") {
-	if(logEnable) {
-		if (settings?.perFlowLogEnabled && !(settings.perFlowLogEnabled.contains(fname))) return
-		def prefix = "[${fname}]"
-		switch(level) {
-			case "warn":  log.warn "${prefix} ${msg}"; break
-			case "error": log.error "${prefix} ${msg}"; break
-			case "debug": log.debug "${prefix} ${msg}"; break
-			default:      log.info "${prefix} ${msg}"
-		}
-	}
-}
-
-def loadAndStartFlow(fname) {
-    def flow = readFlowFile(fname)
-    if(!flow) return
-
-    state.activeFlows[fname] = [
-        flow: flow,
-        lastVarValues: [:],
-        varCtx: [:],
-        tapTracker: [:],
-        holdTracker: [:],
-        savedDeviceStates: [:],
-        flowVars: [],
-        globalVars: [],
-        vars: [:]
-    ]
-    loadVariables(fname)
-    subscribeToTriggers(fname)
-	scheduleTimeBasedTriggers(fname)
-}
-
-def getFileList() {
-    state.jsonList = []
-    try {
-        def uri = "http://127.0.0.1:8080/hub/fileManager/json"
-        httpGet([uri: uri]) { resp ->
-            def json = resp.data
-            json.files.each { rec ->
-                if (
-                    rec.name?.toLowerCase()?.endsWith(".json") &&
-                    !(rec.name?.startsWith("FE_")) &&
-                    !(rec.name?.startsWith("var_"))
-                ) {
-                    state.jsonList << rec.name
-                }
+          const { data, hasHome } = await fetchFlowJsonChecked(fileBaseName);
+          if (!hasHome) {
+            if (attempt === maxAttempts) {
+              logAction(`❌ Flow "${fileBaseName}" is missing drawflow.Home after ${maxAttempts} attempts.`, 'error');
+              return;
             }
-        }
-    } catch (e) {
-		flowLog(fname, "getFileList error: $e", "error")
-    }
-	state.jsonList = state.jsonList.sort { it?.toLowerCase() }
-}
-
-def readFlowFile(fname) {
-    def uri     = "http://127.0.0.1:8080/local/${fname}"
-    def jsonStr = ""
-    try {
-        httpGet([uri: uri, contentType: "text/plain"]) { resp ->
-            jsonStr = resp.data?.text
-        }
-        if (!jsonStr) return null
-
-        // 1) Try normal parse
-        try {
-            return new JsonSlurper().parseText(jsonStr)
-        }
-        catch (parseEx) {
-            // 2) Log the error, then attempt auto‑fix
-            flowLog(fname, "JSON parse error: ${parseEx.message}. Attempting auto‑fix…", "warn")
-
-            def fixed = jsonStr
-                .replaceAll(/^\uFEFF/, "")                    // strip BOM
-                .replaceAll(/\/\/.*$/, "")                    // remove single‑line comments
-                .replaceAll(/\/\*[\s\S]*?\*\//, "")           // remove multi‑line comments
-                .replaceAll(/,\s*([}\]])/, '$1')              // remove trailing commas
-                .replaceAll(/(['"])?([A-Za-z_][\w]*)\1\s*:/, '"$2":') // quote unquoted keys
-                .replaceAll(/'([^']*)'/, '"$1"')              // convert single → double quotes
-                .replaceAll(/\bNaN\b/, "null")                // NaN → null
-                .replaceAll(/\bInfinity\b/, "null")           // Infinity → null
-
-            // 3) Re‑parse the fixed text
-            def obj = new JsonSlurper().parseText(fixed)
-            flowLog(fname, "Auto‑fixed JSON on load for \"${fname}\"", "info")
-            return obj
-        }
-    }
-    catch (e) {
-        flowLog(fname, "readFlowFile(${fname}) error: ${e}", "error")
-        return null
-    }
-}
-
-def getDeviceById(id) {
-    return settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
-}
-
-def apiListVariables() {
-    def g = _ensureGlobalVarsList()
-    def f = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
-    render contentType: "application/json",
-           data: JsonOutput.toJson([globals: g, flows: f])
-}
-
-def apiSaveVariable() {
-    def json  = request?.JSON ?: params
-    String scopeRaw = (json?.scope ?: 'global').toString()
-    String scope    = scopeRaw?.toLowerCase()
-    String name     = (json?.name  ?: '').toString()
-    String type     = (json?.type  ?: 'String').toString()
-    def    value    = json?.value
-	log.warn "scope: ${scope} - name: ${name} - type: ${type} - value: ${value}"
-	
-    // Accept legacy 'scope: <flowName>' or modern 'scope: flow' + 'flow: <FlowName>'
-    String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
-    //log.warn "flowParam: ${flowParam} - scope: ${scopeRaw} - name: ${name} - type: ${type} - value: ${value}"
-
-    if (!name) {
-        render status:400, contentType:"application/json", data: '{"error":"Missing variable name"}'
-        return
-    }
-
-    // GLOBAL SCOPE
-    if (scope == 'global' || scope == 'globals') {
-        List gvars = _ensureGlobalVarsList()
-        def existing = gvars.find { (it?.name?.toString() ?: '') == name }
-        if (existing) {
-            existing.type  = type
-            existing.value = value
-        } else {
-            gvars << _mkVar(name, type, value)
-        }
-        state.globalVars = gvars
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
-        render contentType:"application/json",
-               data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"global" ])
-        return
-    }
-
-    // FLOW SCOPE
-    String key = (scope == 'flow') ? _bareFlow(flowParam) : _bareFlow(scopeRaw)
-    if (!key) {
-        render status:400, contentType:"application/json",
-               data: groovy.json.JsonOutput.toJson([ error:"Missing flow name for flow-scoped variable", scope: scopeRaw, flow: flowParam ])
-        return
-    }
-
-    Map fmap = _ensureFlowVarsMap()
-    List list = (fmap[key] instanceof List) ? (fmap[key] as List) : []
-    def existing = list.find { (it?.name?.toString() ?: '') == name }
-    if (existing) {
-        existing.type  = type
-        existing.value = value
-    } else {
-        list << _mkVar(name, type, value)
-    }
-    fmap[key] = list
-    state.flowVars = fmap
-
-        _refreshVarCaches(key);
-        state.flowVarsMap = state.flowVars;
-try { notifyVarsUpdated('flow', key) } catch (e) { log.warn "notifyVarsUpdated(flow, ${key}) failed: $e" }
-
-    render contentType:"application/json",
-           data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"flow", flow:key ])
-}
-def apiDeleteVariable() {
-    def body  = request.JSON ?: params
-    String scopeRaw = (body.scope ?: '').toString()
-    String scope    = scopeRaw?.toLowerCase()
-    String name  = (body.name  ?: '').toString()
-    if (!scope || !name) { render status:400, text:"name/scope required"; return }
-    log.debug "apiDeleteVariable - scope: ${scopeRaw} - name:${name}"
-
-    if (scope == 'global' || scope == 'globals') {
-        List g = _ensureGlobalVarsList()
-        g.removeAll { (it?.name?.toString() ?: '') == name }
-        state.globalVars = g
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-        try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
-        render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'global'])
-        return
-    }
-
-    if (scope == 'flow') {
-        String bare = _bareFlow(body.flow ?: '')
-        Map fmap = _ensureFlowVarsMap()
-        List arr = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
-        arr.removeAll { (it?.name?.toString() ?: '') == name }
-        if (arr && arr.size()) {
-            fmap[bare] = arr
-        } else {
-            fmap.remove(bare)
-        }
-        state.flowVars = fmap
-        _refreshVarCaches(bare);
-        state.flowVarsMap = state.flowVars;
-try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
-        render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
-        return
-    }
-
-    render status:400, text:"invalid scope"
-}
-
-def loadVariables(fname) {
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj) return
-    flowObj.varCtx = [:]
-
-    // 1) globals from state
-    List globalVars = []
-    try {
-        globalVars = (_ensureGlobalVarsList() ?: []).findAll { it?.name }
-    } catch (e) {
-        flowLog(fname, "Could not load globals from state: $e", "warn")
-        globalVars = []
-    }
-
-    // 2) flow vars for this flow from state
-    // 2) flow vars for this flow from state
-    List flowVarsList = []
-    try {
-        String bareName = _bareFlow(fname)
-        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
-        List arr = (fmap[bareName] instanceof List) ? (fmap[bareName] as List) : []
-        flowVarsList = (arr ?: []).findAll { it?.name }
-    } catch (e) {
-        flowLog(fname, "Could not load flow vars from state: $e", "warn")
-        flowVarsList = []
-    }
-    flowObj.flowVars = flowVarsList
-
-    // 3) merge: flow overrides global by name
-    List mergedVars = []
-    Set gnames = (globalVars.collect { it?.name }.findAll { it }) as Set
-    globalVars.each { g ->
-        def fv = flowVarsList.find { it?.name == g?.name }
-        mergedVars << (fv ?: g)
-    }
-    flowVarsList.each { fv ->
-        if (fv?.name && !gnames.contains(fv.name)) mergedVars << fv
-    }
-
-    // 4) Store for compatibility
-    flowObj.globalVars = mergedVars
-
-    // 5) Build variable context
-    mergedVars.each { v ->
-        if (v?.name) {
-            flowObj.varCtx[v.name] = resolveVarValue(fname, v)
-        }
-    }
-}
-
-// Refresh variable caches for all flows, or a specific bare flow name
-private void _refreshVarCaches(Object targetBare = null) {
-    try {
-        Map af = (state.activeFlows instanceof Map) ? (state.activeFlows as Map) : [:]
-        String tBare = (targetBare != null) ? targetBare.toString() : null
-        def keys = af?.keySet() ?: []
-        for (def k : keys) {
-            String fname = k?.toString()
-            def fobj = af[k]
-            // Only refresh real flows that have a .flow (skip FE_flowtrace.json etc.)
-            if (!(fobj instanceof Map) || !fobj.containsKey('flow')) continue
-            String bare  = _bareFlow(fname)
-            //log.debug "In _refreshVarCaches - fname: ${fname} - bare: ${bare} - tBare: ${tBare} - targetBare: ${targetBare}"
-            if (tBare == null || tBare == bare) {
-                try { loadVariables(fname) } catch (Throwable ex) { log.warn "loadVariables(${fname}) failed: ${ex}" }
-            }
-        }
-    } catch (Throwable e) {
-        log.warn "_refreshVarCaches failed: ${e}"
-    }
-}
-
-def getGlobalVars() {
-    return state.globalVars ?: []
-}
-
-def resolveVarValue(fname, v, _visited = []) {
-    if (!v || !v.name) return ""
-    if (_visited.contains(v.name)) return "ERR:Circular"
-    _visited += v.name
-    def val = v.value
-    if (val instanceof String && (val.contains('$(') || val.matches('.*[+\\-*/><=()].*'))) {
-        return evalExpression(fname, val, _visited)
-    }
-    if ("$val" ==~ /^-?\d+(\.\d+)?$/) return "$val".contains(".") ? val.toDouble() : val.toInteger()
-    if ("$val".toLowerCase() == "true" || "$val".toLowerCase() == "false") return "$val".toLowerCase() == "true"
-    return val
-}
-
-def evalExpression(fname, expr, _visited = []) {
-    expr = expr.replaceAll(/\$\((\w+)\)/) { full, vname ->
-        def flowObj = state.activeFlows[fname]
-        def v = (flowObj.flowVars + flowObj.globalVars).find { it.name == vname }
-        return v ? resolveVarValue(fname, v, _visited) : "null"
-    }
-    return expr
-}
-
-String resolveVars(fname, str) {
-    if (!str || !(str instanceof String)) return str
-    def flowObj = state.activeFlows[fname]
-    def pattern = /\$\((\w+)\)|\$\{(\w+)\}/
-    def out = str.replaceAll(pattern) { all, v1, v2 ->
-        def var = v1 ?: v2
-        flowObj.vars?.get(var)?.toString() ?:
-        flowObj.flowVars?.find { it.name == var }?.value?.toString() ?:
-        flowObj.globalVars?.find { it.name == var }?.value?.toString() ?:
-        flowObj.varCtx?.get(var)?.toString() ?:
-        ""
-    }
-    return out
-}
-
-def subscribeToTriggers(String fname) {
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
-
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-    dataNodes.each { nodeId, node ->
-        if (node.name != "eventTrigger") return
-
-        // — Mode triggers —
-        if (node.data.deviceId == "__mode__") {
-            subscribe(location, "mode") { evt ->
-                handleEvent(evt, fname)
-            }
-        }
-        // — Physical device triggers —
-        else if (node.data.deviceId != "__time__") {
-            def devIds = (node.data.deviceIds instanceof List && node.data.deviceIds) ? node.data.deviceIds : [ node.data.deviceId ]
-            devIds.each { devId ->
-                def device = getDeviceById(devId)
-                if (device) subscribe(device, node.data.attribute, "genericDeviceHandler")
-            }
-        }
-        // — note: __time__ handled separately below —
-    }
-}
-
-def genericDeviceHandler(evt) {
-    // Snapshot keys to avoid ConcurrentModificationException if handleEvent mutates state
-    def keys = (state.activeFlows?.keySet() ?: []) as List
-    keys.each { fname ->
-        def flowObj = state.activeFlows[fname]
-        if (!flowObj) return
-        def triggerNodes = getTriggerNodes(fname, evt)
-        if (triggerNodes && triggerNodes.size() > 0) {
-            try {
-                handleEvent(evt, fname)
-            } catch (e) {
-                log.error "[${fname}] genericDeviceHandler error: ${e}"
-            }
-        }
-    }
-}
-
-private void scheduleTimeBasedTriggers(String fname) {
-    // 1) Clear this flow’s old cron closures & subscriptions
-    clearFlowTimeTriggers(fname)
-
-    // 2) Initialize per‑flow registry for subscriptions
-    state.timeSubs = state.timeSubs ?: [:]
-    state.timeSubs[fname] = []
-
-    // 3) Walk every "__time__" eventTrigger node in this flow
-    def dataNodes = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
-    dataNodes.each { nodeId, node ->
-        if (node.name != 'eventTrigger' || node.data.deviceId != '__time__') return
-
-        // Only subscribe sunrise/sunset here
-        if (node.data.attribute == 'timeOfDay') {
-            def times = node.data.value instanceof List ? node.data.value : [ node.data.value ]
-            times.each { raw ->
-                String s = raw.toString()
-                if (s == 'sunrise' || s == 'sunset') {
-					def offset = node.data.offsetMin ?: 0
-					if (offset == 0) {
-						// Normal behavior: subscribe to actual event
-						subscribe(
-							location,
-							s,
-							'handleLocationTimeEvent',
-							[ filterEvents: false, data: [ fname: fname, nodeId: nodeId ] ]
-						)
-						state.timeSubs[fname] << s
-					} else {
-						// Offset: schedule at offset from sunrise/sunset
-						def now = new Date()
-						def baseTime = getSunriseAndSunset()[s]
-						if (baseTime) {
-							def targetTime = new Date(baseTime.getTime() + (offset * 60 * 1000))
-							schedule(targetTime, "handleOffsetSunEvent", [data: [ fname: fname, nodeId: nodeId, eventName: s, offset: offset ]])
-							state.timeSubs[fname] << "${s}_offset_${offset}"
-						}
-					}
-				}
-            }
-        }
-    }
-}
-
-def pollTimeTriggers() {
-    // current HH:mm and weekday
-    def now       = new Date()
-    def nowHHmm   = now.format('HH:mm', location.timeZone)
-    def todayDOW  = now.format('EEEE', location.timeZone)
-
-    state.activeFlows.each { fname, flowObj ->
-        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
-        dataNodes.each { nodeId, node ->
-            if (node.name!='eventTrigger' || node.data.deviceId!='__time__') return
-
-            def attr   = node.data.attribute
-            def values = node.data.value instanceof List ? node.data.value : [ node.data.value ]
-
-            switch(attr) {
-                // fixed HH:mm  
-                case 'timeOfDay':
-                    if (values.any{ it.toString()==nowHHmm }) {
-                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
-                    }
-                    break
-
-                // legacy currentTime  
-                case 'currentTime':
-                    def txt = values[0].toString()
-                    if (txt == nowHHmm) {
-                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
-                    }
-                    break
-
-                // day of week, e.g. "Monday"  
-                case 'dayOfWeek':
-                    if (values.any{ it.toString()==todayDOW }) {
-                        handleTimeTrigger([ fname:fname, nodeId:nodeId ])
-                    }
-                    break
-            }
-        }
-    }
-
-    // Also run any Schedule Trigger nodes that match the current minute via cron
-    state.activeFlows.each { fname, flowObj ->
-        def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
-        dataNodes.each { nodeId, node ->
-            def cronExpr = null
-            try {
-                // Detect schedule nodes by type/name/data
-                if (node?.data?.cron) cronExpr = node.data.cron?.toString()
-                if (!cronExpr) return
-            } catch (ignored) { return }
-
-            if (_cronMatchesNow(cronExpr, now)) {
-                // Fire the flow from this schedule trigger
-                notifyFlowTrace(fname, nodeId, "eventTrigger")
-                def evt = [ name: "schedule", value: cronExpr, date: now ]
-                handleEvent(evt, fname)
-            }
-        }
-    }
-
-}
-
-def handleTimeTrigger(Map data) {
-    String fname  = data.fname
-    String nodeId = data.nodeId
-
-    notifyFlowTrace(fname, nodeId, "eventTrigger")
-
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
-    def node = flowObj.flow.drawflow?.Home?.data[nodeId]
-    if (!node) return
-
-    def evt = [
-        name : node.data.attribute,
-        value: node.data.value,
-        date : new Date()
-    ]
-    handleEvent(evt, fname)
-}
-
-// ---- Variable trigger polling (uses state.globalVars) ----
-def checkVariableTriggers() {
-    // Canonical source of truth
-    def globalVars = state.globalVars ?: []
-
-    state.activeFlows.each { fname, flowObj ->
-        def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
-            node?.name == "eventTrigger" &&
-            (
-              node.data?.deviceId == "__variable__" ||
-              (node.data?.deviceIds instanceof List && node.data.deviceIds[0] == "__variable__")
-            )
-        }
-        if (!nodes) return
-
-        // Map: varName -> value for quick lookups
-        def globalMap = globalVars.collectEntries { [(it.name): it.value] }
-
-        nodes.each { id, node ->
-            def varName = node.data?.variableName
-            if (!varName) {
-                log.warn "In checkVariableTriggers - Missing varName in node ${id}: ${node.data}"
-                return
-            }
-
-            def curValue   = globalMap[varName]
-            def lastValue  = flowObj.lastVarValues[varName] ?: "firstrunforthisvar"
-            def comparator = node.data?.comparator ?: '=='
-            def expected   = node.data?.value
-
-            flowLog(varName, "curValue: ${curValue} - comparator: ${comparator} - lastValue: ${lastValue}", "debug")
-
-            if (evaluateComparator(curValue, expected, comparator) && curValue != lastValue) {
-                flowObj.lastVarValues[varName] = curValue
-                evaluateNode(fname, id, [ name: varName, value: curValue ])
-            }
-        }
-    }
-}
-
-def clearTapTracker(data) {
-    def fname = data.fname
-    def flowObj = state.activeFlows[fname]
-    if (flowObj) flowObj.tapTracker.remove("${data.devId}:${data.attr}")
-}
-
-def clearHoldTracker(data) {
-    def fname = data.fname
-    def flowObj = state.activeFlows[fname]
-    if (flowObj) flowObj.holdTracker.remove("${data.devId}:${data.attr}")
-}
-
-def getTriggerNodes(String fname, evt) {
-    def flowObj   = state.activeFlows[fname]
-    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
-
-    // Mode triggers stay the same
-    if (evt.name == "mode") {
-        return dataNodes.findAll { id, node ->
-            node.name == "eventTrigger" &&
-            node.data.deviceId == "__mode__" &&
-            node.data.attribute == "mode"
-        }
-    }
-
-    
-    // Schedule cron (Schedule node): route directly by matching cron text
-    if (evt?.name == "schedule") {
-        return dataNodes.findAll { id, node ->
-            try {
-                node?.name == "schedule" && (
-                    (node?.data?.cron?.toString() == evt?.value?.toString()) ||
-                    (node?.data?.scheduleSpec?.cronText?.toString() == evt?.value?.toString())
-                )
-            } catch (ignored) { false }
-        }
-    }
-
-// Everything else: device, time, and variable triggers
-    return dataNodes.findAll { id, node ->
-        if (node.name != "eventTrigger") return false
-
-        // Gather device IDs (could be a single or many)
-        def devIds = []
-        if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-            devIds = node.data.deviceIds
-        } else if (node.data.deviceId) {
-            devIds = [ node.data.deviceId ]
-        }
-
-        // 1) Time-based: "__time__" triggers (attribute must match event)
-        if (devIds.contains("__time__") && node.data.attribute == evt.name) {
-            return true
-        }
-
-        // 2) Variable-based: "__variable__" triggers (variableName/varName/attribute must match event)
-        if (devIds.contains("__variable__")) {
-            def varName = node.data.variableName ?: node.data.varName ?: node.data.attribute
-            if (varName == evt.name) {
-                return true
-            }
-        }
-
-        // 3) Real device: must have evt.device and attribute match
-        if (evt.device && devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name) {
-            return true
-        }
-
-        return false
-    }
-}
-
-void notifyFlowTrace(String flowFile, def nodeId, String nodeType) {
-    if (!flowFile) return
-    // One live run per flowFile
-    state._live = state._live ?: [:]
-    def live = state._live[flowFile] ?: [runId: null, prev: null, finished: false]
-
-    // Start a new run on first node or when file changes / ended
-    if (!live.runId || nodeType == "eventTrigger" || live.finished) {
-        live.runId   = "${now()}_${Math.abs(new Random().nextInt())}"
-        live.prev    = null
-        live.finished = false
-        state._live[flowFile] = live
-
-        sendLocationEvent(
-            name: "feTrace",
-            value: "start",
-            descriptionText: "Live trace start for ${flowFile}",
-            data: JsonOutput.toJson([type:"start", flowFile: flowFile, runId: live.runId, ts: now()])
-        )
-        // reset in-memory last run for this flow
-        state.flowTraces = (state.flowTraces instanceof List) ? state.flowTraces : []
-        state.flowTraces.removeAll { it.flowFile == flowFile }
-        state.flowTraces << [runId: live.runId, flowFile: flowFile, steps: []]
-    }
-
-    // Append step to in-memory last run
-    def step = [flowFile: flowFile, nodeId: nodeId, nodeType: nodeType, timestamp: now()]
-    def thisFlow = state.flowTraces.find { it.flowFile == flowFile && it.runId == live.runId }
-    if (thisFlow) {
-        thisFlow.steps << step
-        if (thisFlow.steps.size() > 200) thisFlow.steps = thisFlow.steps[-200..-1]
-    }
-
-    // Push live step (prev -> nodeId)
-    sendLocationEvent(
-        name: "feTrace",
-        value: "step",
-        descriptionText: "Live trace step for ${flowFile}",
-        data: JsonOutput.toJson([
-            type: "step", flowFile: flowFile, runId: live.runId,
-            nodeId: nodeId, prevNodeId: live.prev, nodeType: nodeType, ts: now()
-        ])
-    )
-    live.prev = nodeId
-    state._live[flowFile] = live
-
-    // On end, finalize + write file once (for your Last Trace button)
-    if (nodeType == "endOfFlow") {
-        live.finished = true
-        state._live[flowFile] = live
-        saveFlow("FE_flowtrace.json", state.flowTraces)
-        sendLocationEvent(
-            name: "feTrace",
-            value: "end",
-            descriptionText: "Live trace end for ${flowFile}",
-            data: JsonOutput.toJson([type:"end", flowFile: flowFile, runId: live.runId, ts: now()])
-        )
-    }
-}
-
-// ---- Notification support ----
-def sendNotification(fname, data, evt) {
-	flowLog(fname, "In sendNotification - data: ${data} - evt: ${evt}", "debug")
-    def msg = data.message ?: ""
-    msg = expandWildcards(fname, msg, evt, data)
-	if(data.notificationType == "speech") {
-		data.targetDeviceId.each { it ->
-        	def speaker = getDeviceById(it)
-			flowLog(fname, "In sendNotification - Going to Speak on - ${speaker}")
-			if (speaker) speaker.speak(msg)
-		}
-	} else {
-		data.targetDeviceId.each { it ->
-        	def push = getDeviceById(it)
-			flowLog(fname, "In sendNotification - Going to Push to - ${push}")
-			if (push) push.deviceNotification(msg)
-		}
-    }
-}
-
-def expandWildcards(fname, msg, evt, nodeData = null) {
-    flowLog(fname, "In expandWildcards - msg: ${msg} - evt: ${evt}", "debug")
-    def nowDate = new Date()
-    def flowObj = state.activeFlows[fname]
-
-    // Support all the Editor’s actual field names
-    def varName = nodeData?.msgVarName ?: nodeData?.variableName ?: nodeData?.varName ?: ""
-    def varVal  = "[not found]"
-
-    // DEBUG: See all available vars and varName
-    flowLog(fname, "expandWildcards: available vars: flowObj.vars=${flowObj?.vars}, varCtx=${flowObj?.varCtx}, flowVars=${flowObj?.flowVars}, globalVars=${flowObj?.globalVars}", "debug")
-    flowLog(fname, "expandWildcards: requested varName='${varName}', nodeData=${nodeData}", "debug")
-
-    if ((nodeData?.useMsgVar || nodeData?.useVariableInMsg) && varName) {
-        varVal =
-            (flowObj.vars?.get(varName)?.toString()) ?:
-            (flowObj.varCtx?.get(varName)?.toString()) ?:
-            (flowObj.flowVars?.find{ it.name == varName }?.value?.toString()) ?:
-            (flowObj.globalVars?.find{ it.name == varName }?.value?.toString()) ?:
-            "[not found]"
-    } else {
-        varName = "[not found]"
-        varVal  = "[not found]"
-    }
-
-    def wilds = [
-        "{device}"        : evt?.device?.displayName ?: "",
-        "{attribute}"     : evt?.name ?: "",
-        "{value}"         : evt?.value ?: "",
-        "{time24}"        : nowDate.format("HH:mm"),
-        "{time12}"        : nowDate.format("h:mm a"),
-        "{date}"          : nowDate.format("MM-dd-yyyy"),
-        "{now}"           : nowDate.toString(),
-        "{variableName}"  : varName,
-        "{variableValue}" : varVal
-    ]
-    wilds.each { k, v ->
-        msg = msg.replace(k, v instanceof Closure ? v() : v)
-    }
-    msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, vname ->
-        def vval =
-            (flowObj.vars?.get(vname)?.toString()) ?:
-            (flowObj.varCtx?.get(vname)?.toString()) ?:
-            (flowObj.flowVars?.find{ it.name == vname }?.value?.toString()) ?:
-            (flowObj.globalVars?.find{ it.name == vname }?.value?.toString()) ?:
-            "[not found]"
-        vval
-    }
-
-    flowLog(fname, "In expandWildcards - msg: ${msg}", "debug")
-    return msg
-}
-
-def getVarValue(fname, vname) {
-	flowLog(fname, "In getVarValue - vname: ${vname}", "debug")
-    def flowObj = state.activeFlows[fname]
-    return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
-}
-
-def setVariable(String fname, String varName, def varValue) {
-    def bare = _bareFlow(fname)
-
-    // Ensure containers exist
-    state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
-    state.flowVars    = (state.flowVars    instanceof Map  ) ? state.flowVars    : [:]
-    def flowList = (state.flowVars[bare]   instanceof List ) ? state.flowVars[bare]   : []
-
-    // Try flow vars first
-    def fv = flowList.find { it?.name == varName }
-    if (fv) {
-        fv.value = varValue
-    } else {
-        // Then try global vars
-        def gv = state.globalVars.find { it?.name == varName }
-        if (gv) {
-            gv.value = varValue
-        } else {
-            flowLog(fname, "Variable '${varName}' not found in flow '${bare}' or globals; no update made.", "warn")
-            return
-        }
-    }
-
-    // Put the flow list back (in case it was missing)
-    state.flowVars[bare] = flowList
-
-    // Rebuild varCtx for this running flow
-    loadVariables(fname)
-    try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
-}
-
-// Helper
-def normalizeFlowName(fname) {
-    return fname?.replaceAll(/(?i)\.json$/, '')
-}
-
-// State-only replacement (keeps old name for compatibility)
-def saveGlobalVarsToFile(globals) {
-    try {
-        // normalize to [{name,type,value}, ...]
-        List list = (globals instanceof List) ? globals.findAll { it?.name } : []
-        list = list.collect { v ->
-            [
-                name : (v.name ?: "").toString(),
-                type : (v.type ?: "String").toString(),
-                value: v.value
-            ]
-        }
-
-        // single source of truth: state
-        synchronized(this) {
-            state.globalVars = list
-        }
-
-        // optional: lightweight log + event so UI/Maker API listeners can refresh
-        flowLog("globals", "Updated GLOBAL vars in state (${list.size()})", "debug")
-        sendLocationEvent(
-            name: "globalVarsUpdated",
-            value: now(),
-            descriptionText: "Flow-Engine: global vars updated (state)"
-        )
-    } catch (e) {
-        log.warn "saveGlobalVarsToFile(state) failed: $e"
-    }
-}
-
-// --- Comparators ---
-def evaluateComparator(actual, expected, cmp) {
-    // normalize operator and log each invocation
-    String op = (cmp ?: '').toString().toLowerCase()
-
-    switch(op) {
-        case '==':
-            return "$actual" == "$expected"
-        case '!=':
-            return "$actual" != "$expected"
-        case '>':
-            return toDouble(actual) > toDouble(expected)
-        case '<':
-            return toDouble(actual) < toDouble(expected)
-        case '>=':
-            return toDouble(actual) >= toDouble(expected)
-        case '<=':
-            return toDouble(actual) <= toDouble(expected)
-        case 'between':
-            // build a two‑element list from expected
-            List bounds
-            if (expected instanceof List) {
-                bounds = expected
+          } else {
+            if (window.editor && typeof window.editor.import === 'function') {
+              window.editor.import(data);
+              if (Array.isArray(window.devices)) {
+                try { patchFlowWithDeviceLabels(data, window.devices); } catch (_) {}
+              }
+              document.getElementById('flowName').textContent = fileBaseName.replace(/\.json$/i, '');
+              try { markFlowNeedsSave(false); } catch (_) {}
+              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');
+              try { await onFlowSelected(fileBaseName); } catch (_) {}
+              return;
             } else {
-                bounds = expected.toString()
-                                 .replaceAll(/[\[\]\s]/, '')
-                                 .split(',')
-                                 .toList()
+              try { await restoreFlowFromJson(data); } catch (e) { throw e; }
+              document.getElementById('flowName').textContent = fileBaseName.replace(/\.json$/i, '');
+              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');
+              try { await onFlowSelected(fileBaseName); } catch (_) {}
+              return;
             }
-            if (bounds.size() == 2) {
-                double low  = toDouble(bounds[0])
-                double high = toDouble(bounds[1])
-                double val  = toDouble(actual)
-                return (val >= low && val <= high)
-            }
-            log.warn "evaluateComparator: 'between' requires exactly 2 values, got ${bounds}"
-            return false
-        case 'contains':
-            return "$actual".toLowerCase().contains("$expected".toLowerCase())
-        case 'notcontains':
-            return !"$actual".toLowerCase().contains("$expected".toLowerCase())
-        case 'startswith':
-            return "$actual".toLowerCase().startsWith("$expected".toLowerCase())
-        case 'endswith':
-            return "$actual".toLowerCase().endsWith("$expected".toLowerCase())
-        case 'empty':
-            return !actual
-        case 'istrue':
-            return actual == true || "$actual" == "true"
-        case 'isfalse':
-            return actual == false || "$actual" == "false"
-        default:
-            return "$actual" == "$expected"
-    }
-}
-
-// helper to coerce any value into a double
-private double toDouble(x) {
-    if (x instanceof Number) {
-        return ((Number)x).doubleValue()
-    }
-    String s = x?.toString()?.trim()
-    if (!s) return 0.0
-    try {
-        return Double.parseDouble(s)
-    } catch (Exception e) {
-        log.warn "toDouble: cannot convert '${s}' to a number"
-        return 0.0
-    }
-}
-
-private int toTimeMinutes(String value) {
-    if (value == "sunrise" || value == "sunset") {
-        def ss = getSunriseAndSunset()
-        Date dt = (value == "sunrise") ? ss.sunrise : ss.sunset
-        return dt.hours * 60 + dt.minutes
-    }
-    // otherwise assume “HH:mm”
-    def parts = value.tokenize(':')
-    return (parts[0].toInteger() * 60) + parts[1].toInteger()
-}
-
-// ── Helper to coerce String or Number into an Integer ───────────────────
-private Integer parseIntValue(val, Integer defaultVal = 0) {
-    try {
-        if (val instanceof Number) return val as Integer
-        if (val != null)           return val.toString().toInteger()
-    } catch (e) {
-        log.warn "Could not parse time value '${val}', defaulting to ${defaultVal}"
-    }
-    return defaultVal
-}
-
-def handleOffsetSunEvent(data) {
-    def fname  = data.fname
-    def nodeId = data.nodeId
-    def evt = [
-        name : data.eventName,
-        value: data.eventName,
-        date : new Date(),
-        offset: data.offset
-    ]
-    handleEvent(evt, fname)
-}
-
-// Minimal HTML escape for safe rendering in paragraphs
-private String _hx(Object x) {
-    String s = x == null ? "" : x.toString()
-    s = s.replaceAll("&", "&amp;")
-         .replaceAll("<", "&lt;")
-         .replaceAll(">", "&gt;")
-    return s
-}
-
-def getFormat(type, myText=null, page=null) {
-    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid #000000;box-shadow: 2px 3px #8B8F8F;border-radius: 5px'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;' />"
-}
-
-def installCheck(){
-    state.appInstalled = app.getInstallationState() 
-    if(state.appInstalled != 'COMPLETE'){
-        section{paragraph "Please hit 'Done' to install '${app.label}' app "}
-    } else {
-        //if(logEnable) log.info "App Installed OK"
-    }
-}
-
-/**
- * Auto-register schedules after flows are loaded
- */
-def afterFlowLoad() {
-    state.activeFlows?.each { fname, fobj ->
+          }
+        } catch (e) {
+          const msg = String(e && e.message || e);
+          const transient = /Cannot read (properties|property) of undefined \(reading 'Home'\)/i.test(msg) ||
+                           /drawflow/i.test(msg) ||
+                           /Unexpected end of JSON input/i.test(msg);
+          if (!transient && attempt >= maxAttempts) {
+            logAction('❌ Error importing flow (no more retries): ' + msg, 'error');
+            return;
+          }
         }
-}
+        await new Promise(r => setTimeout(r, 150 * attempt));
+      }
+    }
 
-/**
- * Unified saveFlow: persists flow JSON, updates state, and only re-registers schedules if cron set changed.
- */
-private List _collectCronsFromFlow(Object flowObj) {
-    try {
-        def nodes = (flowObj?.nodes instanceof Collection) ? flowObj.nodes : []
-        def out = []
-        nodes.each { n ->
-            try {
-                if ((n?.type ?: n?.name) == "schedule") {
-                    def c = n?.data?.cron
-                    if (c) out << c.toString().trim()
-                }
-            } catch (ignored) {}
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await new Promise(r => setTimeout(r, 120));
+        const last = (localStorage.getItem('lastFlow') || '').replace(/\.json$/i, '');
+        await reloadFlowDropdown(last);
+        if (last) {
+          await loadLastFlowWithRetry(last);
         }
-        return out.unique().sort()
-    } catch (e) {
-        log.warn "collectCronsFromFlow: ${e}"
-        return []
-    }
-}
+      } catch (e) {
+        console.warn('Init auto-load failed:', e);
+        try { logAction('Init auto-load failed: ' + (e?.message || e), 'warn'); } catch (_) {}
+      }
+    });
 
-def saveFlow(String fname, Object flowObj) {
-    if(!state.activeFlows) state.activeFlows = [:]
-    def prevObj   = state.activeFlows[fname]
-    def prevCrons = _collectCronsFromFlow(prevObj)
-    def newCrons  = _collectCronsFromFlow(flowObj)
-
-    // Persist flow JSON to Hubitat File Manager (legacy behavior)
-    try {
-        String listJson = groovy.json.JsonOutput.toJson(flowObj) as String
-        uploadHubFile("${fname}", listJson.getBytes("UTF-8"))
-    } catch (e) {
-        log.warn "saveFlow: upload failed for ${fname}: ${e}"
+    function sanitizeFlowName(name) {
+      return name
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^A-Za-z0-9_-]/g, "")
+        .replace(/_{2,}/g, "_")
+        .replace(/^_+|_+$/g, "");
     }
 
-    // Update in-memory state
-    state.activeFlows[fname] = flowObj
+    async function fetchVarsFromApp() {
+      const appId = (document.getElementById("hubitatAppId")?.value || "").trim();
+      const token = (document.getElementById("hubitatToken")?.value || "").trim();
+      if (!appId || !token) throw new Error("Missing Hubitat App ID/Token");
 
-    // Rebind schedules only if the cron set changed (including transitions to/from empty)
-    if (prevCrons != newCrons) {
-        // If the new set is empty, this will unschedule and register nothing
-	}
-}
-
-/**
- * Ensure the per-minute poller is set (used for HH:mm, DOW, and cron schedule nodes).
- */
-def refreshAllSchedules() {
-    try {
-        unschedule("pollTimeTriggers")     // clear just the minute poller if present
-    } catch (ignored) {}
-    schedule("0 * * ? * * *", "pollTimeTriggers")
-}
-
-/**
- * Remove a flow without disturbing global schedules.
- */
-def removeFlow(fname) {
-    if(state.activeFlows?.containsKey(fname)) {
-        state.activeFlows.remove(fname)
-        // Keep the minute poller; no global unschedule here
-        refreshAllSchedules()  // ensures poller continues to run
+      // ✅ Correct endpoint
+      const url = `/apps/api/${encodeURIComponent(appId)}/variables?access_token=${encodeURIComponent(token)}`;
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) {
+        const t = await res.text().catch(()=>"");
+        throw new Error(`GET /variables failed: ${res.status} ${t}`);
+      }
+      // Expected: { globals: [...], flows: { <bareFlowName>: [ {name,type,value}, ... ] } }
+      return await res.json();
     }
-}
 
-/**
- * Evaluate a 5-field cron (m h dom mon dow) against the current time.
- * Accepts basic wildcards (*), lists (1,2,5), ranges (1-5), and steps (15 or 1-30/2).
- * If a 6-field input (s m h dom mon dow) is given, seconds are ignored.
- */
-private boolean _cronMatchesNow(String cronExpr, Date now = new Date()) {
-    if (!cronExpr) return false
-    def parts = cronExpr.trim().split(/\s+/)
-    if (parts.size() == 6) {
-        // Quartz style without year: [sec min hour dom mon dow] -> drop seconds
-        parts = parts[1..5]
-    } else if (parts.size() != 5) {
-        // Try to normalize 5, otherwise bail
-        return false
-    }
-    def tz = location?.timeZone ?: TimeZone.getDefault()
-    int m   = now.format('m', tz) as int
-    int h   = now.format('H', tz) as int
-    int dom = now.format('d', tz) as int
-    int mon = now.format('M', tz) as int
-    int dow = (now.format('u', tz) as int) % 7  // 0=Sunday per cron tradition (convert from ISO 1..7)
-    def fields = [parts[0], parts[1], parts[2], parts[3], parts[4]]
-    def nowVals = [m, h, dom, mon, dow]
+    // --- called by the “Update Vars” buttons and on flow load ---
+    async function refreshVarsAndInspector() {
+      try {
+        // 1) pull from the app
+        const data = await fetchVarsFromApp();
+        const globals = Array.isArray(data.globals) ? data.globals : [];
+        const flowsMap = (data.flows && typeof data.flows === "object") ? data.flows : {};
 
-    for (int i=0; i<5; i++) {
-        if (!_cronFieldMatches(fields[i], nowVals[i], i)) return false
-    }
-    return true
-}
+        // 2) normalize flow keys (support "Foo" and "Foo.json")
+        const norm = {};
+        Object.keys(flowsMap).forEach(k => {
+          const base = String(k || "").replace(/\.json$/i, "");
+          norm[base] = Array.isArray(flowsMap[k]) ? flowsMap[k] : [];
+          norm[base + ".json"] = norm[base];
+        });
 
-private boolean _cronFieldMatches(String field, int value, int idx) {
-    // idx: 0=min(0-59), 1=hour(0-23), 2=dom(1-31), 3=mon(1-12), 4=dow(0-6 Sun=0)
-    field = field?.trim()
-    if (!field) return false
-    if (field == "*") return true
+        // 3) expose to window for other code
+        window.FE_global_vars = globals.slice();
+        window.FE_flowvars    = norm;
 
-    boolean ok = false
-    field.split(",").each { token ->
-        token = token.trim()
-        if (!token) return
+        // 4) hand off to the var engine so the inspector updates
+        if (window.flowVars) {
+          if (typeof window.flowVars.setGlobalVars === "function") {
+            window.flowVars.setGlobalVars(globals);
+          }
+          if (typeof window.flowVars.setAllFlowVarsMap === "function") {
+            window.flowVars.setAllFlowVarsMap(norm);
+          }
 
-        String base = token
-        int step = 1
-        if (token.contains("/")) {
-            def sp = token.split("/")
-            base = sp[0]
-            step = (sp[1] as int)
-            if (step <= 0) step = 1
+          // keep current flow context
+          const current =
+            window.flowVars.getCurrentFlowFile?.() ||
+            (document.getElementById("hubitatFileDropdown")?.value || "").replace(/\.json$/i, "");
+          if (current && typeof window.flowVars.setCurrentFlowFile === "function") {
+            window.flowVars.setCurrentFlowFile(current);
+          }
         }
 
-        // Determine min/max per field
-        int minV = (idx==0)?0:(idx==1)?0:(idx==2)?1:(idx==3)?1:0
-        int maxV = (idx==0)?59:(idx==1)?23:(idx==2)?31:(idx==3)?12:6
+        // 5) re-render the inspector
+        if (typeof window.renderVariableInspector === "function") {
+          window.renderVariableInspector();
+        }
 
-        if (base == "*" || base == "?") {
-            if ((value - minV) % step == 0) { ok = true }
-        } else if (base.contains("-")) {
-            def rng = base.split("-")
-            int a = (rng[0] as int), b = (rng[1] as int)
-            if (value >= a && value <= b && ((value - a) % step == 0)) { ok = true }
+      } catch (e) {
+        console.error(e);
+        alert("Failed to refresh variables from app:<br>" + e.message);
+      }
+    }
+
+    var devices = [];
+    window.editor = null;
+    window._multiSelectedNodes = new Set();
+    window.nextNodeX = 1200;
+    window.nextNodeY = 40;
+    window.nodeYIncrement = 56;
+    window.nodeStartX = 1200;
+    window.nodeStartY = 40;
+    window.nodeYLimit = 800;
+    window.newNodeOffsetX = 0;
+    window.newNodeOffsetY = 0;
+    window.newNodeOffsetStep = 5;
+    window.newNodeCounter = 0;
+    window.newNodeOffsetLimit = 10;
+
+    window.FE_global_var_names = [];
+    window.FE_flowvars = {};
+    window.FE_global_vars = [];
+
+    window.nodeStartMargin = 40;
+    window.nodeYIncrement = 64;
+    window.nodeYLimit = 400;
+    window.nextNodeCol = 0;
+    window.nextNodeIndex = 0;
+    window.selectedNodeIds = [];
+
+    window.undoStack = [];
+    window.redoStack = [];
+    
+    let flowTracePollingActive = false;
+    window.traceCleared = false;
+
+// === Ctrl/Cmd + Click multi-select support (non-destructive) ==================
+(function setupMultiSelect() {
+  try {
+    // Ensure the global Set exists
+    if (!window._multiSelectedNodes || !(window._multiSelectedNodes instanceof Set)) {
+      window._multiSelectedNodes = new Set();
+    }
+
+    const df = document.getElementById('drawflow');
+    if (!df) return;
+
+    // Helper to apply current Set onto DOM (id strings, not numbers)
+    window.applyMultiSelectClasses = function applyMultiSelectClasses() {
+      try {
+        document.querySelectorAll('.drawflow-node.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+        for (const id of window._multiSelectedNodes) {
+          const el = document.getElementById('node-' + id);
+          if (el) el.classList.add('multi-selected');
+        }
+      } catch (e) {}
+    };
+
+    // If restoreFlowFromJson runs, make sure we re-apply our multi-selected classes
+    const _restoreFlowFromJson = window.restoreFlowFromJson;
+    if (typeof _restoreFlowFromJson === 'function' && !_restoreFlowFromJson.__patchedForMultiSelect) {
+      window.restoreFlowFromJson = async function(jsonStr) {
+        const res = await _restoreFlowFromJson.call(this, jsonStr);
+        // Re-apply after nodes exist
+        setTimeout(() => window.applyMultiSelectClasses && window.applyMultiSelectClasses(), 0);
+        return res;
+      };
+      window.restoreFlowFromJson.__patchedForMultiSelect = true;
+    }
+
+    // Clean up Set when nodes are removed
+    const mo = new MutationObserver(() => {
+      const ids = new Set();
+      document.querySelectorAll('.drawflow-node[id^="node-"]').forEach(el => {
+        const id = el.id.replace('node-', '');
+        ids.add(id);
+      });
+      for (const id of Array.from(window._multiSelectedNodes)) {
+        if (!ids.has(id)) window._multiSelectedNodes.delete(id);
+      }
+    });
+    mo.observe(df, { childList: true, subtree: true });
+
+    // Capture phase handler so the library's own click handler doesn't wipe selection
+    df.addEventListener('mousedown', function(e) {
+      const nodeEl = e.target && (e.target.closest && e.target.closest('.drawflow-node'));
+      const multi = !!(e.ctrlKey || e.metaKey);
+      if (!nodeEl || !multi) return;
+
+      const id = (nodeEl.id || '').replace('node-', '');
+      if (!id) return;
+
+      // Toggle our multi-selected state
+      if (nodeEl.classList.contains('multi-selected')) {
+        nodeEl.classList.remove('multi-selected');
+        window._multiSelectedNodes.delete(id);
+      } else {
+        nodeEl.classList.add('multi-selected');
+        window._multiSelectedNodes.add(id);
+      }
+
+      // Prevent built-in single-select logic from firing for this interaction
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+
+    // Plain click on canvas (not on node) clears multi-select so normal behavior resumes
+    df.addEventListener('mousedown', function(e) {
+      if (e.ctrlKey || e.metaKey) return; // only clear on plain clicks
+      const onNode = e.target && (e.target.closest && e.target.closest('.drawflow-node'));
+      if (onNode) return;
+      if (window._multiSelectedNodes.size) {
+        window._multiSelectedNodes.clear();
+        document.querySelectorAll('.drawflow-node.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+      }
+    }, true);
+
+    // Expose a utility for other code paths that want the list
+    window.getMultiSelectedNodeIds = function() {
+      return Array.from(window._multiSelectedNodes);
+    };
+
+    // Initial paint
+    setTimeout(() => window.applyMultiSelectClasses && window.applyMultiSelectClasses(), 0);
+  } catch (e) {
+    console && console.warn && console.warn('MultiSelect patch failed:', e);
+  }
+})();
+// =============================================================================
+
+
+
+    // ── global “Show Status” toggle button ──────────────────────────────────
+    (function setupStatusToggle() {
+      const statusBtn = document.getElementById('statusButton');
+      window.globalShowStatus = true;
+
+      function updateStatusBtn() {
+        if (!statusBtn) return;
+        if (window.globalShowStatus) {
+          statusBtn.textContent = 'Status Enabled';
+          statusBtn.style.backgroundColor = '#4CAF50';
         } else {
-            int v = (base as int)
-            if (v == value || (step>1 && value>=v && ((value - v) % step == 0))) { ok = true }
+          statusBtn.textContent = 'Status Disabled';
+          statusBtn.style.backgroundColor = '#808080';
         }
+      }
+
+      function reRenderTiles() {
+        const nodes = document.querySelectorAll('.drawflow-node[id^="node-"]');
+        nodes.forEach(el => {
+          const id = el.id.replace('node-', '');
+          const node = (window.editor && typeof window.editor.getNodeFromId === 'function')
+            ? window.editor.getNodeFromId(id)
+            : null;
+          if (node && window.editor && typeof window.editor.updateNodeHtmlFromId === 'function') {
+            window.editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
+          }
+        });
+        try { markFlowNeedsSave(true); } catch (e) {}
+      }
+
+      if (statusBtn) {
+        statusBtn.addEventListener('click', () => {
+          window.globalShowStatus = !window.globalShowStatus;
+          updateStatusBtn();
+          reRenderTiles();
+        });
+        updateStatusBtn();
+      }
+    })();
+
+    function pushUndoState() {
+      if (!editor || !editor.export) return;
+      const state = JSON.stringify(editor.export());
+      if (window.undoStack.length && window.undoStack[window.undoStack.length - 1] === state) return;
+
+      // ✅ push to UNDO, and clear REDO on a fresh user change
+      window.undoStack.push(state);
+      window.redoStack = [];
     }
-    return ok
+
+    function doUndo() {
+      logAction("doUndo button clicked.");
+      if (window.undoStack.length < 2) return;
+      const current = window.undoStack.pop();
+      window.redoStack.push(typeof current === "string" ? current : JSON.stringify(current));
+      const prev = window.undoStack[window.undoStack.length-1];
+      if (prev) {
+        restoreFlowFromJson(prev);
+      }
+    }
+
+    function doRedo() {
+      logAction("doRedo button clicked.");
+      if (!window.redoStack.length) return;
+      const state = window.redoStack.pop();
+      if (state) {
+        if (editor && editor.export)
+          window.undoStack.push(JSON.stringify(editor.export()));
+        restoreFlowFromJson(state);
+      }
+    }
+
+    function renderVariableInspector() {
+      const container = document.getElementById("variableInspectorContent");
+      if (!container) return;
+      container.innerHTML = "";
+      let html = "";
+
+      // ---- GLOBAL VARIABLES ----
+      let globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+      html += `<div style="color:#eee;margin-bottom:3px;">
+        <b>Global Variables</b>
+      </div>`;
+      if (globals.length) {
+        globals
+          .slice()
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          .forEach(v => {
+            if (!v || typeof v !== "object" || !v.name) return;
+            html += `<div style="margin-left:8px;">
+              <span style="color:#eec150;">${v.name}</span> = 
+              <span style="color:#02c258;">${JSON.stringify(v.value)}</span>
+            </div>`;
+          });
+      } else {
+        html += `<div style="color:#888;margin-left:8px;">(No global vars)</div>`;
+      }
+
+      // ---- FLOW VARIABLES ----
+      let flowFile = window.flowVars?.getCurrentFlowFile?.() || "";
+      let base = String(flowFile).replace(/\.json$/i, "");
+
+      // Normalize FE_flowvars if it's an array [{flow,name,type,value}, ...]
+      (function normalizeFlowVarsOnce(){
+        if (!window.FE_flowvars) { window.FE_flowvars = {}; return; }
+        if (Array.isArray(window.FE_flowvars)) {
+          const arr = window.FE_flowvars;
+          const map = {};
+          for (const r of arr) {
+            if (!r || !r.flow || !r.name) continue;
+            const b = String(r.flow).replace(/\.json$/i, "");
+            (map[b] = map[b] || []).push({ name: r.name, type: r.type || "String", value: r.value });
+            map[b + ".json"] = map[b]; // mirror key
+          }
+          window.FE_flowvars = map;
+        } else if (typeof window.FE_flowvars === "object") {
+          // ensure keys exist with & without ".json"
+          for (const k of Object.keys(window.FE_flowvars)) {
+            const b = k.replace(/\.json$/i, "");
+            if (!window.FE_flowvars[b]) window.FE_flowvars[b] = window.FE_flowvars[k] || [];
+            if (!window.FE_flowvars[b + ".json"]) window.FE_flowvars[b + ".json"] = window.FE_flowvars[b];
+          }
+        }
+      })();
+
+      let flowVarsArr = [];
+      if (window.FE_flowvars) {
+        flowVarsArr =
+          window.FE_flowvars[flowFile] ||
+          window.FE_flowvars[base] ||
+          window.FE_flowvars[base + ".json"] ||
+          [];
+      }
+
+      html += `<hr style="margin:8px 0;border-top:1px solid #333;">`;
+      html += `<div style="color:#eee;margin-bottom:3px;">
+        <b>Flow Variables</b>
+        <span style="font-size:11px;color:#888;margin-left:12px;">${flowFile ? flowFile : "(none loaded)"}</span>
+      </div>`;
+
+      if (flowVarsArr && flowVarsArr.length) {
+        flowVarsArr
+          .slice()
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          .forEach(v => {
+            if (!v || typeof v !== "object" || !v.name) return;
+            html += `<div style="margin-left:8px;">
+              <span style="color:#81e1ff;">${v.name}</span> = 
+              <span style="color:#8be66a;">${JSON.stringify(v.value)}</span>
+            </div>`;
+          });
+      } else {
+        html += `<div style="color:#888;margin-left:8px;">(No flow vars for this flow)</div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function patchFlowWithDeviceLabels(flow, devices) {
+      // Support both new and legacy JSON paths
+      const dataNodes =
+        (flow && (editor && editor.drawflow ? editor.drawflow : {}) && getHomeFrom(flow) && getHomeDataFrom(flow))
+          ? getHomeDataFrom(flow)
+          : (flow && (editor && editor.drawflow ? editor.drawflow : {}) && (editor && editor.drawflow ? editor.drawflow : {}).drawflow &&
+            getHomeFrom(flow) && getHomeDataFrom(flow))
+            ? getHomeDataFrom(flow)
+            : {};
+
+      // Ensure "notMatchingVar" nodes get a default outputVar label
+      Object.values(dataNodes).forEach(node => {
+        const name = (node.name || "").toLowerCase();
+        if (name === "notmatchingvar") {
+          if (!node.data.outputVar || node.data.outputVar === "undefined") {
+            node.data.outputVar = "Devices to a Variable";
+          }
+        }
+      });
+
+      // Tag any device-based node with its human-readable label
+      Object.values(dataNodes).forEach(node => {
+        const type = (node.name || "").toLowerCase();
+        if (["device", "condition", "eventtrigger"].includes(type) &&
+            node.data && node.data.deviceId) {
+          const dev = devices.find(d => d.id == node.data.deviceId);
+          node.data.deviceLabel = dev
+            ? (dev.label || dev.name)
+            : node.data.deviceId;
+        }
+      });
+    }
+    
+    async function restoreFlowFromJson(jsonStr) {
+      try {
+        if (typeof jsonStr !== "string") {
+          jsonStr = JSON.stringify(jsonStr); // Convert to string if needed
+        }
+        if (!window.devices || !window.devices.length) {
+          if (typeof fetchDevicesFromApp === "function") {
+            window.devices = await fetchDevicesFromApp();
+            window.devices.forEach(dev => {
+              if (Array.isArray(dev.attributes)) {
+                const attrMap = {};
+                dev.attributes.forEach(a => {
+                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+                });
+                dev.attributes = attrMap;
+              }
+            });
+            window.devices.push(TIME_DEVICE);
+            window.devices.push(MODE_DEVICE);
+          }
+        }
+
+        const flow = JSON.parse(jsonStr);
+        if (editor && typeof editor.import === "function") {
+          editor.import(flow);
+          try { const __vp = __fe_extractViewport(flow); if (__vp) __fe_applyViewport(__vp); } catch(_) {}
+
+          patchFlowWithDeviceLabels(flow, window.devices);
+
+          const nodes =
+            editor.drawflow?.Home?.data ||
+            editor.drawflow?.drawflow?.Home?.data ||
+            {};
+          Object.values(nodes).forEach(n => {
+            const el = document.getElementById(`node-${n.id}`);
+            if (!el) return;
+            el.setAttribute('data-node-type', n.name);
+          });
+
+          if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)) {
+            Object.values(getHomeDataFrom(editor)).forEach(updateTileHtml);
+          }
+
+          setTimeout(() => {
+            let selected = editor.selected_id;
+            if (!selected) {
+              const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+                ? Object.keys(getHomeDataFrom(editor))
+                : [];
+              if (allIds.length) {
+                selected = allIds[0];
+                editor.selected_id = selected;
+              }
+            }
+            if (selected) {
+              window.renderEditor(editor.getNodeFromId(selected));
+            } else {
+              document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+            }
+          }, 10);
+
+          // ------- The only variable/inspector refresh you need -------
+          await refreshVarsAndInspector();
+        }
+      } catch (e) {
+        logAction("Undo/Redo failed to restore flow: " + e, "error");
+      }
+    }
+
+    
+
+// === Connection refresh helper (debounced) ===
+(function(){
+  if (window.__fe_refreshConnectionsInstalled) return;
+  window.__fe_refreshConnectionsInstalled = true;
+  let rafId = 0, rafId2 = 0;
+  window.refreshConnectionsSoon = function refreshConnectionsSoon(){
+    try { if (rafId) cancelAnimationFrame(rafId); if (rafId2) cancelAnimationFrame(rafId2); } catch(_){}
+    rafId = requestAnimationFrame(() => {
+      rafId2 = requestAnimationFrame(() => {
+        try {
+          if (window.editor && typeof window.editor.updateConnectionNodesAll === 'function') {
+            window.editor.updateConnectionNodesAll();
+          } else if (window.editor && typeof window.editor.updateConnectionNodes === 'function') {
+            // Fallback: touch every node
+            const data = (window.editor.drawflow && getHomeDataFrom(window.editor)) || {};
+            Object.keys(data).forEach(id => {
+              try { window.editor.updateConnectionNodes(id); } catch(_){}
+            });
+          }
+        } catch(_){}
+      });
+    });
+  };
+})();
+// === Viewport helpers: save/restore canvas pan into flow JSON (x,y only) ===
+function __fe_getViewport() {
+  try {
+    const ed = window.editor || {};
+    const z = (typeof ed.zoom === "number") ? ed.zoom : 1;
+    const x = (typeof ed.canvas_x !== "undefined") ? Number(ed.canvas_x||0) : 0;
+    const y = (typeof ed.canvas_y !== "undefined") ? Number(ed.canvas_y||0) : 0;
+    return { x, y, z };
+  } catch (_){ return {x:0,y:0,z:1}; }
 }
+function __fe_applyViewport(vp) {
+  if (!vp) return;
+  try {
+    if (window.editor && window.editor.precanvas) {
+      // keep existing zoom; only restore pan
+      const z = (typeof window.editor.zoom === "number") ? window.editor.zoom : 1;
+      window.editor.canvas_x = Number(vp.x||0);
+      window.editor.canvas_y = Number(vp.y||0);
+      window.editor.precanvas.style.transform = 'translate(' + window.editor.canvas_x + 'px, ' + window.editor.canvas_y + 'px) scale(' + z + ')';
+    } else {
+      const el = document.querySelector('#drawflow');
+      if (el){
+        const m = (el.style.transform||'').match(/scale\(([-\d\.]+)\)/i);
+        const z = m ? parseFloat(m[1]||'1') : 1;
+        el.style.transform = 'translate(' + (vp.x||0) + 'px, ' + (vp.y||0) + 'px) scale(' + z + ')';
+      }
+    }
+  } catch (_){}
+}
+function __fe_stampViewport(flowObj) {
+  try {
+    const vp = __fe_getViewport();
+    if (!flowObj || typeof flowObj !== "object") return flowObj;
+    // Store redundantly for compatibility
+    flowObj.meta = flowObj.meta || {};
+    flowObj.meta.viewport = { x: Number(vp.x||0), y: Number(vp.y||0), z: Number(vp.z||1) };
+    flowObj.drawflow = flowObj.drawflow || {};
+    flowObj.drawflow.Home = flowObj.drawflow.Home || {};
+    flowObj.drawflow.Home.viewport = { x: Number(vp.x||0), y: Number(vp.y||0), z: Number(vp.z||1) };
+  } catch(_){}
+  return flowObj;
+}
+function __fe_extractViewport(flowObj) {
+  try {
+    return (flowObj && flowObj.drawflow && flowObj.drawflow.Home && flowObj.drawflow.Home.viewport)
+      || (flowObj && flowObj.drawflow && flowObj.drawflow.drawflow && flowObj.drawgetHomeFrom(flow) && flowObj.drawgetHomeFrom(flow).viewport)
+      || (flowObj && flowObj.meta && flowObj.meta.viewport)
+      || flowObj.viewport
+      || null;
+  } catch(_){ return null; }
+}
+
+function markFlowNeedsSave(needed = true) {
+      const btn = document.getElementById('sendFlow');
+      if (!btn) return;
+      if (needed) {
+        btn.classList.add('need-save');
+        pushUndoState();
+      } else {
+        btn.classList.remove('need-save');
+      }
+    }
+
+    function hubitatCredentialsAreValid(logIfMissing = false) {
+      const appId = document.getElementById("hubitatAppId")?.value?.trim();
+      const token = document.getElementById("hubitatToken")?.value?.trim();
+      if (!appId || !token) {
+        if (logIfMissing) logAction("Missing App ID or Token. Please enter both.", "warn");
+        return false;
+      }
+      return true;
+    }
+
+    function showHubitatWarning(show) {
+      let warn = document.getElementById("hubitatWarnBanner");
+      if (!warn) {
+        warn = document.createElement("div");
+        warn.id = "hubitatWarnBanner";
+        warn.style = "background: #ffc107; color: #111; padding: 9px 22px; font-weight: bold; text-align:center; font-size:16px; border-bottom: 2px solid #b8860b;";
+        warn.innerHTML = "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+        document.body.insertBefore(warn, document.body.firstChild);
+      }
+      warn.style.display = show ? "block" : "none";
+    }
+
+    function updateHubitatButtonStates() {
+      const valid = hubitatCredentialsAreValid();
+      const buttonIds = ["loadDevices", "sendFlow", "renameFlow", "deleteFlowAppBtn", "saveAsFlow", "exportAnonFlow"];
+      buttonIds.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = !valid;
+      });
+      showHubitatWarning(!valid);
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", updateHubitatButtonStates);
+    document.getElementById("hubitatToken").addEventListener("input", updateHubitatButtonStates);
+    window.addEventListener("DOMContentLoaded", updateHubitatButtonStates);
+
+    function clearUiIfCredentialsMissing() {
+      if (!hubitatCredentialsAreValid()) {
+        if (typeof window.devices !== "undefined") window.devices = [];
+        if (editor && editor.clear) editor.clear();
+      }
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", clearUiIfCredentialsMissing);
+    document.getElementById("hubitatToken").addEventListener("input", clearUiIfCredentialsMissing);
+
+    function validateHubitatInputFormat() {
+      const appId = document.getElementById("hubitatAppId")?.value?.trim();
+      const token = document.getElementById("hubitatToken")?.value?.trim();
+      if (appId && !/^[a-zA-Z0-9]+$/.test(appId)) {
+        showHubitatWarning(true);
+        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid App ID format. Only letters and numbers are allowed.";
+      } else if (token && !/^[a-zA-Z0-9\-]+$/.test(token)) {
+        showHubitatWarning(true);
+        document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid Token format.";
+      } else {
+        showHubitatWarning(!hubitatCredentialsAreValid());
+        if (hubitatCredentialsAreValid()) document.getElementById("hubitatWarnBanner").innerText =
+          "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+      }
+    }
+    document.getElementById("hubitatAppId").addEventListener("input", validateHubitatInputFormat);
+    document.getElementById("hubitatToken").addEventListener("input", validateHubitatInputFormat);
+
+    window.addEventListener("DOMContentLoaded", function() {
+      setTimeout(updateHubitatButtonStates, 350);
+    });
+      
+    function logAction(msg, type = "info") {
+      const logBox = document.getElementById("logBox");
+      if (logBox) {
+        logBox.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+    }
+ 
+    const TIME_DEVICE = {
+      id: "__time__",
+      label: "Time",
+      name: "Time",
+      attributes: {
+        currentTime: "",
+        timeOfDay: ["sunrise", "sunset"],
+        dayOfWeek: [
+          "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+        ]
+      },
+      commands: []
+    };
+
+    function buildTimeDevicePicker(pickerDiv, node) {
+      // Only handle the special “Time” and “Mode” devices
+      const devs = node.data.deviceIds || [];
+      if (
+        devs.length !== 1 ||
+        (node.data.deviceId !== "__time__" && node.data.deviceId !== "__mode__")
+      ) {
+        return false;
+      }
+
+      pickerDiv.innerHTML = "";
+
+      // Initialize data on first render
+      if (!node.data.attribute) {
+        node.data.attribute  = "";
+        node.data.comparator = "";
+        node.data.value      = "";
+      }
+
+      // ── MODE DEVICE ───────────────────────────────────────────────
+      if (node.data.deviceId === "__mode__") {
+        node.data.attribute = "mode";
+        editor.updateNodeDataFromId(node.id, node.data);
+
+        const lbl = document.createElement("label");
+        lbl.textContent = "Mode";
+        lbl.style.display = "block";
+        pickerDiv.appendChild(lbl);
+
+        const sel = document.createElement("select");
+        sel.style = "display:block;margin-bottom:12px";
+        const modes = window.hubitatModes || [];
+        sel.innerHTML =
+          `<option value=""></option>` +
+          modes
+            .map(m => `<option value="${m.id}"${node.data.value === m.id ? " selected" : ""}>${m.name}</option>`)
+            .join("");
+        sel.onchange = () => {
+          node.data.value = sel.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        pickerDiv.appendChild(sel);
+        return true;
+      }
+
+      // ── CONDITION LABEL ───────────────────────────────────────────
+      pickerDiv.appendChild(
+        Object.assign(document.createElement("label"), {
+          textContent: "Condition",
+          style: "display:block;margin-bottom:4px",
+        })
+      );
+
+      // ── ATTRIBUTE SELECT ──────────────────────────────────────────
+      const attrSelect = document.createElement("select");
+      attrSelect.style = "display:block;margin-bottom:12px";
+      attrSelect.innerHTML =
+        `<option value=""${!node.data.attribute ? " selected" : ""}>(select)</option>` +
+        [
+          { key: "timeOfDay",   label: "Time of Day"  },
+          { key: "dayOfWeek",   label: "Day of Week"  },
+          { key: "currentTime", label: "Current Time" }
+        ]
+          .map(def =>
+            `<option value="${def.key}"${node.data.attribute===def.key ? " selected" : ""}>${def.label}</option>`
+          )
+          .join("");
+      attrSelect.onchange = () => {
+        node.data.attribute = attrSelect.value;
+        node.data.comparator = "";
+        node.data.value = "";
+        editor.updateNodeDataFromId(node.id, node.data);
+        buildTimeDevicePicker(pickerDiv, node);
+        markFlowNeedsSave(true);
+      };
+      pickerDiv.appendChild(attrSelect);
+
+      // ── COMPARATOR LABEL ──────────────────────────────────────────
+      pickerDiv.appendChild(
+        Object.assign(document.createElement("label"), {
+          textContent: "Comparator",
+          style: "display:block;margin-bottom:4px",
+        })
+      );
+
+      // ── COMPARATOR SELECT ─────────────────────────────────────────
+      const cmpSelect = document.createElement("select");
+      cmpSelect.style = "display:block;margin-bottom:12px";
+      cmpSelect.innerHTML =
+        `<option value=""${!node.data.comparator ? " selected" : ""}>(select)</option>` +
+        ["==","!=","<","<=" ,">",">=","between"]
+          .map(cmp =>
+            `<option value="${cmp}"${node.data.comparator===cmp ? " selected" : ""}>${cmp==="==" ? "equals" : cmp}</option>`
+          )
+          .join("");
+      cmpSelect.onchange = () => {
+        node.data.comparator = cmpSelect.value;
+        node.data.value = "";
+        editor.updateNodeDataFromId(node.id, node.data);
+        buildTimeDevicePicker(pickerDiv, node);
+        markFlowNeedsSave(true);
+      };
+      pickerDiv.appendChild(cmpSelect);
+
+      // ── VALUE PICKERS ─────────────────────────────────────────────
+      if (node.data.attribute === "dayOfWeek") {
+        // Day‑of‑Week picker
+        const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        if (node.data.comparator === "between") {
+          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
+          const [startVal, endVal] = node.data.value;
+
+          // Start day dropdown
+          const startSel = document.createElement("select");
+          startSel.style = "display:block;margin-bottom:8px";
+          startSel.innerHTML =
+            `<option value=""></option>` +
+            days.map(d =>
+              `<option value="${d}"${startVal===d ? " selected" : ""}>${d}</option>`
+            ).join("");
+          startSel.onchange = () => {
+            node.data.value[0] = startSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(startSel);
+
+          // End day dropdown
+          const endSel = document.createElement("select");
+          endSel.style = "display:block;margin-bottom:12px";
+          endSel.innerHTML =
+            `<option value=""></option>` +
+            days.map(d =>
+              `<option value="${d}"${endVal===d ? " selected" : ""}>${d}</option>`
+            ).join("");
+          endSel.onchange = () => {
+            node.data.value[1] = endSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(endSel);
+        } else {
+          // Multi‑select
+          const sel = document.createElement("select");
+          sel.multiple = true;
+          sel.size     = days.length;
+          sel.style    = "display:block;margin-bottom:12px";
+          const chosen = Array.isArray(node.data.value) ? node.data.value : (node.data.value ? [node.data.value] : []);
+          days.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d;
+            if (chosen.includes(d)) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          sel.onchange = () => {
+            node.data.value = Array.from(sel.selectedOptions).map(o => o.value);
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(sel);
+        }
+      }
+      else if (node.data.attribute === "timeOfDay") {
+        // Time of Day (sunrise/sunset or custom)
+        if (node.data.comparator === "between") {
+          if (!Array.isArray(node.data.value)) node.data.value = ["",""];
+          const [startVal, endVal] = node.data.value;
+
+          // Sunrise/Sunset start selector
+          const startSelect = document.createElement("select");
+          startSelect.style = "display:block;margin-bottom:8px";
+          startSelect.innerHTML =
+            `<option value=""${!startVal ? " selected" : ""}>(select)</option>` +
+            ["sunrise","sunset"].map(opt =>
+              `<option value="${opt}"${startVal===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
+          startSelect.onchange = () => {
+            node.data.value[0] = startSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(startSelect);
+
+          // Sunrise/Sunset/Custom end selector
+          const endSelect = document.createElement("select");
+          endSelect.style = "display:block;margin-bottom:12px";
+          endSelect.innerHTML =
+            `<option value=""${!endVal ? " selected" : ""}>(select)</option>` +
+            ["sunrise","sunset","custom"].map(opt =>
+              `<option value="${opt}"${
+                (opt!=="custom" ? endVal===opt : (endVal && !["sunrise","sunset"].includes(endVal)))
+                  ? " selected" : ""
+              }>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
+          endSelect.onchange = () => {
+            if (endSelect.value === "custom") {
+              node.data.value[1] = (endVal && !["sunrise","sunset"].includes(endVal)) ? endVal : "12:00";
+            } else {
+              node.data.value[1] = endSelect.value;
+            }
+            editor.updateNodeDataFromId(node.id, node.data);
+            buildTimeDevicePicker(pickerDiv, node);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(endSelect);
+
+         // Offset input for start and end
+        const offsetLabel = document.createElement("label");
+        offsetLabel.textContent = "Offset ± (minutes)";
+        offsetLabel.style = "display:block;margin:8px 0 4px 0;";
+        pickerDiv.appendChild(offsetLabel);
+
+        const startOffset = document.createElement("input");
+        startOffset.type = "number";
+        startOffset.placeholder = "Start Offset";
+        startOffset.value = Array.isArray(node.data.offset) ? node.data.offset[0] || 0 : 0;
+        startOffset.style = "display:block;margin-bottom:6px;width:100%;";
+
+        const endOffset = document.createElement("input");
+        endOffset.type = "number";
+        endOffset.placeholder = "End Offset";
+        endOffset.value = Array.isArray(node.data.offset) ? node.data.offset[1] || 0 : 0;
+        endOffset.style = "display:block;margin-bottom:12px;width:100%;";
+
+        startOffset.onchange = endOffset.onchange = () => {
+          node.data.offset = [
+            parseInt(startOffset.value) || 0,
+            parseInt(endOffset.value) || 0
+          ];
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+
+        pickerDiv.appendChild(startOffset);
+        pickerDiv.appendChild(endOffset);
+
+          // Custom time input if needed
+          if (
+            node.data.value[1] === "custom" ||
+            (node.data.value[1] && !["sunrise","sunset"].includes(node.data.value[1]))
+          ) {
+            const timeInput = document.createElement("input");
+            timeInput.type  = "time";
+            timeInput.value = node.data.value[1] || "";
+            timeInput.style = "display:block;margin-bottom:12px";
+            timeInput.onchange = () => {
+              node.data.value[1] = timeInput.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+            };
+            pickerDiv.appendChild(timeInput);
+          }
+        }
+        else {
+          // Single sunrise/sunset select
+          const todSelect = document.createElement("select");
+          todSelect.style = "display:block;margin-bottom:12px";
+          todSelect.innerHTML =
+            `<option value=""${!node.data.value ? " selected" : ""}>(select)</option>` +
+            ["sunrise","sunset"].map(opt =>
+              `<option value="${opt}"${node.data.value===opt ? " selected" : ""}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`
+            ).join("");
+          todSelect.onchange = () => {
+            node.data.value = todSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(todSelect);
+
+          // Offset input for single sunrise/sunset
+          const offsetLabel = document.createElement("label");
+          offsetLabel.textContent = "Offset ± (minutes)";
+          offsetLabel.style = "display:block;margin:8px 0 4px 0;";
+          pickerDiv.appendChild(offsetLabel);
+
+          const offsetInput = document.createElement("input");
+          offsetInput.type = "number";
+          offsetInput.placeholder = "Offset (min)";
+          offsetInput.value = node.data.offset || 0;
+          offsetInput.style = "display:block;margin-bottom:12px;width:100%;";
+          offsetInput.onchange = () => {
+            node.data.offset = parseInt(offsetInput.value) || 0;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          pickerDiv.appendChild(offsetInput);
+        }
+      }
+      else if (node.data.attribute === "currentTime" && node.data.comparator === "between") {
+        // Two <input type="time"> for “between” currentTime
+        if (!Array.isArray(node.data.value)) node.data.value = ["",""];
+        const [cStart, cEnd] = node.data.value;
+
+        const inStart = document.createElement("input");
+        inStart.type  = "time";
+        inStart.value = cStart || "";
+        inStart.style = "display:block;margin-bottom:8px";
+        inStart.onchange = () => {
+          node.data.value[0] = inStart.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        pickerDiv.appendChild(inStart);
+
+        const inEnd = document.createElement("input");
+        inEnd.type  = "time";
+        inEnd.value = cEnd || "";
+        inEnd.style = "display:block;margin-bottom:12px";
+        inEnd.onchange = () => {
+          node.data.value[1] = inEnd.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        pickerDiv.appendChild(inEnd);
+      }
+      else {
+        // Fallback single <input type="time">
+        const timeInput = document.createElement("input");
+        timeInput.type  = "time";
+        timeInput.value = node.data.value || "";
+        timeInput.style = "display:block;margin-bottom:12px";
+        timeInput.onchange = () => {
+          node.data.value = timeInput.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        };
+        pickerDiv.appendChild(timeInput);
+      }
+
+      return true;
+    }
+
+    const MODE_DEVICE = {
+      id: "__mode__",
+      label: "Home Location",
+      name: "Mode",
+      attributes: { mode: "" },
+      commands: []
+    };
+
+    const VARIABLE_DEVICE = {
+      id: "__variable__",
+      label: "Variable",
+      name: "Variable",
+      attributes: { value: "" }
+    };
+
+    const devs = Array.isArray(window.devices) ? window.devices : [];
+    let conditionDevices = [...devs];
+
+    conditionDevices.unshift(VARIABLE_DEVICE);
+
+    function isValidFlowName(flowName) {
+      return /^[a-zA-Z0-9_-]+$/.test(flowName);
+    }
+
+    // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
+    // 1) Generic attribute picker
+    function renderAttributePicker(el, node, dev, onChange) {
+  const lbl = document.createElement("label");
+  lbl.textContent = "Attribute";
+  lbl.style.display = "block";
+  el.appendChild(lbl);
+
+  const sel = document.createElement("select");
+  sel.style.display = "block";
+  sel.style.marginBottom = "12px";
+  sel.innerHTML =
+    `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
+    Object.keys(dev.attributes)
+      .map(attr =>
+        `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
+      )
+      .join("");
+  sel.onchange = () => {
+    node.data.attribute = sel.value;
+    if (typeof onChange === "function") onChange();
+    editor.updateNodeDataFromId(node.id, node.data);
+    markFlowNeedsSave(true);
+  };
+  el.appendChild(sel);
+}
+
+    // 2) Generic comparator picker
+    function renderComparatorPicker(el, node, comparators, comparatorLabels, onChange) {
+  const lbl = document.createElement("label");
+  lbl.textContent = "Comparator";
+  lbl.style.display = "block";
+  el.appendChild(lbl);
+
+  const sel = document.createElement("select");
+  sel.style.display = "block";
+  sel.style.marginBottom = "12px";
+  sel.innerHTML =
+    `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
+    comparators
+      .map(cmp =>
+        `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
+      )
+      .join("");
+  sel.onchange = () => {
+    node.data.comparator = sel.value;
+    if (typeof onChange === "function") onChange();
+    editor.updateNodeDataFromId(node.id, node.data);
+    markFlowNeedsSave(true);
+  };
+  el.appendChild(sel);
+}
+
+    function renderValueField(el, node, knownValues, onChange, between = false) {
+  // Prevent duplicate value fields
+  if (el.querySelector('.value-field')) return;
+
+  const lbl = document.createElement("label");
+  lbl.textContent = "Value";
+  lbl.style.display = "block";
+  lbl.className = "value-field";
+  el.appendChild(lbl);
+
+  if (between) {
+    // Two inputs for “between”
+    const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
+    const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
+    const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
+    const upd = () => {
+      node.data.value = [minIn.value, maxIn.value];
+      if (typeof onChange === "function") onChange();
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    minIn.onchange = maxIn.onchange = upd;
+    minIn.className = maxIn.className = "value-field";
+    el.appendChild(minIn);
+    el.appendChild(maxIn);
+  }
+  else if (knownValues && knownValues.length) {
+    // Use dropdown
+    const sel = document.createElement("select");
+    sel.style.display = "block";
+    sel.style.marginBottom = "12px";
+    sel.className = "value-field";
+    sel.innerHTML =
+      `<option value="" ${!node.data.value ? "selected" : ""}>(select)</option>` +
+      knownValues
+        .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
+        .join("");
+    sel.onchange = () => { 
+      node.data.value = sel.value; 
+      if (typeof onChange === "function") onChange(); 
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    el.appendChild(sel);
+  }
+  else {
+    // Fallback: free-text input
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = node.data.value || "";
+    input.placeholder = "Enter value";
+    input.style = "display:block;margin-bottom:12px;width:100%;";
+    input.className = "value-field";
+    input.onchange = () => {
+      node.data.value = input.value;
+      if (typeof onChange === "function") onChange();
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    el.appendChild(input);
+  }
+}
+
+    function nodeTileHtml(type, data, nodeId) {
+      function getCurrentValue(deviceId, attr) {
+        const devs = window.devices || [];
+        const dev = devs.find(d => d.id == deviceId);
+        if (dev && dev.attributes && attr && dev.attributes[attr] !== undefined) {
+          return dev.attributes[attr];
+        }
+        return "";
+      }
+
+      const t = (type || "").toLowerCase();
+
+      if (t === "donothing") {
+        return `
+          <div class="logic-node">
+            Do Nothing
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          </div>`;
+      }
+      if (t === "delay") {
+        const errorStyle = getErrorStyle(type, data);
+        let label = "Delay";
+        if (typeof data.ms === "number" && !isNaN(data.ms)) {
+          label = `Delay ${data.ms} ms`;
+        } else if (data && data.ms) {
+          label = `Delay ${data.ms} ms`;
+        } else if (data && data.minutes) {
+          label = `Delay ${data.minutes} min`;
+        }
+        return `<div class="logic-node">${label}${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+      }
+      if (t === "delaymin") {
+        const errorStyle = getErrorStyle(type, data);
+        let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
+        return `<div class="logic-node">${label}${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+      }
+
+      if (t === "savedevicestate") {
+        const errorStyle = getErrorStyle(type, data);
+        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
+        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+      }
+      if (t === "restoredevicestate") {
+        const errorStyle = getErrorStyle(type, data);
+        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
+        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+      }
+
+      if (t === "comment") {
+        const errorStyle = getErrorStyle(type, data);
+        let isSelected = false;
+        if (editor && editor.selected_id && nodeId) {
+          if (editor.selected_id == nodeId) isSelected = true;
+        }
+        let txt = data && data.text ? data.text : "(No comment)";
+        return `<div class="comment-tile">
+          Comment<hr>
+          <div>${txt}</div>
+          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+        </div>`;
+      }
+
+      
+
+      if (t === "schedule") {
+        const errorStyle = getErrorStyle(type, data);
+        // Collect human summary (like other tiles)
+        const dayMap = {SU:'Sun', MO:'Mon', TU:'Tue', WE:'Wed', TH:'Thu', FR:'Fri', SA:'Sat'};
+        const repeatDaysArr = Array.isArray(data.repeatDays) ? data.repeatDays : [];
+        const repeatDays = repeatDaysArr.map(d => dayMap[d] || d).join(", ");
+        const timesArr = Array.isArray(data.times) ? data.times : (data.time ? [data.time] : []);
+        const times = timesArr.join(", ");
+
+        const subtitle = [repeatDays, times].filter(Boolean).join(" — ");
+
+        // Cron expression (if present)
+        let cron = "";
+        if (data && typeof data.cron === "string" && data.cron.trim()) cron = data.cron.trim();
+        else if (data && data.scheduleSpec && data.scheduleSpec.advanced_cron && data.scheduleSpec.advanced_cron.expression) {
+          cron = String(data.scheduleSpec.advanced_cron.expression);
+        } else if (data && data.scheduleSpec && data.scheduleSpec.preview && Array.isArray(data.scheduleSpec.preview)) {
+          // not a cron but keep last generated expression if present
+          cron = data.scheduleSpec.preview[0] || "";
+        }
+        
+        return `<div class="schedule-tile">
+          Schedule<br>
+            <span style="font-size:11px">
+              <span>Days: ${repeatDays}</span><br>
+              <span>Time: ${times}</span><br>
+              <hr style="margin:4px 0;border-top:1px solid #888;">
+              <span>Cron: ${cron}</span>
+            </span>
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+        </div>`;
+      }
+    
+      if (t === "repeat") {
+        const errorStyle = getErrorStyle(type, data);
+        const lockedIcon = data.locked
+          ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>`
+          : "";
+
+        let description;
+        if (data.repeatMode === "until") {
+          const deviceLabel = data.deviceLabel || "Device";
+          const attr        = data.attribute   || "Attribute";
+          const comp        = data.comparator  || "==";
+          const val         = data.value       || "Value";
+          description = `Until ${deviceLabel} ${attr} ${comp} ${val}`;
+        } else {
+          const max = data.repeatMax || 1;
+          description = `Max ${max} time${max !== 1 ? "s" : ""}`;
+        }
+
+        return `<div class="repeat-tile" style="position:relative;">
+          Repeat<br>
+          <span style="font-size:11px">
+            ${description}
+          </span>
+          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+        </div>`;
+      }
+
+      if (t === "setvariable") {
+        const errorStyle = getErrorStyle(type, data);
+        let vName = data.varName || "Variable";
+        let vValue = data.varValue || "Value";
+
+        // --- Find variable type and current value ---
+        let varScope = "";
+        let currentValue = "";
+        // Look for global or flow variable match
+        let flowFile = window.flowVars?.getCurrentFlowFile?.();
+        let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+        let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+        let found = flowVars.find(obj => obj.name === vName);
+        if (found) {
+          varScope = "Flow Variable";
+          currentValue = found.value;
+        } else {
+          found = globalVars.find(obj => obj.name === vName);
+          if (found) {
+            varScope = "Global Variable";
+            currentValue = found.value;
+          } else {
+            varScope = "Variable Not Found";
+            currentValue = "";
+          }
+        }
+        if (currentValue === undefined) currentValue = "";
+
+        return `<div class="setVariable-tile">
+          Set Variable<br>
+          <span style="font-size:11px">
+            ${vName} = ${vValue}
+            <hr style="margin:4px 0;border-top:1px solid #888;">
+            <span>${varScope}</span><br>
+            <span>Current: <span>${JSON.stringify(currentValue)}</span></span>
+          </span>
+          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+        </div>`;
+      }
+
+      if (t === "notmatchingvar") {
+        const errorStyle = getErrorStyle(type, data);
+        const devLabel = "";
+        const attribute = "";
+        const value = "";
+        const outputVar = (data.outputVar && data.outputVar.trim().toLowerCase() !== "undefined")
+          ? data.outputVar
+          : "Devices to a Variable";
+        const scope = data.varScope === "global" ? "Global" : "Flow";
+        const mode  = data.append ? "Append" : "Overwrite";
+
+        return `<div class="setVariable-tile">
+          Devices to a Variable<br>
+          <span style="font-size:11px">
+            ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
+            ${attribute ? "Attr: " + attribute + "<br>" : ""}
+            ${value     ? "Not:  " + value     + "<br>" : ""}
+            <hr>
+            <b>Output variable / file name:</b> ${outputVar}<br>
+            <b>Attr Type:</b> ${scope}<br>
+            <b>Save Mode:</b> ${mode}
+          </span>
+          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+        </div>`;
+      }
+
+      if (t === "notification") {
+        let devLabels = [];
+        let ids = Array.isArray(data.targetDeviceId) ? data.targetDeviceId : [data.targetDeviceId];
+        (ids || []).forEach(id => {
+          let dev = (window.devices || []).find(d => d.id == id);
+          if (dev) devLabels.push(dev.label || dev.name || dev.id);
+        });
+        let devLabelStr = devLabels.length ? devLabels.join(", ") : "<i>No device</i>";
+
+        const lockedHtml = data.locked
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : "";
+        const notifType = data.notificationType === "speech" ? "Speech" : "Push";
+        const msg = data.message || "";
+
+        let preview = msg;
+        if (window.globalShowStatus && msg) {
+          const df = editor.drawflow?.drawflow || editor.drawflow;
+          const nodes = df?.Home?.data || {};
+
+          // Find first eventTrigger node (device OR variable)
+          let triggerNode = Object.values(nodes).find(n =>
+            n.name === "eventTrigger" && n.data &&
+            (
+              (n.data.deviceId && n.data.deviceId !== "__variable__") ||
+              (Array.isArray(n.data.deviceIds) && n.data.deviceIds[0] && n.data.deviceIds[0] !== "__variable__") ||
+              n.data.deviceId === "__variable__" ||
+              (Array.isArray(n.data.deviceIds) && n.data.deviceIds[0] === "__variable__")
+            )
+          );
+
+          let deviceLabel = "";
+          let deviceValue = "";
+
+          if (triggerNode) {
+            // --------- Variable Trigger ---------
+            if (
+              triggerNode.data.deviceId === "__variable__" ||
+              (Array.isArray(triggerNode.data.deviceIds) && triggerNode.data.deviceIds[0] === "__variable__")
+            ) {
+              // Variable name
+              deviceLabel = triggerNode.data.varName || triggerNode.data.variableName || "";
+              // Look up value from flow vars, then global vars
+              let flowFile = window.flowVars?.getCurrentFlowFile?.();
+              let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+              let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+              let flowVal = flowVars.find(obj => obj.name === deviceLabel)?.value;
+              let globalVal = globalVars.find(obj => obj.name === deviceLabel)?.value;
+              deviceValue = flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+            } else {
+              // --------- Standard Device Trigger ---------
+              const dev = (window.devices || []).find(d => d.id == triggerNode.data.deviceId);
+              deviceLabel = dev ? (dev.label || dev.name) : (triggerNode.data.deviceLabel || triggerNode.data.deviceId);
+
+              const attr = triggerNode.data.attribute;
+              if (attr) {
+                if (typeof getCurrentValue === "function") {
+                  deviceValue = getCurrentValue(triggerNode.data.deviceId, attr);
+                } else if (dev && dev.attributes && dev.attributes[attr] !== undefined) {
+                  deviceValue = dev.attributes[attr];
+                }
+              }
+            }
+          }
+
+          // --- Start by getting the selected variable, if any ---
+          let selectedVarName = (data.useMsgVar && data.msgVarName) ? data.msgVarName : "";
+          let selectedVarValue = "";
+          if (selectedVarName) {
+            let flowFile = window.flowVars?.getCurrentFlowFile?.();
+            let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+            let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+            let flowVal = flowVars.find(obj => obj.name === selectedVarName)?.value;
+            let globalVal = globalVars.find(obj => obj.name === selectedVarName)?.value;
+            selectedVarValue = flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "");
+          }
+
+          preview = preview
+            .replace(/\{device\}/g, deviceLabel)
+            .replace(/\{value\}/g, deviceValue)
+            .replace(/\{variableName\}/g, selectedVarName ? selectedVarName : "[not found]")
+            .replace(/\{variableValue\}/g, (selectedVarValue !== undefined && selectedVarValue !== "") ? selectedVarValue : "[not found]")
+            .replace(/\{([a-zA-Z0-9_]+)\}/g, (m, v) => {
+              if (["device", "value", "variableName", "variableValue"].includes(v)) return m;
+              let flowFile = window.flowVars?.getCurrentFlowFile?.();
+              let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+              let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+              let flowVal = flowVars.find(obj => obj.name === v)?.value;
+              let globalVal = globalVars.find(obj => obj.name === v)?.value;
+              return flowVal !== undefined ? flowVal : (globalVal !== undefined ? globalVal : "[not found]");
+            });
+        }
+
+        return `
+          <div class="notification-tile">
+            ${notifType} Notifications<br>
+            <span style="font-size:11px">
+              Device: ${devLabelStr}<br>
+              ${msg ? `Message: "${msg}"<br>` : ""}
+              <hr>
+              ${window.globalShowStatus && msg ? `<b>Preview:</b> "${preview}"<br>` : ""}
+            </span>
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          </div>
+        `;
+      }
+
+      // ---- Combined rendering for Event Trigger & Condition ----
+      if (type === "eventTrigger" || type === "condition") {
+        const isCondition = type === "condition";
+        const errorStyle  = getErrorStyle(type, data);
+        const tileClass   = (isCondition ? "condition-tile" : "trigger-tile") +
+          (editor.selected_id == nodeId ? " selected" : "");
+
+        // Comparator and value text
+        const comp = data.comparator || "==";
+        let valText = "";
+        if (comp === "between" && Array.isArray(data.value)) {
+          valText = ` (${data.value[0]} to ${data.value[1]})`;
+        } else if (data.value !== undefined && data.value !== "") {
+          valText = ` ${data.value}`;
+        }
+
+        // Logic value
+        const logicHtml = data.logic
+          ? `<div class="logic-value" style="font-size:11px;margin:4px 0;"><b>Logic:</b> ${data.logic.toUpperCase()}</div>`
+          : "";
+
+        // Main label: variable vs. real device
+        let mainText;
+        if (data.deviceId === "__variable__") {
+          mainText = `${data.variableName || "<no var>"} ${comp}${valText}`;
+        } else {
+          const dev = (window.devices || []).find(d => d.id == data.deviceId);
+          const devLabel = dev ? (dev.label || dev.name) : (data.deviceLabel || data.deviceId);
+          mainText = `${devLabel} ${data.attribute || ""} ${comp}${valText}`;
+        }
+
+        // Current-status line (handles single + multi-device)
+        let statusHtml = "";
+        if (window.globalShowStatus && data.attribute) {
+          const ids = (Array.isArray(data.deviceIds) && data.deviceIds.length)
+            ? data.deviceIds
+            : [data.deviceId];
+          statusHtml = ids.map(id => {
+            const curr  = getCurrentValue(id, data.attribute);
+            const d     = (window.devices || []).find(dev => dev.id == id);
+            const label = d ? (d.label || d.name) : (data.deviceLabel || id);
+            return `<div class="status-line" style="font-size:10px;color:#000000;">Current ${label}: ${curr}</div>`;
+          }).join("");
+        }
+
+        // Click-pattern indicator
+        const clickHtml = !isCondition && data.clickPattern
+          ? `<div class="click-pattern"></div>`
+          : "";
+
+        // Locked padlock
+        const lockedHtml = data.locked
+          ? '<div style="position:absolute;top:6px;right:6px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : "";
+
+        return `
+          <div class="${tileClass}" ${errorStyle}>
+            ${isCondition ? "Condition" : "Event Trigger"}<br>
+            <span style="font-size:11px">
+              ${mainText}<br>
+              ${logicHtml}
+              <hr>
+            </span>
+            ${statusHtml}
+            ${clickHtml}
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          </div>`;
+      }
+
+      // Action tile (device) with per-device status including device names
+      if (t === "device") {
+        const isSelected = editor && editor.selected_id === nodeId;
+        const errorStyle = getErrorStyle(type, data);
+        const tileClass  = "device-tile" + (isSelected ? " selected" : "");
+
+        // Label, command, and optional value
+        const label = data.deviceLabel
+          || (Array.isArray(data.deviceIds) ? data.deviceIds.join(", ") : data.deviceId)
+          || "<i>Pick device(s)…</i>";
+        const cmd = data.command || "";
+        const val = data.value ? `(${data.value})` : "";
+
+        // Status: show current value per selected device
+        let statusHtml = "";
+        if (window.globalShowStatus && cmd) {
+          const cmdAttrMap = {
+            on: ["switch"], off: ["switch"], toggle: ["switch"],
+            setLevel: ["level"], startLevelChange: ["level"], stopLevelChange: ["level"],
+            setColor: ["color"], lock: ["lock"], unlock: ["lock"]
+          };
+          const attrsToShow = cmdAttrMap[cmd] || [];
+          const devs = window.devices || [];
+          const ids = Array.isArray(data.deviceIds) && data.deviceIds.length
+            ? data.deviceIds
+            : [data.deviceId];
+
+          statusHtml = ids.map(id => {
+            const dev = devs.find(d => d.id == id);
+            if (!dev?.attributes) return "";
+            return attrsToShow.map(attr => {
+              const v = dev.attributes[attr];
+              if (v == null) return "";
+              const name = dev.label || dev.name || id;
+              return `<div class="current-value">Current ${name}: ${v}</div>`;
+            }).join("");
+          }).join("");
+        }
+
+        // Color preview
+        let colorPreview = "";
+        if (cmd.toLowerCase() === "setcolor" && data.color) {
+          colorPreview = `<div style="
+            margin-top:4px;
+            width:30px; height:14px;
+            border-radius:5px;
+            background:${data.color};
+            border:1px solid #555;
+            display:inline-block;
+          "></div>`;
+        }
+
+        // Locked icon
+        const lockedHtml = data.locked
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : "";
+
+        return `
+          <div class="${tileClass}" ${errorStyle}>
+            Action<br>
+            <span style="font-size:11px">
+              ${label} ${cmd || ''} ${val || ''}<br><hr>
+            </span>
+            ${statusHtml}
+            ${colorPreview}
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          </div>`;
+      }
+    }
+
+    function updateTileHtml(node) {
+      if (editor && typeof editor.updateNodeHtmlFromId === "function") {
+        editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+      }
+    }
+
+    function updateMultiSelectUI() {
+      document.querySelectorAll('.drawflow-node').forEach(el => {
+        const nodeId = el.id.replace(/^node-/, "");
+        if (window._multiSelectedNodes && window._multiSelectedNodes.has(nodeId)) {
+          el.classList.add('multi-selected');
+        } else {
+          el.classList.remove('multi-selected');
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // --- Wait for credentials autofill, then auto-load globals ---
+      function tryAutoLoadGlobalsWhenReady(retries = 30) {
+        const appIdEl = document.getElementById("hubitatAppId");
+        const tokenEl = document.getElementById("hubitatToken");
+        if (appIdEl && tokenEl && appIdEl.value && tokenEl.value) {
+          autoLoadGlobalVarsFromHubitat();
+        } else if (retries > 0) {
+          setTimeout(() => tryAutoLoadGlobalsWhenReady(retries - 1), 200);
+        }
+      }
+      tryAutoLoadGlobalsWhenReady();
+
+      function rememberInput(inputId, storageKey) {
+        const el = document.getElementById(inputId);
+        if (localStorage.getItem(storageKey)) {
+          el.value = localStorage.getItem(storageKey);
+        }
+        el.addEventListener("input", function() {
+          localStorage.setItem(storageKey, el.value.trim());
+        });
+      }
+      rememberInput("hubitatAppId", "hubitatAppId");
+      rememberInput("hubitatToken", "hubitatToken");
+
+      document.getElementById("loadDevices").onclick = async () => {
+        if (!hubitatCredentialsAreValid(true)) return;
+        logAction("loadDevices button clicked.");
+        await fetchModesFromAppFile();
+        devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
+        devices.push(TIME_DEVICE);
+        devices.push(MODE_DEVICE);
+        devices.push(VARIABLE_DEVICE);
+        window.devices = devices;
+
+        // Set current mode on Home Location device
+        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+        const currentMode = currentModeObj ? currentModeObj.name : "";
+        const modeDev = window.devices.find(d => d.id === "__mode__");
+        if (modeDev) {
+          modeDev.attributes.mode = currentMode;
+        }
+
+        // --- PATCH: force field sync after import/undo ---
+        setTimeout(() => {
+          // 1. Always pick a node to edit
+          let selected = editor.selected_id;
+          if (!selected) {
+            // If nothing selected, pick the first node in the flow (if any)
+            const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+              ? Object.keys(getHomeDataFrom(editor))
+              : [];
+            if (allIds.length) {
+              selected = allIds[0];
+              editor.selected_id = selected;
+            }
+          }
+          if (selected) {
+            // Always refresh the editor panel to match current node data
+            window.renderEditor(editor.getNodeFromId(selected));
+          } else {
+            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          }
+        }, 10);
+        logAction("Devices loaded: " + devices.length);
+      };
+
+      // Auto-load devices if credentials are filled (with delayed check for browser autofill)
+      setTimeout(() => {
+        const appIdEl = document.getElementById("hubitatAppId");
+        const tokenEl = document.getElementById("hubitatToken");
+        if (appIdEl.value && tokenEl.value) {
+          document.getElementById("loadDevices").click();
+        }
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 350);
+
+      window.ATTRIBUTE_KNOWN_VALUES = {
+        "contact":        ["open", "closed"],
+        "switch":         ["on", "off"],
+        "door":           ["open", "closed", "unknown"],
+        "lock":           ["locked", "unlocked", "unknown"],
+        "motion":         ["active", "inactive"],
+        "presence":       ["present", "not present"],
+        "water":          ["wet", "dry"],
+        "smoke":          ["clear", "detected", "tested"],
+        "carbonMonoxide": ["clear", "detected", "tested"],
+        "acceleration":   ["active", "inactive"],
+        "tamper":         ["clear", "detected"],
+        "shade":          ["open", "closed", "partially open", "unknown"],
+        "windowShade":    ["open", "closed", "partially open", "unknown"],
+        "thermostatMode": [
+          "off", "heat", "emergency heat", "cool", "auto", "fan only", "dry", "eco"
+        ],
+        "thermostatOperatingState": [
+          "heating", "cooling", "idle", "pending heat", "pending cool", "fan only", "vent economizer"
+        ],
+        "thermostatFanMode": [
+          "auto", "on", "circulate"
+        ],
+        "alarm":          ["off", "strobe", "siren", "both"],
+        "valve":          ["open", "closed"],
+        "button":         ["pushed", "held", "doubleTapped", "released"],
+        "temperature":    [],
+        "humidity":       [],
+        "illuminance":    [],
+        "energy":         [],
+        "power":          [],
+        "level":          []
+      };
+
+      function getSortedDevicesWithSpecials(devices) {
+        const modeDevice = devices.find(d => d.id === "__mode__");
+        const timeDevice = devices.find(d => d.id === "__time__");
+        const variableDevice = devices.find(d => d.id === "__variable__");
+        const realDevices = devices
+          .filter(d => d.id !== "__mode__" && d.id !== "__time__" && d.id !== "__variable__")
+          .slice()
+          .sort((a, b) => {
+            const aLabel = (a.label || a.name || a.id || "").toLowerCase();
+            const bLabel = (b.label || b.name || b.id || "").toLowerCase();
+            if (aLabel < bLabel) return -1;
+            if (aLabel > bLabel) return 1;
+            return 0;
+          });
+        const arr = [];
+        if (modeDevice) arr.push(modeDevice);
+        if (timeDevice) arr.push(timeDevice);
+        if (variableDevice) arr.push(variableDevice);
+        if (realDevices.length) arr.push({ id: "__divider__", label: "───────────────" });
+        arr.push(...realDevices);
+        return arr;
+      }
+
+      /**
+       * Renders a device search/filter + (single/multi) select picker.
+       * @param {HTMLElement} el - Where to append the picker.
+       * @param {Array} devices - List of all devices.
+       * @param {Array} selectedIds - Array of currently selected device IDs.
+       * @param {Function} onChange - Called with (newSelectedIds, newDeviceLabels) when selection changes.
+       * @param {boolean} multi - true for multi-select, false for single-select
+       */
+      function renderDevicePicker(el, devices, selectedIds, onChange, multi = true) {
+      // Remove old content if called multiple times
+      const existing = el.querySelector('.device-picker-block');
+      if (existing) existing.remove();
+
+      // Picker wrapper
+      const pickerWrap = document.createElement("div");
+      pickerWrap.className = "device-picker-block";
+      pickerWrap.style = "margin-bottom:8px";
+
+      // Search input
+      const devFilterInput = document.createElement("input");
+      devFilterInput.type = "text";
+      devFilterInput.placeholder = "Search devices…";
+      devFilterInput.style = "width:98%;margin-bottom:3px;padding:3px 7px;border-radius:7px;border:1px solid #333;font-size:13px;";
+      pickerWrap.appendChild(devFilterInput);
+
+      // Select dropdown
+      const devSelect = document.createElement("select");
+      devSelect.multiple = multi;
+      devSelect.size = Math.min(10, devices.length);
+      devSelect.style.width = "98%";
+      devSelect.style.display = "block";
+      devSelect.style.marginBottom = "12px";
+      pickerWrap.appendChild(devSelect);
+
+      function populate(filtered) {
+        // Remember current scroll position and selected items
+        const prevScroll   = devSelect.scrollTop;
+        const prevSelected = Array.from(devSelect.selectedOptions).map(o => o.value);
+
+        // Clear out old options and rebuild from `filtered`
+        devSelect.innerHTML = "";
+        getSortedDevicesWithSpecials(filtered).forEach((d) => {
+          if (d.id === "__divider__") {
+            const divider = document.createElement("option");
+            divider.disabled    = true;
+            divider.textContent = d.label;
+            divider.style.background = "#444";
+            devSelect.appendChild(divider);
+          } else {
+            const opt = document.createElement("option");
+            opt.value       = d.id;
+            opt.textContent = d.label || d.name || d.id;
+            if (selectedIds.includes(d.id)) opt.selected = true;
+            devSelect.appendChild(opt);
+          }
+        });
+
+        // Restore scroll position
+        devSelect.scrollTop = prevScroll;
+      }
+
+      // Filter handler
+      devFilterInput.oninput = function() {
+        const filter = devFilterInput.value.trim().toLowerCase();
+        if (!filter) { populate(devices); return; }
+        const filtered = devices.filter(d =>
+          (d.label || d.name || d.id || "").toLowerCase().includes(filter) ||
+          d.id === "__time__" || d.id === "__mode__"
+        );
+        populate(filtered);
+      };
+
+      // Initial population
+      populate(devices);
+
+      // This is the CRITICAL PART for ctrl-click multi-select:
+      devSelect.onchange = () => {
+        let newSelected = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+        onChange(newSelected, newSelected.map(
+          id => (devices.find(d => d.id == id) || {}).label || id
+        ));
+      };
+
+      el.appendChild(pickerWrap);
+    }
+
+      function renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml) {
+        // clear the container
+        el.innerHTML = "";
+
+        // ensure deviceIds array
+        const devIds = Array.isArray(node.data.deviceIds)
+          ? node.data.deviceIds
+          : node.data.deviceId
+            ? [node.data.deviceId]
+            : [];
+
+        // collect shared attribute names across selected devices
+        const sharedAttrs = Array.from(new Set(
+          devIds.flatMap(id => {
+            const dev = devices.find(d => d.id === id);
+            return dev && dev.attributes
+              ? Object.keys(dev.attributes)
+              : [];
+          })
+        )).sort();
+
+        // ── ATTRIBUTE LABEL ────────────────────────────────────────────
+        const attrLabel = document.createElement("label");
+        attrLabel.textContent = "Attribute";
+        attrLabel.style.display = "block";
+        el.appendChild(attrLabel);
+
+        // ── ATTRIBUTE SELECT ───────────────────────────────────────────
+        const attrSel = document.createElement("select");
+        attrSel.style = "display:block;margin-bottom:12px";
+        attrSel.innerHTML =
+          `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
+          sharedAttrs
+            .map(a => `<option value="${a}" ${node.data.attribute === a ? "selected" : ""}>${a}</option>`)
+            .join("");
+        attrSel.onchange = () => {
+          node.data.attribute  = attrSel.value;
+          node.data.logic      = "";
+          node.data.comparator = "";
+          node.data.value      = "";
+          editor.updateNodeDataFromId(node.id, node.data);
+          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
+        };
+        el.appendChild(attrSel);
+
+        // ── LOGIC LABEL ────────────────────────────────────────────────
+        const logicLabel = document.createElement("label");
+        logicLabel.textContent = "Logic";
+        logicLabel.style.display = "block";
+        el.appendChild(logicLabel);
+
+        // ── LOGIC SELECT ───────────────────────────────────────────────
+        const logicSel = document.createElement("select");
+        logicSel.style = "display:block;margin-bottom:12px";
+        logicSel.innerHTML =
+          `<option value="" ${!node.data.logic ? "selected" : ""}>(select)</option>` +
+          ["and", "or"]
+            .map(l => `<option value="${l}" ${node.data.logic === l ? "selected" : ""}>${l.toUpperCase()}</option>`)
+            .join("");
+        logicSel.onchange = () => {
+          node.data.logic = logicSel.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
+        };
+        el.appendChild(logicSel);
+
+        // ── COMPARATOR LABEL ───────────────────────────────────────────
+        const cmpLabel = document.createElement("label");
+        cmpLabel.textContent = "Comparator";
+        cmpLabel.style.display = "block";
+        el.appendChild(cmpLabel);
+
+        // ── COMPARATOR SELECT ──────────────────────────────────────────
+        const cmpSel = document.createElement("select");
+        cmpSel.style = "display:block;margin-bottom:12px";
+        cmpSel.innerHTML =
+          `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
+          ["==","!=","<","<=",">",">=","between","changes"]
+            .map(c => {
+              const label = c === "==" ? "equals" : c;
+              return `<option value="${c}" ${node.data.comparator === c ? "selected" : ""}>${label}</option>`;
+            })
+            .join("");
+        cmpSel.onchange = () => {
+          node.data.comparator = cmpSel.value;
+          node.data.value      = "";
+          editor.updateNodeDataFromId(node.id, node.data);
+          renderConditionDeviceFields(el, node, devices, editor, nodeTileHtml);
+          markFlowNeedsSave(true);
+        };
+        el.appendChild(cmpSel);
+
+        // ── VALUE INPUT(S) ────────────────────────────────────────────
+        if (node.data.comparator === "between") {
+          // two inputs for range
+          const [start = "", end = ""] = Array.isArray(node.data.value) ? node.data.value : ["",""];
+          // start value
+          const startInput = document.createElement("input");
+          startInput.type  = "text";
+          startInput.placeholder = "Start value";
+          startInput.value = start;
+          startInput.style = "display:block;margin-bottom:8px";
+          startInput.onchange = () => {
+            node.data.value = [startInput.value, end];
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(startInput);
+          // end value
+          const endInput = document.createElement("input");
+          endInput.type  = "text";
+          endInput.placeholder = "End value";
+          endInput.value = end;
+          endInput.style = "display:block;margin-bottom:12px";
+          endInput.onchange = () => {
+            node.data.value = [startInput.value, endInput.value];
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(endInput);
+        }
+        
+        const known = ATTRIBUTE_KNOWN_VALUES[node.data.attribute] || [];
+        if (known.length) {
+          const valSel = document.createElement("select");
+          valSel.style = "display:block;margin-bottom:12px";
+          valSel.innerHTML =
+            `<option value="">(select)</option>` +
+            known
+              .map(v =>
+                `<option value="${v}"${node.data.value === v ? " selected" : ""}>${v}</option>`
+              )
+              .join("");
+          valSel.onchange = () => {
+            node.data.value = valSel.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(valSel);
+        }
+        else if (node.data.comparator === "between") {
+          renderValueField(el, node, knownValues, onChange, true);
+        }
+        else if (node.data.comparator && node.data.comparator !== "changes") {
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value";
+          valInput.value = node.data.value || "";
+          valInput.style = "display:block;margin-bottom:12px";
+          valInput.onchange = () => {
+            node.data.value = valInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(valInput);
+        }
+
+        // finally, update the node's HTML preview
+        const tileHtml = nodeTileHtml(node.name, node.data, node.id);
+        editor.updateNodeHtmlFromId(node.id, tileHtml);
+      }
+
+      window.renderEditor = function renderEditor(node) {
+        // If this is a Schedule node, show a message in the Node Editor instead of opening any popup
+        if (node && (node.type === 'schedule' || node.name === 'schedule' || node.title === 'Schedule Trigger' || node.label === 'Schedule')) {
+          const msg = `<div style="margin:12px 8px;padding:10px;border:1px dashed #888;border-radius:8px;font-size:14px;line-height:1.4;">
+            <b>Double-click Tile to open Schedule Editor</b>
+          </div>`;
+          // ensure header exists, then append message
+          nodeEditor.innerHTML += msg;
+          return;
+        }
+
+        const panel = document.getElementById("nodeEditor");
+        if (panel) panel.style.display = '';
+        if (!node) {
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          return;
+        }
+        const el = document.getElementById("nodeEditor");
+        el.innerHTML = "";
+
+        const pickerDevices = getSortedDevicesWithSpecials(window.devices || []);
+        if (
+          ["device", "condition", "eventTrigger", "notMatchingVar"].includes(node.name)
+        ) {
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          if (node.data.deviceId && node.data.deviceIds.length === 0) {
+            node.data.deviceIds = [node.data.deviceId];
+          }
+          if (node.data.deviceIds.length === 1) {
+            node.data.deviceId = node.data.deviceIds[0];
+          }
+        }
+
+        if (node.name === "eventTrigger") {
+          // Device picker always rendered first!
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (ids, labels) => {
+              node.data.deviceIds = ids;
+              node.data.deviceId = ids[0] || "";
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              window.renderEditor(node);
+            },
+            true // multi-select ENABLED
+          );
+
+          // If Variable is selected, add variable picker BELOW device picker
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(el, node, true); // append variable picker
+            return;
+          }
+        }
+
+        if (node.name === "condition") {
+          // Device picker always rendered first!
+          renderDevicePickerSection(
+            el,
+            node,
+            getSortedDevicesWithSpecials(window.devices || []),
+            (ids, labels) => {
+              node.data.deviceIds = ids;
+              node.data.deviceId = ids[0] || "";
+              node.data.attribute = "";
+              node.data.comparator = "";
+              node.data.value = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+              window.renderEditor(node);
+            },
+            true // multi-select ENABLED
+          );
+
+          // If Variable is selected, add variable picker BELOW device picker
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(el, node, true);
+            return;
+          }
+        }
+
+        // ************************************
+        // --- SHARED HELPERS ---
+        // ***********************************
+        function getPickerDevices(devices) {
+          const homeLoc = devices.find(d => d.id === "__mode__");
+          const timeDev = devices.find(d => d.id === "__time__");
+          const varDev = { id: "__variable__", label: "Variable", name: "Variable" };
+          const rest = devices.filter(d => !["__mode__", "__time__"].includes(d.id));
+          let pickerDevices = [];
+          if (homeLoc) pickerDevices.push(homeLoc);
+          if (timeDev) pickerDevices.push(timeDev);
+          pickerDevices.push(varDev);
+          if (rest.length) pickerDevices.push({ id: "__divider__", label: "───────────────" });
+          pickerDevices = pickerDevices.concat(rest.sort((a, b) => {
+            const la = (a.label || a.name || a.id).toLowerCase();
+            const lb = (b.label || b.name || b.id).toLowerCase();
+            return la.localeCompare(lb);
+          }));
+          return pickerDevices;
+        }
+
+        function renderDevicePickerSection(el, node, devices, onChange, multiSelect=true) {
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+          renderDevicePicker(
+            el,
+            devices,
+            Array.isArray(node.data.deviceIds)
+              ? node.data.deviceIds
+              : node.data.deviceId ? [node.data.deviceId] : [],
+            onChange,
+            multiSelect
+          );
+        }
+
+        // ************************************
+        // DEVICE NODE (Action)
+        // ************************************
+        if (node.name === "device") {
+          // 2) Normalize deviceIds / deviceId
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
+
+          // 3) Prepare full device list for the picker
+          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+          const pickerDevices = getPickerDevices(allDevices);
+
+          // 4) Helper to build Command → Value fields
+          function buildDeviceActionFields(container) {
+            // Compute shared commands
+            const selected = node.data.deviceIds
+              .map(id => allDevices.find(d => d.id == id))
+              .filter(Boolean);
+            let shared = Array.isArray(selected[0]?.commands)
+              ? selected[0].commands.slice()
+              : [];
+            for (let i = 1; i < selected.length; i++) {
+              if (Array.isArray(selected[i].commands)) {
+                shared = shared.filter(cmd =>
+                  selected[i].commands.includes(cmd)
+                );
+              } else {
+                shared = [];
+              }
+            }
+            if (shared.includes("on") && shared.includes("off") && !shared.includes("toggle")) {
+              shared.push("toggle");
+            }
+
+            // Command picker
+            const cmdLbl = document.createElement("label");
+            cmdLbl.textContent = "Command";
+            cmdLbl.style.display = "block";
+            container.appendChild(cmdLbl);
+
+            const cmdSel = document.createElement("select");
+            cmdSel.style = "display:block;margin-bottom:12px";
+            cmdSel.innerHTML =
+              `<option value="">Pick a command…</option>` +
+              shared.map(c => `<option value="${c}">${c}</option>`).join("");
+            cmdSel.value = node.data.command;
+            cmdSel.onchange = () => {
+              node.data.command = cmdSel.value;
+              node.data.value   = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              // rebuild just the Value UI
+              container.innerHTML = "";
+              buildDeviceActionFields(container);
+              markFlowNeedsSave(true);
+            };
+            container.appendChild(cmdSel);
+
+            // Value label
+            if (node.data.command) {
+              const valLbl = document.createElement("label");
+              valLbl.textContent = "Value";
+              valLbl.style.display = "block";
+              container.appendChild(valLbl);
+
+              // Value input/picker
+              const numericCmds = [
+                "setLevel","setTemperature","setVolume",
+                "setPosition","setHue","setSaturation","setSpeed"
+              ];
+              if (numericCmds.includes(node.data.command)) {
+                const inp = document.createElement("input");
+                inp.type  = "number";
+                inp.value = node.data.value || "";
+                inp.style = "display:block;margin-bottom:12px";
+                inp.oninput = () => {
+                  node.data.value = inp.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                container.appendChild(inp);
+              }
+              else if (node.data.command === "setColor") {
+                const inp = document.createElement("input");
+                inp.type  = "color";
+                inp.value = node.data.value || "#ffffff";
+                inp.style = "display:block;margin-bottom:12px";
+                inp.oninput = () => {
+                  node.data.value = inp.value;
+                  node.data.color = inp.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                container.appendChild(inp);
+              }
+              else {
+                const inp = document.createElement("input");
+                inp.type  = "text";
+                inp.value = node.data.value || "";
+                inp.style = "display:block;margin-bottom:12px";
+                inp.oninput = () => {
+                  node.data.value = inp.value;
+                  editor.updateNodeDataFromId(node.id, node.data);
+                  editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+                  markFlowNeedsSave(true);
+                };
+                container.appendChild(inp);
+              }
+            }
+          }
+
+          // 5) Render the Device(s) picker
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (newIds, newLabels) => {
+              node.data.deviceIds   = newIds;
+              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+              node.data.deviceLabel = newLabels.join(", ");
+              node.data.command     = "";
+              node.data.value       = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              // rebuild Command → Value fields in place
+              const div = document.getElementById("device-pickers-" + node.id);
+              div.innerHTML = "";
+              buildDeviceActionFields(div);
+              markFlowNeedsSave(true);
+            },
+            true // multi-select
+          );
+
+          // 6) Container for Command → Value
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id    = "device-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // 7) Initial build of Command → Value
+          buildDeviceActionFields(pickerDiv);
+
+          return;
+        }
+
+        // ************************************
+        // EVENT TRIGGER NODE
+        // ************************************
+        if (node.name === "eventTrigger") {
+          // 2) Normalize device data
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
+
+          // 3) Full list for the picker
+          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+          const pickerDevices = getPickerDevices(allDevices);
+
+          // ── DEVICE(S) PICKER ──
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (newIds, newLabels) => {
+              node.data.deviceIds   = newIds;
+              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+              node.data.deviceLabel = newLabels.join(", ");
+              // clear old condition fields
+              node.data.attribute   = "";
+              node.data.comparator  = "";
+              node.data.value       = "";
+
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(
+                node.id,
+                nodeTileHtml(node.name, node.data, node.id)
+              );
+
+              // rebuild only the pickers in that container
+              const pickerDiv = document.getElementById("trigger-pickers-" + node.id);
+              pickerDiv.innerHTML = "";
+              if (!buildTimeDevicePicker(pickerDiv, node)) {
+                renderConditionDeviceFields(
+                  pickerDiv,
+                  node,
+                  pickerDevices,
+                  editor,
+                  nodeTileHtml
+                );
+              }
+              markFlowNeedsSave(true);
+              window.renderEditor(node);
+            },
+            true // multi-select
+          );
+
+          // ── PICKER CONTAINER ──
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id    = "trigger-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // 4) Initial build of time-or-condition fields
+          if (buildTimeDevicePicker(pickerDiv, node)) {
+            return;
+          }
+          renderConditionDeviceFields(
+            pickerDiv,
+            node,
+            pickerDevices,
+            editor,
+            nodeTileHtml
+          );
+          return;
+        }
+
+        // ************************************
+        // CONDITION NODE
+        // ************************************
+        if (node.name === "condition") {
+          // 1) Normalize data array
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
+
+          // 2) Prepare full device list
+          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+          const pickerDevices = getPickerDevices(allDevices);
+
+          // ── DEVICE(S) PICKER ──
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (newIds, newLabels) => {
+              // update selection
+              node.data.deviceIds   = newIds;
+              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+              node.data.deviceLabel = newLabels.join(", ");
+              // clear previous fields
+              node.data.attribute   = "";
+              node.data.comparator  = "";
+              node.data.value       = "";
+
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(
+                node.id,
+                nodeTileHtml(node.name, node.data, node.id)
+              );
+
+              // 3) Rebuild only the condition pickers in place
+              const pickerDiv = document.getElementById("condition-pickers-" + node.id);
+              pickerDiv.innerHTML = "";
+              if (node.data.deviceId === "__variable__") {
+                buildVariableTriggerEditor(pickerDiv, node, true);
+              } else if (!buildTimeDevicePicker(pickerDiv, node)) {
+                renderConditionDeviceFields(
+                  pickerDiv,
+                  node,
+                  pickerDevices,
+                  editor,
+                  nodeTileHtml
+                );
+              }
+              markFlowNeedsSave(true);
+            },
+            true // multi-select
+          );
+
+          // ── PICKER CONTAINER ──
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id    = "condition-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+
+          // 4) Initial build of time-or-condition fields
+          if (node.data.deviceId === "__variable__") {
+            buildVariableTriggerEditor(pickerDiv, node, true);
+            return;
+          }
+          if (buildTimeDevicePicker(pickerDiv, node)) {
+            return;
+          }
+          renderConditionDeviceFields(
+            pickerDiv,
+            node,
+            pickerDevices,
+            editor,
+            nodeTileHtml
+          );
+          return;
+        }
+
+        if (node.name === "delay") {
+          el.innerHTML = ""; // Clear sidebar panel
+
+          const msLabel = document.createElement("label");
+          msLabel.textContent = "Milliseconds";
+          msLabel.style.display = "block";
+          el.appendChild(msLabel);
+
+          const msInput = document.createElement("input");
+          msInput.type = "number";
+          msInput.min = 0;
+          msInput.step = 1;
+          msInput.value = typeof node.data.ms === "number" ? node.data.ms : (parseInt(node.data.ms) || 1000);
+          msInput.style.display = "block";
+          msInput.style.marginBottom = "12px";
+          msInput.oninput = () => {
+            node.data.ms = parseInt(msInput.value) || 0;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(msInput);
+        }
+
+        if (node.name === "delayMin") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<b>Delay (Minutes)</b><br><br>";
+
+          const minLabel = document.createElement("label");
+          minLabel.textContent = "Delay (minutes): ";
+          el.appendChild(minLabel);
+
+          const minInput = document.createElement("input");
+          minInput.type = "number";
+          minInput.min = 1;
+          minInput.value = node.data.delayMin || 1;
+          minInput.style.width = "60px";
+          minInput.oninput = () => {
+            node.data.delayMin = Number(minInput.value) || 1;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(minInput);
+
+          return;
+        }
+
+        if (node.name === "repeat") {
+          el.innerHTML = "<b>Repeat Node</b><hr>";
+
+          // ── MODE SELECTOR ──────────────────────────────────────────────
+          const modeLabel = document.createElement("label");
+          modeLabel.textContent = "Repeat mode:";
+          modeLabel.style.display = "block";
+          el.appendChild(modeLabel);
+
+          const countRadio = document.createElement("input");
+          countRadio.type = "radio";
+          countRadio.name = "repeatMode";
+          countRadio.value = "count";
+          countRadio.id = `repeatModeCount-${node.id}`;
+          el.appendChild(countRadio);
+          const countLabel = document.createElement("label");
+          countLabel.htmlFor = countRadio.id;
+          countLabel.textContent = "Max repeats";
+          countLabel.style.margin = "0 12px 0 4px";
+          el.appendChild(countLabel);
+
+          const untilRadio = document.createElement("input");
+          untilRadio.type = "radio";
+          untilRadio.name = "repeatMode";
+          untilRadio.value = "until";
+          untilRadio.id = `repeatModeUntil-${node.id}`;
+          el.appendChild(untilRadio);
+          const untilLabel = document.createElement("label");
+          untilLabel.htmlFor = untilRadio.id;
+          untilLabel.textContent = "Until this happens";
+          el.appendChild(untilLabel);
+
+          // ── Container for mode-specific UI ─────────────────────────────
+          const modeDiv = document.createElement("div");
+          modeDiv.style.marginTop = "8px";
+          el.appendChild(modeDiv);
+
+          // ── RENDER COUNT MODE ───────────────────────────────────────────
+          function renderCount() {
+            modeDiv.innerHTML = "";
+            const lbl = document.createElement("label");
+            lbl.textContent = "Max repeats:";
+            lbl.style.display = "block";
+            modeDiv.appendChild(lbl);
+
+            const inp = document.createElement("input");
+            inp.type = "number";
+            inp.min = 1;
+            inp.max = 100;
+            inp.value = node.data.repeatMax || 1;
+            inp.style.width = "60px";
+            inp.onchange = () => {
+              node.data.repeatMax = parseInt(inp.value, 10) || 1;
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            };
+            modeDiv.appendChild(inp);
+          }
+
+          // ── RENDER UNTIL MODE ───────────────────────────────────────────
+          function renderUntil() {
+            modeDiv.innerHTML = "";
+
+            // Device(s) picker
+            const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+            const pickerDevices = getPickerDevices(allDevices);
+
+            // ── DEVICE(S) PICKER ──
+            renderDevicePickerSection(
+              el,
+              node,
+              pickerDevices,
+              (newIds, newLabels) => {
+                // update selection
+                node.data.deviceIds   = newIds;
+                node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+                node.data.deviceLabel = newLabels.join(", ");
+                // clear previous fields
+                node.data.attribute   = "";
+                node.data.comparator  = "";
+                node.data.value       = "";
+
+                editor.updateNodeDataFromId(node.id, node.data);
+                editor.updateNodeHtmlFromId(
+                  node.id,
+                  nodeTileHtml(node.name, node.data, node.id)
+                );
+
+                // 3) Rebuild only the condition pickers in place
+                const pickerDiv = document.getElementById("condition-pickers-" + node.id);
+                pickerDiv.innerHTML = "";
+                if (!buildTimeDevicePicker(pickerDiv, node)) {
+                  renderConditionDeviceFields(
+                    pickerDiv,
+                    node,
+                    pickerDevices,
+                    editor,
+                    nodeTileHtml
+                  );
+                }
+                markFlowNeedsSave(true);
+              },
+              true // multi-select
+            );
+
+            // ── PICKER CONTAINER ──
+            const pickerDiv = document.createElement("div");
+            pickerDiv.id    = "condition-pickers-" + node.id;
+            pickerDiv.style.marginTop = "8px";
+            el.appendChild(pickerDiv);
+
+            // 4) Initial build of time-or-condition fields
+            if (buildTimeDevicePicker(pickerDiv, node)) {
+              return;
+            }
+            renderConditionDeviceFields(
+              pickerDiv,
+              node,
+              pickerDevices,
+              editor,
+              nodeTileHtml
+            );
+            return;
+          }
+
+          // ── INITIALIZE & HOOK EVENTS ────────────────────────────────────
+          const initialMode = node.data.repeatMode === "until" ? "until" : "count";
+          countRadio.checked = initialMode === "count";
+          untilRadio.checked = initialMode === "until";
+          node.data.repeatMode = initialMode;
+
+          countRadio.onchange = () => {
+            node.data.repeatMode = "count";
+            editor.updateNodeDataFromId(node.id, node.data);
+            renderCount();
+            markFlowNeedsSave(true);
+          };
+
+          untilRadio.onchange = () => {
+            node.data.repeatMode = "until";
+            editor.updateNodeDataFromId(node.id, node.data);
+            renderUntil();
+            markFlowNeedsSave(true);
+          };
+
+          // Render the chosen panel
+          if (initialMode === "until") {
+            renderUntil();
+          } else {
+            renderCount();
+          }
+
+          return;
+        }
+
+        if (node.name === "setVariable") {
+          el.innerHTML = "<b>Set Variable</b><br><br>";
+
+          // Variable Name
+          const varLabel = document.createElement("label");
+          varLabel.textContent = "Variable Name";
+          el.appendChild(varLabel);
+
+          // dropdown of existing variables
+          const varSelect = document.createElement("select");
+          varSelect.style.width = "98%";
+
+          // gather flow & global var names
+          const flowVars   = (window.flowVars?.getVars?.("flow")   || []);
+          const globalVars = (window.flowVars?.getVars?.("global") || []);
+          const varSourceMap = {}; // name -> "flow" or "global"
+          flowVars.forEach(v => varSourceMap[v.name] = "flow");
+          globalVars.forEach(v => {
+            if (!varSourceMap[v.name]) varSourceMap[v.name] = "global";
+          });
+          const allVarNames = Array.from(new Set([...flowVars.map(v=>v.name), ...globalVars.map(v=>v.name)]))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+          // build options
+          const noneOpt = document.createElement("option");
+          noneOpt.value = "";
+          noneOpt.textContent = "(select)";
+          if (!node.data.varName) noneOpt.selected = true;
+          varSelect.appendChild(noneOpt);
+
+          allVarNames.forEach(name => {
+            const opt = document.createElement("option");
+            opt.value       = name;
+            opt.textContent = name;
+            if (node.data.varName === name) opt.selected = true;
+            varSelect.appendChild(opt);
+          });
+          el.appendChild(varSelect);
+
+          // --- THIS ENSURES IT SAVES EVERY TIME ---
+          function saveVarNameChange() {
+            node.data.varName = varSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          }
+          varSelect.onchange = saveVarNameChange;
+          varSelect.onblur   = saveVarNameChange;
+
+          // Value
+          const valLabel = document.createElement("label");
+          valLabel.textContent = "Value";
+          el.appendChild(valLabel);
+
+          const valInput = document.createElement("input");
+          valInput.type = "text";
+          valInput.placeholder = "Value to set";
+          valInput.value = node.data.varValue || "";
+          valInput.style.width = "98%";
+          // CLEAN/SANITIZE ON INPUT: ONLY REMOVE QUOTES
+          function stripQuotes(str) {
+            return String(str).replace(/['"]/g, "");
+          }
+          valInput.oninput = () => {
+            const sanitized = stripQuotes(valInput.value);
+            if (valInput.value !== sanitized) valInput.value = sanitized; // auto-remove quotes as you type
+            node.data.varValue = sanitized;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+            updatePreview(); // update with sanitized value
+          };
+          el.appendChild(valInput);
+
+          // Preview of result
+          const previewChip = document.createElement("div");
+          previewChip.className = "current-value";
+          previewChip.style.marginLeft = "2px";
+          previewChip.style.fontSize = "13px";
+          previewChip.style.fontWeight = "bold";
+          previewChip.style.cursor = "pointer";
+          previewChip.title = "Preview of value/expression";
+          el.appendChild(previewChip);
+
+          function updatePreview() {
+            if (window.flowVars && window.flowVars.evaluate) {
+              try {
+                const v = stripQuotes(valInput.value);
+                if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
+                const result = window.flowVars.evaluate(v);
+                let color = "#b7ffac";
+                if (typeof result === "number") color = "#3af";
+                else if (typeof result === "boolean") color = "#0c0";
+                else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
+                previewChip.textContent = "= " + result;
+                previewChip.style.color = color;
+                previewChip.title = (typeof result) + ": " + result;
+              } catch(e) {
+                previewChip.textContent = "ERR: " + e.message;
+                previewChip.style.color = "#f33";
+                previewChip.title = e.message;
+              }
+            }
+          }
+          valInput.addEventListener("input", updatePreview);
+          updatePreview();
+
+          return;
+        }
+
+        if (node.name === "comment") {
+          el.innerHTML = `<label>Comment</label>`;
+          let textarea = document.createElement("textarea");
+          textarea.style = "width:98%;min-height:60px;font-size:13px;background:#fffbe6;color:#7d6103;border-radius:7px;margin-top:6px;";
+          textarea.value = node.data.text || "";
+          textarea.oninput = function () {
+            node.data.text = textarea.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(textarea);
+          return;
+        }
+
+        if (node.name === "notMatchingVar") {
+          // 1) Normalize deviceIds
+          if (!Array.isArray(node.data.deviceIds)) node.data.deviceIds = [];
+          node.data.deviceId = node.data.deviceIds.length === 1
+            ? node.data.deviceIds[0]
+            : "";
+
+          // 2) Device picker section (unchanged) …
+          const allDevices    = Array.isArray(window.devices) ? window.devices : [];
+          const pickerDevices = getPickerDevices(allDevices);
+          renderDevicePickerSection(
+            el,
+            node,
+            pickerDevices,
+            (newIds, newLabels) => {
+              node.data.deviceIds   = newIds;
+              node.data.deviceId    = newIds.length === 1 ? newIds[0] : "";
+              node.data.deviceLabel = newLabels.join(", ");
+              node.data.attribute   =
+              node.data.comparator  =
+              node.data.value       = "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              const pickDiv = document.getElementById("notmatchingvar-pickers-" + node.id);
+              pickDiv.innerHTML = "";
+              if (!buildTimeDevicePicker(pickDiv, node)) {
+                renderConditionDeviceFields(pickDiv, node, pickerDevices, editor, nodeTileHtml);
+              }
+              markFlowNeedsSave(true);
+            },
+            true
+          );
+
+          // 3) Picker container (unchanged) …
+          const pickerDiv = document.createElement("div");
+          pickerDiv.id    = "notmatchingvar-pickers-" + node.id;
+          pickerDiv.style.marginTop = "8px";
+          el.appendChild(pickerDiv);
+          if (!buildTimeDevicePicker(pickerDiv, node)) {
+            renderConditionDeviceFields(pickerDiv, node, pickerDevices, editor, nodeTileHtml);
+          }
+
+          // 4) Variable Name dropdown
+          el.insertAdjacentHTML("beforeend", `
+            <label>Variable Name</label>
+            <select id="varName_${node.id}" style="width:98%; margin-bottom:12px;">
+              ${(Array.from(new Set([
+                  ...(window.FE_flowvars   || []).map(v => v.name),
+                  ...(window.FE_global_var_names || [])
+                ])).map(n => `
+                  <option value="${n}" ${node.data.varName === n ? "selected" : ""}>${n}</option>
+                `).join(""))}
+            </select>
+          `);
+          document.getElementById(`varName_${node.id}`).onchange = e => {
+            node.data.varName = e.target.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+
+          // 5) Save Mode dropdown
+          el.insertAdjacentHTML("beforeend", `
+            <label>Save Mode</label>
+            <select id="saveMode_${node.id}" style="width:98%; margin-bottom:12px;">
+              <option value="overwrite" ${!node.data.append ? "selected" : ""}>Overwrite</option>
+              <option value="append"    ${ node.data.append ? "selected" : ""}>Append</option>
+            </select>
+          `);
+          document.getElementById(`saveMode_${node.id}`).onchange = e => {
+            node.data.append = e.target.value === "append";
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          };
+
+          return;
+        }
+
+        if (node.name === "saveDeviceState" || node.name === "restoreDeviceState") {
+          el.innerHTML = `${node.name === "saveDeviceState" ? "Save Device State" : "Restore Device State"}<br><br>`;
+
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+
+          renderDevicePicker(
+            el,
+            devices,
+            node.data.deviceId ? [node.data.deviceId] : [],
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceId = newSelectedIds[0] || "";
+              node.data.deviceLabel = newDeviceLabels[0] || "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            },
+            true // multi-select
+          );
+          return;
+        }
+
+        if (node.name === "notification") {
+          const el = document.getElementById("nodeEditor");
+          el.innerHTML = "<b>Notification Node</b><br><br>";
+
+          // Type selector
+          const typeLabel = document.createElement("label");
+          typeLabel.textContent = "Type";
+          el.appendChild(typeLabel);
+
+          const typeSelect = document.createElement("select");
+          ["push", "speech"].forEach(type => {
+            const opt = document.createElement("option");
+            opt.value = type;
+            opt.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            if (node.data.notificationType === type) opt.selected = true;
+            typeSelect.appendChild(opt);
+          });
+          typeSelect.value = node.data.notificationType || "push";
+          typeSelect.onchange = () => {
+            node.data.notificationType = typeSelect.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            renderEditor(node); // rerender to update device dropdown label
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(typeSelect);
+
+          // --- Device dropdown (filtered by capability) ---
+          const type = typeSelect.value || node.data.notificationType || "push";
+          const deviceLabel = document.createElement("label");
+          deviceLabel.textContent = (type === "speech") ? "Speaker Device" : "Notification Device";
+          deviceLabel.style.display = "block";
+          el.appendChild(deviceLabel);
+
+          // Filter device list for Notification (push) or Speech
+          let filteredDevices = [];
+          if (type === "speech") {
+            // Find devices with Speech capability
+            filteredDevices = devices.filter(d =>
+              (d.commands && d.commands.includes("speak")) ||
+              (d.capabilities && d.capabilities.includes("SpeechSynthesis"))
+            );
+          } else {
+            // Find devices with Notification capability
+            filteredDevices = devices.filter(d =>
+              (d.commands && d.commands.includes("deviceNotification")) ||
+              (d.capabilities && d.capabilities.includes("Notification"))
+            );
+          }
+          if (filteredDevices.length === 0) filteredDevices = devices;
+          filteredDevices.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
+          const devSelect = document.createElement("select");
+          devSelect.multiple = true;
+          devSelect.size = Math.min(8, filteredDevices.length);
+
+          const selectedIds = Array.isArray(node.data.targetDeviceId)
+            ? node.data.targetDeviceId
+            : node.data.targetDeviceId
+              ? [node.data.targetDeviceId]
+              : [];
+
+          filteredDevices.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.label;
+            if (selectedIds.includes(d.id)) opt.selected = true;
+            devSelect.appendChild(opt);
+          });
+
+          devSelect.onchange = () => {
+            node.data.targetDeviceId = Array.from(devSelect.selectedOptions).map(opt => opt.value);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(devSelect);
+
+          // --- Message label & input ---
+          const msgLabel = document.createElement("label");
+          msgLabel.textContent = "Message";
+          msgLabel.style.display = "block";
+          el.appendChild(msgLabel);
+
+          const msgInput = document.createElement("input");
+          msgInput.type = "text";
+          msgInput.style.width = "100%";
+          msgInput.style.marginBottom = "8px";
+          msgInput.placeholder = "";
+          msgInput.value = node.data.message || "";
+          msgInput.oninput = () => {
+            node.data.message = msgInput.value;
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+          };
+          el.appendChild(msgInput);
+
+          // --- New: Use Variable in Msg checkbox ---
+          const varRow = document.createElement("div");
+          varRow.style = "margin-top:10px;margin-bottom:4px;";
+          const varCheckbox = document.createElement("input");
+          varCheckbox.type = "checkbox";
+          varCheckbox.id = "msgVarCheckbox";
+          varCheckbox.checked = !!node.data.useMsgVar;
+          varCheckbox.style.marginRight = "4px";
+          varCheckbox.onchange = () => {
+            node.data.useMsgVar = varCheckbox.checked;
+            if (!varCheckbox.checked) {
+              node.data.msgVarName = "";
+            }
+            editor.updateNodeDataFromId(node.id, node.data);
+            markFlowNeedsSave(true);
+            renderEditor(node);
+          };
+          varRow.appendChild(varCheckbox);
+
+          const varLabel = document.createElement("label");
+          varLabel.htmlFor = "msgVarCheckbox";
+          varLabel.textContent = "Use Variable in Msg";
+          varRow.appendChild(varLabel);
+
+          el.appendChild(varRow);
+
+          // --- New: Variable Name dropdown if checked ---
+          let varDropdown;
+          if (varCheckbox.checked) {
+            const varDiv = document.createElement("div");
+            varDiv.style = "margin:5px 0 8px 0;";
+
+            const ddLabel = document.createElement("label");
+            ddLabel.textContent = "Variable Name";
+            ddLabel.style.marginRight = "8px";
+            varDiv.appendChild(ddLabel);
+
+            // Combine and sort flow and global variables
+            let flowFile = window.flowVars?.getCurrentFlowFile?.();
+            let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
+            let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+            let allVars = [...flowVars, ...globalVars];
+            let varNames = [...new Set(allVars.map(v => v.name))].sort((a, b) => a.localeCompare(b));
+
+            varDropdown = document.createElement("select");
+            varDropdown.style.minWidth = "120px";
+            varDropdown.style.marginLeft = "2px";
+
+            // Option to require a selection
+            varDropdown.appendChild(new Option("-- Select --", ""));
+            varNames.forEach(vn => {
+              let opt = document.createElement("option");
+              opt.value = vn;
+              opt.textContent = vn;
+              if (vn === node.data.msgVarName) opt.selected = true;
+              varDropdown.appendChild(opt);
+            });
+
+            varDropdown.onchange = () => {
+              node.data.msgVarName = varDropdown.value;
+              editor.updateNodeDataFromId(node.id, node.data);
+              markFlowNeedsSave(true);
+            };
+
+            varDiv.appendChild(varDropdown);
+            el.appendChild(varDiv);
+          }
+
+          // --- Wildcard/Variable info ---
+          const wildcardMsg = document.createElement("div");
+          wildcardMsg.style.fontSize = "13px";
+          wildcardMsg.style.marginTop = "7px";
+          wildcardMsg.style.color = "#b7cdfd";
+          wildcardMsg.innerHTML =
+            '<b><u>Wildcards:</u></b><br>' +
+            '<b>{device}</b> – Event device name/label<br>' +
+            '<b>{value}</b> – Event value<br>' +
+            '<b>{text}</b> – Event description or text<br>' +
+            '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
+            '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
+            '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
+            '<b>{now}</b> – Current system date & time (now)<br>' +
+            '<b>{variableName}</b> – Selected variable name<br>' +
+            '<b>{variableValue}</b> – Selected variable value<br>' +
+            '<span style="color:#eee;">Example: {device} has become {value} at {time12} on {date}</span>';
+          el.appendChild(wildcardMsg);
+        }
+  
+        const previewChip = document.createElement("div");
+        previewChip.className = "current-value";
+        previewChip.style.marginLeft = "2px";
+        previewChip.style.fontSize = "13px";
+        previewChip.style.fontWeight = "bold";
+        previewChip.style.cursor = "pointer";
+        previewChip.title = "Preview of value/expression";
+        el.appendChild(previewChip);
+        function updatePreview() {
+          if (window.flowVars && window.flowVars.evaluate) {
+            try {
+              const v = msgInput.value;
+              if (!v.trim()) { previewChip.textContent = ""; previewChip.title = ""; return; }
+              const result = window.flowVars.evaluate(v);
+              let color = "#b7ffac";
+              if (typeof result === "number") color = "#3af";
+              else if (typeof result === "boolean") color = "#0c0";
+              else if (typeof result === "string" && result.startsWith("ERR:")) color = "#f33";
+              previewChip.textContent = "= " + result;
+              previewChip.style.color = color;
+              previewChip.title = (typeof result) + ": " + result;
+            } catch(e) {
+              previewChip.textContent = "ERR: " + e.message;
+              previewChip.style.color = "#f33";
+              previewChip.title = e.message;
+            }
+          }
+        }
+        if (typeof renderMinimap === 'function') {
+          renderMinimap();
+        }
+        return;
+      }
+      
+      window.editor = new Drawflow(document.getElementById("drawflow"));
+      // ── MONKEY‑PATCH editor.addNode TO WIPE ALL BUILT‑IN DEFAULTS ──
+      (function(){
+        const origAddNode = editor.addNode.bind(editor);
+        editor.addNode = function(...args) {
+          const data = args[6];
+          if (data && typeof data === 'object') {
+            Object.keys(data).forEach(key => {
+              if (typeof data[key] === 'string') {
+                data[key] = "";
+              } else if (Array.isArray(data[key])) {
+                data[key] = data[key].map(_ => "");
+              }
+            });
+          }
+          return origAddNode(...args);
+        };
+      })();
+
+      if (editor && editor.on) {
+        editor.on('all', function(event, ...args) {
+          //console.log("DRAWFLOW EVENT:", event, args);
+        });
+
+        editor.on('nodeCreated', pushUndoState);
+        editor.on('nodeRemoved', pushUndoState);
+        editor.on('nodeMoved', pushUndoState);
+        editor.on('nodeDataChanged', pushUndoState);
+
+        // --- SNAP TO GRID: add this below ---
+        editor.on('nodeMoved', function(id) {
+          // Only snap if toggle is checked
+          var snapActive = document.getElementById("snapToGridToggle")?.checked;
+          if (!snapActive) return;
+
+          const nodeEl = document.getElementById("node-" + id);
+          if (!nodeEl) {
+            console.log("Node element not found by id: node-" + id);
+            return;
+          }
+
+          let left = parseInt(nodeEl.style.left, 10) || 0;
+          let top = parseInt(nodeEl.style.top, 10) || 0;
+          let snappedLeft = Math.round(left / 20) * 20;
+          let snappedTop = Math.round(top / 20) * 20;
+
+          if (left !== snappedLeft || top !== snappedTop) {
+            nodeEl.style.left = snappedLeft + "px";
+            nodeEl.style.top = snappedTop + "px";
+            if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)[id]) {
+              getHomeDataFrom(editor)[id].pos_x = snappedLeft;
+              getHomeDataFrom(editor)[id].pos_y = snappedTop;
+            }
+            //console.log("SNAPPED NODE " + id + " to (" + snappedLeft + ", " + snappedTop + ")");
+          }
+        });
+      }
+
+      document.getElementById("drawflow").addEventListener("mousedown", function(e) {
+        const nodeElem = e.target.closest('.drawflow-node');
+
+        // --- Multi-select with Ctrl/Cmd ---
+        if ((e.ctrlKey || e.metaKey) && nodeElem) {
+          const nodeId = nodeElem.id.replace(/^node-/, "");
+          if (!nodeId) return;
+          window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+          if (window._multiSelectedNodes.has(nodeId)) {
+            window._multiSelectedNodes.delete(nodeId);
+          } else {
+            window._multiSelectedNodes.add(nodeId);
+          }
+          updateNodeSelectionUI();
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
+        // --- Clear all selections and close editor when clicking background ---
+        if (!nodeElem && !(e.ctrlKey || e.metaKey)) {
+          window._multiSelectedNodes = new Set();
+          updateNodeSelectionUI();
+          if (window.editor) window.editor.selected_id = null;
+
+          // The real node editor in your app is "nodeEditor"!
+          const nodeEditor = document.getElementById("nodeEditor");
+          if (nodeEditor) {
+            nodeEditor.innerHTML = "Click a node to edit";
+            nodeEditor.style.display = "";
+          }
+          return;
+        }
+      });
+
+      // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
+      if (!editor.moveNodeTo) {
+        editor.moveNodeTo = function(nodeId, x, y) {
+          // Robustly find the Home flow data
+          let home = this.drawflow && this.drawflow.Home
+            ? this.drawflow.Home
+            : this.drawflow && this.drawflow.drawflow && this.drawgetHomeFrom(flow)
+              ? this.drawgetHomeFrom(flow)
+              : null;
+          if (!home || !home.data) return;
+
+          const node = home.data[nodeId];
+          if (!node) return;
+          node.pos_x = x;
+          node.pos_y = y;
+
+          // Move the actual HTML node in the DOM
+          const htmlNode = document.getElementById("node-" + nodeId);
+          if (htmlNode) {
+            htmlNode.style.left = x + "px";
+            htmlNode.style.top = y + "px";
+          }
+
+          // Also rerender lines
+          if (typeof this.updateConnectionNodes === "function") {
+            this.updateConnectionNodes(`node-${nodeId}`);
+          }
+        }
+      }
+      editor.reroute = true;
+      editor.start();
+
+      editor.on('nodeMoved', function(id) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('connectionRemoved', function(connection) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('connectionCreated', function(connection) {
+        markFlowNeedsSave(true);
+      });
+      editor.on('nodeRemoved', function(id) {
+        markFlowNeedsSave(true);
+      });
+
+      if (typeof Drawflow !== "undefined" && !Drawflow.prototype.updateNodeHtmlFromId) {
+        Drawflow.prototype.updateNodeHtmlFromId = function(id, html) {
+          let selector = "#node-" + id;
+          if (typeof id === "string" && id.startsWith("node-")) {
+           selector = "#" + id;
+          }
+          const nodeDiv = this.container.querySelector(selector + " .drawflow_content_node");
+          if (nodeDiv) nodeDiv.innerHTML = html;
+        }
+      }
+
+      editor.on("nodeSelected", function (id) {
+        editor.selected_id = id;
+        renderEditor(editor.getNodeFromId(id));
+      });
+
+      document.getElementById("undoBtn").onclick = doUndo;
+      document.getElementById("redoBtn").onclick = doRedo;
+
+      document.getElementById("addRepeat").onclick = function() {
+        logAction("addDeviceToVar button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("repeat", 1, 0, x, y, "repeat",
+          {}, nodeTileHtml("repeat", {}),
+        );
+        markFlowNeedsSave(true);
+        // Increment offset for next node
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+      };
+    
+      document.getElementById("addDeviceToVar").onclick = function () {
+        logAction("addDeviceToVar button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("notMatchingVar", 1, 2, x, y, "notMatchingVar", {
+            deviceIds: [], attribute: "", value: "", varScope: "flow"}
+        ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
+        markFlowNeedsSave(true);
+        // Increment offset for next node
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        logAction("addDeviceToVar finished.");
+      };
+
+      // --- Save Device State ---
+      document.getElementById("addSaveDeviceState").onclick = function() {
+        logAction("addSaveDeviceState button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("saveDeviceState", 1, 1, x, y, "saveDeviceState", {
+         deviceId: "", deviceLabel: "" 
+        }, nodeTileHtml("saveDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        markFlowNeedsSave(true);
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+      };
+
+      // --- Restore Device State ---
+      document.getElementById("addRestoreDeviceState").onclick = function() {
+        logAction("addRestoreDeviceState button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("restoreDeviceState", 1, 1, x, y, "restoreDeviceState", {
+         deviceId: "", deviceLabel: "" 
+        }, nodeTileHtml("restoreDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        markFlowNeedsSave(true);
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+      };
+
+      document.getElementById("addSchedule").onclick = function() {
+        try {
+          if (window.FE_Scheduler && typeof window.FE_Scheduler.open === "function") {
+            window.FE_Scheduler.open();
+          } else {
+            console.warn("FE_Scheduler not ready");
+          }
+        } catch (e) { console.warn("schedule popup open error", e); }
+      };
+
+      document.getElementById("addDevice").onclick = () => {
+        logAction("addDevice button clicked.");
+
+        // 1) Compute the next X/Y (with your existing offset variables)
+        const { x, y } = getTopLeftOnScreenCoords();
+
+        // 2) Add the Device-Action node at that spot
+        editor.addNode("device", 1, 1, x, y, "device",
+          {deviceId: "", attribute: "", command: "", value: ""},
+          nodeTileHtml("device",
+            { deviceId: "", attribute: "", command: "", value: "" }
+          )
+        );
+
+        // 3) Increment your per-click offsets exactly like the others
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+
+        // 4) Re-apply your data-node-type attribute after draw
+        setTimeout(() => {
+          document.querySelectorAll('.drawflow-node').forEach(el => {
+            const id = el.id.replace('node-', '');
+            const node = editor.getNodeFromId(id);
+            if (node && node.name === "device") {
+              el.setAttribute('data-node-type', 'device');
+            }
+          });
+        
+        try{ window.__autoRefresh = false; }catch(_){}
+        }, 100);
+
+        // 5) Final bookkeeping
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addDevice finished.");
+      };
+
+      document.getElementById("addCondition").onclick = () => {
+        logAction("addCondition button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("condition", 1, 2, x, y, "condition", {
+          deviceId: "", attribute: "", value: "", comparator: ""
+        }, nodeTileHtml("condition", { deviceId: "", attribute: "", comparator: "", value: "" }), undefined, { outputs: ["true", "false"] });
+        setTimeout(() => {
+          const nodeEls = document.querySelectorAll('.drawflow-node');
+          nodeEls.forEach(el => {
+            const id = el.id.replace('node-', '');
+            if (editor.getNodeFromId && editor.getNodeFromId(id)) {
+              const node = editor.getNodeFromId(id);
+              if (node && node.name === "device") {
+                el.setAttribute('data-node-type', 'device');
+              }
+              if (node && node.name === "condition") {
+                el.setAttribute('data-node-type', 'condition');
+              }
+              if (node && node.name === "eventTrigger") {
+                el.setAttribute('data-node-type', 'eventTrigger');
+              }
+            }
+          });
+        
+try{ window.__autoRefresh = false; }catch(_){}
+}, 100);
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addCondition finished.");
+      };
+
+      document.getElementById("addTrigger").onclick = () => {
+        logAction("addTrigger button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("eventTrigger", 0, 1, x, y, "eventTrigger", {
+          deviceId: "", attribute: "", value: "", comparator: ""
+        }, nodeTileHtml("eventTrigger", { deviceId: "", attribute: "", comparator: "", value: "" }));
+        setTimeout(() => {
+          const nodeEls = document.querySelectorAll('.drawflow-node');
+          nodeEls.forEach(el => {
+            const id = el.id.replace('node-', '');
+            if (editor.getNodeFromId && editor.getNodeFromId(id)) {
+              const node = editor.getNodeFromId(id);
+              if (node && node.name === "device") {
+                el.setAttribute('data-node-type', 'device');
+              }
+              if (node && node.name === "condition") {
+                el.setAttribute('data-node-type', 'condition');
+              }
+              if (node && node.name === "eventTrigger") {
+                el.setAttribute('data-node-type', 'eventTrigger');
+              }
+            }
+          });
+        
+try{ window.__autoRefresh = false; }catch(_){}
+}, 100);
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addTrigger finished.");
+      };
+
+      document.getElementById("addComment").onclick = function () {
+        logAction("addComment button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("comment", 0, 0, x, y, "comment", { 
+          text: "comment..." }
+        );
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addComment finished.");
+      };
+
+      document.getElementById("addSetVariable").onclick = () => {
+        logAction("addSetVariable button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("setVariable", 1, 1, x, y, "setVariable", {
+          varName: "", varValue: ""
+        }, nodeTileHtml("setVariable", { varName: "", varValue: "" }));
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addSetVariable finished.");
+      };
+
+      document.getElementById("addNotification").onclick = () => {
+        logAction("addNotification button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("notification", 1, 1, x, y, "notification", {
+          notificationType: "push", // default
+          targetDeviceId: "",
+          message: ""
+        }, nodeTileHtml("notification", { notificationType: "push", message: "" }));
+        markFlowNeedsSave(true);
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        updateNodeSelectionUI();
+        logAction("addNotification finished.");
+      };
+
+      document.getElementById("addDoNothing").onclick = () => {
+        logAction("addDoNothing button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        markFlowNeedsSave(true);
+        editor.addNode("doNothing", 1, 0, x, y, "doNothing", 
+          {}, 
+          '<div class="logic-node">Do Nothing</div>'
+        );
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addDoNothing finished.");
+      };
+
+      document.getElementById("addDelay").onclick = () => {
+        logAction("addDelay button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("delay", 1, 1, x, y, "delay", {
+          delayMs: 1000
+        }, nodeTileHtml("delay", { delayMs: 1000 }));
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addDelay finished.");
+      };
+
+      document.getElementById("addDelayMin").onclick = () => {
+        logAction("addDelayMin button clicked.");
+        const { x, y } = getTopLeftOnScreenCoords();
+        editor.addNode("delayMin", 1, 1, x, y, "delayMin", {
+          delayMin: 1
+        }, nodeTileHtml("delayMin", { delayMin: 1 }));
+        window.newNodeOffsetX += window.newNodeOffsetStep;
+        window.newNodeOffsetY += window.newNodeOffsetStep;
+        window.newNodeCounter++;
+
+        // --- RESET after 10 nodes ---
+        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
+          window.newNodeOffsetX = 0;
+          window.newNodeOffsetY = 0;
+          window.newNodeCounter = 0;
+        }
+        markFlowNeedsSave(true);
+        updateNodeSelectionUI();
+        logAction("addDelayMin finished.");
+      };
+
+      document.getElementById("newFlow").onclick  = async function() {
+        if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
+          editor.clear();
+          document.getElementById("flowName").textContent = "";      // clear name
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          if (editor && typeof editor.export === "function") {
+            window.undoStack = [JSON.stringify(editor.export())];
+            window.redoStack = [];
+          }
+          markFlowNeedsSave(false);
+          logAction("Started a new flow (all nodes cleared).");
+
+          // ─── CLEAR DROPDOWN SELECTION ───
+          const dd = document.getElementById("hubitatFileDropdown");
+          dd.value = "";   // resets to your “Pick a Flow…” placeholder
+          // ─────────────────────────────────
+
+          const appId = document.getElementById("hubitatAppId").value.trim();
+          const token = document.getElementById("hubitatToken").value.trim();
+          checkIfFlowIsInUse("new", appId, token);
+        }
+        await autoLoadGlobalVarsFromHubitat();
+      };
+
+      window.addEventListener("DOMContentLoaded", async () => {
+        // ── NODE CLICK SELECTION HANDLER ─────────────────────────────────────────
+        document.addEventListener('click', e => {
+          // look for the nearest .drawflow-node element
+          const nodeEl = e.target.closest('.drawflow-node');
+          if (!nodeEl || !editor) return;
+
+          // strip off the "node-" prefix to get the ID
+          const nodeId = nodeEl.id.replace(/^node-/, '');
+          if (!nodeId) return;
+
+          // set the selected_id so Test will pick it up
+          editor.selected_id = nodeId;
+
+          // optional: log your selection so you know it worked
+          //logAction(`🖱️ Selected node ${nodeId}`, 'info');
+        });
+      });
+
+      async function fetchDevicesFromApp() {
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const token = document.getElementById("hubitatToken").value.trim();
+        if (!appId || !token) {
+          logAction("Enter App ID and Access Token!", "error");
+          return [];
+        }
+        try {
+          const url = `/apps/api/${appId}/devices?access_token=${token}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          return data;
+        } catch (e) {
+          logAction("Failed to fetch devices: " + e.message, "error");
+          return [];
+        }
+      }
+
+      var loadBtn = document.getElementById("loadDevices");
+        if (loadBtn) {
+          loadBtn.onclick = async () => {
+            logAction("loadDevices button clicked.");
+            await fetchModesFromAppFile();
+            devices = await fetchDevicesFromApp();
+            devices.forEach(dev => {
+              if (Array.isArray(dev.attributes)) {
+                const attrMap = {};
+                dev.attributes.forEach(a => {
+                  if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+                });
+                dev.attributes = attrMap;
+              }
+            });
+            devices.push(TIME_DEVICE);
+            devices.push(MODE_DEVICE);
+            devices.push(VARIABLE_DEVICE);
+            window.devices = devices;
+
+            // Set current mode on Home Location device
+            const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+            const currentMode = currentModeObj ? currentModeObj.name : "";
+            const modeDev = window.devices.find(d => d.id === "__mode__");
+            if (modeDev) {
+              modeDev.attributes.mode = currentMode;
+            }
+
+            // --- PATCH: force field sync after import/undo ---
+            setTimeout(() => {
+              // 1. Always pick a node to edit
+              let selected = editor.selected_id;
+              if (!selected) {
+                // If nothing selected, pick the first node in the flow (if any)
+                const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+                  ? Object.keys(getHomeDataFrom(editor))
+                  : [];
+                if (allIds.length) {
+                  selected = allIds[0];
+                  editor.selected_id = selected;
+                }
+              }
+              if (selected) {
+                // Always refresh the editor panel to match current node data
+                window.renderEditor(editor.getNodeFromId(selected));
+              } else {
+                document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+              }
+            }, 10);
+            logAction("Devices loaded: " + devices.length);
+          };
+        }
+
+      document.getElementById("sendFlow").onclick = async () => {
+        // 1) Validate credentials & editor
+        if (!hubitatCredentialsAreValid(true) || !editor) return;
+
+        // 2) Determine filename (if empty, prompt for one like Save As)
+        const dd     = document.getElementById("hubitatFileDropdown");
+        const fl     = dd.value.trim();
+        let flowName = fl.endsWith(".json") ? fl.slice(0, -5) : fl;
+        if (!flowName) {
+          // Prompt for new name
+          let name = prompt("Save flow as:", "");
+          if (!name) return;  // user cancelled
+
+          // Sanitize and validate
+          name = sanitizeFlowName(name);
+          if (!isValidFlowName(name)) {
+            alert("Invalid flow name. Only letters, numbers, underscores, and dashes allowed.");
+            return;
+          }
+
+          // Update display & use that name
+          flowName = name;
+          document.getElementById("flowName").textContent = flowName;
+        }
+
+        // 3) Export & prepare payload
+        let flowObj;
+        try {
+          flowObj = editor.export();
+          __fe_stampViewport(flowObj);
+          if (window.flowVars?.getLocalVars) flowObj.variables = window.flowVars.getLocalVars();
+        } catch (e) {
+          alert("🛑 Failed to export flow:<br>" + e);
+          return;
+        }
+
+        // 4) Serialize to JSON
+        let payloadText;
+        try {
+          payloadText = JSON.stringify({ flowName, ...flowObj }, null, 2);
+        } catch (e) {
+          alert("🛑 Flow data could not be serialized to JSON:<br>" + e);
+          return;
+        }
+
+        // 5) Pre‑upload validation + extended auto‑fix
+        try {
+          JSON.parse(payloadText);
+        } catch (e) {
+          logAction(`⚠️ JSON serialization error for "${flowName}.json": ${e.message}. Applying auto‑fix…`, "warn");
+          payloadText = payloadText
+            .replace(/^\uFEFF/, "")                    // strip BOM
+            .replace(/\/\/.*$/gm, "")                  // remove single‑line comments
+            .replace(/\/\*[\s\S]*?\*\//g, "")          // remove multi‑line comments
+            .replace(/,\s*([}\]])/g, "$1")             // remove trailing commas
+            .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":') // quote unquoted keys
+            .replace(/'([^']*)'/g, '"$1"')             // single → double quotes
+            .replace(/\bNaN\b/g, "null")               // NaN → null
+            .replace(/\bInfinity\b/g, "null");         // Infinity → null
+
+          try {
+            JSON.parse(payloadText);
+            logAction(`🔧 Auto‑fixed JSON before upload`, "info");
+          } catch (e2) {
+            alert("🛑 Could not auto‑fix JSON:<br>" + e2.message);
+            return;
+          }
+        }
+
+        // 6) Upload to Hubitat
+        await uploadToHubitatFile(`${flowName}.json`, payloadText);
+
+        // 7) Refresh dropdown and select just‑saved file
+        await reloadFlowDropdown(`${flowName}.json`);
+
+        // 8) Post‑save fetch & verify + extended auto‑fix if needed
+        try {
+          let savedText = await fetchHubitatFileContent(`${flowName}.json`);
+          if (typeof savedText !== "string") {
+            savedText = JSON.stringify(savedText, null, 2);
+          }
+
+          try {
+            JSON.parse(savedText);
+            logAction(`✅ Verified valid JSON for "${flowName}.json"`, "info");
+          } catch {
+            logAction(`⚠️ Saved JSON malformed for "${flowName}.json". Applying auto‑fix…`, "warn");
+            const fixedSaved = savedText
+              .replace(/^\uFEFF/, "")
+              .replace(/\/\/.*$/gm, "")
+              .replace(/\/\*[\s\S]*?\*\//g, "")
+              .replace(/,\s*([}\]])/g, "$1")
+              .replace(/(['"])?([a-zA-Z_$][\w$]*)\1\s*:/g, '"$2":')
+              .replace(/'([^']*)'/g, '"$1"')
+              .replace(/\bNaN\b/g, "null")
+              .replace(/\bInfinity\b/g, "null");
+
+            // re‑parse (will throw if still bad)
+            JSON.parse(fixedSaved);
+
+            logAction(`🔧 Auto‑fixed saved JSON for "${flowName}.json"`, "info");
+            await uploadToHubitatFile(`${flowName}.json`, fixedSaved);
+            logAction(`🔁 Re‑uploaded fixed JSON`, "info");
+          }
+        } catch (e) {
+          alert("⚠️ Could not validate saved JSON:<br>" + e);
+        }
+
+        // 9) Clear dirty flag & log success
+        markFlowNeedsSave(false);
+        logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
+      };
+
+      // --- Auto device and tile refresh every 5 seconds ---
+      setInterval(async () => {
+        
+      try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
+      // Only run if credentials are filled and devices are loaded
+        const appIdEl = document.getElementById("hubitatAppId");
+        const tokenEl = document.getElementById("hubitatToken");
+        if (!(appIdEl && appIdEl.value && tokenEl && tokenEl.value)) return;
+        const devices = await fetchDevicesFromApp();
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const attrMap = {};
+            dev.attributes.forEach(a => {
+              if (a.name !== undefined) attrMap[a.name] = a.currentValue;
+            });
+            dev.attributes = attrMap;
+          }
+        });
+        devices.push(TIME_DEVICE);
+        devices.push(MODE_DEVICE);
+        devices.push(VARIABLE_DEVICE);
+        window.devices = devices;
+
+        // Set current mode on Home Location device
+        const currentModeObj = (window.hubitatModes || []).find(m => m.id === "current");
+        const currentMode = currentModeObj ? currentModeObj.name : "";
+        const modeDev = window.devices.find(d => d.id === "__mode__");
+        if (modeDev) {
+          modeDev.attributes.mode = currentMode;
+        }
+
+        // Update all node tiles
+        const data = (editor?.drawflow?.Home?.data) || (editor?.drawflow?.drawflow?.Home?.data);
+        if (data && Object.keys(data).length > 0) {
+          Object.values(data).forEach(node => {
+            if (["device", "condition", "eventTrigger"].includes(node.name) && node.data && node.data.deviceId) {
+              let dev = devices.find(d => d.id == node.data.deviceId);
+              node.data.deviceLabel = dev ? (dev.label || dev.name || node.data.deviceId) : node.data.deviceId;
+            }
+            if (editor && typeof editor.updateNodeHtmlFromId === "function") {
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            }
+          });
+          // Redraw node lines (optional nudge)
+          Object.values(data).forEach(node => {
+            editor.moveNodeTo(node.id, node.pos_x + 1, node.pos_y);
+          });
+          setTimeout(() => {
+            Object.values(data).forEach(node => {
+              editor.moveNodeTo(node.id, node.pos_x - 1, node.pos_y);
+            });
+          }, 30);
+          //logAction("Tiles auto-refreshed.");
+        }
+      
+        try{ window.__autoRefresh = false; }catch(_){}
+        }, 5000); // every 5 seconds
+
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.flowVars && window.flowVars.renderManager) {
+        flowVars.renderManager(document.getElementById('variableManager'), { globalVars: true });
+      }
+    });
+
+    async function uploadToHubitatFile(filename, contents, opts = {}) {
+      const appId = document.getElementById("hubitatAppId")?.value.trim();
+      const token = document.getElementById("hubitatToken")?.value.trim();
+      if (!appId || !token) { alert("Missing Hubitat appId/token"); throw new Error("Missing Hubitat appId/token"); }
+      const url = `/apps/api/${appId}/uploadFile?access_token=${token}&name=${encodeURIComponent(filename)}`;
+      let body = contents;
+      if (typeof contents !== "string") body = JSON.stringify(contents, null, 2);
+
+      const res = await fetch(url, {
+          method: "POST",
+          body: body,
+          headers: { "Content-Type": opts.mimeType || "application/json" }
+      });
+      if (!res.ok) {
+          alert("Failed to upload file to Hubitat: " + (await res.text()));
+          throw new Error("Failed to upload file");
+      } else {
+        await reloadHubitatApp();
+      }
+      return await res.json().catch(() => true); // works for both JSON and blank responses
+    }
+
+    async function fetchModesFromAppFile() {
+      if (typeof fetchHubitatVarFileContent !== "function") return [];
+      try {
+        const txt = await fetchHubitatVarFileContent("FE_flowModes.json");
+        if (!txt) { window.hubitatModes = []; return []; }
+        let obj = JSON.parse(txt);
+        // Fix: allow file to be either an array, or an object with .modes
+        let modes = Array.isArray(obj) ? obj : (obj.modes || []);
+        window.hubitatModes = modes;
+        logAction("Loaded modes: " + window.hubitatModes.map(m => m.name).join(", "));
+        return window.hubitatModes;
+      } catch (e) {
+        logAction("Failed to load FE_flowModes.json: " + e, "error");
+        window.hubitatModes = [];
+        return [];
+      }
+    }
+
+    // === Helper: Get and save Hubitat IP ===
+    function getHubitatIP() {
+      let ip = localStorage.getItem("hubitat_ip");
+      if (!ip && window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) ip = window.location.hostname;
+      if (!ip) ip = prompt("Enter Hubitat IP address:", "192.168.1.XX") || "";
+      if (ip) localStorage.setItem("hubitat_ip", ip);
+      return ip;
+    }
+
+      function markExportNeeded(needed = true) {
+        const btn = document.getElementById('exportVarsBtn');
+        if (!btn) return;
+        if (needed) {
+          btn.classList.add('need-export');
+        } else {
+          btn.classList.remove('need-export');
+        }
+      }
+
+      window.addEventListener("beforeunload", function (e) {
+        const saveBtn = document.getElementById('sendFlow');
+        if (saveBtn && saveBtn.classList.contains('need-save')) {
+          // Chrome requires returnValue to be set.
+          e.preventDefault();
+          e.returnValue = "You have unsaved changes to your Flow. Are you sure you want to leave?";
+          // Most browsers will show a generic message, but this ensures a dialog is triggered.
+          return e.returnValue;
+        }
+      });
+      document.addEventListener("DOMContentLoaded", function() {
+        const header = document.getElementById("variableManagerHeader");
+        const content = document.getElementById("variableManager");
+        const arrow = document.getElementById("variableManagerArrow");
+        let open = false; // Start hidden
+
+        if (header && content && arrow) {
+          content.style.display = "none";
+          arrow.style.transform = "rotate(-90deg)";
+          header.onclick = function() {
+            open = !open;
+            content.style.display = open ? "" : "none";
+            arrow.style.transform = open ? "rotate(0deg)" : "rotate(-90deg)";
+          };
+        }
+
+        // Variable Inspector toggle
+        const invHeader  = document.getElementById("variableInspectorHeader");
+        const invContent = document.getElementById("variableInspectorContent");
+        const invArrow   = document.getElementById("variableInspectorArrow");
+        let invOpen = false;
+
+        if (invHeader && invContent && invArrow) {
+          invContent.style.display = "none";
+          invArrow.style.transform = "rotate(-90deg)";
+          invHeader.onclick = function() {
+            invOpen = !invOpen;
+            invContent.style.display = invOpen ? "" : "none";
+            invArrow.style.transform = invOpen ? "rotate(0deg)" : "rotate(-90deg)";
+          };
+        }
+      });
+
+      setInterval(() => {
+        document.querySelectorAll('.drawflow-node').forEach(nodeEl => {
+          if (nodeEl._hasCtxMenu) return;
+          nodeEl._hasCtxMenu = true;
+
+          nodeEl.addEventListener('contextmenu', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const nodeId = nodeEl.id.replace("node-", "");
+
+            // If the clicked node isn't in the current selection, bail out
+            if (!window._multiSelectedNodes.has(nodeId)) {
+              window._multiSelectedNodes.clear();
+              window._multiSelectedNodes.add(nodeId);
+              updateMultiSelectUI();
+            }
+
+            // Remove existing menu
+            document.getElementById('df-ctx-menu')?.remove();
+
+            // Create new menu
+            const menuDiv = document.createElement('div');
+            menuDiv.id = 'df-ctx-menu';
+            Object.assign(menuDiv.style, {
+              position: 'fixed',
+              left:   `${ev.clientX}px`,
+              top:    `${ev.clientY}px`,
+              zIndex: 9999,
+              background:   '#333',
+              color:        '#fff',
+              borderRadius: '8px',
+              padding:      '10px',
+              boxShadow:    '0 4px 10px #0008',
+              fontFamily:   'sans-serif',
+              minWidth:     '140px'
+            });
+
+            // Single-node menu
+            if (window._multiSelectedNodes.size === 1) {
+              // --- Edit Node ---
+              const editBtn = document.createElement('div');
+              editBtn.textContent = "Edit Node";
+              editBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              editBtn.onmouseenter = () => editBtn.style.background = "#555";
+              editBtn.onmouseleave = () => editBtn.style.background = "transparent";
+              editBtn.onclick = () => {
+                editor.selected_id = nodeId;
+                const node = editor.getNodeFromId(nodeId);
+                if (node) renderEditor(node);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(editBtn);
+
+              // --- Delete Node ---
+              const delBtn = document.createElement('div');
+              delBtn.textContent = "Delete Node";
+              delBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              delBtn.onmouseenter = () => delBtn.style.background = "#555";
+              delBtn.onmouseleave = () => delBtn.style.background = "transparent";
+              delBtn.onclick = () => {
+                editor.removeNodeId("node-" + nodeId);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(delBtn);
+
+              // --- Duplicate Node ---
+              const dupBtn = document.createElement('div');
+              dupBtn.textContent = "Duplicate Node";
+              dupBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              dupBtn.onmouseenter = () => dupBtn.style.background = "#555";
+              dupBtn.onmouseleave = () => dupBtn.style.background = "transparent";
+              dupBtn.onclick = () => {
+                const node = editor.getNodeFromId(nodeId);
+                if (!node) return;
+                const newNode = JSON.parse(JSON.stringify(node));
+                delete newNode.id;
+                newNode.pos_x += 60;
+                newNode.pos_y += 60;
+                newNode.outputs = {};
+                newNode.inputs  = {};
+                editor.addNode(
+                  newNode.name,
+                  newNode.inputs_count,
+                  newNode.outputs_count,
+                  newNode.pos_x,
+                  newNode.pos_y,
+                  newNode.class,
+                  newNode.data,
+                  newNode.html
+                );
+                menuDiv.remove();
+                setTimeout(forceFixPortsOnAllNodes, 5);
+              };
+              menuDiv.appendChild(dupBtn);
+            }
+
+            // Multi-node menu
+            if (window._multiSelectedNodes.size > 1) {
+              // --- Delete Selected Nodes ---
+              const multiDelBtn = document.createElement('div');
+              multiDelBtn.textContent = "Delete Selected Nodes";
+              multiDelBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              multiDelBtn.onmouseenter = () => multiDelBtn.style.background = "#555";
+              multiDelBtn.onmouseleave = () => multiDelBtn.style.background = "transparent";
+              multiDelBtn.onclick = () => {
+                deleteSelectedNodes();
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(multiDelBtn);
+
+              // --- Duplicate Selected Nodes ---
+              const multiDupBtn = document.createElement('div');
+              multiDupBtn.textContent = "Duplicate Selected Nodes";
+              multiDupBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              multiDupBtn.onmouseenter = () => multiDupBtn.style.background = "#555";
+              multiDupBtn.onmouseleave = () => multiDupBtn.style.background = "transparent";
+              multiDupBtn.onclick = () => {
+                duplicateSelectedNodes();
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(multiDupBtn);
+
+              // --- Lock Selected Nodes ---
+              const lockBtn = document.createElement('div');
+              lockBtn.textContent = "Lock Selected Nodes";
+              lockBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              lockBtn.onmouseenter = () => lockBtn.style.background = "#555";
+              lockBtn.onmouseleave = () => lockBtn.style.background = "transparent";
+              lockBtn.onclick = () => {
+                lockSelectedNodes(true);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(lockBtn);
+
+              // --- Unlock Selected Nodes ---
+              const unlockBtn = document.createElement('div');
+              unlockBtn.textContent = "Unlock Selected Nodes";
+              unlockBtn.style.cssText = 'cursor:pointer;padding:6px 12px';
+              unlockBtn.onmouseenter = () => unlockBtn.style.background = "#555";
+              unlockBtn.onmouseleave = () => unlockBtn.style.background = "transparent";
+              unlockBtn.onclick = () => {
+                lockSelectedNodes(false);
+                menuDiv.remove();
+              };
+              menuDiv.appendChild(unlockBtn);
+            }
+            document.body.appendChild(menuDiv);
+
+            // Auto-remove menu on outside click
+            setTimeout(() => {
+              document.addEventListener("click", function handler() {
+                menuDiv.remove();
+                document.removeEventListener("click", handler);
+              });
+            }, 10);
+          });
+        });
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 1000);
+
+      // ---- SNAP TO GRID ----
+      const SNAP_GRID_SIZE = 20;
+      function snapToGrid(val, grid = SNAP_GRID_SIZE) {
+        return Math.round(val / grid) * grid;
+      }
+
+      function zoomDrawflowToFit(margin = 20) {
+  // Shrink-to-fit, then dock the flow to the top-left (with clamping so nothing goes off-screen).
+  const canvas = document.getElementById('drawflow');
+  if (!canvas) return;
+  const precanvas = (window.editor && window.editor.precanvas) ? window.editor.precanvas : canvas;
+
+  const nodes = canvas.querySelectorAll('.drawflow-node');
+  if (!nodes.length) return;
+
+  // 1) Compute bounding box of all nodes (in canvas coordinates, unscaled)
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(node => {
+    const x = parseFloat(node.style.left) || 0;
+    const y = parseFloat(node.style.top)  || 0;
+    const w = node.offsetWidth;
+    const h = node.offsetHeight;
+    if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + w);
+    maxY = Math.max(maxY, y + h);
+  });
+
+  if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return;
+
+  // 2) Container size
+  const cW = canvas.clientWidth;
+  const cH = canvas.clientHeight;
+
+  // 3) Desired inner area (leave margin inside viewport), and shrink-only scale
+  const flowW = Math.max(1, maxX - minX);
+  const flowH = Math.max(1, maxY - minY);
+  const innerW = Math.max(1, cW - margin);
+  const innerH = Math.max(1, cH - margin);
+  let zoom = Math.min(innerW / flowW, innerH / flowH);
+  if (!isFinite(zoom) || zoom <= 0) zoom = 1;
+  if (zoom > 1) zoom = 1; // never upscale
+
+  // Extra breathing room: a tad more zoom-out so it "goes a little more"
+  zoom *= 0.92; // 8% extra shrink so nothing hugs the edges
+  if (zoom <= 0) zoom = 0.1;
+
+  // 4) Target padding at top/left (dock); clamp to stay fully visible
+  const padX = Math.min(Math.max(0, margin), cW); // clamp margin into viewport
+  const padY = Math.min(Math.max(0, margin), cH);
+
+  // naive offsets that place top-left of flow at (padX, padY)
+  let offsetX = padX - (minX * zoom);
+  let offsetY = padY - (minY * zoom);
+
+  // Clamp offsets so the right/bottom edges don't exceed the viewport
+  // and the left/top edges never go negative.
+  const minOffsetX = -(minX * zoom);          // ensures left edge >= 0
+  const minOffsetY = -(minY * zoom);          // ensures top edge >= 0
+  const maxOffsetX = cW - (maxX * zoom);      // ensures right edge <= canvas width
+  const maxOffsetY = cH - (maxY * zoom);      // ensures bottom edge <= canvas height
+
+  // Prefer docking (padX/padY), but clamp both ends
+  offsetX = Math.max(minOffsetX, Math.min(offsetX, Math.max(maxOffsetX, padX)));
+  offsetY = Math.max(minOffsetY, Math.min(offsetY, Math.max(maxOffsetY, padY)));
+
+  // 5) Apply transform (use origin at top-left to make math intuitive)
+  precanvas.style.transformOrigin = '0 0';
+  precanvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+  if (window.editor) window.editor.zoom = zoom;
+}
+    function checkIfFlowIsInUse(flowFileName, appId, token) {
+  let loggingEnabled = false;
+
+      fetch(`/apps/api/${appId}/activeFlows?access_token=${token}`)
+        .then(resp => resp.json())
+        .then(list => {
+          const inUse       = list.filter(x => x.flowName === flowFileName + ".json");
+          const statusDiv   = document.getElementById("flowTesterContent") || document.getElementById("flowTesterContent") || document.getElementById("flowTestStatus");
+          const activateBtn = document.getElementById("activateFlowButton");
+          const logBtn      = document.getElementById("loggingButton");
+
+          // ── Update the “Activate Flow” button state ────────────────────
+          if (inUse.length > 0) {
+            activateBtn.textContent = "Activated";
+            activateBtn.style.backgroundColor = "#4CAF50";  // Green
+          } else {
+            activateBtn.textContent = "Deactivated";
+            activateBtn.style.backgroundColor = "#808080";  // Grey
+          }
+
+          if (inUse.length > 0) {
+            // Flow is active: check if logging is enabled
+            fetch(`/apps/api/${appId}/settings?access_token=${token}`)
+              .then(r => r.json())
+              .then(settings => {
+                loggingEnabled = Array.isArray(settings?.perFlowLogEnabled) &&
+                  settings.perFlowLogEnabled.includes(flowFileName + ".json");
+
+                // ── Update the “Logging” button ────────────────────────────
+                logBtn.textContent = loggingEnabled ? "Logging Enabled" : "Logging Disabled";
+                logBtn.style.backgroundColor = loggingEnabled ? "#4CAF50" : "#808080";
+
+                //hideTestUI();
+                // ── Build the status panel UI ───────────────────────────────
+                const topName = document.getElementById("flowStatusName");
+const topFlags = document.getElementById("flowStatusFlags");
+if (topName) { topName.textContent = (flowFileName || "").replace(/\.json$/i,""); try{ fitFlowName(); }catch(_){}}
+if (topFlags) topFlags.innerHTML = `Flow is Active | ${loggingEnabled ? "Logging is Enabled" : "Logging is Disabled"}`;
+statusDiv.innerHTML = `
+  <input id="testFlowInput" type="text"
+        placeholder="Test value..."
+        style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:160px; margin-right:8px;">
+  <button id="testFlowBtn"
+          style="background:#1b9b1b; color:#fff; border:none; padding:6px 10px; border-radius:5px; cursor:pointer; font-size:12px; margin-right:10px;">
+    ▶️ Test
+  </button><br>
+  <label style="margin-left:8px; font-size:13px;">
+    <input type="checkbox" id="dryRunCheckbox" />
+    Dry Run
+  </label>
+  <br><small>To test this Flow, simply enter a value and click Test.</small>
+`;
+// ── TEST‑FLOW BUTTON HANDLER (auto‑pick first eventTrigger) ───────────────
+                const testBtn        = document.getElementById("testFlowBtn");
+                const testInput      = document.getElementById("testFlowInput");
+                const dryRunCheckbox = document.getElementById("dryRunCheckbox");
+
+                testBtn.onclick = async () => {
+                  const saveBtn = document.getElementById("sendFlow");
+                  if (saveBtn && saveBtn.classList.contains("need-save")) {
+                    alert("Please save file before Testing.");
+                    return;
+                  }
+                  // clear node highlights
+                  document.querySelectorAll(
+                    '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
+                  ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
+
+                  // clear path highlights
+                  document.querySelectorAll('.main-path.highlighted, .main-path.live-highlight').forEach(path => {
+                    path.removeAttribute('stroke');
+                    path.removeAttribute('style');
+                    path.classList.remove('highlighted','live-highlight');
+                  });
+
+                  // 1) Normalize test value
+                  const raw = testInput.value.trim();
+                  if (!raw) {
+                    alert("Please enter a test value.");
+                    return;
+                  }
+                  let val = raw
+                    .toLowerCase()
+                    .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/g, (_, h, m, ampm) => {
+                      let hh = parseInt(h, 10) % 12;
+                      if (ampm === "pm") hh += 12;
+                      return (hh < 10 ? "0" + hh : hh) + ":" + m;
+                    });
+
+                  // 2) Pick the flow file
+                  const dropdown = document.getElementById("hubitatFileDropdown");
+                  let flow = dropdown.value.trim();
+                  if (!flow.endsWith(".json")) flow += ".json";
+                  if (!flow) {
+                    alert("Please select a flow to test.");
+                    return;
+                  }
+
+                  // 3) Credentials
+                  const appId = document.getElementById("hubitatAppId").value.trim();
+                  const token = document.getElementById("hubitatToken").value.trim();
+                  if (!appId || !token) {
+                    alert("Missing Hubitat App ID or Token.");
+                    return;
+                  }
+                  const dryRun = dryRunCheckbox.checked;
+
+                  // 4) Get dynamic sunrise/sunset times
+                  async function getDynamicSunTimes() {
+                    let lat = 42.36, lng = -71.06;
+                    try {
+                      if (navigator.geolocation) {
+                        const pos = await new Promise((resolve, reject) =>
+                          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
+                        lat = pos.coords.latitude;
+                        lng = pos.coords.longitude;
+                      }
+                    } catch(e) {}
+                    try {
+                      if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
+                        const times = SunCalc.getTimes(new Date(), lat, lng);
+                        const pad = n => (n < 10 ? "0" : "") + n;
+                        return {
+                          sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
+                          sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
+                        };
+                      }
+                    } catch(e) {}
+                    return { sunrise: "06:00", sunset: "20:00" };
+                  }
+
+                  const SUN_TIMES = await getDynamicSunTimes();
+
+                  // 5) Find matching trigger node(s)
+                  const df   = editor.drawflow?.drawflow || editor.drawflow;
+                  const data = df?.Home?.data || {};
+
+                  const triggers = Object.entries(data).filter(([id, nd]) => {
+                    if (nd.name !== 'eventTrigger') return false;
+
+                    // --- TIME TRIGGERS ---
+                    if (nd.data.deviceId === "__time__") {
+                      // --- BETWEEN (ex: between sunrise and 12:00) ---
+                      if (nd.data.comparator === "between" && Array.isArray(nd.data.value)) {
+                        let [start, end] = nd.data.value.map(String);
+                        start = SUN_TIMES[start] || start;
+                        end   = SUN_TIMES[end]   || end;
+                        const toMins = t => {
+                          const [h, m] = (t + ":").split(":").map(Number);
+                          return h*60 + (m || 0);
+                        };
+                        const testMins  = toMins(val);
+                        const startMins = toMins(start);
+                        const endMins   = toMins(end);
+                        if (startMins <= endMins) {
+                          return testMins >= startMins && testMins <= endMins;
+                        } else {
+                          return testMins >= startMins || testMins <= endMins;
+                        }
+                      } else {
+                        // single time, sunrise, sunset
+                        if (val === "sunrise" || val === "sunset") {
+                          return (nd.data.value || "").toLowerCase() === val; // lowercase compare
+                        }
+                        let triggerVal = SUN_TIMES[nd.data.value] || nd.data.value;
+                        return String(triggerVal).toLowerCase() === String(val); // lowercase compare
+                      }
+                    }
+
+                    // --- DEVICE TRIGGERS W/KNOWN VALUES ---
+                    if (nd.data.attribute && window.ATTRIBUTE_KNOWN_VALUES && ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]) {
+                      return ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]
+                        .map(v => v.toLowerCase())
+                        .includes(val);
+                    }
+
+                    // --- FALLBACK: EXACT MATCH (lowercase both sides) ---
+                    return String(nd.data.value).toLowerCase() === val;
+                  });
+
+                  if (!triggers.length) {
+                    alert(`No Trigger node matching test value "${val}" found.`);
+                    return;
+                  }
+
+                  // Honor user-selected trigger only if it exists *in this flow*
+// Avoid calling getNodeFromId unless the id is valid in current data
+let selId = editor && editor.selected_id;
+let node  = null;
+if (selId && data && Object.prototype.hasOwnProperty.call(data, selId) &&
+    triggers.some(([id]) => id === selId)) {
+  node = data[selId]; // use current data snapshot
+} else if (triggers.length) {
+  [selId, node] = triggers[0];
+} else {
+  alert("No Event Trigger node found to Test.");
+  return;
+}
+
+                  // 6) Gather deviceIds from that trigger node
+                  const deviceIds = Array.isArray(node.data.deviceIds)
+                    ? node.data.deviceIds
+                    : (node.data.deviceId ? [node.data.deviceId] : []);
+
+                  // 7) Build payload & invoke testFlow
+                  const payload = { flow, value: val, dryRun, deviceIds };
+                  logAction(
+                    `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
+                    ` on ${deviceIds.length} device(s) with value "${val}"`,
+                    "info"
+                  );
+
+                  try {
+                    const res = await fetch(
+                      `/apps/api/${appId}/testFlow?access_token=${token}`, {
+                        method:  "POST",
+                        headers: { 'Content-Type':'application/json' },
+                        body:    JSON.stringify(payload)
+                      }
+                    );
+                    if (!res.ok) throw new Error(await res.text());
+                    const result = await res.json();
+                    logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
+                  }
+                  catch (err) {
+                    logAction(`❌ Test failed: ${err}`, "error");
+                  }
+                };
+              })
+              .catch(err => {
+                console.error("Error fetching logging settings:", err);
+                logBtn.textContent = "Logging Disabled";
+                logBtn.style.backgroundColor = "#808080";
+              });
+          } else {
+            // No flow active → clear status panel & reset logging button
+            const topName = document.getElementById("flowStatusName");
+const topFlags = document.getElementById("flowStatusFlags");
+if (topName) { topName.textContent = (flowFileName || "").replace(/\.json$/i,""); try{ fitFlowName(); }catch(_){}}
+if (topFlags) topFlags.innerHTML = `Flow is NOT Active | ${loggingEnabled ? "Logging is Enabled" : "Logging is Disabled"}`;
+statusDiv.innerHTML = `<span style="color:#b00; font-weight:600;">Activate Flow in Hubitat to enable Testing</span>`;
+logBtn.textContent = "Logging Disabled";
+            logBtn.style.backgroundColor = "#808080";
+          }
+          pollFlowTraceUntilEnd();
+        })
+        .catch(e => {
+          // On error, revert to safe defaults
+          const activateBtn = document.getElementById("activateFlowButton");
+          const logBtn      = document.getElementById("loggingButton");
+          activateBtn.textContent = "Deactivated";
+          activateBtn.style.backgroundColor = "#808080";
+          logBtn.textContent      = "Logging Disabled";
+          logBtn.style.backgroundColor = "#808080";
+          const statusDiv = document.getElementById("flowTesterContent") || document.getElementById("flowTesterContent") || document.getElementById("flowTestStatus");
+          if (statusDiv) {
+            statusDiv.innerHTML = `<span style="color:#b00;">Failed to check flow status.</span>`;
+          }
+          console.error("Failed to fetch active flows:", e);
+        });
+      }
+
+      function getNextNodePosition() {
+        // Always use current visible canvas/grid size
+        const grid = document.getElementById("drawflow");
+        const cW = grid.offsetWidth;
+        const cH = grid.offsetHeight;
+
+        // Start in top-right, move down for each new node
+        const col = window.nextNodeCol;
+        const idx = window.nextNodeIndex;
+
+        // Each column, 160px to the left
+        const x = cW - window.nodeStartMargin - (col * 180);
+        const y = window.nodeStartMargin + (idx * window.nodeYIncrement);
+
+        // Move to next column if near bottom (using grid height or a limit)
+        if (y + window.nodeYIncrement > cH - window.nodeStartMargin) {
+          window.nextNodeCol += 1;
+          window.nextNodeIndex = 0;
+          return getNextNodePosition();
+        } else {
+          window.nextNodeIndex += 1;
+          return { x, y };
+        }
+      }
+
+      // Call this to reset placement after loading/clearing a flow
+      function resetNodePlacement() {
+        window.nextNodeCol = 0;
+        window.nextNodeIndex = 0;
+      }
+
+      function getTopLeftOnScreenCoords(margin = 28) {
+        const grid = document.getElementById('drawflow');
+        let pan = { x: 0, y: 0 };
+        let zoom = 1;
+        if (window.editor && window.editor.precanvas && window.editor.precanvas.style.transform) {
+          const match = window.editor.precanvas.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([\d.]+)\)/);
+          if (match) {
+            pan.x = parseFloat(match[1]);
+            pan.y = parseFloat(match[2]);
+            zoom = parseFloat(match[3]);
+          }
+        }
+        // Add cumulative offset for each new node
+        let x = ((margin + window.newNodeOffsetX - pan.x) / zoom);
+        let y = ((margin + window.newNodeOffsetY - pan.y) / zoom);
+        return { x, y };
+      }
+
+      
+
+      // keep this helper
+      function highlightFlowPathDelayed(run, delayMs = 100) {
+        setTimeout(() => highlightFlowPath(run), delayMs);
+      }
+
+      async function fetchHubitatFileContent(fileName) {
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const token = document.getElementById("hubitatToken").value.trim();
+        if (!appId || !token) {
+          logAction("Enter App ID and Access Token!", "error");
+          throw new Error("Missing credentials");
+        }
+        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
+        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
+        try {
+          const response = await fetch(fileUrl);
+          const raw = await response.text();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${raw}`);
+          }
+          try {
+            return JSON.parse(raw);
+          } catch (err) {
+            throw new Error("File is not valid JSON: " + raw);
+          }
+        } catch (e) {
+          logAction("Failed to fetch file content: " + e.message, "error");
+          throw e;
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const drawflow = document.getElementById("drawflow");
+        const img = document.getElementById("drawflow-bg-image");
+        const fileInput = document.getElementById("bgImageFile");
+        const slider = document.getElementById('gridBrightnessSlider');
+        const bgImageBtn = document.getElementById('bgImageBtn');
+        const snapToGridToggle = document.getElementById('snapToGridToggle');
+
+        // --- Open file picker on button click
+        bgImageBtn.onclick = function() {
+          fileInput.click();
+        };
+
+        // --- Storage helpers ---
+        function savePrefs(obj) {
+          localStorage.setItem("fe_bg_prefs", JSON.stringify(obj));
+        }
+        function loadPrefs() {
+          try {
+            return JSON.parse(localStorage.getItem("fe_bg_prefs")) || {};
+          } catch (e) { return {}; }
+        }
+
+        // --- Restore settings from storage
+        let prefs = loadPrefs();
+        if (prefs.bgImage && prefs.bgImageType === "file") {
+          img.src = prefs.bgImage;
+          drawflow.classList.add('image-bg');
+          img.style.display = "";
+        }
+        if (prefs.imageBrightness) {
+          img.style.opacity = prefs.imageBrightness;
+          slider.value = prefs.imageBrightness;
+        }
+        if (prefs.snapToGrid !== undefined) {
+          snapToGridToggle.checked = !!prefs.snapToGrid;
+        }
+
+        // --- File picker: load and display image
+        fileInput.addEventListener("change", function () {
+          const file = fileInput.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              img.src = e.target.result;
+              drawflow.classList.add('image-bg');
+              img.style.display = "";
+              let p = loadPrefs();
+              p.bgImage = e.target.result;
+              p.bgImageType = "file";
+              savePrefs(p);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // --- Brightness slider
+        slider.addEventListener('input', function () {
+          const val = String(Math.min(1, Math.max(0, Number(slider.value))));
+          img.style.opacity = val;
+          let p = loadPrefs();
+          p.imageBrightness = val;
+          savePrefs(p);
+          markFlowNeedsSave(true)
+        });
+
+        // --- Snap to grid: remember setting
+        snapToGridToggle.addEventListener('change', function () {
+          let p = loadPrefs();
+          p.snapToGrid = snapToGridToggle.checked;
+          savePrefs(p);
+          markFlowNeedsSave(true)
+        });
+      });
+
+      // Replace fetchHubitatVarFileContent if it's missing
+      if (typeof fetchHubitatVarFileContent !== "function") {
+        window.fetchHubitatVarFileContent = async function(filename) {
+          console.warn("Stub: Pretending to load file:", filename);
+          return ""; // Return empty content
+        };
+      }
+
+      // Also patch uploadToHubitatFile if missing to avoid other issues
+      if (typeof uploadToHubitatFile !== "function") {
+        window.uploadToHubitatFile = async function(filename, content, options) {
+          console.warn("Stub: Pretending to upload file:", filename);
+          return true;
+        };
+      }
+
+      // Patch alert if message is "Failed to get file: null"
+      const originalAlert = window.alert;
+      window.alert = function(message) {
+        if (typeof message === "string" && message.includes("Failed to get file: null")) {
+          console.warn("Suppressed alert:", message);
+        } else {
+          originalAlert(message);
+        }
+      };
+
+      // Load globals now that patch is safe
+      window.addEventListener("DOMContentLoaded", function() {
+        autoLoadGlobalVarsFromHubitat();
+      });
+        
+      function forceFixPortsOnAllNodes() {
+        const module = window.editor.module || "Home";
+        const nodes = window.editor.drawflow.drawflow[module].data;
+        let changed = false;
+        Object.entries(nodes).forEach(([id, node]) => {
+          let t = (node.name || '').toLowerCase();
+          let fix = false;
+
+          if (t === 'eventtrigger' || t === 'schedule') {
+            // 0 input, 1 output
+            if (Object.keys(node.inputs).length !== 0) {
+              node.inputs = {};
+              fix = true;
+            }
+            if (Object.keys(node.outputs).length !== 1) {
+              node.outputs = { "output_1": { connections: [] } };
+              fix = true;
+            }
+          } else if (t === 'condition' || t === 'notmatchingvar') {
+            // 1 input, 2 outputs
+            if (Object.keys(node.inputs).length !== 1) {
+              node.inputs = { "input_1": { connections: [] } };
+              fix = true;
+            }
+            if (Object.keys(node.outputs).length !== 2) {
+              node.outputs = {
+                "output_1": { connections: [] },
+                "output_2": { connections: [] }
+              };
+              fix = true;
+            }
+          } else if (t === 'donothing' || t === 'repeat') {
+            // 1 input, 0 outputs
+            if (Object.keys(node.inputs).length !== 1) {
+              node.inputs = { "input_1": { connections: [] } };
+              fix = true;
+            }
+            if (Object.keys(node.outputs).length !== 0) {
+              node.outputs = {};
+              fix = true;
+            }
+          } else if (t === 'comment') {
+            // 0 input, 0 outputs
+            if (Object.keys(node.inputs).length !== 0) {
+              node.inputs = {};
+              fix = true;
+            }
+            if (Object.keys(node.outputs).length !== 0) {
+              node.outputs = {};
+              fix = true;
+            }
+          } else {
+            // All others: 1 input, 1 output
+            if (Object.keys(node.inputs).length !== 1) {
+              node.inputs = { "input_1": { connections: [] } };
+              fix = true;
+            }
+            if (Object.keys(node.outputs).length !== 1) {
+              node.outputs = { "output_1": { connections: [] } };
+              fix = true;
+            }
+          }
+
+          if (fix) changed = true;
+        });
+        if (changed) {
+          window.editor.import(window.editor.export());
+        }
+      }
+
+      document.getElementById('bgImageBtn').onclick = function() {
+        document.getElementById('bgImageFile').click();
+      };
+
+      document.getElementById('bgImageFile').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            const img = document.getElementById('drawflow-bg-image');
+            img.src = evt.target.result;
+            img.style.display = '';
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      document.getElementById('gridBrightnessSlider').addEventListener('input', function(e) {
+        document.getElementById('drawflow-bg-image').style.opacity = e.target.value;
+      });
+
+      //*****************************************************
+      //  Export a Flow
+      document.getElementById("exportAnonFlow").onclick = function() {
+        if (!editor || !editor.export) return;
+
+        // 1) Export the current flow
+        let flow = editor.export();
+
+        // 2) Strip out any device references
+        if (flow?.drawflow?.Home?.data) {
+          Object.values(getHomeDataFrom(flow)).forEach(node => {
+            if (node.data) {
+              node.data.deviceId    = "";
+              node.data.deviceIds   = [];
+              node.data.deviceLabel = "";
+            }
+          });
+        }
+
+        // 3) Build the blob & URL
+        const blob = new Blob([JSON.stringify(flow, null, 2)], { type: "application/json" });
+        const url  = URL.createObjectURL(blob);
+
+        // 4) Determine filename from your <span id="flowName">…</span>
+        const rawName = document.getElementById("flowName").textContent.trim();
+        // If it ends in “.json”, drop that
+        const base    = rawName.toLowerCase().endsWith(".json")
+                      ? rawName.slice(0, -5)
+                      : rawName;
+        const name    = base || "flow";  // fallback
+
+        // 5) Trigger download
+        const a = document.createElement("a");
+        a.href     = url;
+        a.download = `${name}_anonymized.json`;
+        a.click();
+
+        // 6) Cleanup
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+
+      if (
+        window.flowTraceSocket &&
+        window.flowTraceSocket.readyState === WebSocket.OPEN
+      ) {
+        window.flowTraceSocket.close();
+        logAction("Closed old ws", "info")
+      }
+    </script>
+    <script>
+      // A global Set to track selected nodes for multi-select
+      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+
+      // Call this to update visual selection UI
+      function updateNodeSelectionUI() {
+        document.querySelectorAll('.drawflow-node').forEach(node => {
+          const id = node.getAttribute('id');
+          if (window._multiSelectedNodes.has(id)) {
+            node.classList.add('multi-selected');
+          } else {
+            node.classList.remove('multi-selected');
+          }
+        });
+      }
+
+      window.addEventListener('DOMContentLoaded', function() {
+        const W = 240, H = 140;
+        const MINIMAP_ID = 'minimap-container';
+        const CANVAS_ID = 'minimap-canvas';
+        const STORAGE_KEY = "fe_minimap_pos";
+
+        // Show minimap on load
+        const container = document.getElementById(MINIMAP_ID);
+        container.style.display = '';
+
+        // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
+        let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+        // Load position from storage (if any)
+        function restoreMinimapPosition() {
+          try {
+            const pos = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (pos && typeof pos.left === "number" && typeof pos.top === "number") {
+              container.style.left = pos.left + "px";
+              container.style.top = pos.top + "px";
+              container.style.right = "auto";
+              container.style.bottom = "auto";
+            } else {
+              container.style.right = "28px";
+              container.style.bottom = "24px";
+            }
+          } catch(e) {
+            // fallback
+            container.style.right = "28px";
+            container.style.bottom = "24px";
+          }
+        }
+        restoreMinimapPosition();
+
+        container.addEventListener('mousedown', function(e) {
+          // Only drag if clicking the container or canvas, not the inner label
+          if (e.target.id !== MINIMAP_ID && e.target.id !== CANVAS_ID) return;
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          const rect = container.getBoundingClientRect();
+          origX = rect.left;
+          origY = rect.top;
+          container.style.transition = "none";
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const newLeft = origX + dx;
+          const newTop = origY + dy;
+          container.style.left = newLeft + "px";
+          container.style.top = newTop + "px";
+          container.style.right = "auto";
+          container.style.bottom = "auto";
+          // Save live while dragging
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: newLeft, top: newTop }));
+        });
+
+        document.addEventListener('mouseup', function() {
+          if (isDragging) {
+            isDragging = false;
+            container.style.transition = "";
+            // Save one more time in case of final position
+            const rect = container.getBoundingClientRect();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
+          }
+        });
+
+        // Set initial left/top if not set
+        container.style.position = "fixed";
+        if (!container.style.left && !container.style.top) {
+          container.style.right = "28px";
+          container.style.bottom = "24px";
+        }
+
+        // ---- REALISTIC MINIMAP DRAWING ----
+
+        function getNodeStyleAndLabel(id, n) {
+          const el = document.getElementById('node-' + id);
+          let bg = '#3ad688', border = '#222', txt = '';
+          if (el) {
+            const comp = window.getComputedStyle(el);
+            bg = comp.backgroundColor || bg;
+            border = comp.borderColor || border;
+            // Use best label from tile
+            const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
+            if (tile) {
+              txt = tile.textContent.trim().split('<br>')[0].substring(0, 6);
+            } else {
+              txt = el.textContent.trim().split('<br>')[0].substring(0, 6);
+            }
+          } else if (n.data && n.data.label) {
+            txt = n.data.label.substring(0, 6);
+          } else if (n.name) {
+            txt = n.name.substring(0, 6);
+          } else {
+            txt = id;
+          }
+          return { bg, border, txt };
+        }
+
+        function renderMinimap() {
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !getHomeDataFrom(df)) return;
+          const data = getHomeDataFrom(df);
+          const nodes = Object.entries(data);
+
+          if (!nodes.length) return;
+
+          // Compute bounding box
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(([id, n]) => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale = Math.min(scaleX, scaleY);
+
+          const ctx = document.getElementById(CANVAS_ID).getContext('2d');
+          ctx.clearRect(0, 0, W, H);
+
+          // Draw connections
+          nodes.forEach(([id, n]) => {
+            Object.values(n.outputs || {}).forEach(out => {
+              (out.connections || []).forEach(conn => {
+                const target = data[conn.node];
+                if (!target) return;
+
+                const x1 = Math.round((n.pos_x - minX + 80) * scale);
+                const y1 = Math.round((n.pos_y - minY + 35) * scale);
+                const x2 = Math.round((target.pos_x - minX + 80) * scale);
+                const y2 = Math.round((target.pos_y - minY + 35) * scale);
+
+                // Find the real DOM path element
+                const pathEl = document.querySelector(
+                  `.connection.node_out_node-${id}.node_in_node-${conn.node} .main-path,
+                  .connection[data-from="${id}"][data-to="${conn.node}"] .main-path`
+                );
+
+                // Style based on whether it's highlighted upstream
+                if (pathEl && pathEl.classList.contains('highlighted')) {
+                  ctx.strokeStyle = "limegreen";
+                  ctx.globalAlpha  = 1;
+                  ctx.lineWidth    = 2;
+                } else {
+                  ctx.strokeStyle = "#888";
+                  ctx.globalAlpha  = 0.85;
+                  ctx.lineWidth    = 1.2;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.bezierCurveTo(
+                  x1 + 32, y1,
+                  x2 - 32, y2,
+                  x2, y2
+                );
+                ctx.stroke();
+              });
+            });
+          });
+
+          // Draw nodes with real color, border, label, and flow-path highlights
+          nodes.forEach(([id, n]) => {
+            const x = Math.round((n.pos_x - minX) * scale);
+            const y = Math.round((n.pos_y - minY) * scale);
+            const w = Math.max(30, Math.round(120 * scale));
+            const h = Math.max(18, Math.round(48  * scale));
+
+            // grab base style & label
+            let { bg, border, txt } = getNodeStyleAndLabel(id, n);
+
+            // if this node is in the active flow-path, force green
+            const nodeEl = document.getElementById('node-' + id);
+            if (nodeEl && nodeEl.classList.contains('flow-path')) {
+              bg     = 'limegreen';
+              border = 'limegreen';
+            }
+
+            // draw the box
+            ctx.save();
+            ctx.globalAlpha = 0.93;
+            ctx.fillStyle   = bg;
+            ctx.strokeStyle = border;
+            ctx.lineWidth   = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(x+4, y);
+            ctx.lineTo(x+w-4, y);
+            ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+            ctx.lineTo(x+w, y+h-4);
+            ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+            ctx.lineTo(x+4, y+h);
+            ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+            ctx.lineTo(x, y+4);
+            ctx.quadraticCurveTo(x, y, x+4, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Highlight selected node(s)
+            const isSelected =
+              (window._multiSelectedNodes && window._multiSelectedNodes.has(String(id))) ||
+              (editor.selected_id && String(editor.selected_id) === String(id));
+            if (isSelected) {
+              ctx.save();
+              ctx.shadowColor = "#00fff7";
+              ctx.shadowBlur  = 10;
+              ctx.strokeStyle = "#00fff7";
+              ctx.lineWidth   = 4;
+              ctx.globalAlpha = 0.92;
+              ctx.beginPath();
+              ctx.moveTo(x+4, y);
+              ctx.lineTo(x+w-4, y);
+              ctx.quadraticCurveTo(x+w, y, x+w, y+4);
+              ctx.lineTo(x+w, y+h-4);
+              ctx.quadraticCurveTo(x+w, y+h, x+w-4, y+h);
+              ctx.lineTo(x+4, y+h);
+              ctx.quadraticCurveTo(x, y+h, x, y+h-4);
+              ctx.lineTo(x, y+4);
+              ctx.quadraticCurveTo(x, y, x+4, y);
+              ctx.closePath();
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // Draw label
+            ctx.save();
+            ctx.font         = `bold ${Math.max(9, Math.round(h / 2.3))}px sans-serif`;
+            ctx.fillStyle    = "#181d20";
+            ctx.globalAlpha  = 1.0;
+            ctx.textAlign    = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(txt, x + w/2, y + h/2);
+            ctx.restore();
+          });
+
+          // Draw viewport rectangle
+          const precanvas = document.querySelector('.drawflow');
+          if (precanvas) {
+            const transform = window.getComputedStyle(precanvas).transform;
+            let translateX = 0, translateY = 0, scaleDF = 1;
+            if (transform && transform !== "none") {
+              const match = transform.match(/matrix\(([^)]+)\)/);
+              if (match) {
+                const parts = match[1].split(',');
+                scaleDF      = parseFloat(parts[0]);
+                translateX   = parseFloat(parts[4]);
+                translateY   = parseFloat(parts[5]);
+              }
+            }
+            const rect   = document.getElementById('drawflow').getBoundingClientRect();
+            const flowW  = rect.width, flowH = rect.height;
+            const visX   = (-translateX) / scaleDF;
+            const visY   = (-translateY) / scaleDF;
+            const vx     = (visX - minX) * scale;
+            const vy     = (visY - minY) * scale;
+            const vw     = flowW / scaleDF * scale;
+            const vh     = flowH / scaleDF * scale;
+            ctx.save();
+            ctx.strokeStyle = "#f4e43a";
+            ctx.globalAlpha = 0.9;
+            ctx.lineWidth   = 2;
+            ctx.strokeRect(vx, vy, vw, vh);
+            ctx.restore();
+          }
+        }
+
+        function hookMinimapEvents() {
+          if (!window.editor) return;
+          window.editor.on('nodeMoved', renderMinimap);
+          window.editor.on('nodeCreated', renderMinimap);
+          window.editor.on('nodeRemoved', renderMinimap);
+          window.editor.on('connectionCreated', renderMinimap);
+          window.editor.on('connectionRemoved', renderMinimap);
+          window.editor.on('import', renderMinimap);
+          window.editor.on('zoom', renderMinimap);
+          setInterval(renderMinimap, 2000);
+        }
+        document.getElementById(CANVAS_ID).addEventListener('click', function(e){
+          const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+          if (!df || !df.Home || !getHomeDataFrom(df)) return;
+          const data = getHomeDataFrom(df);
+          const nodes = Object.values(data);
+          if (!nodes.length) return;
+
+          // Compute world bounds used by minimap
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(n => {
+            minX = Math.min(minX, n.pos_x);
+            minY = Math.min(minY, n.pos_y);
+            maxX = Math.max(maxX, n.pos_x + 170);
+            maxY = Math.max(maxY, n.pos_y + 80);
+          });
+          minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+          const scaleX = W / Math.max(1, maxX - minX);
+          const scaleY = H / Math.max(1, maxY - minY);
+          const scale  = Math.min(scaleX, scaleY);
+
+          // Click -> world coordinate (unscaled layout pixels)
+          const x = e.offsetX / scale + minX;
+          const y = e.offsetY / scale + minY;
+
+          const container = document.getElementById('drawflow');
+          const precanvas = document.querySelector('.drawflow');
+          const bg        = document.getElementById('drawflow-bg-image');
+          if (!container || !precanvas) return;
+
+          // Scrollbar toggle (default ON unless storage '0')
+          let scrollbarsOn = true;
+          try { scrollbarsOn = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_){}
+
+          if (scrollbarsOn) {
+            // === Pure-scroll mode with scale=1 and padding to include negative coords ===
+            // Neutralize transform/zoom so scroll reflects actual content geometry
+            if (window.editor) {
+              window.editor.canvas_x = 0;
+              window.editor.canvas_y = 0;
+              if (typeof window.editor.zoom === "number") window.editor.zoom = 1;
+            }
+            precanvas.style.transform = 'translate(0px, 0px) scale(1)';
+            if (bg) bg.style.transform = '';
+
+            // Compute padding to shift world so minX/minY are visible at scrollLeft=0/scrollTop=0
+            const padLeft = Math.max(0, Math.ceil(-minX + 40));
+            const padTop  = Math.max(0, Math.ceil(-minY + 40));
+            const padRight = 40;
+            const padBottom = 40;
+
+            // Content box size (excluding padding)
+            const baseW = Math.max(container.clientWidth,  Math.ceil((maxX - minX) + 200));
+            const baseH = Math.max(container.clientHeight, Math.ceil((maxY - minY) + 200));
+
+            // Apply geometry
+            precanvas.style.paddingLeft = padLeft + 'px';
+            precanvas.style.paddingTop  = padTop + 'px';
+            precanvas.style.paddingRight = padRight + 'px';
+            precanvas.style.paddingBottom = padBottom + 'px';
+            precanvas.style.width  = baseW + 'px';
+            precanvas.style.height = baseH + 'px';
+
+            // Match background to total scrollable area so it scrolls with the flow
+            const totalW = baseW + padLeft + padRight;
+            const totalH = baseH + padTop  + padBottom;
+            if (bg) {
+              bg.style.display = 'block';
+              bg.style.width  = totalW + 'px';
+              bg.style.height = totalH + 'px';
+            }
+
+            // Center the clicked world point. Displayed coord = pad + (x - minX).
+            const targetLeft = Math.max(0, Math.min((padLeft + (x - minX)) - (container.clientWidth  / 2), container.scrollWidth  - container.clientWidth));
+            const targetTop  = Math.max(0, Math.min((padTop  + (y - minY)) - (container.clientHeight / 2), container.scrollHeight - container.clientHeight));
+
+            container.scrollLeft = targetLeft;
+            container.scrollTop  = targetTop;
+            refreshConnectionsSoon();
+          } else {
+            // === Fallback: transform-centering (keeps current zoom) ===
+            // Read current zoom from transform
+            let scaleDF = 1;
+            const tf = window.getComputedStyle(precanvas).transform;
+            if (tf && tf !== "none") {
+              const m = tf.match(/matrix\(([^)]+)\)/);
+              if (m) {
+                const parts = m[1].split(',');
+                scaleDF = parseFloat(parts[0]);
+              }
+            }
+            const rect = container.getBoundingClientRect();
+            const targetX = -(x - rect.width  / (2 * scaleDF)) * scaleDF;
+            const targetY = -(y - rect.height / (2 * scaleDF)) * scaleDF;
+            if (window.editor) { window.editor.canvas_x = targetX; window.editor.canvas_y = targetY; }
+            precanvas.style.transform = `translate(${targetX}px, ${targetY}px) scale(${scaleDF})`;
+            if (bg) bg.style.transform = `translate(${targetX}px, ${targetY}px)`;
+            refreshConnectionsSoon();
+          }
+        });
+
+        hookMinimapEvents();
+        // Keep connectors aligned while scrolling
+        try {
+          const __dfScrollEl = document.getElementById('drawflow');
+          if (__dfScrollEl && !__dfScrollEl.__linesScrollHooked) {
+            __dfScrollEl.__linesScrollHooked = true;
+            let __last=0; let __pending=false;
+            __dfScrollEl.addEventListener('scroll', function(){
+              const now = performance.now();
+              if (now - __last > 32) {
+                __last = now;
+                refreshConnectionsSoon();
+              } else if (!__pending) {
+                __pending = true;
+                setTimeout(()=>{ __pending=false; refreshConnectionsSoon(); }, 34);
+              }
+            }, { passive: true });
+          }
+        } catch(_){}
+        
+        setTimeout(renderMinimap, 1000);
+      });
+window.addEventListener('DOMContentLoaded', function() {
+        window._multiSelectedNodes = new Set();
+        let dragStart = null, dragMoving = false;
+
+        function attachNodeListeners() {
+          document.querySelectorAll('.drawflow-node').forEach(el => {
+            if (el._multiNodeHandled) return; // Only attach once
+            el._multiNodeHandled = true;
+
+            // After you’ve rendered your nodes, attach this to each one:
+            document.querySelectorAll('.drawflow-node').forEach(el => {
+              el.addEventListener('mousedown', function(e) {
+                // Only left‑click starts selection/drag
+                if (e.button !== 0) return;
+
+                // --- PATCH: Let Drawflow handle port connections natively ---
+                if (e.target.classList.contains('input') ||
+                    e.target.classList.contains('output')) {
+                  return;
+                }
+
+                const nodeId = this.id.replace('node-', '');
+                const node   = window.editor.getNodeFromId(nodeId);
+
+                // --- PATCH: Prevent drag if node is locked ---
+                if (node?.data?.locked) {
+                  // Ctrl/Cmd = toggle multi‑select on locked node (no dragging)
+                  if (e.ctrlKey || e.metaKey) {
+                    if (window._multiSelectedNodes.has(nodeId)) {
+                      window._multiSelectedNodes.delete(nodeId);
+                    } else {
+                      window._multiSelectedNodes.add(nodeId);
+                    }
+                    updateMultiSelectUI();
+                  }
+                  e.stopPropagation();
+                  e.preventDefault();
+                  return;
+                }
+
+                // --- Single‑select handling (unlocked node) ---
+                if (!window._multiSelectedNodes.has(nodeId)) {
+                  window._multiSelectedNodes.clear();
+                  window._multiSelectedNodes.add(nodeId);
+                  updateMultiSelectUI();
+                }
+
+                // --- Determine which nodes to drag ---
+                let dragSet;
+                if (window._multiSelectedNodes.size > 1 &&
+                    window._multiSelectedNodes.has(nodeId)) {
+                  dragSet = Array.from(window._multiSelectedNodes);
+                } else {
+                  dragSet = [nodeId];
+                }
+
+                // If any selected node is locked, cancel drag
+                if (dragSet.some(id => {
+                  const n = window.editor.getNodeFromId(id);
+                  return n?.data?.locked;
+                })) {
+                  return;
+                }
+
+                // --- INITIATE GROUP DRAG ---
+                dragStart = {
+                  baseX: e.clientX,
+                  baseY: e.clientY,
+                  positions: dragSet.map(id => {
+                    const d = window.getHomeDataFrom(editor)[id];
+                    return { id, x: d.pos_x, y: d.pos_y };
+                  })
+                };
+                dragMoving = false;
+                document.body.style.userSelect = "none";
+                e.preventDefault();
+                e.stopPropagation();
+              });
+            });
+          });
+        }
+        let animationFrame = null;
+
+        document.addEventListener('mousemove', function(e){
+          if (!dragStart) return;
+          const dx = e.clientX - dragStart.baseX;
+          const dy = e.clientY - dragStart.baseY;
+          if (Math.abs(dx) + Math.abs(dy) > 1) dragMoving = true;
+          dragStart.positions.forEach(pos => {
+            const newX = pos.x + dx;
+            const newY = pos.y + dy;
+            const data = window.getHomeDataFrom(editor)[pos.id];
+            data.pos_x = newX;
+            data.pos_y = newY;
+            // Use only Drawflow API for node move & redraw
+            if (window.editor && typeof window.editor.moveNodeTo === "function") {
+              window.editor.moveNodeTo(Number(pos.id), newX, newY);
+            }
+          });
+        });
+
+        document.addEventListener('mouseup', function(e){
+          dragStart = null;
+          dragMoving = false;
+        });
+
+        // Ensure every node has handler after creation/import
+        if (window.editor) {
+          window.editor.on('nodeCreated', function() {
+            setTimeout(attachNodeListeners, 1);
+            updateMultiSelectUI();
+          });
+          window.editor.on('import', function() {
+            setTimeout(attachNodeListeners, 1);
+            updateMultiSelectUI();
+          });
+          window.editor.on('nodeRemoved', function(id) {
+            window._multiSelectedNodes.delete(String(id));
+            updateMultiSelectUI();
+          });
+        }
+        // Initial attach for existing nodes
+        setTimeout(attachNodeListeners, 100);
+      });
+
+      function getMultiSelectedNodeIds() {
+        return Array.from(window._multiSelectedNodes || []);
+      }
+
+      // *******************************************
+
+      function deleteSelectedNodes() {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        // Make a COPY of the selected IDs array
+        const toDelete = Array.from(window._multiSelectedNodes);
+        // Clear selection BEFORE deleting
+        window._multiSelectedNodes.clear();
+        // Now delete each node by id (call the same logic as single node delete)
+        toDelete.forEach(id => {
+          try {
+            if (editor && typeof editor.removeNodeId === "function") {
+              editor.removeNodeId("node-" + id);  // <-- THIS LINE FIXES IT
+            }
+          } catch (e) {
+            // log or ignore, just in case node is already gone
+          }
+        });
+        markFlowNeedsSave(true);
+        // After delete, update editor UI
+        setTimeout(() => {
+          // Try to select a remaining node
+          let remainingIds = [];
+          if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)) {
+            remainingIds = Object.keys(getHomeDataFrom(editor));
+          }
+          if (remainingIds.length) {
+            editor.selected_id = remainingIds[0];
+            window.renderEditor(editor.getNodeFromId(remainingIds[0]));
+          } else {
+            document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          }
+        }, 10);
+      }
+
+      function duplicateSelectedNodes() {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        const toDuplicate = Array.from(window._multiSelectedNodes).map(String);
+        const offsetStep = 40;
+        let offset = 0;
+        const newIds = [];
+
+        toDuplicate.forEach(id => {
+          const orig = editor.getNodeFromId(id);
+          if (!orig) return;
+          const newData = JSON.parse(JSON.stringify(orig.data));
+          const nId = editor.addNode(
+            orig.name,
+            1, // inputs
+            1, // outputs
+            orig.pos_x + offset + offsetStep,
+            orig.pos_y + offset + offsetStep,
+            orig.class,
+            newData,
+            orig.html
+          );
+          newIds.push(nId);
+          offset += offsetStep;
+        });
+
+        // Select all the new nodes
+        if (newIds.length) {
+          window._multiSelectedNodes = new Set(newIds.map(String));
+          editor.selected_id = newIds[0];
+          window.renderEditor(editor.getNodeFromId(editor.selected_id));
+          markFlowNeedsSave(true);
+        }
+      }
+
+      function hideContextMenu() {
+        const cm = document.querySelector('.context-menu');
+        if (cm) cm.remove();
+      }
+
+      function lockSelectedNodes(lockState) {
+        if (!window._multiSelectedNodes || window._multiSelectedNodes.size === 0) return;
+        Array.from(window._multiSelectedNodes).forEach(id => {
+          const node = editor.getNodeFromId(id);
+          if (node) {
+            node.data.locked = !!lockState;
+            editor.updateNodeDataFromId(node.id, node.data);
+            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+            markFlowNeedsSave(true);
+          }
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const toolbar = document.getElementById("controls");
+        const toggleBtn = document.getElementById("toggleToolbarBtn");
+        let toolbarVisible = true;
+        toggleBtn.onclick = function() {
+          toolbarVisible = !toolbarVisible;
+          toolbar.style.display = toolbarVisible ? "" : "none";
+          toggleBtn.innerHTML = toolbarVisible ? "▲ Hide Toolbar" : "▼ Show Toolbar";
+        };
+      });
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const toolbar2 = document.getElementById("nodeControls");
+        const toggleBtn2 = document.getElementById("toggleToolbar2Btn");
+        let toolbarVisible2 = true;
+        toggleBtn2.onclick = function() {
+          toolbarVisible2 = !toolbarVisible2;
+          toolbar2.style.display = toolbarVisible2 ? "" : "none";
+          toggleBtn2.innerHTML = toolbarVisible2 ? "▲ Hide Node Controls" : "▼ Show Node Controls";
+        };
+      });
+
+      // Align Left: Use the left X of the first selected node
+      document.getElementById("alignLeftBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorX = anchor.pos_x;
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorX;
+              editor.moveNodeTo(n.id, anchorX, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Right: Use the right edge of the first selected node
+      document.getElementById("alignRightBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorRight = anchor.pos_x + 160; // 160 = node width in px
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorRight - 160; // align right edge
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Top: Use the top Y of the first selected node
+      document.getElementById("alignTopBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorY = anchor.pos_y;
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorY;
+              editor.moveNodeTo(n.id, n.pos_x, anchorY);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Bottom: Use the bottom edge of the first selected node
+      document.getElementById("alignBottomBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorBottom = anchor.pos_y + 60; // 60 = node height in px
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorBottom - 60; // align bottom edge
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Center X (horizontal center): Use center X of first node
+      document.getElementById("alignCenterBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorCenterX = anchor.pos_x + 160 / 2; // node width
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_x = anchorCenterX - 160 / 2;
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      // Align Middle Y (vertical center): Use center Y of first node
+      document.getElementById("alignMiddleBtn").onclick = function() {
+        const sel = Array.from(window._multiSelectedNodes || []);
+        if (sel.length < 2) return;
+        const anchorId = sel[0];
+        const anchor = editor.getNodeFromId(anchorId);
+        if (!anchor) return;
+        const anchorMiddleY = anchor.pos_y + 60 / 2; // node height
+        sel.forEach(id => {
+          if (id !== anchorId) {
+            const n = editor.getNodeFromId(id);
+            if (n) {
+              n.pos_y = anchorMiddleY - 60 / 2;
+              editor.moveNodeTo(n.id, n.pos_x, n.pos_y);
+            }
+          }
+        });
+        markFlowNeedsSave(true);
+      };
+
+      async function reloadHubitatApp(opts = {}) {
+        const appId = document.getElementById("hubitatAppId")?.value.trim();
+        const token = document.getElementById("hubitatToken")?.value.trim();
+        if (!appId || !token) { 
+          alert("Missing Hubitat appId/token"); 
+          throw new Error("Missing Hubitat appId/token"); 
+        }
+        const url = `/apps/api/${appId}/forceReload?access_token=${token}`;
+        const res = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify({ action: "reload" }),
+          headers: { "Content-Type": opts.mimeType || "application/json" }
+        });
+        if (!res.ok) {
+          alert("Failed to reload app: " + (await res.text()));
+          throw new Error("Failed to reload app");
+        }
+        return await res.json().catch(() => true);
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const canvas = document.getElementById("drawflow");
+        if (canvas) {
+          canvas.addEventListener("mousedown", function(e) {
+            if (e.target === canvas) {
+              window._multiSelectedNodes.clear();
+              editor.selected_id = null;
+              document.querySelectorAll('.drawflow-node').forEach(el => {
+                el.classList.remove('selected-multi');
+                el.classList.remove('selected');
+              });
+              // We still deselect, but leave the Node Editor alone here.
+            }
+          });
+        }
+      });
+
+      // ── Logging Button Click Handler ─────────────────────────────────────────────
+      document.getElementById("loggingButton").addEventListener("click", async () => {
+        const btn      = document.getElementById("loggingButton");
+        const flowName = document.getElementById("hubitatFileDropdown").value.trim();
+        const token    = document.getElementById("hubitatToken").value.trim();
+        const appId    = document.getElementById("hubitatAppId").value.trim();
+
+        // 1) Validate credentials & selection
+        if (!hubitatCredentialsAreValid(true)) return;
+        if (!flowName) {
+          logAction("No Flow selected to change logging", "error");
+          return;
+        }
+
+        // 2) Determine desired action
+        const isEnabled = btn.textContent.trim() === "Logging Enabled";
+        const action    = isEnabled ? "deselectFlowLog" : "selectFlowLog";
+        const url       = `/apps/api/${appId}/${action}?access_token=${token}`;
+
+        // 3) Disable button to prevent double‑clicks
+        btn.disabled = true;
+        try {
+          // 4) Call Hubitat API with JSON body
+          const response = await fetch(url, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ flow: flowName })
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          }
+          const result = await response.json();
+
+          // 5) Log success
+          logAction(
+            isEnabled
+              ? `❎ Logging disabled: ${result.result || "OK"}`
+              : `✅ Logging enabled:   ${result.result || "OK"}`,
+            "info"
+          );
+
+          // 6) Re‑sync both buttons’ state
+          await checkIfFlowIsInUse(flowName, appId, token);
+        } catch (err) {
+          logAction(`❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`, "error");
+        } finally {
+          // 7) Re‑enable button
+          btn.disabled = false;
+        }
+      });
+
+      document.getElementById("saveAsFlow").onclick = async function() {
+        // 1) Sanity check
+        if (!hubitatCredentialsAreValid(true) || typeof editor.export !== "function") {
+          return;
+        }
+
+        // 2) Prompt for the new name (no “.json”)
+        const flowNameEl = document.getElementById("flowName");
+        let current = flowNameEl.textContent.trim();
+        if (current.toLowerCase().endsWith(".json")) {
+          current = current.slice(0, -5);
+        }
+        let name = prompt("Save flow as:", current);
+        if (!name) return;  // user cancelled
+
+        // 3) Sanitize the name
+        name = name
+          .replace(/\s+/g, "_")
+          .replace(/[^a-zA-Z0-9_\-]/g, "")
+          .replace(/_{2,}/g, "_")
+          .replace(/^_+|_+$/g, "");
+
+        // 4) Export & upload under name + ".json"
+        const data = editor.export();
+          __fe_stampViewport(data);
+        data.flowName = name;
+        if (window.flowVars?.getLocalVars) {
+          data.variables = flowVars.getLocalVars();
+        }
+        await uploadToHubitatFile(`${name}.json`, JSON.stringify(data, null, 2));
+
+        // 5) Update the on-page display to the bare name (no .json)
+        flowNameEl.textContent = name;
+
+        await reloadFlowDropdown(`${name}.json`);
+        markFlowNeedsSave(false);
+        logAction(`Saved flow as "${name}" to Hubitat File Manager.`, "success");
+      };
+
+      // — Delete current flow and then clear UI + reload dropdown —
+      document.getElementById("deleteFlowAppBtn").onclick = async function() {
+        // 1) grab credentials and the selected filename
+        const token    = document.getElementById("hubitatToken").value.trim();
+        const appId    = document.getElementById("hubitatAppId").value.trim();
+        const dropdown = document.getElementById("hubitatFileDropdown");
+        const fileName = dropdown.value.trim();
+
+        if (!token || !appId || !fileName) {
+          return logAction("Missing Token, App ID, or selected Flow", "error");
+        }
+
+        // 2) build the delete URL
+        const url = `/apps/api/${appId}/deleteFile?access_token=${token}&name=${encodeURIComponent(fileName)}`;
+
+        // 3) confirm
+        if (!confirm(`Really delete "${fileName}" from Hubitat? This cannot be undone.`)) {
+          return;
+        }
+
+        // 4) perform the DELETE
+        try {
+          const res = await fetch(url, { method: "DELETE" });
+          if (!res.ok) throw new Error(await res.text());
+          logAction(`✅ Deleted "${fileName}" from Hubitat File Manager.`, "success");
+
+          // 5) clear the displayed flow name
+          document.getElementById("flowName").textContent = "";
+
+          // 6) clear the canvas & undo/redo state
+          editor.clear();
+          document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
+          window.undoStack = [JSON.stringify(editor.export())];
+          window.redoStack = [];
+
+          // 7) reset any “in-use” flags and re-load globals
+          checkIfFlowIsInUse("new", appId, token);
+          await autoLoadGlobalVarsFromHubitat();
+          await reloadFlowDropdown("");
+
+          markFlowNeedsSave(false);
+          logAction("Cleared workspace after deletion.", "info");
+        } catch (e) {
+          logAction("❌ Failed to delete file: " + e, "error");
+        }
+      };
+
+      document.getElementById("renameFlow").onclick = async function() {
+        // 1) Validate credentials & editor
+        if (!hubitatCredentialsAreValid(true) || typeof editor?.export !== "function") {
+          return;
+        }
+
+        // 2) Get old name and prompt for new
+        const flowNameEl = document.getElementById("flowName");
+        const oldName    = flowNameEl.textContent.trim();
+        let newName      = prompt("Rename flow to:", oldName);
+        if (!newName || newName === oldName) {
+          return;
+        }
+
+        // 3) Sanitize newName (underscores, letters, numbers, dashes only)
+        newName = newName
+          .replace(/\s+/g, "_")
+          .replace(/[^a-zA-Z0-9_\-]/g, "")
+          .replace(/_{2,}/g, "_")
+          .replace(/^_+|_+$/g, "");
+
+        // 4) Export and overwrite flowName in JSON
+        const data = editor.export();
+          __fe_stampViewport(data);
+        data.flowName = newName;
+        if (window.flowVars?.getLocalVars) {
+          data.variables = window.flowVars.getLocalVars();
+        }
+
+        // 5) Upload under the new filename
+        await uploadToHubitatFile(newName + ".json", JSON.stringify(data, null, 2));
+
+        // 6) Delete the old file
+        const appId = document.getElementById("hubitatAppId").value.trim();
+        const token = document.getElementById("hubitatToken").value.trim();
+        await fetch(
+          `/apps/api/${appId}/deleteFile?access_token=${token}&name=${encodeURIComponent(oldName)}`,
+          { method: "DELETE" }
+        );
+        await reloadHubitatApp();
+
+        // 7) Reflect the change in the UI
+        flowNameEl.textContent = newName;
+        const oldFilename = oldName + ".json";
+        const newFilename = newName + ".json";
+
+        await reloadFlowDropdown(`${newName}.json`);
+
+        markFlowNeedsSave(false);
+        logAction(`Renamed "${oldName}" → "${newName}" in Hubitat File Manager.`, "success");
+      };
+
+      // ── AUTO-SHOW & RESTORE ───────────────────────────────────────
+      window.addEventListener('load', function() {
+        const mm = document.getElementById('minimap-container');
+        if (!mm) return console.error('❌ minimap-container not found');
+        // restore last pos or default
+        try {
+          const pos = JSON.parse(localStorage.getItem('fe_minimap_pos'));
+          if (pos && pos.left != null && pos.top != null) {
+            mm.style.left = pos.left + 'px';
+            mm.style.top  = pos.top  + 'px';
+          }
+        } catch(_){}  
+        mm.style.display = 'block';
+        // re-render if available
+        if (typeof renderMinimap === 'function') renderMinimap();
+      });
+
+      // ── DRAG & PERSIST POSITION ───────────────────────────────────
+      (function enableMinimapDrag() {
+        const mm = document.getElementById('minimap-container');
+        if (!mm) return;
+        let dragging = false,
+            start   = { x: 0, y: 0 },
+            origin  = { x: 0, y: 0 };
+
+        mm.addEventListener('mousedown', e => {
+          dragging      = true;
+          start.x       = e.clientX;
+          start.y       = e.clientY;
+          origin.x      = mm.offsetLeft;
+          origin.y      = mm.offsetTop;
+          mm.style.cursor = 'move';
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', e => {
+          if (!dragging) return;
+          const dx = e.clientX - start.x;
+          const dy = e.clientY - start.y;
+          mm.style.left = origin.x + dx + 'px';
+          mm.style.top  = origin.y + dy + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (!dragging) return;
+          dragging = false;
+          mm.style.cursor = 'pointer';
+          // save new position
+          localStorage.setItem('fe_minimap_pos',
+            JSON.stringify({
+              left: mm.offsetLeft,
+              top:  mm.offsetTop
+            })
+          );
+        });
+      })();
+   
+      // ── Trigger‑Match Logging WebSocket ─────────────────────────────────────────
+      function startFlowTraceStream() {
+        // don’t re‑open if already open
+        if (
+          window.flowTraceSocket &&
+          window.flowTraceSocket.readyState === WebSocket.OPEN
+        ) return;
+
+        const appId = document.getElementById('hubitatAppId').value.trim();
+        const token = document.getElementById('hubitatToken').value.trim();
+
+        const ip    = getHubitatIP();
+        if (!ip) {
+          logAction('⚠️ Missing IP for TriggerLog WS', 'warn');
+          return;
+        }
+
+        window.flowTraceSocket = new WebSocket(`ws://${ip}/eventsocket`);
+
+        window.flowTraceSocket.addEventListener('open', () => {
+          logAction('🔍 WebSocket opened', 'info');
+        });
+
+        window.flowTraceSocket.addEventListener('message', ({ data }) => {
+          let evt;
+          try {
+            evt = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          if (evt.source === 'LOCATION' && evt.name === 'feTrace') {
+  const type = String(evt.value || '').toLowerCase();     // "start" | "step" | "end"
+  const desc = String(evt.descriptionText || '');
+  const m = desc.match(/\bfor\s+([^\s]+\.json)\b/i);       // may be absent (ok)
+  const flowFromDesc = m ? m[1].toLowerCase() : '';
+
+  const openRaw  = (document.getElementById('flowName')?.textContent || '').trim();
+  const openFile = openRaw.toLowerCase().endsWith('.json') ? openRaw.toLowerCase()
+                                                           : (openRaw.toLowerCase() + '.json');
+
+  if (flowFromDesc && flowFromDesc !== openFile) return;   // event is for a different flow
+
+  if (type === 'start') {
+    // clear LIVE highlights only
+    document.querySelectorAll('.drawflow-node.flow-path').forEach(n => n.classList.remove('flow-path'));
+    document.querySelectorAll('.main-path.live-highlight').forEach(p => {
+      p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('live-highlight');
+    });
+
+    window.flowTracePollingActive = true;
+    if (typeof pollFlowTraceUntilEnd === 'function') { try { pollFlowTraceUntilEnd(); } catch(e) {} }
+    return;
+  }
+
+  if (type === 'step') {
+    if (!window.flowTracePollingActive) window.flowTracePollingActive = true;
+    if (typeof pollFlowTraceUntilEnd === 'function') { try { pollFlowTraceUntilEnd(); } catch(e) {} }
+    return;
+  }
+
+  if (type === 'end') {
+    if (typeof pollFlowTraceUntilEnd === 'function') { try { pollFlowTraceUntilEnd(); } catch(e) {} }
+    return;
+  }
+  return;
+}
+
+          // ── Handle our fake "flowTraceUpdated" Location event ──────────────────────
+          
+
+          // ── Existing device‐trigger logic ─────────────────────────────────────────
+          if (evt.source !== 'DEVICE' || !evt.name || !evt.deviceId) return;
+          clearAllSelections();
+          const nodes =
+            editor?.drawflow?.Home?.data ||
+            editor?.drawflow?.drawflow?.Home?.data;
+          if (!nodes) return;
+
+          const match = Object.values(nodes).find(n => {
+            const rawIds = Array.isArray(n.data.deviceIds)
+              ? n.data.deviceIds
+              : [n.data.deviceId];
+            return rawIds.map(x => Number(x)).includes(Number(evt.deviceId))
+                && n.data.attribute === evt.name;
+          });
+
+          if (match) {
+            window.editor.selected_id = match.id;
+            // clear previous highlights
+            document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed')
+              .forEach(n => n.classList.remove('executed','last-executed'));
+            document.querySelectorAll('.main-path')
+              .forEach(p => {
+                p.removeAttribute('stroke');
+                p.removeAttribute('style');
+                p.classList.remove('highlighted');
+              });
+
+            logAction(
+              `⚡ Trigger on node ${match.id}: ` +
+              `${evt.displayName} → ${evt.value}`,
+              'info'
+            );
+            flowTracePollingActive = true;
+            pollFlowTraceUntilEnd();
+          }
+        });
+
+        window.flowTraceSocket.addEventListener('error', err =>
+          console.error('❌ WebSocket error', err)
+        );
+      }
+
+      document.addEventListener('DOMContentLoaded', startFlowTraceStream);
+
+      // Clear Trace
+      document.getElementById('clearTraceBtn').addEventListener('click', () => {
+        // clear node highlights
+        document.querySelectorAll(
+          '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
+        ).forEach(el => el.classList.remove('executed','last-executed','flow-path'));
+
+        // clear path highlights
+        document.querySelectorAll('.main-path.highlighted, .main-path.live-highlight').forEach(path => {
+          path.removeAttribute('stroke');
+          path.removeAttribute('style');
+          path.classList.remove('highlighted','live-highlight');
+        });
+
+        // stop live‑polling if active
+        if (typeof flowTracePollInterval !== 'undefined' && flowTracePollInterval) {
+          clearInterval(flowTracePollInterval);
+          flowTracePollInterval = null;
+        }
+
+        logAction('🗑️ Trace cleared', 'info');
+      });
+
+      document.getElementById('lastTraceBtn').addEventListener('click', async () => {
+        // 1) Clear previous highlights
+        document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path')
+          .forEach(n => n.classList.remove('executed','last-executed','flow-path'));
+        document.querySelectorAll('.main-path.highlighted, .main-path.live-highlight')
+          .forEach(p => { p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('highlighted','live-highlight'); });
+
+        // 2) Determine the "active" flow from the UI
+        const nameEl = document.getElementById('flowName');
+        const raw = (nameEl ? nameEl.textContent : (window.currentFlowFile || '')).trim();
+        if (!raw) { logAction('No flow loaded.', 'warn'); return; }
+        const want = raw.toLowerCase().endsWith('.json') ? raw.toLowerCase() : (raw.toLowerCase() + '.json'); // 
+
+        // 3) Load and normalize FE_flowtrace.json to an array of runs
+        let resp;
+        try {
+          resp = await fetchHubitatFileContent('FE_flowtrace.json');
+        } catch (e) {
+          logAction('Failed to read FE_flowtrace.json: ' + e, 'error');
+          return;
+        }
+        const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []); // 
+        if (!list.length) { logAction('No flow traces found.', 'info'); return; }
+
+        // 4) Filter to this flow (case-insensitive) and choose the most recent COMPLETED run
+        const runs = list.filter(r => String(r.flowFile || '').toLowerCase() === want); // 
+        if (!runs.length) { logAction('No previous runs for this editor.', 'info'); return; }
+
+        // Most recent by last-step timestamp
+        runs.sort((a,b) => {
+          const ta = (a.steps && a.steps.length) ? (a.steps[a.steps.length - 1].timestamp || 0) : 0;
+          const tb = (b.steps && b.steps.length) ? (b.steps[b.steps.length - 1].timestamp || 0) : 0;
+          return tb - ta;
+        });
+
+        // Prefer a run that ended (endOfFlow / finished), else take the latest
+        const completed = runs.find(r => {
+          const steps = r.steps || [];
+          const last = steps[steps.length - 1];
+          return (String(last?.nodeType || last?.step || '').toLowerCase() === 'endofflow') || r.finished;
+        }) || runs[0]; // 
+
+        // 5) Extract only real steps (with nodeId) and paint them green
+        const realSteps = (completed.steps || []).filter(s => s && s.nodeId); // 
+        if (!realSteps.length) { logAction('Trace had no node steps.', 'info'); return; }
+
+        // Nodes
+        realSteps.forEach((step, idx) => {
+          const el = document.getElementById(`node-${step.nodeId}`);
+          if (el) {
+            el.classList.add('executed');
+            if (idx === realSteps.length - 1) el.classList.add('last-executed');
+          }
+        });
+
+        // Edges
+        for (let i = 0; i < realSteps.length - 1; i++) {
+          const from = realSteps[i].nodeId, to = realSteps[i+1].nodeId;
+          const sel = `.connection.node_out_node-${from}.node_in_node-${to} .main-path`;
+          const path = document.querySelector(sel) ||
+                      document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
+          if (path) {
+            path.setAttribute('stroke','limegreen');
+            path.setAttribute('style','stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
+            path.classList.add('highlighted');
+          }
+        }
+
+        // Optional: update "Last Run" label if timestamp is present (your existing pattern)
+        const ts = completed.timestamp || (completed.runId && /^\d{13}/.test(completed.runId) ? parseInt(String(completed.runId).split('_')[0], 10) : null);
+        if (ts) {
+          const d = new Date(ts);
+          const el = document.getElementById('lastRunLine');
+          if (el) el.textContent = `Last Run: ${d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})} - ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`; // 
+        }
+      });
+
+      function hideTestUI() {
+        const statusDiv = document.getElementById("flowTesterContent") || document.getElementById("flowTesterContent") || document.getElementById("flowTestStatus");
+        if (!statusDiv) return;
+
+        const testBtn      = statusDiv.querySelector('#testFlowBtn');
+        const testInput    = statusDiv.querySelector('#testFlowInput');
+        const dryRunLabel  = statusDiv.querySelector('#dryRunCheckbox')?.closest('label');
+
+        const selNode = editor.getNodeFromId(editor.selected_id);
+        const isMulti = selNode?.name === 'eventTrigger'
+                    && Array.isArray(selNode.data.deviceIds)
+                    && selNode.data.deviceIds.length > 1;
+
+        if (isMulti) {
+          if (testBtn)     testBtn.hidden     = true;
+          if (testInput)   testInput.hidden   = true;
+          if (dryRunLabel) dryRunLabel.hidden = true;
+
+          if (!statusDiv.querySelector('#testNaMsg')) {
+            const naMsg = document.createElement('div');
+            naMsg.id          = 'testNaMsg';
+            naMsg.textContent = 'Testing not Available';
+            naMsg.style       = 'font-size:12px;color:#b00;margin:8px 0;';
+            statusDiv.appendChild(naMsg);
+          }
+        } else {
+          if (testBtn)     testBtn.hidden     = false;
+          if (testInput)   testInput.hidden   = false;
+          if (dryRunLabel) dryRunLabel.hidden = false;
+          const naMsg = statusDiv.querySelector('#testNaMsg');
+          if (naMsg) naMsg.remove();
+        }
+      }
+
+      /**
+       * Returns a CSS style string to outline in red any node whose required inputs are missing.
+       * Supports all built‑in tile types.
+       *
+       * @param {string} type  The node type (e.g. "eventTrigger", "device", "schedule", etc.)
+       * @param {object} data  The node’s data object
+       * @returns {string}     A CSS style (e.g. "border:2px solid #fa2b2b;") or "" if no error
+       */
+      function getErrorStyle(type, data) {
+        const t = (type || "").toLowerCase();
+        let hasError = false;
+
+        switch (t) {
+          // ── Logic & Comment nodes: never error ─────────────────────────────────
+          case "donothing":
+          case "comment":
+            break;
+
+          // ── Delay nodes: require numeric duration ───────────────────────────────
+          case "delay":
+            if (typeof data.ms !== "number" || isNaN(data.ms)) {
+              hasError = true;
+            }
+            break;
+          case "delaymin":
+            if (typeof data.delayMin !== "number" || isNaN(data.delayMin)) {
+              hasError = true;
+            }
+            break;
+
+          // ── Save/Restore Device State: require a device ─────────────────────────
+          case "savedevicestate":
+          case "restoredevicestate":
+            if (!data.deviceId) {
+              hasError = true;
+            }
+            break;
+
+          // ── Schedule: must have at least one of cron, repeatDays, or time ───────
+          case "schedule":
+            if (
+              !data.cron &&
+              (!Array.isArray(data.repeatDays) || data.repeatDays.length === 0) &&
+              !data.time
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Repeat Until/Max: different requirements by mode ─────────────────────
+          case "repeat":
+            if (data.repeatMode === "until") {
+              if (!data.deviceId || !data.attribute || !data.comparator) {
+                hasError = true;
+              } else if (data.comparator === "between") {
+                if (
+                  !Array.isArray(data.value) ||
+                  !data.value[0] ||
+                  !data.value[1]
+                ) {
+                  hasError = true;
+                }
+              } else if (
+                data.comparator !== "changes" &&
+                (data.value === undefined || data.value === "")
+              ) {
+                hasError = true;
+              }
+            } else {
+              if (
+                typeof data.repeatMax !== "number" ||
+                isNaN(data.repeatMax) ||
+                data.repeatMax < 1
+              ) {
+                hasError = true;
+              }
+            }
+            break;
+
+          // ── Variable assignment: require name and value ─────────────────────────
+          case "setvariable":
+            if (!data.varName || data.varValue === undefined || data.varValue === "") {
+              hasError = true;
+            }
+            break;
+
+          // ── NotMatchingVar: need target devices and an output variable ──────────
+          case "notmatchingvar":
+            const targetsNMV = Array.isArray(data.targetDeviceId)
+              ? data.targetDeviceId
+              : [data.targetDeviceId];
+            if (
+              targetsNMV.length === 0 ||
+              targetsNMV.every(id => !id) ||
+              !data.outputVar
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Notification: must pick at least one device and supply a message ────
+          case "notification":
+            const targetsNOT = Array.isArray(data.targetDeviceId)
+              ? data.targetDeviceId
+              : [data.targetDeviceId];
+            if (
+              targetsNOT.length === 0 ||
+              targetsNOT.every(id => !id) ||
+              !data.message
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Device Action: need device(s) and a command ────────────────────────
+          case "device":
+            const devs = Array.isArray(data.deviceIds)
+              ? data.deviceIds
+              : data.deviceId
+              ? [data.deviceId]
+              : [];
+            if (devs.length === 0 || devs.every(id => !id) || !data.command) {
+              hasError = true;
+            }
+            break;
+
+          // ── Event Trigger & Condition: device, attribute, comparator, value ─────
+          case "eventtrigger":
+          case "condition":
+            if (!data.deviceId || !data.attribute || !data.comparator) {
+              hasError = true;
+            } else if (data.comparator === "between") {
+              if (
+                !Array.isArray(data.value) ||
+                !data.value[0] ||
+                !data.value[1]
+              ) {
+                hasError = true;
+              }
+            } else if (
+              data.comparator !== "changes" &&
+              (data.value === undefined || data.value === "")
+            ) {
+              hasError = true;
+            }
+            break;
+
+          // ── Unknown types: assume valid ─────────────────────────────────────────
+          default:
+            break;
+        }
+
+        return hasError ? "border:2px solid #fa2b2b;" : "";
+      }
+
+      function clearAllSelections() {
+        // 1) Clear multi‑select on canvas
+        window._multiSelectedNodes.clear();
+        updateMultiSelectUI();
+      }
+      
+      async function getDynamicSunTimes() {
+        // 1. Try to use browser geolocation
+        let lat = 42.36, lng = -71.06; // Boston fallback
+        try {
+          if (navigator.geolocation) {
+            const pos = await new Promise((resolve, reject) =>
+              navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 2000}));
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+          }
+        } catch(e) {
+          // Could not get geolocation, will use default coords
+        }
+
+        // 2. Try to use SunCalc for sunrise/sunset
+        try {
+          if (typeof SunCalc !== "undefined" && SunCalc.getTimes) {
+            const times = SunCalc.getTimes(new Date(), lat, lng);
+            const pad = n => (n < 10 ? "0" : "") + n;
+            return {
+              sunrise: pad(times.sunrise.getHours()) + ":" + pad(times.sunrise.getMinutes()),
+              sunset:  pad(times.sunset.getHours())  + ":" + pad(times.sunset.getMinutes())
+            };
+          }
+        } catch(e) {
+          // SunCalc failed, will use hardcoded times
+        }
+
+        // 3. Fallback to static times if everything else fails
+        return { sunrise: "06:00", sunset: "20:00" };
+      }
+
+      function getOS() {
+        if (navigator.userAgentData && navigator.userAgentData.platform) {
+          const p = navigator.userAgentData.platform.toLowerCase();
+          if (p.includes('mac')) return 'mac';
+          if (p.includes('win')) return 'windows';
+          if (p.includes('linux')) return 'linux';
+          return 'other';
+        }
+        const p = navigator.platform.toLowerCase();
+        if (p.includes('mac')) return 'mac';
+        if (p.includes('win')) return 'windows';
+        if (p.includes('linux')) return 'linux';
+        return 'other';
+      }
+
+      const os = getOS();
+      if (os === 'mac') {
+        document.getElementById('multiSelectTip-mac').style.display = '';
+      } else {
+        document.getElementById('multiSelectTip-win').style.display = '';
+      }
+
+      // Always only register this once!
+      (function() {
+        const button       = document.getElementById("activateFlowButton");
+        const flowDropdown = document.getElementById("hubitatFileDropdown");
+
+        // Remove any previous handler, just in case
+        button.replaceWith(button.cloneNode(true));
+        const newButton = document.getElementById("activateFlowButton");
+
+        newButton.addEventListener("click", async () => {
+          const flowName = flowDropdown?.value?.trim() || "";
+          const token    = document.getElementById("hubitatToken")?.value.trim()  || "";
+          const appId    = document.getElementById("hubitatAppId")?.value.trim()  || "";
+
+          // 1) Validate inputs
+          if (!hubitatCredentialsAreValid(true)) {
+            logAction("Missing App ID or Token", "error");
+            return;
+          }
+          if (!flowName) {
+            logAction("No Flow selected to activate/deactivate", "error");
+            return;
+          }
+
+          // 2) Decide endpoint
+          const isActive = newButton.textContent.trim() === "Activated";
+          const action   = isActive ? "deselectFlow" : "selectFlow";
+          const url      = `/apps/api/${appId}/${action}?access_token=${token}`;
+
+          // 3) Disable to prevent double‐clicks
+          newButton.disabled = true;
+          try {
+            // ── Send the flow name in the POST body ──
+            const response = await fetch(url, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({ flow: flowName })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+
+            // 4) Log success
+            logAction(
+              isActive
+                ? `❎ Flow deactivated: ${result.result || JSON.stringify(result)}`
+                : `✅ Flow activated:   ${result.result || JSON.stringify(result)}`,
+              "info"
+            );
+
+            // 5) Refresh UI state (ALWAYS use checkIfFlowIsInUse for UI!)
+            await checkIfFlowIsInUse(flowName, appId, token);
+
+          } catch (err) {
+            logAction(`❌ Toggle failed: ${err}`, "error");
+          } finally {
+            newButton.disabled = false;
+          }
+        });
+      })();
+
+      function buildVariableTriggerEditor(pickerDiv, node, appendOnly) {
+        if (!node.data.variableName) node.data.variableName = "";
+        if (!node.data.comparator) node.data.comparator = "==";
+        if (node.data.value === undefined) node.data.value = "";
+
+        const oldPanels = pickerDiv.querySelectorAll('.variable-trigger-panel');
+        oldPanels.forEach(panel => panel.remove());
+
+        if (!appendOnly) pickerDiv.innerHTML = "";
+
+        const container = document.createElement("div");
+        container.className = "variable-trigger-panel";
+
+        const varLabel = document.createElement("label");
+        varLabel.textContent = "Variable Name";
+        varLabel.style.display = "block";
+        container.appendChild(varLabel);
+
+        const flowFile = window.flowVars?.getCurrentFlowFile?.() || "";
+        const flowVars = Array.isArray(window.FE_flowvars?.[flowFile]) ? window.FE_flowvars[flowFile] : [];
+
+        const vars = [
+          ...flowVars.map(v => v.name),
+          ...(Array.isArray(window.FE_global_vars) ? window.FE_global_vars.map(v => v.name) : [])
+        ].filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+        const varSelect = document.createElement("select");
+        varSelect.style.display = "block";
+        varSelect.style.marginBottom = "12px";
+
+        varSelect.innerHTML =
+          `<option value="" ${!node.data.variableName ? "selected" : ""}>(select)</option>` +
+          vars.map(v =>
+            `<option value="${v}" ${node.data.variableName === v ? "selected" : ""}>${v}</option>`
+          ).join("");
+        varSelect.onchange = () => {
+          node.data.variableName = varSelect.value;
+          editor.updateNodeDataFromId(node.id, node.data);
+          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
+          markFlowNeedsSave(true);
+        };
+        container.appendChild(varSelect);
+
+        renderComparatorPicker(container, node, ["==", "!=", ">", "<", ">=", "<=", "between"], {
+          "==": "equals", "!=": "not equals",
+          ">": ">", "<": "<", ">=": "≥", "<=": "≤", "between": "between"
+        }, () => {
+          node.data.comparator = container.querySelector("select:last-of-type").value;
+          node.data.value = "";
+          editor.updateNodeDataFromId(node.id, node.data);
+          buildVariableTriggerEditor(pickerDiv, node, appendOnly);
+          markFlowNeedsSave(true);
+        });
+
+        const between = node.data.comparator === "between";
+        renderValueField(container, node, [], () => {
+          editor.updateNodeDataFromId(node.id, node.data);
+          markFlowNeedsSave(true);
+        }, between);
+
+        pickerDiv.appendChild(container);
+      }
+
+      function logAction(msg, type = "info") {
+        const logLines = document.getElementById("logLines");
+        if (logLines) {
+          logLines.innerHTML += `<span class="log-${type}">${msg}</span><br>`;
+          logLines.scrollTop = logLines.scrollHeight;
+        }
+      }
+
+      document.getElementById('clearLogBtn').onclick = function () {
+        const logLines = document.getElementById('logLines');
+        if (logLines) logLines.innerHTML = "";
+      };
+
+    </script>
+    <script>
+      window.addEventListener("load", function () {
+        // Wait until the FE_flowvars.js is parsed and credentials are in place
+        function tryInitVars() {
+          if (typeof window.initVariablesAfterCreds === "function") {
+            window.initVariablesAfterCreds();
+          } else {
+            setTimeout(tryInitVars, 50);
+          }
+        }
+        tryInitVars();
+      });
+    </script>
+
+<script>
+// === Live Trace logger ===
+(() => {
+  window.TRACE_DBG = true; // flip to false to silence
+  window.traceLog = (...args) => window.TRACE_DBG && console.log('%c[LiveTrace]', 'color:#eab308;font-weight:bold', ...args);
+})();
+</script>
+
+<script>
+// === Robust ctrl/cmd‑click multi-select for Drawflow nodes ===
+// Keeps highlight across load/undo/redo and avoids conflicts with Drawflow's own click handler.
+(function () {
+  if (window.__fe_multiSelectInstalled__) return;
+  window.__fe_multiSelectInstalled__ = true;
+
+  window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+
+  function nodeIdFromEl(el) {
+    if (!el) return null;
+    const id = el.id || "";
+    return id.startsWith("node-") ? id.slice(5) : null;
+  }
+  function getDrawflowRoot() {
+    return document.querySelector('#drawflow .drawflow') || document.querySelector('#drawflow');
+  }
+  function reapplyMultiSelectHighlights() {
+    const root = getDrawflowRoot();
+    if (!root) return;
+    [...window._multiSelectedNodes].forEach(id => {
+      const el = root.querySelector('#node-' + id);
+      if (el) el.classList.add('multi-selected');
+      else window._multiSelectedNodes.delete(id);
+    });
+  }
+
+  // Observe node removals so the Set stays clean
+  const obs = new MutationObserver(() => {
+    const root = getDrawflowRoot();
+    if (!root) return;
+    [...window._multiSelectedNodes].forEach(id => {
+      if (!root.querySelector('#node-' + id)) window._multiSelectedNodes.delete(id);
+    });
+  });
+  const startObs = () => {
+    const root = getDrawflowRoot();
+    if (root) obs.observe(root, { childList: true, subtree: true });
+  };
+  document.addEventListener('DOMContentLoaded', startObs);
+
+  // Capture-phase mousedown to toggle without letting Drawflow clear selection
+  document.addEventListener('mousedown', function (e) {
+    const nodeEl = e.target.closest('.drawflow-node');
+    const isMeta = e.ctrlKey || e.metaKey;
+    if (!nodeEl || !isMeta) return;
+
+    // Toggle highlight
+    const id = nodeIdFromEl(nodeEl);
+    if (!id) return;
+    if (nodeEl.classList.contains('multi-selected')) {
+      nodeEl.classList.remove('multi-selected');
+      window._multiSelectedNodes.delete(id);
+    } else {
+      nodeEl.classList.add('multi-selected');
+      window._multiSelectedNodes.add(id);
+    }
+
+    // Stop the library from replacing the selection
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+
+  // Clicking on empty canvas clears multi-select (normal behavior)
+  document.addEventListener('mousedown', function (e) {
+    const root = document.querySelector('#drawflow');
+    if (!root) return;
+    const clickedInsideNode = !!e.target.closest('.drawflow-node');
+    const isMeta = e.ctrlKey || e.metaKey;
+    if (clickedInsideNode || isMeta) return;
+    // if clicking on background or UI, clear multi-select
+    if (!root.contains(e.target)) return;
+    const df = root.querySelector('.drawflow') || root;
+    df.querySelectorAll('.drawflow-node.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+    window._multiSelectedNodes.clear();
+  }, true);
+
+  // Hook restoreFlowFromJson to reapply highlights after imports/undo/redo
+  (function hookRestore() {
+    const key = '__restore_hooked__';
+    if (window[key]) return;
+    window[key] = true;
+    const prior = window.restoreFlowFromJson;
+    if (typeof prior === 'function') {
+      window.restoreFlowFromJson = async function () {
+        const result = await prior.apply(this, arguments);
+        // Give Drawflow a tick to build DOM, then reapply highlights
+        setTimeout(reapplyMultiSelectHighlights, 20);
+        return result;
+      };
+    } else {
+      // If it loads later, try again
+      const retry = setInterval(() => {
+        if (typeof window.restoreFlowFromJson === 'function') {
+          clearInterval(retry);
+          window.restoreFlowFromJson = (function (orig) {
+            return async function () {
+              const result = await orig.apply(this, arguments);
+              setTimeout(reapplyMultiSelectHighlights, 20);
+              return result;
+            };
+          })(window.restoreFlowFromJson);
+        }
+      }, 50);
+      setTimeout(() => clearInterval(retry), 8000);
+    }
+  })();
+
+  // Reapply once everything is loaded
+  window.addEventListener('load', () => setTimeout(reapplyMultiSelectHighlights, 60));
+})();
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const fitBtn = document.getElementById('fitViewBtn');
+  if (fitBtn) {
+    fitBtn.addEventListener('click', function () {
+      if (typeof zoomDrawflowToFit === 'function') {
+        try { zoomDrawflowToFit(); } catch (e) { console.warn('zoomDrawflowToFit failed:', e); }
+      } else {
+        console.warn('zoomDrawflowToFit() not found');
+      }
+    });
+  }
+});
+</script>
+
+<!-- BEGIN: Variable Name Duplicate Check (robust, globals-only) -->
+<script>
+(function(){
+  'use strict';
+  if (window.__finalVarNameDupCheck) return;
+  window.__finalVarNameDupCheck = true;
+
+  function toList(n){ return Array.prototype.slice.call(n||[]); }
+  function norm(s){ return String(s==null?'':s).trim().toLowerCase(); }
+
+  function getGlobalNameSet(){
+    try{
+      var arr = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+      var set = new Set();
+      for (var i=0;i<arr.length;i++){
+        var v = arr[i];
+        if (v && v.name) set.add(norm(v.name));
+      }
+      return set;
+    }catch(_){ return new Set(); }
+  }
+
+  function findVarManager(){ return document.getElementById('variableManager'); }
+
+  function findNameInput(container){
+    if (!container) return null;
+
+    // 1) Label-based (preferred)
+    var labels = toList(container.querySelectorAll('label'));
+    for (var i=0;i<labels.length;i++){
+      var txt = norm(labels[i].textContent||'');
+      if (txt.indexOf('variable name') !== -1){
+        // next siblings or inside
+        var el = labels[i].nextElementSibling;
+        for (var j=0;j<8 && el; j++, el = el.nextElementSibling){
+          if (el.tagName && el.tagName.toLowerCase()==='input') return el;
+          var inside = el && el.querySelector && el.querySelector('input');
+          if (inside) return inside;
+        }
+        // same group
+        var group = labels[i].parentElement;
+        if (group){
+          var any = group.querySelector('input');
+          if (any) return any;
+        }
+      }
+    }
+
+    // 2) Placeholder-based
+    var phInput = container.querySelector('input[placeholder*="Variable"][placeholder*="Name" i]');
+    if (phInput) return phInput;
+
+    // 3) Before the "Initial Value" field
+    var iv = toList(container.querySelectorAll('input[placeholder],textarea[placeholder]'))
+              .find(function(el){ return /initial\s*value/i.test(el.getAttribute('placeholder')||''); });
+    if (iv){
+      var w = iv.previousElementSibling, guard=0;
+      while (w && guard++<40){
+        if (w.tagName && w.tagName.toLowerCase()==='input') return w;
+        w = w.previousElementSibling;
+      }
+    }
+
+    // 4) First input before a Save button
+    var saveBtn = toList(container.querySelectorAll('button')).find(function(b){ return norm(b.textContent)==='save'; });
+    if (saveBtn){
+      var fields = [];
+      var e = saveBtn.previousElementSibling, g=0;
+      while (e && g++<80){
+        if (e.tagName && /^(input|select|textarea)$/i.test(e.tagName)) fields.unshift(e);
+        e = e.previousElementSibling;
+      }
+      var inputs = fields.filter(function(el){ return el.tagName && el.tagName.toLowerCase()==='input'; });
+      if (inputs.length) return inputs[0];
+    }
+
+    // 5) Last resort
+    return container.querySelector('input');
+  }
+
+  function paint(container, nameEl){
+    try{
+      if (!container || !nameEl) return;
+      var nm = (nameEl.value||'').trim();
+      if (!nm){
+        nameEl.style.outline='';
+        nameEl.style.borderColor='';
+        return;
+      }
+      var dup = getGlobalNameSet().has(norm(nm));
+      if (dup){
+        nameEl.style.outline = '2px solid #fa2b2b';
+        nameEl.style.borderColor = '#fa2b2b';
+      } else {
+        nameEl.style.outline = '';
+        nameEl.style.borderColor = '';
+      }
+    }catch(_){}
+  }
+
+  function wire(){
+    var vm = findVarManager();
+    if (!vm) return;
+    var nameEl = findNameInput(vm);
+    if (!nameEl || nameEl.__dupNameWired) return;
+
+    var repaint = function(){ paint(vm, nameEl); };
+    nameEl.addEventListener('input', repaint);
+    nameEl.addEventListener('change', repaint);
+
+    // Initial paints (allow globals to load)
+    setTimeout(repaint, 0);
+    setTimeout(repaint, 300);
+    setTimeout(repaint, 1200);
+
+    // Repaint after global vars refresh
+    if (typeof window.refreshVarsAndInspector === 'function' && !window.refreshVarsAndInspector.__dupNameWrap){
+      var orig = window.refreshVarsAndInspector;
+      window.refreshVarsAndInspector = async function(){
+        var r = await orig.apply(this, arguments);
+        try { repaint(); } catch(e){}
+        return r;
+      };
+      window.refreshVarsAndInspector.__dupNameWrap = true;
+    }
+
+    nameEl.__dupNameWired = true;
+  }
+
+  function install(){
+    wire();
+    // Watch for (re)renders of variable manager
+    var root = document.getElementById('variableManagerPanel') || document;
+    try{
+      var mo = new MutationObserver(function(){ wire(); });
+      mo.observe(root, { childList:true, subtree:true });
+    }catch(e){}
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+  window.addEventListener('load', function(){ setTimeout(install, 200); });
+})();
+</script>
+<!-- END: Variable Name Duplicate Check (robust, globals-only) -->
+
+<!-- BEGIN: Variable Save Confirmation (minimal, variables panel only) -->
+<script>
+(function(){
+  'use strict';
+  if (window.__vmVarSaveConfirm) return;
+  window.__vmVarSaveConfirm = true;
+
+  function norm(s){ return String(s==null?'':s).trim().toLowerCase(); }
+
+  function wire(){
+    var panel = document.getElementById('variableManager');
+    if (!panel) return;
+
+    // Find the Add-Variable Save button within the variables panel only
+    var btns = Array.prototype.slice.call(panel.querySelectorAll('button'));
+    if (!btns.length) return;
+
+    // Prefer the button literally labeled "Save"; otherwise first button before a "Delete" button
+    var saveBtn = btns.find(function(b){ return norm(b.textContent)==='save'; });
+    if (!saveBtn){
+      var delIdx = btns.findIndex(function(b){ return norm(b.textContent)==='delete'; });
+      saveBtn = btns.find(function(b, idx){ return delIdx === -1 ? idx === 0 : idx < delIdx; });
+    }
+    if (!saveBtn || saveBtn.__vmConfirmBound) return;
+
+    // Show a confirmation AFTER the app's own save handler runs
+    saveBtn.addEventListener('click', function(){
+      try {
+        if (saveBtn.disabled) return;
+        setTimeout(function(){ /* alert removed: unified to app message */ 
+try{ window.__autoRefresh = false; }catch(_){}
+}, 600);
+      } catch(e){ /* noop */ }
+    }, true); // capture so we don't interfere
+
+    saveBtn.__vmConfirmBound = true;
+  }
+
+  function install(){
+    wire();
+    var root = document.getElementById('variableManagerPanel') || document;
+    try {
+      var mo = new MutationObserver(function(){ wire(); });
+      mo.observe(root, { childList:true, subtree:true });
+    } catch(e){}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+  window.addEventListener('load', function(){ setTimeout(install, 200); });
+})();
+</script>
+<!-- END: Variable Save Confirmation (minimal, variables panel only) -->
+
+<!-- BEGIN: Variable Name Duplicate Check — Globals Only (final) -->
+<script>
+(function(){
+  'use strict';
+  if (window.__vmNameDupFinalPatch__) return;
+  window.__vmNameDupFinalPatch__ = true;
+
+  function norm(s){ return String(s==null?'':s).trim().toLowerCase(); }
+  function toList(n){ return Array.prototype.slice.call(n||[]); }
+
+  function getGlobalNameSet(){
+    try{
+      var arr = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+      var set = new Set();
+      for (var i=0;i<arr.length;i++){
+        var v = arr[i];
+        if (v && v.name) set.add(norm(v.name));
+      }
+      return set;
+    }catch(_){ return new Set(); }
+  }
+
+  function findPanel(){ return document.getElementById('variableManager'); }
+
+  function byLabel(container, labelLower){
+    var labels = toList(container.querySelectorAll('label'));
+    for (var i=0;i<labels.length;i++){
+      var txt = norm(labels[i].textContent||'');
+      if (txt.indexOf(labelLower) !== -1){
+        var el = labels[i].nextElementSibling;
+        for (var j=0;j<8 && el; j++, el = el.nextElementSibling){
+          if (el.tagName && /^(input|select|textarea)$/i.test(el.tagName)) return el;
+          var inside = el.querySelector && el.querySelector('input,select,textarea');
+          if (inside) return inside;
+        }
+        var group = labels[i].parentElement;
+        if (group){
+          var any = group.querySelector('input,select,textarea');
+          if (any) return any;
+        }
+      }
+    }
+    return null;
+  }
+
+  function findFields(panel){
+    if (!panel) return {};
+    // Prefer label-based
+    var nameEl  = byLabel(panel, 'variable name');
+    var scopeEl = byLabel(panel, 'scope');
+    // Fallbacks
+    if (!nameEl){
+      // Try: input right before Initial Value field
+      var iv = panel.querySelector('input[placeholder*="Initial"][placeholder*="Value" i], textarea[placeholder*="Initial"][placeholder*="Value" i]');
+      if (iv){
+        var w = iv.previousElementSibling, guard=0;
+        while (w && guard++<40){
+          if (w.tagName && w.tagName.toLowerCase()==='input'){ nameEl = w; break; }
+          w = w.previousElementSibling;
+        }
+      }
+    }
+    if (!scopeEl){
+      // First select in the add-variable area
+      var selects = panel.querySelectorAll('select');
+      scopeEl = selects && selects.length ? selects[0] : null;
+    }
+    // Save button (to repaint after saving)
+    var saveBtn = toList(panel.querySelectorAll('button')).find(function(b){
+      return norm(b.textContent)==='save';
+    }) || null;
+
+    return { nameEl, scopeEl, saveBtn };
+  }
+
+  function isGlobalSelected(scopeEl){
+    if (!scopeEl) return false;
+    var v = norm(scopeEl.value||'');
+    if (v==='global') return true;
+    var txt = (scopeEl.options && scopeEl.selectedIndex>=0) ? norm(scopeEl.options[scopeEl.selectedIndex].text||'') : '';
+    return txt.indexOf('global') !== -1;
+  }
+
+  function repaint(panel, nameEl, scopeEl){
+    try{
+      if (!nameEl) return;
+      var nm = (nameEl.value||'').trim();
+      // Only check when Scope=Global
+      if (!isGlobalSelected(scopeEl) || !nm){
+        nameEl.style.outline=''; nameEl.style.borderColor=''; nameEl.style.boxShadow='';
+        return;
+      }
+      var dup = getGlobalNameSet().has(norm(nm));
+      if (dup){
+        nameEl.style.outline='2px solid #fa2b2b';
+        nameEl.style.borderColor='#fa2b2b';
+        nameEl.style.boxShadow='0 0 0 2px rgba(250,43,43,0.25)';
+      } else {
+        nameEl.style.outline=''; nameEl.style.borderColor=''; nameEl.style.boxShadow='';
+      }
+    }catch(_){}
+  }
+
+  function wire(){
+    var panel = findPanel();
+    if (!panel) return;
+    var fx = findFields(panel);
+    if (!fx.nameEl) return;
+    if (fx.nameEl.__dupBoundFinal) return;
+
+    var doRepaint = function(){ repaint(panel, fx.nameEl, fx.scopeEl); };
+
+    fx.nameEl.addEventListener('input', doRepaint);
+    fx.nameEl.addEventListener('change', doRepaint);
+    if (fx.scopeEl){
+      fx.scopeEl.addEventListener('input', doRepaint);
+      fx.scopeEl.addEventListener('change', doRepaint);
+    }
+
+    // Also repaint after Save so the state is correct post-add
+    if (fx.saveBtn && !fx.saveBtn.__dupRepaintAfterSave){
+      fx.saveBtn.addEventListener('click', function(){
+        setTimeout(doRepaint, 700);
+      }, true);
+      fx.saveBtn.__dupRepaintAfterSave = true;
+    }
+
+    // Initial paints (allow globals to load first)
+    setTimeout(doRepaint, 0);
+    setTimeout(doRepaint, 300);
+    setTimeout(doRepaint, 1200);
+
+    // Repaint when the global vars list refreshes
+    if (typeof window.refreshVarsAndInspector === 'function' && !window.refreshVarsAndInspector.__dupFinalWrap2){
+      var orig = window.refreshVarsAndInspector;
+      window.refreshVarsAndInspector = async function(){
+        var r = await orig.apply(this, arguments);
+        try { doRepaint(); } catch(_){}
+        return r;
+      };
+      window.refreshVarsAndInspector.__dupFinalWrap2 = true;
+    }
+
+    fx.nameEl.__dupBoundFinal = true;
+  }
+
+  function install(){
+    wire();
+    var root = document.getElementById('variableManagerPanel') || document;
+    try{
+      var mo = new MutationObserver(function(){ wire(); });
+      mo.observe(root, { childList:true, subtree:true });
+    }catch(_){}
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+  window.addEventListener('load', function(){ setTimeout(install, 200); });
+})();
+</script>
+<!-- END: Variable Name Duplicate Check — Globals Only (final) -->
+
+<script>
+// Flow Tester collapse/expand behavior
+(function(){
+  function wireFlowTester(){
+    var testHeader = document.getElementById("flowTesterHeader");
+    var testContent = document.getElementById("flowTesterContent");
+    var testArrow = document.getElementById("flowTesterArrow");
+    if (!testHeader || !testContent || !testArrow) return;
+    // collapsed by default
+    testContent.style.display = "none";
+    testArrow.style.transform = "rotate(-90deg)";
+    if (!testHeader.__wired){
+      testHeader.addEventListener("click", function(){
+        var open = (testContent.style.display === "none") ? false : true;
+        testContent.style.display = open ? "none" : "";
+        testArrow.style.transform = open ? "rotate(-90deg)" : "rotate(0deg)";
+      });
+      testHeader.__wired = true;
+    }
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireFlowTester);
+  } else {
+    wireFlowTester();
+  }
+  window.addEventListener("load", function(){ setTimeout(wireFlowTester, 200); });
+})();
+</script>
+
+
+<script>
+// Shrink Flow Name text to fit its container
+function fitFlowName(minPx=12, maxPx=28){
+  var el = document.getElementById('flowStatusName');
+  if(!el) return;
+  // reset to max and measure
+  el.style.fontSize = (maxPx||28) + 'px';
+  el.style.whiteSpace = 'nowrap';
+  el.style.overflow = 'hidden';
+  var parent = el.parentElement;
+  var maxWidth = parent ? parent.clientWidth - 16 : el.clientWidth;
+  var size = parseFloat(window.getComputedStyle(el).fontSize) || (maxPx||28);
+  var safety = 40;
+  while (el.scrollWidth > maxWidth && size > (minPx||12) && safety-- > 0){
+    size -= 1;
+    el.style.fontSize = size + 'px';
+  }
+}
+// Debounced resize
+(function(){
+  var t;
+  window.addEventListener('resize', function(){
+    clearTimeout(t); t = setTimeout(fitFlowName, 100);
+  });
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(fitFlowName, 50); });
+})();
+
+function applyLiveStep(prevId, nextId) {
+  // nodes
+  if (nextId != null) {
+    const node = document.getElementById(`node-${nextId}`);
+    if (node) node.classList.add('flow-path'); // yellow ring you already style in CSS
+  }
+  // edge (class-based OR data-* markup)
+  if (prevId != null && nextId != null) {
+    const selA = `.connection.node_out_node-${prevId}.node_in_node-${nextId} .main-path`;
+    const selB = `.connection[data-from="${prevId}"][data-to="${nextId}"] .main-path`;
+    const path = document.querySelector(selA) || document.querySelector(selB);
+    if (path) {
+      path.setAttribute('stroke', 'gold');
+      path.setAttribute('style',
+        'stroke: gold !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px gold) !important;');
+      path.classList.add('live-highlight');
+    }
+  }
+}
+</script>
+
+
+<script>
+// Canonical Live/Last Trace highlighter: supports both connection markups
+function highlightFlowPath(run, isLive = false) {
+  if (!run || !Array.isArray(run.steps)) return;
+
+  // Only clear prior LIVE strokes so Last Trace (green) stays
+  document.querySelectorAll('.main-path.live-highlight').forEach(p => {
+    p.removeAttribute('stroke');
+    p.removeAttribute('style');
+    p.classList.remove('live-highlight');
+  });
+
+  // Unique node ids in execution order
+  const nodeIds = [];
+  for (const s of (run.steps || [])) {
+    const id = s && s.nodeId != null ? String(s.nodeId) : '';
+    if (id && !nodeIds.includes(id)) nodeIds.push(id);
+  }
+
+  nodeIds.forEach((id, idx) => {
+    const nodeEl = document.getElementById(`node-${id}`);
+    if (nodeEl && !window.traceCleared) nodeEl.classList.add('flow-path');
+
+    const nextId = nodeIds[idx + 1];
+    if (!nextId) return;
+
+    // Support both connection markups
+    const classSel = `.connection.node_out_node-${id}.node_in_node-${nextId} .main-path`;
+    const dataSel  = `.connection[data-from="${id}"][data-to="${nextId}"] .main-path`;
+    const pathEl = document.querySelector(classSel) || document.querySelector(dataSel);
+    if (pathEl) {
+      const color = isLive ? 'gold' : 'limegreen';
+      const cls   = isLive ? 'live-highlight' : 'highlighted';
+      pathEl.setAttribute('stroke', color);
+      pathEl.setAttribute('style', `stroke: ${color} !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px ${color}) !important;`);
+      pathEl.classList.add(cls);
+    }
+  });
+
+  if (typeof renderMinimap === 'function') renderMinimap();
+}
+
+// Single global poll interval handle
+let flowTracePollInterval = null;
+
+// Unified live poller: normalize like Last Trace, pick newest, paint gold, stop at end
+async function pollFlowTraceUntilEnd() {
+  if (!window.flowTracePollingActive) return;
+
+  const rawName = (document.getElementById('flowName')?.textContent || '').trim();
+  if (!rawName) return;
+  const flowFile = rawName.toLowerCase().endsWith('.json') ? rawName.toLowerCase() : (rawName.toLowerCase() + '.json');
+
+  if (flowTracePollInterval) clearInterval(flowTracePollInterval);
+
+  flowTracePollInterval = setInterval(async () => {
+    
+try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
+try {
+      const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+      const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
+      const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
+      if (!runs.length) return;
+
+      // Choose most recent
+      runs.sort((a,b) => {
+        const aLast = (a.steps && a.steps.length) ? (a.steps[a.steps.length-1].timestamp || 0) : 0;
+        const bLast = (b.steps && b.steps.length) ? (b.steps[b.steps.length-1].timestamp || 0) : 0;
+        if (bLast !== aLast) return bLast - aLast;
+        const ta = (a.timestamp ?? (a.runId && /^\d{13}/.test(a.runId) ? parseInt(a.runId,10) : 0)) | 0;
+        const tb = (b.timestamp ?? (b.runId && /^\d{13}/.test(b.runId) ? parseInt(b.runId,10) : 0)) | 0;
+        return tb - ta;
+      });
+      const run = runs[0];
+
+      // Paint LIVE
+      highlightFlowPath(run, true);
+
+      // Stop on EndOfFlow
+      const last = (run.steps && run.steps[run.steps.length - 1]) || {};
+      const done = String(last.nodeType || last.step || '').toLowerCase() === 'endofflow' || run.finished;
+      if (done) {
+        clearInterval(flowTracePollInterval);
+        flowTracePollInterval = null;
+        window.flowTracePollingActive = false;
+        if (typeof refreshVarsAndInspector === 'function') { try { await refreshVarsAndInspector(); } catch(e){} }
+      }
+    } catch (e) {
+      console.error('Live Trace poll error', e);
+      clearInterval(flowTracePollInterval);
+      flowTracePollInterval = null;
+    }
+  
+try{ window.__autoRefresh = false; }catch(_){}
+}, 500);
+}
+</script>
+  <script>
+    // Dock button: move flow to top-left with current zoom preserved
+    (function(){
+      function getViewportView() {
+        try {
+          if (typeof window.__fe_getViewportView === "function") {
+            return window.__fe_getViewportView();
+          }
+          var ed = window.editor || {};
+          var z = (typeof ed.zoom === "number") ? ed.zoom :
+                  (typeof ed.zoom_value === "number") ? ed.zoom_value : 1;
+          var x = (typeof ed.canvas_x === "number") ? ed.canvas_x :
+                  (typeof ed.pos_x === "number") ? ed.pos_x : 0;
+          var y = (typeof ed.canvas_y === "number") ? ed.canvas_y :
+                  (typeof ed.pos_y === "number") ? ed.pos_y : 0;
+          return { x: x, y: y, zoom: z };
+        } catch (e) { return { x: 0, y: 0, zoom: 1 }; }
+      }
+      function applyViewportView(view) {
+        try {
+          if (typeof window.__fe_applyViewportView === "function") {
+            window.__fe_applyViewportView(view);
+            return;
+          }
+          var ed = window.editor || {};
+          var el = ed.precanvas ||
+                  document.querySelector("#drawflow .precanvas") ||
+                  document.querySelector(".precanvas") ||
+                  document.querySelector(".parent-drawflow .precanvas");
+          if (el) {
+            el.style.transformOrigin = "0 0";
+            el.style.transform = "translate(" + view.x + "px, " + view.y + "px) scale(" + view.zoom + ")";
+          }
+          if (typeof ed.canvas_x === "number") ed.canvas_x = view.x;
+          if (typeof ed.canvas_y === "number") ed.canvas_y = view.y;
+          if (typeof ed.pos_x === "number") ed.pos_x = view.x;
+          if (typeof ed.pos_y === "number") ed.pos_y = view.y;
+          if (typeof ed.zoom === "number") ed.zoom = view.zoom;
+          if (typeof ed.zoom_value === "number") ed.zoom_value = view.zoom;
+        } catch (e) {}
+      }
+      function dockFlowTopLeft(margin) {
+        try {
+          var df = document.getElementById("drawflow");
+          if (!df) return;
+          var nodes = df.querySelectorAll(".drawflow-node");
+          if (!nodes.length) return;
+          var minX = Infinity, minY = Infinity;
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var x = parseFloat(el.style.left) || 0;
+            var y = parseFloat(el.style.top)  || 0;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+          }
+          if (!isFinite(minX) || !isFinite(minY)) return;
+          var view = getViewportView();
+          var z = (view && view.zoom) ? view.zoom : 1;
+          var pad = (typeof margin === "number") ? margin : 20;
+          var xNew = pad - (minX * z);
+          var yNew = pad - (minY * z);
+          applyViewportView({ x: xNew, y: yNew, zoom: z });
+          if (typeof window.markFlowNeedsSave === "function") window.markFlowNeedsSave(true);
+        } catch (e) { if (window.console && console.warn) console.warn("Dock error:", e); }
+      }
+      window.dockFlowTopLeft = dockFlowTopLeft;
+      document.addEventListener("DOMContentLoaded", function(){
+    var btn = document.getElementById("dockBtn");
+    if (btn) btn.addEventListener("click", function(){ dockFlowTopLeft(20); });
+  
+    // Toggle canvas scrollbars (green = ON, grey = OFF)
+    (function(){
+      var sbtn = document.getElementById('toggleScrollbarsBtn');
+      var canvas = document.getElementById('drawflow');
+      if (!sbtn || !canvas) return;
+
+      function applySB(on){
+        // 1) Toggle overflow
+        canvas.style.setProperty('overflow', on ? 'auto' : 'hidden', 'important');
+        // 2) Button visual state
+        sbtn.style.backgroundColor = on ? '#4CAF50' : '#808080';
+        sbtn.style.color = '#fff';
+        sbtn.title = on ? 'Scrollbars: ON' : 'Scrollbars: OFF';
+        // 3) Persist
+        try { localStorage.setItem('fe_scrollbars_on', on ? '1' : '0'); } catch(_) {}
+      }
+
+      // Initial state (default ON unless storage says '0')
+      var initial = true;
+      try { initial = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_) {}
+      applySB(initial);
+
+      // Click to toggle
+      sbtn.addEventListener('click', function(){
+        var cur = true;
+        try { cur = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_) {}
+        applySB(!cur);
+      });
+    })();
+    });
+})();
+</script>
+
+<script>
+// Safe override that avoids prior syntax issues.
+(function(){
+  async function __cleanRefreshVarsAndInspector(){
+    try {
+      const resp = await (typeof fetchVarsFromApp === 'function' ? fetchVarsFromApp() : Promise.resolve({}));
+      const globals = Array.isArray(resp.globals) ? resp.globals
+                     : Array.isArray(resp.globalVars) ? resp.globalVars
+                     : [];
+
+      const flowsMapRaw = (resp && resp.flows && typeof resp.flows === 'object') ? resp.flows
+                         : (resp && resp.flowVarsMap && typeof resp.flowVarsMap === 'object') ? resp.flowVarsMap
+                         : (resp && resp.flowVars && typeof resp.flowVars === 'object') ? resp.flowVars
+                         : {};
+
+      var norm = {};
+      Object.keys(flowsMapRaw).forEach(function(k){
+        var base = String(k || '').replace(/\.json$/i, '');
+        var arr = Array.isArray(flowsMapRaw[k]) ? flowsMapRaw[k] : [];
+        norm[base] = arr;
+        norm[base + '.json'] = arr;
+      });
+
+      window.FE_global_vars = globals.slice();
+      window.FE_flowvars = norm;
+
+      if (window.flowVars) {
+        if (typeof window.flowVars.setGlobalVars === 'function') {
+          window.flowVars.setGlobalVars(globals);
+        }
+        if (typeof window.flowVars.setAllFlowVarsMap === 'function') {
+          window.flowVars.setAllFlowVarsMap(norm);
+        }
+        var current = (window.flowVars.getCurrentFlowFile && window.flowVars.getCurrentFlowFile()) ||
+                      (document.getElementById('hubitatFileDropdown') && document.getElementById('hubitatFileDropdown').value || '').replace(/\.json$/i, '');
+        if (current && typeof window.flowVars.setCurrentFlowFile === 'function') {
+          window.flowVars.setCurrentFlowFile(current);
+        }
+      }
+
+      if (typeof window.renderVariableInspector === 'function') {
+        window.renderVariableInspector();
+      }
+    } catch (e) {
+      try { console.error(e); } catch(_) {}
+      alert('Failed to refresh variables from app:<br>' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // Override to the clean implementation
+  window.refreshVarsAndInspector = __cleanRefreshVarsAndInspector;
+})();
+</script>
+
+<script>
+// Robust WS hook: auto-refresh variables when app emits feTrace: varsUpdated
+(function(){try{
+  var _origAdd = WebSocket.prototype.addEventListener;
+  WebSocket.prototype.addEventListener = function(type, listener, opts){
+    if(type === 'message' && typeof listener === 'function'){
+      var wrapped = function(evt){
+        try{
+          var payload = evt && evt.data;
+          if (typeof payload === 'string') {
+            try { payload = JSON.parse(payload); } catch(_){}
+          }
+          if (payload && typeof payload === 'object') {
+            var src  = String(payload.source || (payload.event && payload.event.source) || '').toUpperCase();
+            var name = String(payload.name   || (payload.event && payload.event.name)   || '');
+            var val  = String(payload.value  || (payload.event && payload.event.value)  || '').toLowerCase();
+            if (src === 'LOCATION' && name === 'feTrace' && val === 'varsupdated') {
+              if (typeof window.refreshVarsAndInspector === 'function') {
+                window.refreshVarsAndInspector();
+              }
+            }
+          }
+        }catch(e){}
+        return listener.call(this, evt);
+      };
+      return _origAdd.call(this, type, wrapped, opts);
+    }
+    return _origAdd.call(this, type, listener, opts);
+  };
+}catch(e){ try{console.warn('WS varsUpdated hook failed:', e);}catch(_){} }})();
+</script>
+
+
+<script>
+/* === Safe override: refreshVarsAndInspector that tolerates flows|flowVarsMap|flowVars === */
+(function(){
+  function pickFlowsMap(resp){
+    if (resp && resp.flows && typeof resp.flows === 'object') return resp.flows;
+    if (resp && resp.flowVarsMap && typeof resp.flowVarsMap === 'object') return resp.flowVarsMap;
+    if (resp && resp.flowVars && typeof resp.flowVars === 'object') return resp.flowVars;
+    return {};
+  }
+  function normalizeFlowKeys(map){
+    var out = {};
+    if (!map || typeof map !== 'object') return out;
+    Object.keys(map).forEach(function(k){
+      var base = String(k || '').replace(/\.json$/i, '');
+      var arr = Array.isArray(map[k]) ? map[k] : [];
+      out[base] = arr;
+      out[base + '.json'] = arr;
+    });
+    return out;
+  }
+
+  async function __overrideRefreshVarsAndInspector(){
+    try{
+      var resp = await (typeof fetchVarsFromApp === 'function' ? fetchVarsFromApp() : Promise.resolve({}));
+      var globals = Array.isArray(resp && resp.globals) ? resp.globals
+                   : Array.isArray(resp && resp.globalVars) ? resp.globalVars
+                   : [];
+      var flowsNorm = normalizeFlowKeys(pickFlowsMap(resp));
+
+      // expose
+      window.FE_global_vars = globals.slice();
+      window.FE_flowvars = flowsNorm;
+
+      // pass to var engine if present
+      if (window.flowVars){
+        if (typeof window.flowVars.setGlobalVars === 'function') window.flowVars.setGlobalVars(globals);
+        if (typeof window.flowVars.setAllFlowVarsMap === 'function') window.flowVars.setAllFlowVarsMap(flowsNorm);
+        var current = (window.flowVars.getCurrentFlowFile && window.flowVars.getCurrentFlowFile()) ||
+                      ((document.getElementById('hubitatFileDropdown') && document.getElementById('hubitatFileDropdown').value) || '').replace(/\.json$/i,'');
+        if (current && typeof window.flowVars.setCurrentFlowFile === 'function') window.flowVars.setCurrentFlowFile(current);
+      }
+
+      if (typeof window.renderVariableInspector === 'function') window.renderVariableInspector();
+    }catch(e){
+      try{ console.error(e); }catch(_){}
+      alert('Failed to refresh variables from app:<br>' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // Override without touching the original function body to avoid redeclarations
+  window.refreshVarsAndInspector = __overrideRefreshVarsAndInspector;
+})();
+</script>
+
+<script>
+/* === Robust WS hook: trigger refresh on feTrace: varsUpdated === */
+(function(){
+  try{
+    var origAdd = WebSocket.prototype.addEventListener;
+    WebSocket.prototype.addEventListener = function(type, listener, opts){
+      if (type === 'message' && typeof listener === 'function'){
+        var wrapped = function(evt){
+          try{
+            var payload = evt && evt.data;
+            if (typeof payload === 'string'){ try{ payload = JSON.parse(payload); }catch(_){} }
+            if (payload && typeof payload === 'object'){
+              var src  = String(payload.source || (payload.event && payload.event.source) || '').toUpperCase();
+              var name = String(payload.name   || (payload.event && payload.event.name)   || '');
+              var val  = String(payload.value  || (payload.event && payload.event.value)  || '').toLowerCase();
+              if (src === 'LOCATION' && name === 'feTrace' && val === 'varsupdated'){
+                if (typeof window.refreshVarsAndInspector === 'function'){ window.refreshVarsAndInspector(); }
+              }
+            }
+          }catch(e){}
+          return listener.call(this, evt);
+        };
+        return origAdd.call(this, type, wrapped, opts);
+      }
+      return origAdd.call(this, type, listener, opts);
+    };
+  }catch(e){ try{ console.warn('varsUpdated WS hook failed:', e); }catch(_){} }
+})();
+</script>
+
+
+<!-- ===== DIRTY ON MOVE + ALIGN (append-only) ===== -->
+<script>
+(function(){
+  if (window.__dirtyHooksInstalled) return;
+  window.__dirtyHooksInstalled = true;
+
+  // Mark dirty when a tile actually moves
+  (function setupDirtyOnNodeDrag(){
+    let startPos = null, nodeEl = null;
+    function getPos(el){
+      try {
+        const left = parseFloat(el.style.left || el.getAttribute('data-left') || el.offsetLeft || 0);
+        const top  = parseFloat(el.style.top  || el.getAttribute('data-top')  || el.offsetTop  || 0);
+        return {left: left||0, top: top||0};
+      } catch (_) { return {left:0, top:0}; }
+    }
+    document.addEventListener('mousedown', function(e){
+      const n = e.target && e.target.closest && e.target.closest('.drawflow-node');
+      if (!n){ startPos=null; nodeEl=null; return; }
+      nodeEl = n; startPos = getPos(n);
+    }, true);
+    document.addEventListener('mouseup', function(){
+      if (!nodeEl || !startPos) return;
+      const endPos = getPos(nodeEl);
+      const moved = (Math.round(endPos.left) !== Math.round(startPos.left)) ||
+                    (Math.round(endPos.top)  !== Math.round(startPos.top));
+      nodeEl = null; startPos = null;
+      if (moved) { try { markFlowNeedsSave(true); } catch(_){} }
+    }, true);
+  })();
+
+  // Mark dirty after any align button click
+  (function setupDirtyOnAlignButtons(){
+    const ids = ["alignLeftBtn","alignRightBtn","alignTopBtn","alignBottomBtn","alignCenterBtn","alignMiddleBtn"];
+    ids.forEach(id => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      if (b.__dirtyAlignHook) return;
+      b.addEventListener('click', function(){ setTimeout(function(){ try { markFlowNeedsSave(true); } catch(_){} }, 0); }, true);
+      b.__dirtyAlignHook = true;
+    });
+  })();
+})();
+</script>
+
+<script>
+
+// === Drag/move hardening override (idempotent) ===
+(function ensureMoveNodeToPatched(){
+  const apply = () => {
+    try {
+      if (!window || !window.editor) return false;
+      if (window.editor && typeof window.editor.moveNodeTo === 'function' && window.editor.moveNodeTo.__patched) return true;
+      const ed = window.editor;
+      const patched = function(id, x, y) {
+        try {
+          // Update internal model
+          const nodes = (typeof getHomeDataFrom === 'function') ? getHomeDataFrom(this || ed) : {};
+          const n = nodes && nodes[id];
+          if (n) {
+            n.pos_x = Number(x)||0;
+            n.pos_y = Number(y)||0;
+          }
+          // Ask the library to update connections if available
+          if (this && typeof this.updateConnectionNodes === 'function') {
+            this.updateConnectionNodes('node-' + id);
+          } else if (ed && typeof ed.updateConnectionNodes === 'function') {
+            ed.updateConnectionNodes('node-' + id);
+          }
+          // If library exposes updateNodePosition, call that too for completeness
+          if (this && typeof this.updateNodePosition === 'function') {
+            try { this.updateNodePosition(id, Number(x)||0, Number(y)||0); } catch(_){}
+          } else if (ed && typeof ed.updateNodePosition === 'function') {
+            try { ed.updateNodePosition(id, Number(x)||0, Number(y)||0); } catch(_){}
+          }
+          // Minimal DOM sync as fallback
+          const el = document.getElementById('node-' + id);
+          if (el) {
+            el.style.left = (Number(x)||0) + 'px';
+            el.style.top = (Number(y)||0) + 'px';
+          }
+          if (typeof markFlowNeedsSave === 'function') markFlowNeedsSave(true);
+        } catch (e) {
+          console.error('moveNodeTo failed:', e);
+        }
+      };
+      patched.__patched = true;
+      ed.moveNodeTo = patched;
+      return true;
+    } catch (_) { return false; }
+  };
+  const t = setInterval(() => { if (apply()) clearInterval(t); }, 25);
+  apply();
+})();</script>
+
+<script>
+// === Save button "red again" fix: suppress dirty marks during and just after Save ===
+(function () {
+  if (window.__saveGuardInstalled) return;
+  window.__saveGuardInstalled = true;
+  window.__suppressDirtyUntil = 0;
+
+  // Wrap markFlowNeedsSave to honor suppression window
+  const _origMark = window.markFlowNeedsSave;
+  window.markFlowNeedsSave = function(needed = true) {
+    if (typeof needed === "undefined") needed = true;
+const now = Date.now();
+const suppressedSave = (window.__suppressDirtyUntil && now < window.__suppressDirtyUntil) ||
+                       (document && document.body && document.body.classList && document.body.classList.contains("is-saving"));
+const suppressedAuto = !!window.__autoRefresh;
+const btn = document.getElementById("sendFlow");
+if (suppressedAuto) {
+  try { if (typeof _origMark === "function") { /* skip during auto */ } } catch (_) {}
+  return;
+}
+if (suppressedSave) needed = false;
+if (btn) {
+  if (needed) btn.classList.add("need-save");
+  else btn.classList.remove("need-save");
+}
+try { if (typeof _origMark === "function" && !suppressedSave) _origMark(needed); } catch (_) {}
+};
+
+  function beginSaveSuppression(ms) {
+    const win = Math.max(900, Math.min(3000, Number(ms)||1700)); // 0.9s..3s
+    window.__suppressDirtyUntil = Date.now() + win;
+    document.body.classList.add("is-saving");
+    setTimeout(() => document.body.classList.remove("is-saving"), win + 100);
+    // Force-clear button at the end of suppression
+    setTimeout(() => {
+      const b = document.getElementById("sendFlow");
+      if (b) b.classList.remove("need-save");
+    }, win + 80);
+  }
+
+  // Attach capture listener so we run BEFORE the app's save handler
+  function attachGuard(){
+    const btn = document.getElementById("sendFlow");
+    if (!btn || btn.__saveGuardAttached) return;
+    btn.__saveGuardAttached = true;
+    btn.addEventListener("click", () => beginSaveSuppression(1800), true);
+  }
+
+  attachGuard();
+  // Re-attach if the toolbar is re-rendered
+  const mo = new MutationObserver(attachGuard);
+  mo.observe(document.documentElement || document.body, {childList: true, subtree: true});
+})();
+</script>
+
+<script>
+// === Dirty-suppression + moveNodeTo connector-safe override (idempotent) ===
+(function(){
+  if (window.__dirtyPatchInstalled) return;
+  window.__dirtyPatchInstalled = true;
+
+  // Global suppression window (used by Save and by auto-refresh nudges)
+  window.__suppressDirtyUntil = window.__suppressDirtyUntil || 0;
+  window.__autoRefresh = window.__autoRefresh || false;
+  window.beginDirtySuppression = function(ms, reason){
+    var win = Math.max(500, Math.min(4000, Number(ms)||1500));
+    window.__suppressDirtyUntil = Date.now() + win;
+    if (reason === "save") document.body.classList.add("is-saving");
+    setTimeout(function(){
+      if (reason === "save") {
+  try { document.body.classList.remove("is-saving"); } catch (_) {}
+  var btn = document.getElementById("sendFlow");
+  if (btn) btn.classList.remove("need-save");
+}
+// Do not clear need-save during interval/auto-refresh.
+}, win + 50);
+  };
+
+  // Wrap markFlowNeedsSave so it respects the suppression window
+  var _origMark = window.markFlowNeedsSave;
+  window.markFlowNeedsSave = function(needed){
+    if (typeof needed === "undefined") needed = true;
+    var suppressed = (Date.now() < (window.__suppressDirtyUntil||0)) ||
+                     document.body.classList.contains("is-saving") ||
+                     !!window.__autoRefresh;
+    var btn = document.getElementById("sendFlow");
+    if (suppressed) needed = false;
+    if (btn) {
+      if (needed) btn.classList.add("need-save");
+      else btn.classList.remove("need-save");
+    }
+    try { if (typeof _origMark === "function" && !suppressed) _origMark(needed); } catch(_){}
+  };
+
+  // Hook Save button so suppression starts BEFORE app's own save handler
+  function attachSaveHook(){
+    var btn = document.getElementById("sendFlow");
+    if (!btn || btn.__dirtyHookAttached) return;
+    btn.__dirtyHookAttached = true;
+    btn.addEventListener("click", function(){ window.beginDirtySuppression(2000, "save"); }, true);
+  }
+  attachSaveHook();
+  var mo = new MutationObserver(attachSaveHook);
+  mo.observe(document.documentElement || document.body, { childList:true, subtree:true });
+
+  // Patch editor.moveNodeTo to update position + lines WITHOUT flipping dirty
+  function patchMove(){
+    try {
+      var ed = window.editor;
+      if (!ed || typeof ed !== "object") return false;
+      if (ed.moveNodeTo && ed.moveNodeTo.__patchedSafe) return true;
+      var patched = function(id, x, y){
+        try {
+          // Update internal model (supports Home under either shape)
+          var h = (window.getHomeDataFrom ? window.getHomeDataFrom(ed) : null) || {};
+          var node = h && h[id];
+          var nx = Number(x)||0, ny = Number(y)||0;
+          if (node) { node.pos_x = nx; node.pos_y = ny; }
+
+          // Minimal DOM sync
+          var el = document.getElementById('node-' + id);
+          if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+
+          // Ask library to re-route connectors if available
+          if (typeof ed.updateConnectionNodes === 'function') {
+            ed.updateConnectionNodes('node-' + id);
+          }
+        } catch(e){ console && console.error && console.error('moveNodeTo (patched) error:', e); }
+      };
+      patched.__patchedSafe = true;
+      ed.moveNodeTo = patched;
+      return true;
+    } catch(_) { return false; }
+  }
+  var t = setInterval(function(){ if (patchMove()) clearInterval(t); }, 30);
+  patchMove();
+})();
+</script>
+
+<!-- BEGIN: Single-alert normalization -->
+<script>
+(function(){
+  try {
+    var prev = window.alert;
+    if (!prev || prev.__feVarMsgPatch) return;
+    function patched(msg){
+      try{
+        if (typeof msg === 'string'){
+          var m = msg.trim().toLowerCase();
+          if (m === 'variable saved') {
+            return prev.call(window, 'Variable has been added.');
+          }
+        }
+      }catch(_){}
+      return prev.apply(window, arguments);
+    }
+    patched.__feVarMsgPatch = true;
+    window.alert = patched;
+  } catch(_){}
+})();
+</script>
+<!-- END: Single-alert normalization -->
+
+<script>
+
+// === Re-open Schedule Trigger editor by double-clicking a Schedule tile ===
+(function attachScheduleDblclick() {
+  try {
+    document.addEventListener('dblclick', function(e) {
+      const tile = e.target.closest && e.target.closest('.schedule-tile');
+      if (!tile) return;
+      const nodeEl = tile.closest('.drawflow-node');
+      if (!nodeEl) return;
+      const idStr = (nodeEl.id || '').replace('node-', '');
+      const nodeId = parseInt(idStr, 10);
+      if (!window.editor || isNaN(nodeId)) return;
+      const node = window.editor.getNodeFromId(nodeId);
+      if (!node || node.name !== 'schedule') return;
+      // Prefer full spec if present, otherwise synthesize from legacy fields
+      const spec = node.data && (node.data.scheduleSpec || {
+        tz: undefined,
+        times: node.data.time ? [node.data.time] : [],
+        byday: Array.isArray(node.data.repeatDays) ? node.data.repeatDays : [],
+        cronText: node.data.cron || ''
+      });
+      if (window.FE_Scheduler && typeof window.FE_Scheduler.open === 'function') {
+        window.FE_Scheduler.open(spec, nodeId);
+      }
+    }, true);
+  } catch (err) {
+    console.warn('Failed to attach dblclick schedule editor:', err);
+  }
+})();
+
+</script>
+
+<!-- Scheduler Modal (single source of truth) -->
+<div id="fe-scheduler-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.45);">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; max-width:92vw; background:#1e1e1e; color:#eee; border:1px solid #555; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div style="padding:10px 14px; border-bottom:1px solid #444; display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-weight:600;">Schedule Trigger</div>
+      <button id="fe-sched-close" style="background:#333;border:0;color:#eee;padding:6px 10px;border-radius:6px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:12px 14px; max-height:65vh; overflow:auto;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:12px;opacity:0.8;margin-bottom:4px;">Days (choose one or more)</label>
+        <div id="fe-sched-days" style="display:flex; flex-wrap:wrap; gap:8px;">
+          <!-- Days checkboxes injected -->
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" id="fe-sched-time-toggle">
+          <strong>Time</strong><span aria-hidden="true">▾</span>
+        </div>
+        <div id="fe-sched-time-panel" style="margin-top:6px; display:none;">
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input id="fe-sched-time-input" type="time" style="background:#2a2a2a;border:1px solid #555;color:#eee;padding:6px;border-radius:6px;">
+            <button id="fe-sched-time-add" style="background:#2f6fed;border:0;color:white;padding:6px 10px;border-radius:6px;cursor:pointer;">Add</button>
+          </div>
+          <div id="fe-sched-time-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" id="fe-sched-skip-toggle">
+          <strong>Skip dates</strong><span aria-hidden="true">▾</span>
+        </div>
+        <div id="fe-sched-skip-panel" style="margin-top:6px; display:none;">
+          <div style="font-size:12px;opacity:0.85;margin-bottom:6px;">(Optional) Dates to skip. Click + to add YYYY-MM-DD items.</div>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input id="fe-sched-skip-input" type="date" style="background:#2a2a2a;border:1px solid #555;color:#eee;padding:6px;border-radius:6px;">
+            <button id="fe-sched-skip-add" style="background:#2f6fed;border:0;color:white;padding:6px 10px;border-radius:6px;cursor:pointer;">Add</button>
+          </div>
+          <div id="fe-sched-skip-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <label style="display:block;font-size:12px;opacity:0.8;margin-bottom:4px;">Cron (auto)</label>
+        <input id="fe-sched-cron" type="text" readonly style="width:100%; background:#2a2a2a;border:1px solid #555;color:#bbb;padding:6px;border-radius:6px;">
+        <div style="font-size:11px;opacity:0.7;margin-top:4px;">Timezone is the hub's location timezone.</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px; border-top:1px solid #444; display:flex; justify-content:flex-end; gap:8px;">
+      <button id="fe-cron-reset" style="background:#333;border:0;color:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;">Reset</button>
+      <button id="fe-sched-cancel" style="background:#333;border:0;color:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;">Cancel</button>
+      <button id="fe-sched-insert" style="background:#3bb273;border:0;color:#102010;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600;">Insert Trigger</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Build FE_Scheduler only once
+  if (window.FE_Scheduler && typeof window.FE_Scheduler.open === 'function') return;
+
+  const modal = document.getElementById('fe-scheduler-modal');
+  const daysHost = document.getElementById('fe-sched-days');
+  const timeToggle = document.getElementById('fe-sched-time-toggle');
+  const timePanel  = document.getElementById('fe-sched-time-panel');
+  const timeInput  = document.getElementById('fe-sched-time-input');
+  const timeAdd    = document.getElementById('fe-sched-time-add');
+  const timeList   = document.getElementById('fe-sched-time-list');
+
+  const skipToggle = document.getElementById('fe-sched-skip-toggle');
+  const skipPanel  = document.getElementById('fe-sched-skip-panel');
+  const skipInput  = document.getElementById('fe-sched-skip-input');
+  const skipAdd    = document.getElementById('fe-sched-skip-add');
+  const skipList   = document.getElementById('fe-sched-skip-list');
+
+  const cronEl     = document.getElementById('fe-sched-cron');
+
+  const btnCancel  = document.getElementById('fe-sched-cancel');
+  const btnClose   = document.getElementById('fe-sched-close');
+  const btnInsert  = document.getElementById('fe-sched-insert');
+
+  const DAY_CODES = ['SU','MO','TU','WE','TH','FR','SA'];
+  const DAY_LABEL = {SU:'Sun', MO:'Mon', TU:'Tue', WE:'Wed', TH:'Thu', FR:'Fri', SA:'Sat'};
+
+  function buildDays() {
+    daysHost.innerHTML = '';
+    DAY_CODES.forEach(code => {
+      const id = 'fe-sched-day-' + code;
+      const w = document.createElement('label');
+      w.style.display = 'inline-flex';
+      w.style.alignItems = 'center';
+      w.style.gap = '6px';
+      w.style.border = '1px solid #555';
+      w.style.padding = '6px 8px';
+      w.style.borderRadius = '6px';
+      w.style.cursor = 'pointer';
+      w.innerHTML = '<input type="checkbox" id="'+id+'" data-code="'+code+'"><span>'+DAY_LABEL[code]+'</span>';
+      daysHost.appendChild(w);
+    });
+  }
+
+  function getSelectedDays() {
+    return Array.from(daysHost.querySelectorAll('input[type=checkbox]:checked'))
+      .map(cb => cb.getAttribute('data-code'));
+  }
+
+  function getTimes() {
+    return Array.from(timeList.querySelectorAll('[data-time]')).map(x => x.getAttribute('data-time'));
+  }
+  function getSkipDates() {
+    return Array.from(skipList.querySelectorAll('[data-date]')).map(x => x.getAttribute('data-date'));
+  }
+
+  function badges(host, items, attr) {
+    host.innerHTML = '';
+    items.forEach(val => {
+      const b = document.createElement('span');
+      b.setAttribute(attr, val);
+      b.textContent = val;
+      b.style.background = '#2a2a2a';
+      b.style.border = '1px solid #555';
+      b.style.padding = '4px 8px';
+      b.style.borderRadius = '12px';
+      b.style.fontSize = '12px';
+      b.style.userSelect = 'none';
+      b.style.cursor = 'default';
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.style.marginLeft = '6px';
+      del.style.background = 'transparent';
+      del.style.color = '#999';
+      del.style.border = '0';
+      del.style.cursor = 'pointer';
+      del.onclick = () => { b.remove(); updateCronPreview(); };
+      b.appendChild(del);
+      host.appendChild(b);
+    });
+  }
+
+  function updateCronPreview() {
+    // Very simple generator: if one time -> classic cron. Many times -> show first and indicate +N
+    const days = getSelectedDays();
+    const times = getTimes();
+    if (!times.length) { cronEl.value = ''; return; }
+    const t = times[0]; // HH:MM
+    const [hh, mm] = t.split(':');
+    const dow = days.length ? days.join(',') : '*';
+    // Hubitat uses Quartz cron "sec min hour dom mon dow" -> Use "0 mm HH ? * DOW"
+    const dowForQuartz = days.length ? days.join(',') : '*';
+    const cron = `0 ${mm} ${hh} ? * ${dowForQuartz}`;
+    cronEl.value = cron + (times.length > 1 ? `  (+${times.length-1} more)` : '');
+  }
+
+  timeToggle.onclick = () => {
+    timePanel.style.display = (timePanel.style.display === 'none') ? 'block' : 'none';
+  };
+  skipToggle.onclick = () => {
+    skipPanel.style.display = (skipPanel.style.display === 'none') ? 'block' : 'none';
+  };
+  timeAdd.onclick = () => {
+    if (!timeInput.value) return;
+    const next = Array.from(timeList.querySelectorAll('[data-time]')).map(x => x.getAttribute('data-time'));
+    if (!next.includes(timeInput.value)) next.push(timeInput.value);
+    badges(timeList, next, 'data-time');
+    updateCronPreview();
+  };
+  skipAdd.onclick = () => {
+    if (!skipInput.value) return;
+    const next = Array.from(skipList.querySelectorAll('[data-date]')).map(x => x.getAttribute('data-date'));
+    if (!next.includes(skipInput.value)) next.push(skipInput.value);
+    badges(skipList, next, 'data-date');
+  };
+
+  function show() { modal.style.display = 'block'; }
+  function hide() { modal.style.display = 'none'; }
+
+  // Core: create/update node 
+  async function applyToNode(nodeIdOrNull) {
+    const times = getTimes();
+    const days = getSelectedDays();
+    const skip = getSkipDates();
+    const cron = cronEl.value.replace(/\\s+\\(\\+\\d+ more\\)$/, '').trim();
+
+    const data = {
+      type: 'schedule',
+      // legacy/friendly for tile
+      times: times,
+      repeatDays: days,
+      cron: cron,
+      // canonical spec for app side (no timezone field; hub tz is implied)
+      scheduleSpec: {
+        tz: undefined,
+        times: times,
+        byday: days,
+        skip_dates: skip,
+        advanced_cron: cron ? { expression: cron } : undefined,
+        preview: cron ? [cron] : []
+      }
+    };
+
+    if (!window.editor) return;
+    if (nodeIdOrNull && !isNaN(parseInt(nodeIdOrNull))) {
+      const id = parseInt(nodeIdOrNull);
+      const node = window.editor.getNodeFromId(id);
+      if (node) {
+        node.data = Object.assign({}, node.data || {}, data);
+        window.editor.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+        window.editor.updateNodeDataFromId(id, node.data);
+        markFlowNeedsSave(true);
+      }
+    } else {
+      // Create new node at the "next new node" coords like other add buttons do.
+      const nx = (window.newNodeOffsetX || 0) + 40;
+      const ny = (window.newNodeOffsetY || 0) + 40;
+      window.newNodeOffsetX = nx;
+      window.newNodeOffsetY = ny;
+      const html = nodeTileHtml('schedule', data, 0);
+      if (typeof window.editor?.addNode === 'function') {
+        const id = window.editor.addNode('schedule', 1, 1, nx, ny, 'schedule', data, html);
+        // center nudge fixes canvas line redraw
+        setTimeout(() => {
+          try { window.editor.moveNodeTo(id, nx+1, ny); window.editor.moveNodeTo(id, nx, ny); } catch(e){}
+        }, 20);
+        markFlowNeedsSave(true);
+      }
+    }
+  }
+
+  window.FE_Scheduler = {
+    open: function(spec, nodeId) {
+      // Initialize inputs
+      buildDays();
+      // Preload if editing
+      const d = (spec && typeof spec === 'object') ? spec : {};
+      const times = Array.isArray(d.times) ? d.times : (d.time ? [d.time] : []);
+      const byday = Array.isArray(d.byday) ? d.byday : (Array.isArray(d.repeatDays) ? d.repeatDays : []);
+      const skip  = Array.isArray(d.skip_dates) ? d.skip_dates : [];
+
+      // days
+      byday.forEach(code => {
+        const cb = daysHost.querySelector('input[data-code="'+code+'"]');
+        if (cb) cb.checked = true;
+      });
+      // times
+      badges(timeList, times, 'data-time');
+      // skip dates
+      badges(skipList, skip, 'data-date');
+
+      updateCronPreview();
+      show();
+
+      // Replace Insert label if editing
+      btnInsert.textContent = nodeId ? 'Save' : 'Insert Trigger';
+
+      // Wire once per open
+      btnInsert.onclick = () => { applyToNode(nodeId); hide(); };
+      btnCancel.onclick = btnClose.onclick = () => hide();
+    }
+  };
+})();
+</script>
+<script id="fe-scheduler-enhancer-js">
+// ==== Scheduler Popup Enhancer (inline) ====
+(function(){
+  function qs(s, r=document){ return r.querySelector(s); }
+  function qsa(s, r=document){ return Array.from(r.querySelectorAll(s)); }
+
+  // Utility: wire section headers to toggle bodies
+  function wireSections(root){
+    if(!root) return;
+    // Look for explicit sections first
+    const sections = qsa('.modal-card .section', root);
+    if(sections.length){
+      sections.forEach(sec => {
+        const hd = qs('.sec-hd', sec);
+        if(!hd) return;
+        // Ensure caret exists
+        if(!qs('.caret', hd)){
+          const span = document.createElement('span');
+          span.className = 'caret';
+          span.textContent = '▼';
+          hd.appendChild(span);
+        }
+        hd.addEventListener('click', () => {
+          sec.classList.toggle('open');
+        });
+      });
+      return;
+    }
+    // If no .section blocks found, guess by headings containing "Time" or "Skip Dates"
+    const labels = qsa('.modal-card h3, .modal-card h4, .modal-card .label, .modal-card .row-title', root);
+    labels.forEach(lab => {
+      const txt = (lab.textContent || '').trim().toLowerCase();
+      if(txt === 'time' || txt === 'skip dates' || txt === 'skip date' || txt.includes('time') || txt.includes('skip')){
+        lab.style.cursor = 'pointer';
+        if(!lab.querySelector('.caret')){
+          const c = document.createElement('span');
+          c.className = 'caret';
+          c.textContent = '▼';
+          c.style.marginLeft = '8px';
+          lab.appendChild(c);
+        }
+        const container = lab.closest('.row, .group, .fieldset, .section, .card, .block') || lab.parentElement;
+        const body = container ? (container.querySelector('.sec-bd, .body, .content, .fields, .details')) : null;
+        if(body){
+          container.classList.add('section');
+          (container.querySelector('.sec-hd') || lab).classList.add('sec-hd');
+          body.classList.add('sec-bd');
+          lab.addEventListener('click', () => container.classList.toggle('open'));
+        }
+      }
+    });
+  }
+
+  // Expose a helper to be called whenever the popup is created/shown
+  window.__feEnhanceSchedulerPopup = function(){
+    const root = document.getElementById('feSchedulePopup') || document.getElementById('scheduleModal') || document.getElementById('schedulePopup') || document.getElementById('fe-scheduler-modal');
+    if(!root) return;
+    // Hide timezone rows if any slip through
+    qsa('[data-field="timezone"], .timezone-row, .tz-row', root).forEach(el => el.style.display = 'none');
+    // Wire sections & add carets
+    wireSections(root);
+  };
+
+  // Try to run when DOM is ready and whenever a schedule popup is re-opened
+  document.addEventListener('DOMContentLoaded', () => {
+    // Common custom events — call enhancer when popup opens
+    ['fe:schedule:open','schedule:open','openSchedule','show:schedule'].forEach(evt => {
+      document.addEventListener(evt, () => { try{ window.__feEnhanceSchedulerPopup(); }catch(e){} });
+    });
+    // Also poll briefly after load in case popup was already injected
+    setTimeout(() => { try{ window.__feEnhanceSchedulerPopup(); }catch(e){} }, 500);
+  });
+})();
+
+</script>
+<script>
+// === FE Editor: Self-contained "Schedule Trigger" Cron UI (single-file) ===
+(function(){
+  const DAYS = ["SU","MO","TU","WE","TH","FR","SA"];
+  const DNAME = {SU:"Sun",MO:"Mon",TU:"Tue",WE:"Wed",TH:"Thu",FR:"Fri",SA:"Sat"};
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // ---------- inject modal + styles once ----------
+  function ensureCronModal(){
+    if (document.getElementById('fe-cron-overlay')) return;
+    const css = document.createElement('style');
+    css.id = 'fe-cron-style';
+    css.textContent = `
+#fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
+#fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+#fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
+#fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
+#fe-cron-body{padding:12px 14px}
+.fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.fe-col{display:flex;flex-direction:column;gap:6px}
+.fe-input,.fe-select{background:#1a2124;border:1px solid #3a454a;border-radius:8px;color:#e8f0f2;padding:6px 8px}
+.fe-chip{display:inline-block;border:1px solid #3a454a;background:#141a1d;color:#cde4ec;border-radius:999px;padding:3px 8px;margin:3px 6px 0 0;cursor:pointer;font-size:12px}
+.fe-hr{border:0;border-top:1px dashed #334047;margin:12px 0}
+#fe-cron-footer{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid #2f373b}
+#fe-cron-preview{max-height:120px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#111719;border:1px solid #2a3438;border-radius:8px;padding:8px}
+.fe-btn{cursor:pointer;border:1px solid #3a454a;background:#243037;color:#e8f0f2;padding:8px 12px;border-radius:10px}
+.fe-btn.primary{background:#3b7e9a;border-color:#4aa0c0}
+.fe-badge{display:inline-block;border:1px solid #3a454a;background:#12181b;color:#acd7e6;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+#fe-cron-days label{display:inline-flex;align-items:center;gap:6px;border:1px solid #3a454a;background:#141b1f;border-radius:10px;padding:4px 8px;margin:2px 4px 2px 0;user-select:none}
+#fe-cron-times div{display:flex;align-items:center;gap:6px;margin:4px 0}
+    `;
+    document.head.appendChild(css);
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+<div id="fe-cron-overlay" role="dialog" aria-modal="true" aria-labelledby="fe-cron-title">
+  <div id="fe-cron-modal">
+    <div id="fe-cron-hd">
+      <div><b id="fe-cron-title">Schedule Trigger</b><span id="fe-cron-badges"></span></div>
+      <button class="fe-btn" id="fe-cron-close" title="Close">✕</button>
+    </div>
+
+    <div class="fe-row" style="padding:8px 14px 0 14px;">
+      <div class="fe-col">
+        <label>Skip dates ▾</label>
+        <div class="fe-row">
+          <input id="fe-cron-exc-date" type="date" class="fe-input">
+          <button class="fe-btn" id="fe-cron-exc-add">Add</button>
+          <div id="fe-cron-exc-list" style="align-self:center"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fe-cron-tabs">
+      <button data-tab="quick" class="active">Quick</button>
+      <button data-tab="weekly">Weekly</button>
+      <button data-tab="monthly">Monthly</button>
+      <button data-tab="advanced">Advanced</button>
+    </div>
+
+    <div id="fe-cron-body">
+      <div data-pane="quick">
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-cron-times"></div>
+          <button class="fe-btn" id="fe-cron-add-time">Add time</button>
+        </div>
+        <div class="fe-col">
+          <label>Days</label>
+          <div id="fe-cron-days"></div>
+          <div>
+            <span class="fe-chip" data-preset="weekdays">Weekdays</span>
+            <span class="fe-chip" data-preset="weekends">Weekends</span>
+            <span class="fe-chip" data-preset="everyday">Every day</span>
+          </div>
+        </div>
+      </div>
+
+      <div data-pane="weekly" hidden>
+        <div class="fe-col">
+          <label>Every N weeks</label>
+          <input id="fe-week-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+        </div>
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-week-times"></div>
+          <button class="fe-btn" id="fe-week-add-time">Add time</button>
+        </div>
+        <div class="fe-col">
+          <label>Days</label>
+          <div id="fe-week-days"></div>
+        </div>
+      </div>
+
+      <div data-pane="monthly" hidden>
+        <div class="fe-row">
+          <div class="fe-col">
+            <label>Mode</label>
+            <select id="fe-month-mode" class="fe-select" style="width:220px">
+              <option value="dom">On day(s) of month</option>
+              <option value="nth">On the Nth weekday</option>
+            </select>
+          </div>
+          <div class="fe-col" id="fe-month-dom">
+            <label>Days (e.g. 1,15,-1)</label>
+            <input id="fe-month-days" class="fe-input" placeholder="1,15,-1">
+          </div>
+          <div class="fe-row" id="fe-month-nth" hidden>
+            <div class="fe-col">
+              <label>Nth</label>
+              <select id="fe-month-n" class="fe-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>Last</option></select>
+            </div>
+            <div class="fe-col">
+              <label>Weekday</label>
+              <select id="fe-month-wd" class="fe-select">
+                <option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option>
+                <option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option><option value="SU">Sunday</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="fe-col">
+          <label>Every N months</label>
+          <input id="fe-month-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+        </div>
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-month-times"></div>
+          <button class="fe-btn" id="fe-month-add-time">Add time</button>
+        </div>
+      </div>
+
+      <div data-pane="advanced" hidden>
+        <div class="fe-col">
+          <label>Cron expression</label>
+          <input id="fe-cron-raw" class="fe-input" placeholder="e.g. 0 14 * * 3  (2:00 pm Wednesdays)">
+          <div style="margin-top:6px">
+            <span class="fe-chip" data-cron="*/5 * * * *">Every 5 min</span>
+            <span class="fe-chip" data-cron="0 * * * *">Every hour</span>
+            <span class="fe-chip" data-cron="0 8 * * 1-5">Weekdays 8:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fe-hr"></div>
+      <div class="fe-row">
+        <div class="fe-col" style="flex:1">
+          <label>Preview (next 10)</label>
+          <div id="fe-cron-preview">(changes update live)</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fe-cron-footer">
+      <div><span id="fe-badge-rrule" class="fe-badge"></span><span id="fe-badge-cron" class="fe-badge"></span></div>
+      <div><button class="fe-btn" id="fe-cron-reset">Reset</button><button class="fe-btn" id="fe-cron-cancel">Cancel</button><button class="fe-btn primary" id="fe-cron-insert">Insert Trigger</button></div>
+    </div>
+  </div>
+</div>`;
+    
+// Remember which node this modal is editing
+if (typeof nodeId !== 'undefined') window.currentCronNodeId = nodeId;
+// Restore prior selections for this node
+if (window.currentCronNodeId) restoreScheduleUI(window.currentCronNodeId);
+document.body.appendChild(wrap.firstElementChild);
+  }
+
+  // ---------- helpers ----------
+  function fmtTime12(hhmm){
+    if(!hhmm) return '';
+    const [h,m] = hhmm.split(':').map(x=>parseInt(x,10));
+    const ampm = (h>=12?'PM':'AM');
+    const hr = ((h%12)||12);
+    return `${hr}:${String(m||0).padStart(2,'0')} ${ampm}`;
+  }
+  function daysSummary(list){
+    const set = new Set(list||[]);
+    if (DAYS.every(d=>set.has(d))) return 'Every day';
+    const wk = ['MO','TU','WE','TH','FR']; const we = ['SA','SU'];
+    const isWeekdays = wk.every(d=>set.has(d)) && we.every(d=>!set.has(d));
+    const isWeekends = we.every(d=>set.has(d)) && wk.every(d=>!set.has(d));
+    if (isWeekdays) return 'Weekdays';
+    if (isWeekends) return 'Weekends';
+    const ordered = DAYS.filter(d=>set.has(d)).map(d=>DNAME[d]).join(', ');
+    return ordered || '—';
+  }
+  function buildCronFor(hhmm, byWeekday){
+    // Very basic 5-field cron: m h * * DOW
+    if(!hhmm){ return ''; }
+    const [h,m] = hhmm.split(':');
+    const dow = (byWeekday && byWeekday.length && byWeekday.length<7)
+      ? byWeekday.map(d => ({SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6}[d])).join(',')
+      : '*';
+    return `${parseInt(m,10)} ${parseInt(h,10)} * * ${dow}`;
+  }
+
+  // ---------- UI wiring ----------
+  function fillDays(containerId, sel){
+    const host = document.getElementById(containerId);
+    host.innerHTML = '';
+    DAYS.forEach(d=>{
+      const id = `${containerId}-${d}`;
+      const w = document.createElement('label');
+      w.innerHTML = `<input type="checkbox" id="${id}"> ${DNAME[d]}`;
+      host.appendChild(w);
+      $('#'+id).checked = (sel||[]).includes(d);
+    });
+  }
+  function getDays(containerId){
+    return $$('#'+containerId+' input[type=checkbox]')
+      .filter(i=>i.checked).map(i=>i.id.split('-').pop());
+  }
+  function addTimeRow(hostId, val){
+    const host = document.getElementById(hostId);
+    const div = document.createElement('div');
+    div.innerHTML = `<input type="time" class="fe-input" value="${val||''}"><button class="fe-btn" title="Remove">✕</button>`;
+    host.appendChild(div);
+    div.querySelector('button').onclick = ()=> div.remove();
+  }
+  function getTimes(hostId){
+    return $$('#'+hostId+' input[type=time]').map(i=>i.value).filter(Boolean);
+  }
+  function badges(spec, outCron){
+    $('#fe-badge-rrule').textContent = spec.kind==='advanced_cron' ? '' : 'Cron';
+    $('#fe-badge-cron').textContent = outCron ? ('Cron: '+outCron) : '';
+  }
+
+  // ---------- open/close + read spec ----------
+  function openCron(spec, nodeId){
+    ensureCronModal();
+    const ov = $('#fe-cron-overlay');
+    ov.dataset.nodeId = (nodeId!=null? String(nodeId) : '');
+    // default spec
+    spec = spec || { kind:'quick', by_weekday:["MO","TU","WE","TH","FR"], times:["08:00"] };
+
+    // tabs
+    $$('#fe-cron-tabs button').forEach(b=>{
+      b.onclick = () => {
+        $$('#fe-cron-tabs button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const tab = b.getAttribute('data-tab');
+        $$('#fe-cron-body [data-pane]').forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
+      };
+    });
+
+    // times/days (quick)
+    fillDays('fe-cron-days', spec.by_weekday || []);
+    $('#fe-cron-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-cron-times', t));
+    $('#fe-cron-add-time').onclick = () => addTimeRow('fe-cron-times', '');
+
+    // presets
+    $$('#fe-cron-body [data-preset]').forEach(ch => ch.onclick = ()=>{
+      const k = ch.getAttribute('data-preset');
+      let val = [];
+      if (k==='everyday') val = DAYS.slice();
+      if (k==='weekdays') val = ['MO','TU','WE','TH','FR'];
+      if (k==='weekends') val = ['SA','SU'];
+      fillDays('fe-cron-days', val);
+      refreshPreview();
+    });
+
+    // weekly
+    $('#fe-week-interval').value = (spec.week_interval||1);
+    fillDays('fe-week-days', spec.by_weekday || []);
+    $('#fe-week-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-week-times', t));
+    $('#fe-week-add-time').onclick = ()=> addTimeRow('fe-week-times','');
+
+    // monthly
+    $('#fe-month-mode').value = (spec.month_mode || 'dom');
+    $('#fe-month-days').value = (spec.month_days || '');
+    $('#fe-month-n').value = (spec.month_n || '1');
+    $('#fe-month-wd').value = (spec.month_wd || 'MO');
+    $('#fe-month-interval').value = (spec.month_interval || 1);
+    toggleMonthlyMode();
+    function toggleMonthlyMode(){
+      const mode = $('#fe-month-mode').value;
+      $('#fe-month-dom').hidden = (mode!=='dom');
+      $('#fe-month-nth').hidden = (mode!=='nth');
+      refreshPreview();
+    }
+    $('#fe-month-mode').onchange = toggleMonthlyMode;
+    $('#fe-month-add-time').onclick = ()=> addTimeRow('fe-month-times','');
+    $('#fe-month-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-month-times', t));
+
+    // advanced
+    $('#fe-cron-raw').value = spec.cronText || '';
+    $$('#fe-cron-body [data-cron]').forEach(c=> c.onclick = ()=>{
+      $('#fe-cron-raw').value = c.getAttribute('data-cron');
+      refreshPreview();
+    });
+
+    // exclude dates
+    const excHost = $('#fe-cron-exc-list');
+    excHost.innerHTML='';
+    (spec.exclude_dates||[]).forEach(d=> addExc(d));
+    $('#fe-cron-exc-add').onclick = ()=>{
+      const v = $('#fe-cron-exc-date').value;
+      if (v) addExc(v);
+    };
+    function addExc(v){
+      const s = document.createElement('span');
+      s.className='fe-chip';
+      s.textContent=v;
+      s.title='Remove';
+      s.onclick=()=> s.remove();
+      excHost.appendChild(s);
+    }
+
+    // preview + badges
+    function readSpec(){
+      const activeTab = ($('#fe-cron-tabs .active')||{}).getAttribute && $('#fe-cron-tabs .active').getAttribute('data-tab');
+
+      const out = { kind: activeTab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind = 'advanced_cron';
+        out.cronText = $('#fe-cron-raw').value.trim();
+      } else if (out.kind==='weekly') {
+        out.by_weekday = getDays('fe-week-days');
+        out.times = getTimes('fe-week-times');
+        out.week_interval = Math.max(1, parseInt($('#fe-week-interval').value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = $('#fe-month-mode').value;
+        out.times = getTimes('fe-month-times');
+        out.month_interval = Math.max(1, parseInt($('#fe-month-interval').value||'1',10));
+        if (out.month_mode==='dom') {
+          out.month_days = ($('#fe-month-days').value||'').trim();
+        } else {
+          out.month_n = $('#fe-month-n').value;
+          out.month_wd = $('#fe-month-wd').value;
+        }
+      } else {
+        out.kind = 'quick';
+        out.by_weekday = getDays('fe-cron-days');
+        out.times = getTimes('fe-cron-times');
+      }
+      out.exclude_dates = $$('#fe-cron-exc-list .fe-chip').map(x=>x.textContent);
+      return out;
+    }
+    function refreshPreview(){
+  const s = readSpec();
+  const DOW_MAP = {SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
+  const toHM = (t)=>{ const [h,m] = String(t||'08:00').split(':').map(x=>parseInt(x,10)||0); return {h,m}; };
+  const fmt = (d)=>{
+    try{
+      return d.toLocaleString(undefined,{weekday:'short', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit'});
+    }catch(_){ return d.toString(); }
+  };
+  const isExcluded = (d)=>{
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+    const key = `${y}-${m}-${dd}`;
+    return (s.exclude_dates||[]).some(x=>String(x).slice(0,10)===key);
+  };
+  const pushIf = (arr, d)=>{ if (d > new Date() && !isExcluded(d)) arr.push(new Date(d)); };
+
+  let next = [];
+
+  if (s.kind === 'advanced_cron') {
+    const txt = (s.cronText||'').trim();
+    let mm=null, hh=null, dows='*';
+    const parts = txt.split(/\s+/);
+    if (parts.length>=5) { mm = parseInt(parts[0],10); hh = parseInt(parts[1],10); dows = parts[4]||'*'; }
+    const set = new Set();
+    if (dows==='*' || isNaN(mm)||isNaN(hh)) {
+      next = [txt];
+    } else {
+      const addRange=(a,b)=>{ for(let i=a;i<=b;i++) set.add(((i%7)+7)%7); };
+      dows.split(',').forEach(tok=>{
+        if (/^\d+-\d+$/.test(tok)){ const [a,b]=tok.split('-').map(n=>parseInt(n,10)); addRange(a,b); }
+        else if (/^\d+$/.test(tok)){ set.add(parseInt(tok,10)); }
+      });
+      let d = new Date(); d.setSeconds(0,0);
+      for(let i=0; next.length<10 && i<800; i++){
+        if (set.has(d.getDay()) || set.size===0) {
+          const cand = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
+          pushIf(next, cand);
+        }
+        d.setDate(d.getDate()+1);
+      }
+      next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+    }
+  } else if (s.kind === 'monthly') {
+    const times = (s.times && s.times.length ? s.times : ['08:00']).map(toHM);
+    const interval = Math.max(1, parseInt(s.month_interval||1,10));
+    let month = new Date(); month.setHours(0,0,0,0);
+    let count = 0;
+    while (next.length<10 && count<24){
+      if ((s.month_mode||'dom') === 'nth') {
+        const nth = (s.month_n||'1');
+        const wd = DOW_MAP[s.month_wd] ?? 1;
+        const first = new Date(month.getFullYear(), month.getMonth(), 1);
+        const day0 = first.getDay();
+        let date = 1 + ((wd - day0 + 7) % 7);
+        if (String(nth).toLowerCase()==='last'){
+          const lastDay = new Date(month.getFullYear(), month.getMonth()+1, 0);
+          const back = ((lastDay.getDay() - wd + 7) % 7);
+          date = lastDay.getDate() - back;
+        } else {
+          const k = parseInt(nth,10)||1;
+          date += 7*(k-1);
+        }
+        times.forEach(t=>pushIf(next, new Date(month.getFullYear(), month.getMonth(), date, t.h, t.m, 0, 0)));
+      } else {
+        const raw = String(s.month_days||'').trim();
+        const days = raw ? raw.split(/\s*,\s*/).filter(Boolean) : [];
+        const last = new Date(month.getFullYear(), month.getMonth()+1, 0).getDate();
+        (days.length?days:[1]).forEach(dv=>{
+          let dd = parseInt(dv,10);
+          if (String(dv).startsWith('-')) dd = last + 1 + dd;
+          if (dd>=1 && dd<=last){
+            times.forEach(t=>pushIf(next, new Date(month.getFullYear(), month.getMonth(), dd, t.h, t.m, 0, 0)));
+          }
+        });
+      }
+      count++;
+      month = new Date(month.getFullYear(), month.getMonth()+interval, 1);
+    }
+    next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+  } else {
+    const by = (s.by_weekday && s.by_weekday.length) ? s.by_weekday : ["SU","MO","TU","WE","TH","FR","SA"];
+    const weekInterval = s.kind==='weekly' ? Math.max(1, parseInt(s.week_interval||1,10)) : 1;
+    const times = (s.times && s.times.length ? s.times : ['08:00']).map(toHM);
+    const now = new Date();
+    const startMonday = new Date(now);
+    const dow = startMonday.getDay();
+    const diffToMon = (dow+6)%7;
+    startMonday.setDate(startMonday.getDate()-diffToMon);
+    startMonday.setHours(0,0,0,0);
+    let d = new Date(startMonday);
+    for (let days=0; next.length<10 && days<365; days++){
+      const thisWeekIndex = Math.floor((d - startMonday)/(7*24*3600*1000));
+      const weekOk = (thisWeekIndex % weekInterval)===0;
+      const code = Object.keys(DOW_MAP).find(k=>DOW_MAP[k]===d.getDay());
+      if (weekOk && by.includes(code)){
+        times.forEach(t=>pushIf(next, new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.h, t.m, 0, 0)));
+      }
+      d.setDate(d.getDate()+1);
+    }
+    next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+  }
+
+  const host = document.getElementById('fe-cron-preview');
+  if (Array.isArray(next)) {
+    host.innerHTML = next.length ? next.join('<br>') : '(no upcoming times in range)';
+  } else {
+    host.textContent = next || '';
+  }
+  badges(s, (typeof s.cronText==='string' && s.cronText.trim()) ? s.cronText.trim() : '');
+}
+
+    // events
+    $('#fe-cron-close').onclick = ()=> $('#fe-cron-overlay').style.display='none';
+    $('#fe-cron-cancel').onclick = ()=> $('#fe-cron-overlay').style.display='none';
+    $$('#fe-cron-body input, #fe-cron-body select').forEach(el=> el.oninput = refreshPreview);
+
+    // show modal
+    $('#fe-cron-overlay').style.display='block';
+    refreshPreview();
+  }
+
+  // expose & wiring
+  const API = {
+    open: openCron,
+    getSpec: function(){ /* used during insert */ return null; }
+  };
+  window.FE_Cron = API;
+
+  // Intercept toolbar "Schedule Trigger" so it opens the popup (no auto-node)
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('#addSchedule');
+    if (!b) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+    // new node via Insert; here we just open UI with defaults
+    openCron(null, null);
+  }, true);
+
+  // Double-click schedule node to edit
+  document.addEventListener('DOMContentLoaded', function(){
+    ensureCronModal();
+    const df = document.getElementById('drawflow');
+    if (!df || df.__fe_sched_dbl) return;
+    df.__fe_sched_dbl = true;
+    df.addEventListener('dblclick', function(e){
+      const nodeEl = e.target && e.target.closest ? e.target.closest('.drawflow-node') : null;
+      if(!nodeEl) return;
+      const id = (nodeEl.id||'').replace('node-','');
+      if(!id || !window.editor) return;
+      try{
+        const n = window.editor.getNodeFromId(id);
+        if (!n || (n.name||'').toLowerCase()!=='schedule') return;
+        // Pre-fill from existing
+        const spec = (n.data && n.data.scheduleSpec) ? n.data.scheduleSpec : null;
+        openCron(spec||null, parseInt(id,10));
+      }catch(_){}
+    });
+  });
+
+  // Insert Trigger: add or update node + sticky tile content
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest && e.target.closest('#fe-cron-insert');
+    if (!btn) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+
+    const ov = document.getElementById('fe-cron-overlay');
+    // read spec from UI
+    function readSpecForSave(){
+      const active = ($('#fe-cron-tabs .active')||{}).getAttribute && $('#fe-cron-tabs .active').getAttribute('data-tab');
+      // reuse reader from openCron scope by rebuilding minimal spec:
+      // (We re-query fields directly to keep it self-contained.)
+      const out = { kind: active||'quick' };
+      if (out.kind==='advanced') {
+        out.kind='advanced_cron';
+        out.cronText = ($('#fe-cron-raw')||{}).value || '';
+        out.times = [];
+        out.by_weekday = [];
+      } else if (out.kind==='weekly') {
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-week-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-week-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.week_interval = Math.max(1, parseInt(($('#fe-week-interval')||{}).value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = ($('#fe-month-mode')||{}).value || 'dom';
+        out.times = Array.from(document.querySelectorAll('#fe-month-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.month_interval = Math.max(1, parseInt(($('#fe-month-interval')||{}).value||'1',10));
+        if (out.month_mode==='dom') out.month_days = ($('#fe-month-days')||{}).value || '';
+        else { out.month_n = ($('#fe-month-n')||{}).value || '1'; out.month_wd = ($('#fe-month-wd')||{}).value || 'MO'; }
+      } else {
+        out.kind='quick';
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-cron-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-cron-times input[type=time]')).map(i=>i.value).filter(Boolean);
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      // build simple cron(s)
+      const by = (out.by_weekday && out.by_weekday.length) ? out.by_weekday : DAYS.slice();
+      const times = out.times && out.times.length ? out.times : ['08:00'];
+      const cronList = (out.kind==='advanced_cron') ? [out.cronText||''] : times.map(t=>buildCronFor(t, by));
+      out.cronText = cronList.join(' • ');
+      return out;
+    }
+
+    const spec = readSpecForSave();
+    const by = (spec.by_weekday && spec.by_weekday.length) ? spec.by_weekday : DAYS.slice();
+    const times = spec.times && spec.times.length ? spec.times : ['08:00'];
+
+    // prepare tile data
+    const tileData = {
+      cron: spec.cronText || '',
+      repeatDays: by,
+      time: times[0] || '',
+      scheduleSpec: spec
+    };
+
+    // update existing or add new
+    if (ov && ov.dataset && ov.dataset.nodeId) {
+      const id = parseInt(ov.dataset.nodeId,10);
+      try{
+        const ed = window.editor;
+        const node = ed && ed.getNodeFromId ? ed.getNodeFromId(id) : null;
+        if (node) {
+          node.data = Object.assign({}, node.data, tileData);
+          if (typeof ed.updateNodeHtmlFromId === 'function') {
+            ed.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+          }
+        }
+              if (typeof ed.updateNodeDataFromId === 'function') { ed.updateNodeDataFromId(id, node.data); }
+        }catch(_){}
+    } else {
+      try {
+        const ed = window.editor;
+        // center-ish position
+        const vp = ed.precanvas.getBoundingClientRect();
+        const x = (ed.canvas_x * -1) + vp.width/2 - 90;
+        const y = (ed.canvas_y * -1) + vp.height/2 - 40;
+        ed.addNode('schedule', 0, 1, x, y, 'schedule', tileData);
+      } catch(_){}
+    }
+
+    try{ window.markFlowNeedsSave && window.markFlowNeedsSave(true); }catch(_){}
+    if (ov) ov.style.display='none';
+  });
+
+  // ---------- Tile rendering (sticky across refresh) ----------
+  (function installNodeTileHtmlOverride(){
+    const orig = window.nodeTileHtml;
+    function scheduleTileHtml(data){
+      const daysTxt = daysSummary((data && data.scheduleSpec && data.scheduleSpec.by_weekday) || (data && data.repeatDays) || []);
+      const timesArr = (data && data.scheduleSpec && data.scheduleSpec.times) || (data && data.times) || [];
+      const timeTxt = (timesArr.length ? timesArr.map(fmtTime12).join(', ') : (data && data.time ? fmtTime12(data.time) : '—'));
+      const cronTxt = (data && data.scheduleSpec && data.scheduleSpec.cronText) || (data && data.cron) || '';
+      return `
+        <div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>
+        <div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">
+          <div>Days: ${daysTxt}</div>
+          <div>Time: ${timeTxt}</div>
+        </div>
+        <div style="border-top:1px solid #3a454a;margin:8px 0"></div>
+        <div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">${cronTxt||''}</div>
+      `;
+    }
+    window.nodeTileHtml = function(name, data, id){
+      if ((name||'').toLowerCase()==='schedule') return scheduleTileHtml(data||{});
+      if (typeof orig === 'function') return orig(name, data, id);
+      // generic fallback
+      return `<div style="font-weight:600">${name||'Node'}</div>`;
+    };
+  })();
+
+  // Ensure any legacy timezone rows in other popups are hidden and caret-y sections get wired (if present)
+  document.addEventListener('DOMContentLoaded', function(){
+    // If your file had an enhancer, keep the behavior: hide timezone + add carets
+    try{
+      const root = document.getElementById('feSchedulePopup') || document.getElementById('scheduleModal') || document.getElementById('schedulePopup') || document.getElementById('fe-scheduler-modal');
+      if (root){
+        root.querySelectorAll('[data-field="timezone"], .timezone-row, .tz-row').forEach(el => el.style.display='none');
+      }
+    }catch(_){}
+  });
+})();
+</script>
+
+<!-- BEGIN_FE_CRON_ONLY -->
+<script>
+// Single-file Cron-based Schedule Trigger UI for FE Editor
+(function(){
+  const DAYS = ["SU","MO","TU","WE","TH","FR","SA"];
+  const DNAME = {SU:"Sun",MO:"Mon",TU:"Tue",WE:"Wed",TH:"Thu",FR:"Fri",SA:"Sat"};
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  function ensureCronModal(){
+    if (document.getElementById('fe-cron-overlay')) return;
+    const css = document.createElement('style');
+    css.id = 'fe-cron-style';
+    css.textContent = `#fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
+#fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+#fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
+#fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
+#fe-cron-body{padding:12px 14px}.fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.fe-col{display:flex;flex-direction:column;gap:6px}
+.fe-input,.fe-select{background:#1a2124;border:1px solid #3a454a;border-radius:8px;color:#e8f0f2;padding:6px 8px}
+.fe-chip{display:inline-block;border:1px solid #3a454a;background:#141a1d;color:#cde4ec;border-radius:999px;padding:3px 8px;margin:3px 6px 0 0;cursor:pointer;font-size:12px}
+.fe-hr{border:0;border-top:1px dashed #334047;margin:12px 0}
+#fe-cron-footer{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid #2f373b}
+#fe-cron-preview{max-height:120px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#111719;border:1px solid #2a3438;border-radius:8px;padding:8px}
+.fe-btn{cursor:pointer;border:1px solid #3a454a;background:#243037;color:#e8f0f2;padding:8px 12px;border-radius:10px}.fe-btn.primary{background:#3b7e9a;border-color:#4aa0c0}
+.fe-badge{display:inline-block;border:1px solid #3a454a;background:#12181b;color:#acd7e6;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+#fe-cron-days label{display:inline-flex;align-items:center;gap:6px;border:1px solid #3a454a;background:#141b1f;border-radius:10px;padding:4px 8px;margin:2px 4px 2px 0;user-select:none}
+#fe-cron-times div{display:flex;align-items:center;gap:6px;margin:4px 0}`;
+    document.head.appendChild(css);
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+    <div id="fe-cron-overlay" role="dialog" aria-modal="true" aria-labelledby="fe-cron-title">
+      <div id="fe-cron-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <b id="fe-cron-title">Schedule Trigger</b>
+          <div>
+            <button id="fe-cron-reset"
+                    style="margin-right:8px; padding:6px 14px; border-radius:7px; cursor:pointer;">
+              Reset
+            </button>
+            <button id="fe-cron-cancel"
+                    style="margin-right:8px; padding:6px 14px; border-radius:7px; cursor:pointer;">
+              Cancel
+            </button>
+            <button id="fe-cron-insert"
+                    style="padding:6px 14px; border-radius:7px; background:#3498db; color:#fff; cursor:pointer;">
+              Insert Trigger
+            </button>
+          </div>
+        </div>
+
+        <div class="fe-row" style="padding:8px 14px 0 14px;">
+          <div class="fe-col">
+            <label>Skip dates ▾</label>
+            <div class="fe-row">
+              <input id="fe-cron-exc-date" type="date" class="fe-input">
+              <button class="fe-btn" id="fe-cron-exc-add">Add</button>
+              <div id="fe-cron-exc-list" style="align-self:center"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="fe-cron-tabs">
+          <button data-tab="quick" class="active">Quick</button>
+          <button data-tab="weekly">Weekly</button>
+          <button data-tab="monthly">Monthly</button>
+          <button data-tab="advanced">Advanced</button>
+        </div>
+
+        <div id="fe-cron-body">
+          <div data-pane="quick">
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-cron-times"></div>
+              <button class="fe-btn" id="fe-cron-add-time">Add time</button>
+            </div>
+            <div class="fe-col">
+              <label>Days</label>
+              <div id="fe-cron-days"></div>
+              <div>
+                <span class="fe-chip" data-preset="weekdays">Weekdays</span>
+                <span class="fe-chip" data-preset="weekends">Weekends</span>
+                <span class="fe-chip" data-preset="everyday">Every day</span>
+              </div>
+            </div>
+          </div>
+
+          <div data-pane="weekly" hidden>
+            <div class="fe-col">
+              <label>Every N weeks</label>
+              <input id="fe-week-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+            </div>
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-week-times"></div>
+              <button class="fe-btn" id="fe-week-add-time">Add time</button>
+            </div>
+            <div class="fe-col">
+              <label>Days</label>
+              <div id="fe-week-days"></div>
+            </div>
+          </div>
+
+          <div data-pane="monthly" hidden>
+            <div class="fe-row">
+              <div class="fe-col">
+                <label>Mode</label>
+                <select id="fe-month-mode" class="fe-select" style="width:220px">
+                  <option value="dom">On day(s) of month</option>
+                  <option value="nth">On the Nth weekday</option>
+                </select>
+              </div>
+              <div class="fe-col" id="fe-month-dom">
+                <label>Days (e.g. 1,15,-1)</label>
+                <input id="fe-month-days" class="fe-input" placeholder="1,15,-1">
+              </div>
+              <div class="fe-row" id="fe-month-nth" hidden>
+                <div class="fe-col">
+                  <label>Nth</label>
+                  <select id="fe-month-n" class="fe-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>Last</option></select>
+                </div>
+                <div class="fe-col">
+                  <label>Weekday</label>
+                  <select id="fe-month-wd" class="fe-select">
+                    <option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option>
+                    <option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option><option value="SU">Sunday</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="fe-col">
+              <label>Every N months</label>
+              <input id="fe-month-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+            </div>
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-month-times"></div>
+              <button class="fe-btn" id="fe-month-add-time">Add time</button>
+            </div>
+          </div>
+
+          <div data-pane="advanced" hidden>
+            <div class="fe-col">
+              <label>Cron expression</label>
+              <input id="fe-cron-raw" class="fe-input" placeholder="e.g. 0 14 * * 3  (2:00 pm Wednesdays)">
+              <div style="margin-top:6px">
+                <span class="fe-chip" data-cron="*/5 * * * *">Every 5 min</span>
+                <span class="fe-chip" data-cron="0 * * * *">Every hour</span>
+                <span class="fe-chip" data-cron="0 8 * * 1-5">Weekdays 8:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fe-hr"></div>
+          <div class="fe-row">
+            <div class="fe-col" style="flex:1">
+              <label>Preview (next 10)</label>
+              <div id="fe-cron-preview">(changes update live)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+// Remember which node this modal is editing
+if (typeof nodeId !== 'undefined') window.currentCronNodeId = nodeId;
+// Restore prior selections for this node
+if (window.currentCronNodeId) restoreScheduleUI(window.currentCronNodeId);
+document.body.appendChild(wrap.firstElementChild);
+  }
+
+  function fmtTime12(hhmm){
+    if(!hhmm) return '';
+    const [h,m] = hhmm.split(':').map(x=>parseInt(x,10));
+    const ampm = (h>=12?'PM':'AM');
+    const hr = ((h%12)||12);
+    return `${hr}:${String(m||0).padStart(2,'0')} ${ampm}`;
+  }
+  function daysSummary(list){
+    const set = new Set(list||[]);
+    if (DAYS.every(d=>set.has(d))) return 'Every day';
+    const wk = ['MO','TU','WE','TH','FR']; const we = ['SA','SU'];
+    const isWeekdays = wk.every(d=>set.has(d)) && we.every(d=>!set.has(d));
+    const isWeekends = we.every(d=>set.has(d)) && wk.every(d=>!set.has(d));
+    if (isWeekdays) return 'Weekdays';
+    if (isWeekends) return 'Weekends';
+    const ordered = DAYS.filter(d=>set.has(d)).map(d=>DNAME[d]).join(', ');
+    return ordered || '—';
+  }
+  function buildCronFor(hhmm, byWeekday){
+    if(!hhmm){ return ''; }
+    const [h,m] = hhmm.split(':');
+    const dow = (byWeekday && byWeekday.length && byWeekday.length<7)
+      ? byWeekday.map(d => ({SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6}[d])).join(',')
+      : '*';
+    return `${parseInt(m,10)} ${parseInt(h,10)} * * ${dow}`;
+  }
+  function fillDays(containerId, sel){
+    const host = document.getElementById(containerId);
+    host.innerHTML = '';
+    DAYS.forEach(d=>{
+      const id = `${containerId}-${d}`;
+      const w = document.createElement('label');
+      w.innerHTML = `<input type="checkbox" id="${id}"> ${DNAME[d]}`;
+      host.appendChild(w);
+      document.getElementById(id).checked = (sel||[]).includes(d);
+    });
+  }
+  function getDays(containerId){
+    return Array.from(document.querySelectorAll('#'+containerId+' input[type=checkbox]'))
+      .filter(i=>i.checked).map(i=>i.id.split('-').pop());
+  }
+  function addTimeRow(hostId, val){
+    const host = document.getElementById(hostId);
+    const div = document.createElement('div');
+    div.innerHTML = `<input type="time" class="fe-input" value="${val||''}"><button class="fe-btn" title="Remove">✕</button>`;
+    host.appendChild(div);
+    div.querySelector('button').onclick = ()=> div.remove();
+  }
+  function getTimes(hostId){
+    return Array.from(document.querySelectorAll('#'+hostId+' input[type=time]')).map(i=>i.value).filter(Boolean);
+  }
+  function badges(spec, outCron){
+    const b1 = document.getElementById('fe-badge-rrule'), b2 = document.getElementById('fe-badge-cron');
+    if (b1) b1.textContent = spec.kind==='advanced_cron' ? '' : 'Cron';
+    if (b2) b2.textContent = outCron ? ('Cron: '+outCron) : '';
+  }
+
+  function openCron(spec, nodeId){
+    ensureCronModal();
+    const ov = document.getElementById('fe-cron-overlay');
+    ov.dataset.nodeId = (nodeId!=null? String(nodeId) : '');
+    spec = spec || { kind:'quick', by_weekday:["MO","TU","WE","TH","FR"], times:["08:00"] };
+
+    // Tabs
+    Array.from(document.querySelectorAll('#fe-cron-tabs button')).forEach(b=>{
+      b.onclick = () => {
+        Array.from(document.querySelectorAll('#fe-cron-tabs button')).forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const tab = b.getAttribute('data-tab');
+        Array.from(document.querySelectorAll('#fe-cron-body [data-pane]')).forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
+      };
+    });
+
+    // Quick
+    fillDays('fe-cron-days', spec.by_weekday || []);
+    document.getElementById('fe-cron-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-cron-times', t));
+    document.getElementById('fe-cron-add-time').onclick = () => addTimeRow('fe-cron-times', '');
+
+    // Presets
+    Array.from(document.querySelectorAll('#fe-cron-body [data-preset]')).forEach(ch => ch.onclick = ()=>{
+      const k = ch.getAttribute('data-preset');
+      let val = [];
+      if (k==='everyday') val = DAYS.slice();
+      if (k==='weekdays') val = ['MO','TU','WE','TH','FR'];
+      if (k==='weekends') val = ['SA','SU'];
+      fillDays('fe-cron-days', val);
+      refreshPreview();
+    });
+
+    // Weekly
+    document.getElementById('fe-week-interval').value = (spec.week_interval||1);
+    fillDays('fe-week-days', spec.by_weekday || []);
+    document.getElementById('fe-week-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-week-times', t));
+    document.getElementById('fe-week-add-time').onclick = ()=> addTimeRow('fe-week-times','');
+
+    // Monthly
+    document.getElementById('fe-month-mode').value = (spec.month_mode || 'dom');
+    document.getElementById('fe-month-days').value = (spec.month_days || '');
+    document.getElementById('fe-month-n').value = (spec.month_n || '1');
+    document.getElementById('fe-month-wd').value = (spec.month_wd || 'MO');
+    document.getElementById('fe-month-interval').value = (spec.month_interval || 1);
+    const toggleMonthlyMode = () => {
+      const mode = document.getElementById('fe-month-mode').value;
+      document.getElementById('fe-month-dom').hidden = (mode!=='dom');
+      document.getElementById('fe-month-nth').hidden = (mode!=='nth');
+      refreshPreview();
+    };
+    document.getElementById('fe-month-mode').onchange = toggleMonthlyMode;
+    toggleMonthlyMode();
+    document.getElementById('fe-month-add-time').onclick = ()=> addTimeRow('fe-month-times','');
+    document.getElementById('fe-month-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-month-times', t));
+
+    // Advanced
+    const cronRaw = document.getElementById('fe-cron-raw');
+    cronRaw.value = spec.cronText || '';
+    Array.from(document.querySelectorAll('#fe-cron-body [data-cron]')).forEach(c=> c.onclick = ()=>{
+      cronRaw.value = c.getAttribute('data-cron');
+      refreshPreview();
+    });
+
+    // Exclude dates
+    const excHost = document.getElementById('fe-cron-exc-list');
+    excHost.innerHTML='';
+    (spec.exclude_dates||[]).forEach(d=> addExc(d));
+    document.getElementById('fe-cron-exc-add').onclick = ()=>{
+      const v = document.getElementById('fe-cron-exc-date').value;
+      if (v) addExc(v);
+    };
+    function addExc(v){
+      const s = document.createElement('span');
+      s.className='fe-chip';
+      s.textContent=v;
+      s.title='Remove';
+      s.onclick=()=> s.remove();
+      excHost.appendChild(s);
+    }
+
+    function readSpec(){
+      const activeBtn = document.querySelector('#fe-cron-tabs .active');
+      const tab = activeBtn && activeBtn.getAttribute('data-tab');
+      const out = { kind: tab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind = 'advanced_cron';
+        out.cronText = (cronRaw.value||'').trim();
+      } else if (out.kind==='weekly') {
+        out.by_weekday = getDays('fe-week-days');
+        out.times = getTimes('fe-week-times');
+        out.week_interval = Math.max(1, parseInt((document.getElementById('fe-week-interval').value||'1'),10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = document.getElementById('fe-month-mode').value;
+        out.times = getTimes('fe-month-times');
+        out.month_interval = Math.max(1, parseInt((document.getElementById('fe-month-interval').value||'1'),10));
+        if (out.month_mode==='dom') {
+          out.month_days = (document.getElementById('fe-month-days').value||'').trim();
+        } else {
+          out.month_n = document.getElementById('fe-month-n').value;
+          out.month_wd = document.getElementById('fe-month-wd').value;
+        }
+      } else {
+        out.kind = 'quick';
+        out.by_weekday = getDays('fe-cron-days');
+        out.times = getTimes('fe-cron-times');
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      return out;
+    }
+    
+
+    document.getElementById('fe-cron-close').onclick = ()=> document.getElementById('fe-cron-overlay').style.display='none';
+    document.getElementById('fe-cron-cancel').onclick = ()=> document.getElementById('fe-cron-overlay').style.display='none';
+    Array.from(document.querySelectorAll('#fe-cron-body input, #fe-cron-body select')).forEach(el=> el.oninput = refreshPreview);
+
+    document.getElementById('fe-cron-overlay').style.display='block';
+    refreshPreview();
+  }
+
+  // Public API
+  window.FE_CRON = { open: openCron };
+
+  // Remove legacy popups in DOM at runtime (if present)
+  document.addEventListener('DOMContentLoaded', function(){
+    ['feSchedulePopup','schedulePopup','scheduleModal'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    // Hide timezone rows anywhere
+    document.querySelectorAll('[data-field="timezone"], .timezone-row, .tz-row').forEach(el => el.style.display='none');
+  });
+
+  // Toolbar "Schedule" opens the new popup (no auto-node)
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('#addSchedule');
+    if (!b) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+    openCron(null, null);
+  }, true);
+
+  // Double-click schedule node to edit
+  document.addEventListener('DOMContentLoaded', function(){
+    ensureCronModal();
+    const df = document.getElementById('drawflow');
+    if (!df || df.__fe_sched_dbl) return;
+    df.__fe_sched_dbl = true;
+    df.addEventListener('dblclick', function(e){
+      const nodeEl = e.target && e.target.closest ? e.target.closest('.drawflow-node') : null;
+      if(!nodeEl) return;
+      const id = (nodeEl.id||'').replace('node-','');
+      if(!id || !window.editor) return;
+      try{
+        const n = window.editor.getNodeFromId(id);
+        if (!n || (n.name||'').toLowerCase()!=='schedule') return;
+        const spec = (n.data && n.data.scheduleSpec) ? n.data.scheduleSpec : null;
+        openCron(spec||null, parseInt(id,10));
+      }catch(_){}
+    });
+  });
+
+  // Insert Trigger: add or update node + sticky tile content
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest && e.target.closest('#fe-cron-insert');
+    if (!btn) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+
+    const ov = document.getElementById('fe-cron-overlay');
+    function readSpecForSave(){
+      const activeBtn = document.querySelector('#fe-cron-tabs .active');
+      const tab = activeBtn && activeBtn.getAttribute('data-tab');
+      const out = { kind: tab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind='advanced_cron';
+        out.cronText = (document.getElementById('fe-cron-raw')||{}).value || '';
+        out.times = []; out.by_weekday = [];
+      } else if (out.kind==='weekly') {
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-week-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-week-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.week_interval = Math.max(1, parseInt((document.getElementById('fe-week-interval')||{}).value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = (document.getElementById('fe-month-mode')||{}).value || 'dom';
+        out.times = Array.from(document.querySelectorAll('#fe-month-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.month_interval = Math.max(1, parseInt((document.getElementById('fe-month-interval')||{}).value||'1',10));
+        if (out.month_mode==='dom') out.month_days = (document.getElementById('fe-month-days')||{}).value || '';
+        else { out.month_n = (document.getElementById('fe-month-n')||{}).value || '1'; out.month_wd = (document.getElementById('fe-month-wd')||{}).value || 'MO'; }
+      } else {
+        out.kind='quick';
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-cron-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-cron-times input[type=time]')).map(i=>i.value).filter(Boolean);
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      const by = (out.by_weekday && out.by_weekday.length) ? out.by_weekday : DAYS.slice();
+      const times = out.times && out.times.length ? out.times : ['08:00'];
+      const cronList = (out.kind==='advanced_cron') ? [out.cronText||''] : times.map(t=>buildCronFor(t, by));
+      out.cronText = cronList.join(' • ');
+      return out;
+    }
+
+    const spec = readSpecForSave();
+    const by = (spec.by_weekday && spec.by_weekday.length) ? spec.by_weekday : DAYS.slice();
+    const times = spec.times && spec.times.length ? spec.times : ['08:00'];
+
+    const tileData = {
+      cron: spec.cronText || '',
+      repeatDays: by,
+      time: times[0] || '',
+      scheduleSpec: spec
+    };
+
+    if (ov && ov.dataset && ov.dataset.nodeId) {
+      const id = parseInt(ov.dataset.nodeId,10);
+      try{
+        const ed = window.editor;
+        const node = ed && ed.getNodeFromId ? ed.getNodeFromId(id) : null;
+        if (node) {
+          node.data = Object.assign({}, node.data, tileData);
+          if (typeof ed.updateNodeHtmlFromId === 'function') {
+            ed.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+          }
+        }
+              if (typeof ed.updateNodeDataFromId === 'function') { ed.updateNodeDataFromId(id, node.data); }
+        }catch(_){}
+    } else {
+      try {
+        const ed = window.editor;
+        const vp = ed.precanvas.getBoundingClientRect();
+        const x = (ed.canvas_x * -1) + vp.width/2 - 90;
+        const y = (ed.canvas_y * -1) + vp.height/2 - 40;
+        ed.addNode('schedule', 0, 1, x, y, 'schedule', tileData);
+      } catch(_){}
+    }
+
+    try{ window.markFlowNeedsSave && window.markFlowNeedsSave(true); }catch(_){}
+    document.getElementById('fe-cron-overlay').style.display='none';
+  });
+
+  // Tile rendering override (only schedule)
+  (function installNodeTileHtmlOverride(){
+    const orig = window.nodeTileHtml;
+    function scheduleTileHtml(data){
+      const daysTxt = daysSummary((data && data.scheduleSpec && data.scheduleSpec.by_weekday) || (data && data.repeatDays) || []);
+      const timesArr = (data && data.scheduleSpec && data.scheduleSpec.times) || (data && data.times) || [];
+      const timeTxt = (timesArr.length ? timesArr.map(fmtTime12).join(', ') : (data && data.time ? fmtTime12(data.time) : '—'));
+      const cronTxt = (data && data.scheduleSpec && data.scheduleSpec.cronText) || (data && data.cron) || '';
+      return `
+        <div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>
+        <div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">
+          <div>Days: ${daysTxt}</div>
+          <div>Time: ${timeTxt}</div>
+        </div>
+        <div style="border-top:1px solid #3a454a;margin:8px 0"></div>
+        <div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">${cronTxt||''}</div>
+      `;
+    }
+    window.nodeTileHtml = function(name, data, id){
+      if ((name||'').toLowerCase()==='schedule') return scheduleTileHtml(data||{});
+      if (typeof orig === 'function') return orig(name, data, id);
+      return `<div style="font-weight:600">${name||'Node'}</div>`;
+    };
+  })();
+
+  // Back-compat: route any old callers
+  window.openSchedulePopup = function(nodeId){
+    openCron(null, nodeId || null);
+  };
+})();
+</script>
+<!-- END_FE_CRON_ONLY -->
+
+
+<!-- === Injected: Schedule tile expanded summary === -->
+<script>
+(function(){
+  // Helper: 24h "HH:MM" -> "h:MM AM/PM"
+  function __fmtTime12(t){
+    try {
+      if (!t) return "—";
+      // Already looks like 12h? Return as-is.
+      if (/am|pm/i.test(t)) return t.replace(/\s+/g,' ').toUpperCase();
+      const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return t;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12; if (h === 0) h = 12;
+      return h + ":" + min + " " + ampm;
+    } catch(_) { return t; }
+  }
+
+  // Render an expanded summary for the Schedule node
+  window.scheduleTileHtml = function scheduleTileHtml(data){
+    const spec = (data && data.scheduleSpec) || {};
+    const kind = String(spec.kind || data.kind || 'quick').toLowerCase();
+
+    const by = (spec.by_weekday && spec.by_weekday.length ? spec.by_weekday
+              : (Array.isArray(data.repeatDays) ? data.repeatDays : [])) || [];
+
+    const timesArr = (Array.isArray(spec.times) && spec.times.length ? spec.times
+                   : (Array.isArray(data.times) && data.times.length ? data.times
+                   : (data.time ? [data.time] : [])));
+
+    const cronTxt = spec.cronText || data.cronText || data.cron || '';
+
+    const DNAME = {SU:"Sun", MO:"Mon", TU:"Tue", WE:"Wed", TH:"Thu", FR:"Fri", SA:"Sat"};
+    const WD_FULL = {SU:"Sunday", MO:"Monday", TU:"Tuesday", WE:"Wednesday", TH:"Thursday", FR:"Friday", SA:"Saturday"};
+
+    function commaList(arr){ return (arr||[]).filter(Boolean).join(', '); }
+
+    function daysTxt(){
+      try {
+        if (typeof daysSummary === 'function') return daysSummary(by || []);
+      } catch(_){}
+      if (!by || !by.length) return "—";
+      return by.map(d => DNAME[d] || d).join(', ');
+    }
+
+    function timesTxt(){
+      if (!timesArr || !timesArr.length) return "—";
+      return timesArr.map(t => (typeof fmtTime12 === 'function' ? fmtTime12(t) : __fmtTime12(t))).join(', ');
+    }
+
+    const lines = [];
+    if (kind === 'advanced_cron' || kind === 'cron') {
+      lines.push('<div>Mode: Advanced</div>');
+    } else if (kind === 'weekly') {
+      const every = Number(spec.week_interval || data.week_interval || 1);
+      lines.push('<div>Mode: Weekly (every ' + every + ' week' + (every===1?'':'s') + ')</div>');
+      lines.push('<div>Days: ' + daysTxt() + '</div>');
+    } else if (kind === 'monthly') {
+      const nMonths = Number(spec.month_interval || data.month_interval || 1);
+      lines.push('<div>Mode: Monthly (every ' + nMonths + ' month' + (nMonths===1?'':'s') + ')</div>');
+      const mode = (spec.month_mode || data.month_mode || 'dom'); // dom or nthweekday
+      if (mode === 'dom') {
+        const md = (spec.month_days != null ? spec.month_days : data.month_days);
+        const mdText = (Array.isArray(md) ? md.join(', ') : (md || '')).toString().trim() || '—';
+        lines.push('<div>On day(s): ' + mdText + '</div>');
+      } else {
+        const nth = (spec.month_n || data.month_n || '1');
+        const wd  = (WD_FULL[spec.month_wd] || WD_FULL[data.month_wd]) || spec.month_wd || data.month_wd || 'Monday';
+        lines.push('<div>On: ' + nth + ' ' + wd + '</div>');
+      }
+    } else {
+      // quick (default)
+      lines.push('<div>Mode: Quick</div>');
+      lines.push('<div>Days: ' + daysTxt() + '</div>');
+    }
+
+    // Times shown for all non-advanced modes
+    if (!(kind === 'advanced_cron' || kind === 'cron')) {
+      lines.push('<div>Time' + ((timesArr && timesArr.length>1)?'s':'') + ': ' + timesTxt() + '</div>');
+    }
+
+    // Exclusions
+    const ex = Array.isArray(spec.exclude_dates) ? spec.exclude_dates : (Array.isArray(data.exclude_dates) ? data.exclude_dates : []);
+    if (ex.length) {
+      const preview = ex.length <= 3 ? commaList(ex) : (ex.slice(0,3).join(', ') + ', +' + (ex.length-3) + ' more');
+      lines.push('<div>Skip: ' + preview + '</div>');
+    }
+
+    return (
+      '<div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>' +
+      '<div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">' +
+        lines.join('') +
+      '</div>' +
+      '<div style="border-top:1px solid #ffffff;margin:8px 0;opacity:.7"></div>' +
+      '<div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">' + (cronTxt || '') + '</div>'
+    );
+  };
+
+  // Wrap nodeTileHtml to route Schedule tiles to our renderer
+  function __installWrapper(){
+    if (typeof window.nodeTileHtml !== 'function') return false;
+    if (window.__nodeTileWrapped) return true;
+    const __orig = window.nodeTileHtml;
+    window.nodeTileHtml = function(type, data, nodeId){
+      try {
+        const t = String(type || '').toLowerCase();
+        if (t === 'schedule' || t.indexOf('schedule') !== -1) {
+          return window.scheduleTileHtml(data || {});
+        }
+      } catch(_) {}
+      return __orig(type, data, nodeId);
+    };
+    window.__nodeTileWrapped = true;
+    return true;
+  }
+
+  if (!__installWrapper()) {
+    const iv = setInterval(function(){ if(__installWrapper()) clearInterval(iv); }, 50);
+    setTimeout(function(){ try{ clearInterval(iv);}catch(_){}} , 4000);
+  }
+})();
+</script>
+<!-- === /Injected: Schedule tile expanded summary === -->
+<script>
+// === Preserve Active Cron Tab ===
+(function(){
+  const tabButtons = document.querySelectorAll('#fe-cron-tabs button');
+  if (tabButtons.length) {
+    // Restore last active
+    const lastTab = localStorage.getItem('feCronActiveTab') || 'quick';
+    tabButtons.forEach(btn => {
+      const pane = document.querySelector(`[data-pane="${btn.dataset.tab}"]`);
+      if (btn.dataset.tab === lastTab) {
+        btn.classList.add('active');
+        if (pane) pane.hidden = false;
+      } else {
+        btn.classList.remove('active');
+        if (pane) pane.hidden = true;
+      }
+      btn.addEventListener('click', () => {
+        localStorage.setItem('feCronActiveTab', btn.dataset.tab);
+      });
+    });
+  }
+})();
+
+
+// === Schedule Trigger persistence helpers ===
+function saveScheduleNode(nodeId, patch = {}) {
+  try {
+    const node = editor.getNodeFromId(nodeId);
+    if (!node) return;
+    node.data = node.data || {};
+    Object.assign(node.data, patch);
+    // mark dirty so Save button turns red
+    if (typeof window.markDirty === "function") { window.markDirty(); }
+  } catch(e){ console.error("[Schedule] saveScheduleNode error:", e); }
+}
+
+// Apply saved values from node.data back into the modal UI
+function restoreScheduleUI(nodeId) {
+  try {
+    const node = editor.getNodeFromId(nodeId);
+    if (!node) return;
+    const d = node.data || {};
+    // active tab
+    const tabs = document.querySelectorAll('#fe-cron-tabs button');
+    const panes = document.querySelectorAll('#fe-cron-body [data-pane]');
+    const active = d.activeTab || 'quick';
+    tabs.forEach(btn => {
+      const on = (btn.dataset.tab === active);
+      btn.classList.toggle('active', on);
+      const pane = document.querySelector(`[data-pane="${btn.dataset.tab}"]`);
+      if (pane) pane.hidden = !on;
+    });
+    // cron raw
+    if (d.cron) {
+      const raw = document.getElementById('fe-cron-raw');
+      if (raw) raw.value = d.cron;
+    }
+    // quick times
+    if (Array.isArray(d.quickTimes)) {
+      const wrap = document.getElementById('fe-cron-times');
+      if (wrap) {
+        wrap.innerHTML = '';
+        d.quickTimes.forEach(t => {
+          const inp = document.createElement('input');
+          inp.type = 'time';
+          inp.className = 'fe-input';
+          inp.value = t;
+          wrap.appendChild(inp);
+        });
+      }
+    }
+    // quick days
+    if (Array.isArray(d.quickDays)) {
+      const daysWrap = document.getElementById('fe-cron-days');
+      if (daysWrap) {
+        daysWrap.querySelectorAll('[data-day]').forEach(el => {
+          el.classList.toggle('active', d.quickDays.includes(el.dataset.day));
+        });
+      }
+    }
+    // weekly interval / times / days
+    const wInt = document.getElementById('fe-week-interval');
+    if (wInt && d.weekInterval) wInt.value = d.weekInterval;
+    if (Array.isArray(d.weekTimes)) {
+      const wTimes = document.getElementById('fe-week-times');
+      if (wTimes) {
+        wTimes.innerHTML = '';
+        d.weekTimes.forEach(t => {
+          const inp = document.createElement('input');
+          inp.type = 'time'; inp.className='fe-input'; inp.value = t;
+          wTimes.appendChild(inp);
+        });
+      }
+    }
+    if (Array.isArray(d.weekDays)) {
+      const wDays = document.getElementById('fe-week-days');
+      if (wDays) {
+        wDays.querySelectorAll('[data-day]').forEach(el => {
+          el.classList.toggle('active', d.weekDays.includes(el.dataset.day));
+        });
+      }
+    }
+    // monthly
+    if (d.monthMode) {
+      const mm = document.getElementById('fe-month-mode');
+      if (mm) mm.value = d.monthMode;
+    }
+    if (d.monthDays) {
+      const md = document.getElementById('fe-month-days');
+      if (md) md.value = d.monthDays;
+    }
+    if (d.monthNth) {
+      const mn = document.getElementById('fe-month-n');
+      if (mn) mn.value = d.monthNth;
+    }
+    if (d.monthWd) {
+      const mw = document.getElementById('fe-month-wd');
+      if (mw) mw.value = d.monthWd;
+    }
+    if (d.monthInterval) {
+      const mi = document.getElementById('fe-month-interval');
+      if (mi) mi.value = d.monthInterval;
+    }
+    // skip dates
+    if (Array.isArray(d.skipDates)) {
+      const list = document.getElementById('fe-cron-exc-list');
+      if (list) {
+        list.innerHTML = d.skipDates.map(s => `<span class="fe-chip">${s}</span>`).join(' ');
+      }
+    }
+    // preview
+    if (d.previewHtml) {
+      const prev = document.getElementById('fe-cron-preview');
+      if (prev) prev.innerHTML = d.previewHtml;
+    }
+  } catch(e){ console.error("[Schedule] restoreScheduleUI error:", e); }
+}
+
+
+// Persist active tab per-node
+document.addEventListener("click", (e)=>{
+  const btn = e.target.closest && e.target.closest('#fe-cron-tabs button');
+  if (!btn) return;
+  const activeNodeId = window.currentCronNodeId;
+  if (!activeNodeId) return;
+  saveScheduleNode(activeNodeId, { activeTab: btn.dataset.tab });
+});
+
+</script>
+
+<script>
+// === FE: Minimap click → center viewport using world mapping (Scroll Bars ON) ===
+(function FE_MINIMAP_CENTER_WORLD(){
+  function isScrollbarMode(){
+    try{
+      const c=document.getElementById('drawflow'); if(!c) return false;
+      const cs=getComputedStyle(c);
+      return (cs.overflowX!=='hidden'||cs.overflowY!=='hidden');
+    }catch(_){ return false; }
+  }
+  function getZoom(){
+    const ed=window.editor;
+    if (ed && typeof ed.zoom==='number') return ed.zoom;
+    const pc = ed && (ed.precanvas || document.querySelector('.drawflow'));
+    if (pc){
+      const m = getComputedStyle(pc).transform;
+      const a = /matrix\(([^)]+)\)/.exec(m||"");
+      if (a){ const parts=a[1].split(','); const s=parseFloat(parts[0]||'1'); if (s) return s; }
+    }
+    return 1;
+  }
+  function getBoundsForMinimap(){
+    // Mirror renderMinimap's logic exactly
+    const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+    if (!df || !df.Home || !window.getHomeDataFrom) return null;
+    const data = window.getHomeDataFrom(df);
+    const nodes = Object.entries(data||{});
+    if (!nodes.length) return null;
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    nodes.forEach(([id,n])=>{
+      minX = Math.min(minX, n.pos_x);
+      minY = Math.min(minY, n.pos_y);
+      maxX = Math.max(maxX, n.pos_x + 170);
+      maxY = Math.max(maxY, n.pos_y + 80);
+    });
+    minX -= 40; minY -= 40; maxX += 40; maxY += 40;
+    return {minX, minY, maxX, maxY};
+  }
+  function centerAtWorld(worldX, worldY){
+    const cont=document.getElementById('drawflow'); if(!cont) return;
+    const z=getZoom();
+    const maxX=Math.max(0, cont.scrollWidth - cont.clientWidth);
+    const maxY=Math.max(0, cont.scrollHeight- cont.clientHeight);
+    let targetLeft = Math.round(worldX * z - cont.clientWidth/2);
+    let targetTop  = Math.round(worldY * z - cont.clientHeight/2);
+    if (targetLeft<0) targetLeft=0; if (targetLeft>maxX) targetLeft=maxX;
+    if (targetTop<0)  targetTop=0;  if (targetTop>maxY)  targetTop=maxY;
+    cont.scrollLeft = targetLeft;
+    cont.scrollTop  = targetTop;
+    try{ if (typeof window.__fe_syncPanFromScroll==='function') window.__fe_syncPanFromScroll(); }catch(_){}
+    try{ if (window.editor && typeof window.editor.updateConnectionNodesAll==='function') window.editor.updateConnectionNodesAll(); }catch(_){}
+    try{ if (typeof window.renderMinimap==='function') window.renderMinimap(); }catch(_){}
+  }
+
+  window.addEventListener('DOMContentLoaded', function(){
+    const mmOld=document.getElementById('minimap-canvas'); if(!mmOld) return;
+    // Replace to clear prior handlers that may use translate-pan
+    const p=mmOld.parentNode, mm=mmOld.cloneNode(true); p.replaceChild(mm, mmOld);
+
+    mm.addEventListener('click', function(ev){
+      if (!isScrollbarMode()) return; // leave legacy behavior when scrollbars off
+      ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.();
+
+      const bounds = getBoundsForMinimap(); if(!bounds) return;
+      const W = mm.width || 240, H = mm.height || 140;
+      const rect = mm.getBoundingClientRect();
+      const xCanvas = (ev.clientX - rect.left) * (mm.width ? (mm.width/rect.width) : 1);
+      const yCanvas = (ev.clientY - rect.top)  * (mm.height? (mm.height/rect.height): 1);
+
+      const worldW = Math.max(1, bounds.maxX - bounds.minX);
+      const worldH = Math.max(1, bounds.maxY - bounds.minY);
+      const scaleX = W / worldW;
+      const scaleY = H / worldH;
+      const scale  = Math.min(scaleX, scaleY);
+
+      // renderMinimap anchors at top-left (no centering offsets), so world = min + canvas/scale
+      let worldX = bounds.minX + xCanvas / scale;
+      let worldY = bounds.minY + yCanvas / scale;
+
+      // Clamp inside world bounds
+      if (worldX < bounds.minX) worldX = bounds.minX;
+      if (worldY < bounds.minY) worldY = bounds.minY;
+      if (worldX > bounds.maxX) worldX = bounds.maxX;
+      if (worldY > bounds.maxY) worldY = bounds.maxY;
+
+      centerAtWorld(worldX, worldY);
+    }, true); // capture=true
+  });
+})();
+</script>
+</body>
+</html>
+<!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
+<script>
+// Only install once
+(function() {
+  // Robust re-definition of updateTileHtml that won't crash even if earlier version was truncated
+  window.updateTileHtml = function(node) {
+    try {
+      if (!node || !window.editor || typeof window.editor.updateNodeHtmlFromId !== "function") return;
+      var id = node.id || (node.data && node.data.id);
+      if (!id) {
+        // try to infer from DOM if possible
+        try {
+          var el = document.querySelector('.drawflow-node.selected');
+          if (el) id = el.id.replace(/^node-/, '');
+        } catch(_) {}
+      }
+      if (!id) return;
+      var html = (typeof window.nodeTileHtml === "function") ? window.nodeTileHtml(node.name, node.data, id) : "";
+      window.editor.updateNodeHtmlFromId(id, html);
+    } catch (e) {
+      console.error("updateTileHtml (appended) failed:", e);
+    }
+  };
+
+  // Provide selection UI helper only if the project didn't define it already
+  if (typeof window.updateNodeSelectionUI !== "function") {
+    window.updateNodeSelectionUI = function() {
+      var set = (window._multiSelectedNodes && window._multiSelectedNodes.size) ? window._multiSelectedNodes : new Set();
+      document.querySelectorAll('#drawflow .drawflow-node').forEach(function(el) {
+        var nid = (el.id || '').replace(/^node-/, '');
+        if (set.has(nid)) {
+          el.classList.add('selected');
+          el.style.outline = '2px solid #66aaff';
+        } else {
+          el.classList.remove('selected');
+          el.style.outline = '';
+        }
+      });
+    };
+  }
+
+  // Reinstall ctrl/cmd multi-select and background clear if not already installed
+  if (!window.__ctrlMultiSelectBound) {
+    var draw = document.getElementById("drawflow");
+    if (draw) {
+      window.__ctrlMultiSelectBound = true;
+
+      // ctrl/cmd + click toggles selection of the targeted node
+      draw.addEventListener("mousedown", function(e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        var nodeElem = e.target.closest && e.target.closest('.drawflow-node');
+        if (!nodeElem) return;
+        var nodeId = (nodeElem.id || "").replace(/^node-/, "");
+        if (!nodeId) return;
+        if (!window._multiSelectedNodes) window._multiSelectedNodes = new Set();
+        if (window._multiSelectedNodes.has(nodeId)) {
+          window._multiSelectedNodes.delete(nodeId);
+        } else {
+          window._multiSelectedNodes.add(nodeId);
+        }
+        window.updateNodeSelectionUI && window.updateNodeSelectionUI();
+        // Prevent drawflow from starting a drag on ctrl-click
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      // click on background (no ctrl/cmd) clears selection
+      draw.addEventListener("mousedown", function(e) {
+        if (e.ctrlKey || e.metaKey) return;
+        var nodeElem = e.target.closest && e.target.closest('.drawflow-node');
+        if (nodeElem) return;
+        if (window._multiSelectedNodes && window._multiSelectedNodes.size) {
+          window._multiSelectedNodes.clear();
+          window.updateNodeSelectionUI && window.updateNodeSelectionUI();
+        }
+      }, true);
+    }
+  }
+})();
+</script>
+
+<!-- BEGIN: Variable Manager Save Button Enforcer -->
+<script>
+(function(){
+  'use strict';
+  if (window.__vmSaveEnforcer__) return;
+  window.__vmSaveEnforcer__ = true;
+
+  function toList(n){ return Array.prototype.slice.call(n||[]); }
+  function norm(v){ return String(v==null?'':v).trim().toLowerCase(); }
+
+  function isSelectReady(sel){
+    if (!sel) return false;
+    var v = norm(sel.value||'');
+    if (v && v !== '(select)') return true;
+    var txt = (sel.options && sel.selectedIndex>=0) ? norm(sel.options[sel.selectedIndex].text||'') : '';
+    return !!txt && txt !== '(select)';
+  }
+
+  function setBtnStyle(btn, enabled){
+    if (!btn) return;
+    btn.style.fontSize = '14px';
+    btn.style.padding = '6px 12px';
+    btn.style.borderRadius = '7px';
+    btn.style.boxShadow = '0 2px 8px #0004';
+    btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    btn.style.backgroundColor = enabled ? '#4CAF50' : '#808080';
+    btn.disabled = !enabled;
+  }
+
+  function findControls(vm){
+    // Heuristically identify Save + fields in the Add Variable area
+    var btns = toList(vm.querySelectorAll('button'));
+    var delIdx = btns.findIndex(function(b){ return norm(b.textContent) === 'delete'; });
+    var saveBtn = btns.find(function(b, idx){
+      // Prefer a button before Delete; else first button in this section
+      return (delIdx === -1 ? true : idx < delIdx);
+    }) || null;
+
+    // Fallback: if button text literally says 'save', prefer that
+    var explicitSave = btns.find(function(b){ return norm(b.textContent)==='save'; });
+    if (explicitSave) saveBtn = explicitSave;
+
+    // Collect candidate fields that appear before save button
+    var fields = [];
+    if (saveBtn){
+      var w = saveBtn.previousElementSibling, guard=0;
+      while (w && guard++ < 80){
+        if (w.tagName && /^(input|select|textarea)$/i.test(w.tagName)) fields.unshift(w);
+        w = w.previousElementSibling;
+      }
+    } else {
+      fields = toList(vm.querySelectorAll('input,select,textarea'));
+    }
+
+    var selects = fields.filter(function(el){ return el.tagName && el.tagName.toLowerCase()==='select'; });
+    var inputs  = fields.filter(function(el){ return el.tagName && el.tagName.toLowerCase()==='input'; });
+    var textInputs = inputs.filter(function(el){ return (el.type||'text').toLowerCase()==='text'; });
+
+    var scopeSel = selects[0] || null;
+    var typeSel  = selects.length ? selects[selects.length-1] : null;
+
+    // Name is the first text input; Value is the next text input or textarea
+    var nameEl = textInputs[0] || null;
+    var valueEl = null;
+    if (nameEl){
+      var next = nameEl.nextElementSibling, guard2=0;
+      while (next && guard2++ < 60 && !valueEl){
+        if (next.tagName){
+          var tag = next.tagName.toLowerCase();
+          if (tag==='input' && (next.type||'text').toLowerCase()==='text') valueEl = next;
+          else if (tag==='textarea') valueEl = next;
+        }
+        next = next.nextElementSibling;
+      }
+    }
+    if (!valueEl){
+      var textareas = fields.filter(function(el){ return el.tagName && el.tagName.toLowerCase()==='textarea'; });
+      valueEl = textInputs[1] || textareas[0] || null;
+    }
+
+    return {saveBtn, scopeSel, nameEl, valueEl, typeSel};
+  }
+
+  function evaluateReady(fx){
+    if (!fx || !fx.saveBtn) return false;
+    var name = (fx.nameEl && fx.nameEl.value) ? fx.nameEl.value.trim() : '';
+    var val  = (fx.valueEl && typeof fx.valueEl.value !== 'undefined') ? String(fx.valueEl.value).trim() : '';
+    return !!name && !!val && isSelectReady(fx.scopeSel) && isSelectReady(fx.typeSel);
+  }
+
+  function wire(vm){
+    if (!vm) return;
+    var fx = findControls(vm);
+    if (!fx.saveBtn) return;
+
+    function refresh(){ setBtnStyle(fx.saveBtn, evaluateReady(fx)); }
+    // Initial state
+    refresh();
+    // Bind listeners
+    [fx.scopeSel, fx.typeSel, fx.nameEl, fx.valueEl].forEach(function(el){
+      if (!el) return;
+      el.addEventListener('input', refresh);
+      if (el.tagName && el.tagName.toLowerCase()==='select') el.addEventListener('change', refresh);
+    });
+    // In case content gets re-rendered, a small polling fallback
+    if (!vm.__savePoll){
+      vm.__savePoll = setInterval(function(){
+        var fx2 = findControls(vm);
+        if (fx2 && fx2.saveBtn) setBtnStyle(fx2.saveBtn, evaluateReady(fx2));
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 400);
+    }
+  }
+
+  function install(){
+    var vm = document.getElementById('variableManager');
+    if (vm) wire(vm);
+    var root = document.getElementById('variableManagerPanel') || document;
+    try{
+      var mo = new MutationObserver(function(){ var c = document.getElementById('variableManager'); if (c) wire(c); });
+      mo.observe(root, {childList:true, subtree:true});
+    }catch(e){}
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+  window.addEventListener('load', function(){ setTimeout(install, 200); });
+})();
+
+
+</script>
+<!-- END: Variable Manager Save Button Enforcer -->
