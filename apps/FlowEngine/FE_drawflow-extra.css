@@ -14,6 +14,7 @@ html { margin:0; padding:0; height:100%; font-family:sans-serif; }
   --image-brightness: 1;
 }
 #drawflow {
+  padding-bottom: 64px; /* extra breathing room at the bottom */
   position: relative;
   flex: 3;
   height: 700px;
@@ -353,4 +354,156 @@ button:hover { background: #02c258; }
 .node-incomplete-badge:hover {
   transform: scale(1.18) rotate(-10deg);
   box-shadow: 0 0 24px 9px #a078ff, 0 0 8px #fff;
+}
+
+
+/* ==== Modern Scheduler Popup Styles (inline) ==== */
+.schedule-subtitle{ font-size:11px; opacity:0.9; margin-top:2px; }
+.schedule-cron{ font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px; opacity:0.9; }
+.fe-schedule-sep{ border:0; border-top:1px dashed #334047; margin:6px 0 4px; }
+
+#feSchedulePopup, #scheduleModal, #schedulePopup, #fe-scheduler-modal {
+  position: fixed;
+  inset: 0;
+  display: none;              /* toggled by JS */
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 12, 14, 0.66);
+  backdrop-filter: blur(3px);
+  z-index: 99999;
+}
+#feSchedulePopup .modal-card,
+#scheduleModal .modal-card,
+#schedulePopup .modal-card,
+#fe-scheduler-modal .modal-card {
+  width: min(720px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: #1f272b;
+  color: #e9eef1;
+  border-radius: 14px;
+  border: 1px solid #2d3b41;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.35);
+}
+.modal-card .m-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 10px 16px;
+  border-bottom: 1px solid #2b363b;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.modal-card .m-bd {
+  padding: 14px 16px 16px 16px;
+  font-size: 14px;
+}
+.modal-card .m-ft {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding: 10px 16px 16px 16px;
+  border-top: 1px solid #2b363b;
+}
+.modal-card .btn {
+  appearance: none;
+  border: 1px solid #39474e;
+  background: #2a3439;
+  color: #e9eef1;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform .04s ease, background .16s ease, border-color .16s ease;
+}
+.modal-card .btn:hover { background:#334047; border-color:#41535b; }
+.modal-card .btn:active { transform: scale(.98); }
+.modal-card .btn.primary { background:#0d7bd3; border-color:#0d7bd3; }
+.modal-card .btn.primary:hover { background:#1087e9; border-color:#1087e9; }
+
+/* Inputs */
+.modal-card input[type="text"],
+.modal-card input[type="time"],
+.modal-card input[type="number"],
+.modal-card select, .modal-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1b2226;
+  color: #e9eef1;
+  border: 1px solid #2f3a40;
+  border-radius: 10px;
+  padding: 8px 10px;
+  outline: none;
+  margin: 6px 0 10px 0;
+}
+.modal-card select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #b9c6cc 50%),
+    linear-gradient(135deg, #b9c6cc 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* Section headers (for Time & Skip Dates) with carets */
+.modal-card .section {
+  margin: 6px 0 8px 0;
+  border: 1px solid #2f3a40;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.modal-card .section .sec-hd {
+  padding: 10px 12px;
+  user-select:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  cursor: pointer;
+  background: #263036;
+}
+.modal-card .section .sec-hd .label {
+  font-weight: 700;
+}
+.modal-card .section .sec-hd .caret {
+  font-size: 14px;
+  opacity: .85;
+  transition: transform .18s ease;
+}
+.modal-card .section.open .sec-hd .caret {
+  transform: rotate(180deg);
+}
+.modal-card .section .sec-bd {
+  padding: 10px 12px 12px 12px;
+  display: none;
+  background: #20282d;
+}
+.modal-card .section.open .sec-bd { display:block; }
+
+/* Hide any explicit 'Timezone' row (always use Hub location) */
+.modal-card [data-field="timezone"],
+.modal-card .timezone-row,
+.modal-card .tz-row,
+.modal-card label:has(+ input[data-field="timezone"]) {
+  display: none !important;
+}
+
+
+/* === Canvas scrollbars (override) === */
+#drawflow {
+  /* give the canvas its own scrollbars */
+  overflow: auto !important;
+  /* viewport-based height so it doesn't run under the footer */
+  height: calc(100vh - 200px);
+  max-height: calc(100vh - 200px);
+  overscroll-behavior: contain;
+  /* reserve gutter to prevent layout shift when bars appear */
+  scrollbar-gutter: stable both-edges;
+}
+/* ensure there's room to scroll into */
+#drawflow .parent-drawflow,
+#drawflow .drawflow {
+  min-width: 2000px;
+  min-height: 1400px;
 }
