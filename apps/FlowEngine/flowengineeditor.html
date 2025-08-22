@@ -6,6 +6,34 @@
   <title>Flow Engine Editor</title>
   <!-- ── BLOCKING Hubitat Credentials Prompt & Validation ── -->
   <script>
+
+// === SAFE HELPERS (idempotent) ===
+if (typeof getHomeFrom !== 'function') {
+  function getHomeFrom(o) {
+    try {
+      if (!o || typeof o !== "object") return { data: {} };
+      const df = o.drawflow || o;
+      if (!df) return { data: {} };
+      if (df.Home && typeof df.Home === "object") return df.Home;
+      if (df.drawflow && df.drawflow.Home && typeof df.drawflow.Home === "object") return df.drawflow.Home;
+    } catch (_){}
+    return { data: {} };
+  }
+}
+if (typeof getHomeDataFrom !== 'function') {
+  function getHomeDataFrom(o) {
+    const h = getHomeFrom(o);
+    return (h && h.data && typeof h.data === "object") ? h.data : {};
+  }
+}
+if (typeof hasHomeData !== 'function') {
+  function hasHomeData(o) {
+    const h = getHomeFrom(o);
+    return !!(h && h.data && typeof h.data === "object");
+  }
+}
+
+
     (async function ensureHubitatCredentials() {
       // 1) Load saved or prompt until we have non-empty values
       let appId = localStorage.getItem('hubitatAppId') || '';
@@ -41,7 +69,29 @@
       }
       // If we reach here, credentials are good and parsing continues…
     })();
-  </script>
+  
+document.addEventListener('click', function(e){
+  const resetBtn = e.target && e.target.closest ? e.target.closest('#fe-cron-reset') : null;
+  if (!resetBtn) return;
+  try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+  // reset all inputs inside popup
+  const modal = document.getElementById('fe-cron-modal');
+  if (modal) {
+    modal.querySelectorAll('select, input').forEach(function(el){
+      if (el.tagName === 'SELECT') {
+        el.selectedIndex = 0;
+      } else if (el.type === 'checkbox' || el.type === 'radio') {
+        el.checked = false;
+      } else {
+        el.value = '';
+      }
+    });
+  }
+  // Clear preview too
+  const prev = document.getElementById('fe-cron-preview');
+  if (prev) prev.innerHTML = '';
+});
+</script>
 
   <link rel="stylesheet" href="FE_drawflow-css.min.css">
   <link rel="stylesheet" href="FE_drawflow-extra.css">
@@ -49,6 +99,30 @@
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
   <script src="FE_flowvars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+
+<style>
+/* Keep scheduler popup within viewport */
+#fe-cron-overlay{ position:fixed; inset:0; background:#0009; z-index:10000; display:none; }
+#fe-cron-modal{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  max-width: min(900px, 92vw); width: min(900px, 92vw);
+  max-height: 88vh; overflow:auto; border-radius:14px; }
+@media (max-width: 720px){
+  #fe-cron-modal{ max-width: 96vw; width: 96vw; max-height: 86vh; }
+}
+</style>
+<style>
+/* Preview limited to 3 lines with scrollbar */
+#fe-cron-preview{
+  display:block;
+  line-height:1.3;
+  max-height: calc(1.3em * 3 + 8px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  white-space:normal;   /* so <br> works */
+  font-family: ui-monospace, Consolas, monospace;
+}
+</style>
+
 </head>
 <body>
   <script>
@@ -60,7 +134,7 @@
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.052</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.053</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -136,6 +210,7 @@
       <small style="display:block; text-align:center;">
         ------- Add Nodes -------
       </small>
+      <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
       <button id="addTrigger" title="Add an Event Trigger node">Event Trigger</button>
       <button id="addCondition" title="Add a Condition node">Condition</button>
       <button id="addDevice" title="Action (Device)">Action</button>
@@ -149,15 +224,18 @@
       <button id="addRepeat" title="Add a Repeat node">Repeat</button>
       <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
       <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
-      <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
       <button id="addSetVariable" title="Add a Set Variable node">Set Variable</button>
       <b> | </b>
       <button id="undoBtn" title="Undo last change">Undo</button>
       <button id="redoBtn" title="Redo">Redo</button>
       <b> | </b>
       <button id="statusButton" title="Toggle node status badges"
-        style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:6px;">
+        style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:1px;">
         Status Enabled
+      </button>
+      <button id="toggleScrollbarsBtn" title="Toggle canvas scrollbars on/off"
+        style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080; margin-left:1px;">
+        Scroll Bars
       </button>
       <b> | </b>
       <button id="fitViewBtn" title="Fit & Dock (Top-Left)">Fit & Dock</button> <button id="dockBtn" title="Dock to top-left (no zoom)">Dock</button>
@@ -244,6 +322,26 @@
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
   <script>
+    // === SAFE HELPERS to access drawflow.Home across legacy/new JSON shapes ===
+    function getHomeFrom(o) {
+      try {
+        if (!o || typeof o !== "object") return { data: {} };
+        const df = o.drawflow || o;
+        if (!df) return { data: {} };
+        if (df.Home && typeof df.Home === "object") return df.Home;
+        if (df.drawflow && df.drawflow.Home && typeof df.drawflow.Home === "object") return df.drawflow.Home;
+      } catch (_) {}
+      return { data: {} };
+    }
+    function getHomeDataFrom(o) {
+      const h = getHomeFrom(o);
+      return (h && h.data && typeof h.data === "object") ? h.data : {};
+    }
+    function hasHomeData(o) {
+      const h = getHomeFrom(o);
+      return !!(h && h.data && typeof h.data === "object");
+    }
+
     // 1) Fetch the list of flow-files from Hubitat
     async function fetchHubitatFiles() {
       const appId = (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
@@ -342,7 +440,7 @@
           data = JSON.parse(fixed);
           logAction(`🔧 Auto-fixed JSON on load for "${fullName}"`, "info");
         } catch (err2) {
-          alert("❌ JSON load failed even after auto-fix:\n" + err2.message);
+          alert("❌ JSON load failed even after auto-fix:<br>" + err2.message);
           return;
         }
       }
@@ -539,7 +637,7 @@
 
       } catch (e) {
         console.error(e);
-        alert("Failed to refresh variables from app:\n" + e.message);
+        alert("Failed to refresh variables from app:<br>" + e.message);
       }
     }
 
@@ -672,45 +770,44 @@
 
 
     // ── global “Show Status” toggle button ──────────────────────────────────
-(function setupStatusToggle() {
-  const statusBtn = document.getElementById('statusButton');
-  // Default is enabled (previously the checkbox started checked)
-  window.globalShowStatus = true;
+    (function setupStatusToggle() {
+      const statusBtn = document.getElementById('statusButton');
+      window.globalShowStatus = true;
 
-  function updateStatusBtn() {
-    if (!statusBtn) return;
-    if (window.globalShowStatus) {
-      statusBtn.textContent = 'Status Enabled';
-      statusBtn.style.backgroundColor = '#4CAF50';
-    } else {
-      statusBtn.textContent = 'Status Disabled';
-      statusBtn.style.backgroundColor = '#808080';
-    }
-  }
-
-  function reRenderTiles() {
-    const nodes = document.querySelectorAll('.drawflow-node[id^="node-"]');
-    nodes.forEach(el => {
-      const id = el.id.replace('node-', '');
-      const node = (window.editor && typeof window.editor.getNodeFromId === 'function')
-        ? window.editor.getNodeFromId(id)
-        : null;
-      if (node && window.editor && typeof window.editor.updateNodeHtmlFromId === 'function') {
-        window.editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
+      function updateStatusBtn() {
+        if (!statusBtn) return;
+        if (window.globalShowStatus) {
+          statusBtn.textContent = 'Status Enabled';
+          statusBtn.style.backgroundColor = '#4CAF50';
+        } else {
+          statusBtn.textContent = 'Status Disabled';
+          statusBtn.style.backgroundColor = '#808080';
+        }
       }
-    });
-    try { markFlowNeedsSave(true); } catch (e) {}
-  }
 
-  if (statusBtn) {
-    statusBtn.addEventListener('click', () => {
-      window.globalShowStatus = !window.globalShowStatus;
-      updateStatusBtn();
-      reRenderTiles();
-    });
-    updateStatusBtn();
-  }
-})();
+      function reRenderTiles() {
+        const nodes = document.querySelectorAll('.drawflow-node[id^="node-"]');
+        nodes.forEach(el => {
+          const id = el.id.replace('node-', '');
+          const node = (window.editor && typeof window.editor.getNodeFromId === 'function')
+            ? window.editor.getNodeFromId(id)
+            : null;
+          if (node && window.editor && typeof window.editor.updateNodeHtmlFromId === 'function') {
+            window.editor.updateNodeHtmlFromId(id, nodeTileHtml(node.name, node.data, id));
+          }
+        });
+        try { markFlowNeedsSave(true); } catch (e) {}
+      }
+
+      if (statusBtn) {
+        statusBtn.addEventListener('click', () => {
+          window.globalShowStatus = !window.globalShowStatus;
+          updateStatusBtn();
+          reRenderTiles();
+        });
+        updateStatusBtn();
+      }
+    })();
 
     function pushUndoState() {
       if (!editor || !editor.export) return;
@@ -833,11 +930,11 @@
     function patchFlowWithDeviceLabels(flow, devices) {
       // Support both new and legacy JSON paths
       const dataNodes =
-        (flow && flow.drawflow && flow.drawflow.Home && flow.drawflow.Home.data)
-          ? flow.drawflow.Home.data
-          : (flow && flow.drawflow && flow.drawflow.drawflow &&
-            flow.drawflow.drawflow.Home && flow.drawflow.drawflow.Home.data)
-            ? flow.drawflow.drawflow.Home.data
+        (flow && (editor && editor.drawflow ? editor.drawflow : {}) && getHomeFrom(flow) && getHomeDataFrom(flow))
+          ? getHomeDataFrom(flow)
+          : (flow && (editor && editor.drawflow ? editor.drawflow : {}) && (editor && editor.drawflow ? editor.drawflow : {}).drawflow &&
+            getHomeFrom(flow) && getHomeDataFrom(flow))
+            ? getHomeDataFrom(flow)
             : {};
 
       // Ensure "notMatchingVar" nodes get a default outputVar label
@@ -902,15 +999,15 @@
             el.setAttribute('data-node-type', n.name);
           });
 
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-            Object.values(editor.drawflow.Home.data).forEach(updateTileHtml);
+          if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)) {
+            Object.values(getHomeDataFrom(editor)).forEach(updateTileHtml);
           }
 
           setTimeout(() => {
             let selected = editor.selected_id;
             if (!selected) {
-              const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-                ? Object.keys(editor.drawflow.Home.data)
+              const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+                ? Object.keys(getHomeDataFrom(editor))
                 : [];
               if (allIds.length) {
                 selected = allIds[0];
@@ -978,7 +1075,7 @@ function __fe_stampViewport(flowObj) {
 function __fe_extractViewport(flowObj) {
   try {
     return (flowObj && flowObj.drawflow && flowObj.drawflow.Home && flowObj.drawflow.Home.viewport)
-      || (flowObj && flowObj.drawflow && flowObj.drawflow.drawflow && flowObj.drawflow.drawflow.Home && flowObj.drawflow.drawflow.Home.viewport)
+      || (flowObj && flowObj.drawflow && flowObj.drawflow.drawflow && flowObj.drawgetHomeFrom(flow) && flowObj.drawgetHomeFrom(flow).viewport)
       || (flowObj && flowObj.meta && flowObj.meta.viewport)
       || flowObj.viewport
       || null;
@@ -1445,105 +1542,118 @@ function markFlowNeedsSave(needed = true) {
     // — HELPERS FOR ATTRIBUTE / COMPARATOR / VALUE —
     // 1) Generic attribute picker
     function renderAttributePicker(el, node, dev, onChange) {
-      const lbl = document.createElement("label");
-      lbl.textContent = "Attribute";
-      lbl.style.display = "block";
-      el.appendChild(lbl);
+  const lbl = document.createElement("label");
+  lbl.textContent = "Attribute";
+  lbl.style.display = "block";
+  el.appendChild(lbl);
 
-      const sel = document.createElement("select");
-      sel.style.display = "block";
-      sel.style.marginBottom = "12px";
-      // inject a "(select)" default, selected when node.data.attribute is falsy
-      sel.innerHTML =
-        `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
-        Object.keys(dev.attributes)
-          .map(attr =>
-            `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
-          )
-          .join("");
-      sel.onchange = onChange;
-      markFlowNeedsSave(true);
-      el.appendChild(sel);
-    }
+  const sel = document.createElement("select");
+  sel.style.display = "block";
+  sel.style.marginBottom = "12px";
+  sel.innerHTML =
+    `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
+    Object.keys(dev.attributes)
+      .map(attr =>
+        `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
+      )
+      .join("");
+  sel.onchange = () => {
+    node.data.attribute = sel.value;
+    if (typeof onChange === "function") onChange();
+    editor.updateNodeDataFromId(node.id, node.data);
+    markFlowNeedsSave(true);
+  };
+  el.appendChild(sel);
+}
 
     // 2) Generic comparator picker
     function renderComparatorPicker(el, node, comparators, comparatorLabels, onChange) {
-      const lbl = document.createElement("label");
-      lbl.textContent = "Comparator";
-      lbl.style.display = "block";
-      el.appendChild(lbl);
+  const lbl = document.createElement("label");
+  lbl.textContent = "Comparator";
+  lbl.style.display = "block";
+  el.appendChild(lbl);
 
-      const sel = document.createElement("select");
-      sel.style.display = "block";
-      sel.style.marginBottom = "12px";
-      // inject "(select)" default
-      sel.innerHTML =
-        `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
-        comparators
-          .map(cmp =>
-            `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
-          )
-          .join("");
-      sel.onchange = onChange;
-      markFlowNeedsSave(true);
-      el.appendChild(sel);
-    }
+  const sel = document.createElement("select");
+  sel.style.display = "block";
+  sel.style.marginBottom = "12px";
+  sel.innerHTML =
+    `<option value="" ${!node.data.comparator ? "selected" : ""}>(select)</option>` +
+    comparators
+      .map(cmp =>
+        `<option value="${cmp}" ${node.data.comparator === cmp ? "selected" : ""}>${comparatorLabels[cmp] || cmp}</option>`
+      )
+      .join("");
+  sel.onchange = () => {
+    node.data.comparator = sel.value;
+    if (typeof onChange === "function") onChange();
+    editor.updateNodeDataFromId(node.id, node.data);
+    markFlowNeedsSave(true);
+  };
+  el.appendChild(sel);
+}
 
     function renderValueField(el, node, knownValues, onChange, between = false) {
-      // Prevent duplicate value fields
-      if (el.querySelector('.value-field')) return;
+  // Prevent duplicate value fields
+  if (el.querySelector('.value-field')) return;
 
-      const lbl = document.createElement("label");
-      lbl.textContent = "Value";
-      lbl.style.display = "block";
-      lbl.className = "value-field";
-      el.appendChild(lbl);
+  const lbl = document.createElement("label");
+  lbl.textContent = "Value";
+  lbl.style.display = "block";
+  lbl.className = "value-field";
+  el.appendChild(lbl);
 
-      if (between) {
-        // Two inputs for “between”
-        const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
-        const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
-        const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
-        const upd = () => { node.data.value = [minIn.value, maxIn.value]; onChange(); markFlowNeedsSave(true);};
-        minIn.onchange = maxIn.onchange = upd;
-        minIn.className = maxIn.className = "value-field";
-        el.appendChild(minIn);
-        el.appendChild(maxIn);
-      }
-      else if (knownValues && knownValues.length) {
-        // Use dropdown
-        const sel = document.createElement("select");
-        sel.style.display = "block";
-        sel.style.marginBottom = "12px";
-        sel.className = "value-field";
-        sel.innerHTML =
-          `<option value="" ${!node.data.value ? "selected" : ""}>(select)</option>` +
-          knownValues
-            .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
-            .join("");
-        sel.onchange = () => { 
-          node.data.value = sel.value; 
-          onChange(); 
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(sel);
-      }
-      else {
-        // Fallback: show input for free value if no known values!
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = node.data.value || "";
-        input.placeholder = "Enter value";
-        input.style = "display:block;margin-bottom:12px;width:100%;";
-        input.className = "value-field";
-        input.onchange = () => {
-          node.data.value = input.value;
-          onChange();
-          markFlowNeedsSave(true);
-        };
-        el.appendChild(input);
-      }
-    }
+  if (between) {
+    // Two inputs for “between”
+    const [minVal = "", maxVal = ""] = Array.isArray(node.data.value) ? node.data.value : ["", ""];
+    const minIn = Object.assign(document.createElement("input"), { type: "text", value: minVal, placeholder: "Min", style: "width:45%;margin-right:7px;" });
+    const maxIn = Object.assign(document.createElement("input"), { type: "text", value: maxVal, placeholder: "Max", style: "width:45%;" });
+    const upd = () => {
+      node.data.value = [minIn.value, maxIn.value];
+      if (typeof onChange === "function") onChange();
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    minIn.onchange = maxIn.onchange = upd;
+    minIn.className = maxIn.className = "value-field";
+    el.appendChild(minIn);
+    el.appendChild(maxIn);
+  }
+  else if (knownValues && knownValues.length) {
+    // Use dropdown
+    const sel = document.createElement("select");
+    sel.style.display = "block";
+    sel.style.marginBottom = "12px";
+    sel.className = "value-field";
+    sel.innerHTML =
+      `<option value="" ${!node.data.value ? "selected" : ""}>(select)</option>` +
+      knownValues
+        .map(v => `<option value="${v}" ${node.data.value === v ? "selected" : ""}>${v}</option>`)
+        .join("");
+    sel.onchange = () => { 
+      node.data.value = sel.value; 
+      if (typeof onChange === "function") onChange(); 
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    el.appendChild(sel);
+  }
+  else {
+    // Fallback: free-text input
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = node.data.value || "";
+    input.placeholder = "Enter value";
+    input.style = "display:block;margin-bottom:12px;width:100%;";
+    input.className = "value-field";
+    input.onchange = () => {
+      node.data.value = input.value;
+      if (typeof onChange === "function") onChange();
+      editor.updateNodeDataFromId(node.id, node.data);
+      markFlowNeedsSave(true);
+    };
+    el.appendChild(input);
+  }
+}
 
     function nodeTileHtml(type, data, nodeId) {
       function getCurrentValue(deviceId, attr) {
@@ -1607,22 +1717,41 @@ function markFlowNeedsSave(needed = true) {
         </div>`;
       }
 
+      
+
       if (t === "schedule") {
         const errorStyle = getErrorStyle(type, data);
-        let cron = data.cron || "";
-        let repeatDays = Array.isArray(data.repeatDays) ? data.repeatDays.join(", ") : "";
-        let time = data.time || "";
+        // Collect human summary (like other tiles)
+        const dayMap = {SU:'Sun', MO:'Mon', TU:'Tue', WE:'Wed', TH:'Thu', FR:'Fri', SA:'Sat'};
+        const repeatDaysArr = Array.isArray(data.repeatDays) ? data.repeatDays : [];
+        const repeatDays = repeatDaysArr.map(d => dayMap[d] || d).join(", ");
+        const timesArr = Array.isArray(data.times) ? data.times : (data.time ? [data.time] : []);
+        const times = timesArr.join(", ");
+
+        const subtitle = [repeatDays, times].filter(Boolean).join(" — ");
+
+        // Cron expression (if present)
+        let cron = "";
+        if (data && typeof data.cron === "string" && data.cron.trim()) cron = data.cron.trim();
+        else if (data && data.scheduleSpec && data.scheduleSpec.advanced_cron && data.scheduleSpec.advanced_cron.expression) {
+          cron = String(data.scheduleSpec.advanced_cron.expression);
+        } else if (data && data.scheduleSpec && data.scheduleSpec.preview && Array.isArray(data.scheduleSpec.preview)) {
+          // not a cron but keep last generated expression if present
+          cron = data.scheduleSpec.preview[0] || "";
+        }
+        
         return `<div class="schedule-tile">
-          Schedule<hr>
-          <span style="font-size:11px">
-            ${cron ? "Cron: " + cron + "<br>" : ""}
-            ${repeatDays ? "Repeat: " + repeatDays + "<br>" : ""}
-            ${time ? "Time: " + time : ""}
-          </span>
-          ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
+          Schedule<br>
+            <span style="font-size:11px">
+              <span>Days: ${repeatDays}</span><br>
+              <span>Time: ${times}</span><br>
+              <hr style="margin:4px 0;border-top:1px solid #888;">
+              <span>Cron: ${cron}</span>
+            </span>
+            ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
         </div>`;
       }
-
+    
       if (t === "repeat") {
         const errorStyle = getErrorStyle(type, data);
         const lockedIcon = data.locked
@@ -2037,8 +2166,8 @@ function markFlowNeedsSave(needed = true) {
           let selected = editor.selected_id;
           if (!selected) {
             // If nothing selected, pick the first node in the flow (if any)
-            const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-              ? Object.keys(editor.drawflow.Home.data)
+            const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+              ? Object.keys(getHomeDataFrom(editor))
               : [];
             if (allIds.length) {
               selected = allIds[0];
@@ -2062,7 +2191,9 @@ function markFlowNeedsSave(needed = true) {
         if (appIdEl.value && tokenEl.value) {
           document.getElementById("loadDevices").click();
         }
-      }, 350);
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 350);
 
       window.ATTRIBUTE_KNOWN_VALUES = {
         "contact":        ["open", "closed"],
@@ -3097,163 +3228,6 @@ function markFlowNeedsSave(needed = true) {
           return;
         }
 
-        if (node.name === "schedule") {
-          const el = document.getElementById("nodeEditor");
-          el.innerHTML = "<div style='font-size:18px;font-weight:bold;margin-bottom:8px;'>Schedule Node</div>";
-
-          // --- Cron Preset Dropdown ---
-          const cronPresetLabel = document.createElement("label");
-          cronPresetLabel.textContent = "Quick Cron Presets:";
-          cronPresetLabel.style.display = "block";
-          el.appendChild(cronPresetLabel);
-
-          const cronPresets = [
-            { label: "-- Custom Examples - Change to fit your needs --", value: "" },
-            { label: "Every Minute", value: "* * * * *" },
-            { label: "Every 5 Minutes", value: "*/5 * * * *" },
-            { label: "Every 15 Minutes", value: "*/15 * * * *" },
-            { label: "Every Hour", value: "0 * * * *" },
-            { label: "Every Day at Midnight", value: "0 0 * * *" },
-            { label: "Every Day at 7 AM", value: "0 7 * * *" },
-            { label: "Every Other Day (7 AM)", value: "0 7 */2 * *" },
-            { label: "Every 3rd Day (8 AM)", value: "0 8 */3 * *" },
-            { label: "Every Week (Sunday at 7 AM)", value: "0 7 * * 0" },
-            { label: "Every Month (1st at 7 AM)", value: "0 7 1 * *" },
-            { label: "Every Weekday (Mon-Fri, 7 AM)", value: "0 7 * * 1-5" },
-            { label: "Custom", value: "" }
-          ];
-
-          const cronPresetSelect = document.createElement("select");
-          cronPresetSelect.style.marginBottom = "8px";
-          cronPresets.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p.value;
-            opt.textContent = p.label;
-            cronPresetSelect.appendChild(opt);
-          });
-          cronPresetSelect.value = cronPresets.find(p => p.value === node.data.cron)?.value || "";
-          el.appendChild(cronPresetSelect);
-
-          // --- Cron Expression Input ---
-          const cronLabel = document.createElement("label");
-          cronLabel.textContent = "Or enter a Cron Expression:";
-          cronLabel.style.display = "block";
-          el.appendChild(cronLabel);
-
-          const cronInput = document.createElement("input");
-          cronInput.type = "text";
-          cronInput.value = node.data.cron || "";
-          cronInput.placeholder = "e.g. 0 7 * * 1-5";
-          cronInput.style.display = "block";
-          cronInput.style.marginBottom = "10px";
-          el.appendChild(cronInput);
-
-          // --- Days Multi-select Dropdown ---
-          const repeatLabel = document.createElement("label");
-          repeatLabel.textContent = "Repeat on Days:";
-          repeatLabel.style.display = "block";
-          el.appendChild(repeatLabel);
-
-          const days = [
-            { value: "Sunday", label: "Sunday" },
-            { value: "Monday", label: "Monday" },
-            { value: "Tuesday", label: "Tuesday" },
-            { value: "Wednesday", label: "Wednesday" },
-            { value: "Thursday", label: "Thursday" },
-            { value: "Friday", label: "Friday" },
-            { value: "Saturday", label: "Saturday" }
-          ];
-
-          const selected = Array.isArray(node.data.repeatDays) ? node.data.repeatDays : [];
-
-          const daySelect = document.createElement("select");
-          daySelect.multiple = true;
-          daySelect.size = 7;
-          daySelect.style.display = "block";
-          daySelect.style.marginBottom = "12px";
-
-          days.forEach(day => {
-            const opt = document.createElement("option");
-            opt.value = day.value;
-            opt.textContent = day.label;
-            if (selected.includes(day.value)) opt.selected = true;
-            daySelect.appendChild(opt);
-          });
-          el.appendChild(daySelect);
-
-          // --- Time Picker ---
-          const timeLabel = document.createElement("label");
-          timeLabel.textContent = "Time of Day:";
-          timeLabel.style.display = "block";
-          el.appendChild(timeLabel);
-
-          const timeInput = document.createElement("input");
-          timeInput.type = "time";
-          timeInput.value = node.data.time || "";
-          timeInput.style.display = "block";
-          timeInput.style.marginBottom = "10px";
-          el.appendChild(timeInput);
-
-          // --- Event Handlers ---
-
-          // When selecting a cron preset
-          cronPresetSelect.onchange = () => {
-            if (cronPresetSelect.value !== "") {
-              cronInput.value = cronPresetSelect.value;
-              node.data.cron = cronInput.value;
-
-              // --- CLEAR other schedule fields ---
-              node.data.repeatDays = [];
-              node.data.time = "";
-
-              // Clear multi-select days
-              Array.from(daySelect.options).forEach(opt => opt.selected = false);
-
-              // Clear time input
-              timeInput.value = "";
-
-              editor.updateNodeDataFromId(node.id, node.data);
-              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-              markFlowNeedsSave(true);
-            } else {
-              cronInput.value = node.data.cron || "";
-            }
-          };
-
-          // When typing a cron expression
-          cronInput.oninput = () => {
-            node.data.cron = cronInput.value;
-            cronPresetSelect.value = ""; // Deselect preset
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          // When selecting days
-          daySelect.onchange = () => {
-            node.data.repeatDays = Array.from(daySelect.selectedOptions).map(opt => opt.value);
-            // Clear cron and preset
-            node.data.cron = "";
-            cronInput.value = "";
-            cronPresetSelect.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-
-          // When picking a time
-          timeInput.oninput = () => {
-            node.data.time = timeInput.value;
-            // Clear cron and preset
-            node.data.cron = "";
-            cronInput.value = "";
-            cronPresetSelect.value = "";
-            editor.updateNodeDataFromId(node.id, node.data);
-            editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
-            markFlowNeedsSave(true);
-          };
-        }
-
         if (node.name === "comment") {
           el.innerHTML = `<label>Comment</label>`;
           let textarea = document.createElement("textarea");
@@ -3637,9 +3611,9 @@ function markFlowNeedsSave(needed = true) {
           if (left !== snappedLeft || top !== snappedTop) {
             nodeEl.style.left = snappedLeft + "px";
             nodeEl.style.top = snappedTop + "px";
-            if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data[id]) {
-              editor.drawflow.Home.data[id].pos_x = snappedLeft;
-              editor.drawflow.Home.data[id].pos_y = snappedTop;
+            if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)[id]) {
+              getHomeDataFrom(editor)[id].pos_x = snappedLeft;
+              getHomeDataFrom(editor)[id].pos_y = snappedTop;
             }
             //console.log("SNAPPED NODE " + id + " to (" + snappedLeft + ", " + snappedTop + ")");
           }
@@ -3687,8 +3661,8 @@ function markFlowNeedsSave(needed = true) {
           // Robustly find the Home flow data
           let home = this.drawflow && this.drawflow.Home
             ? this.drawflow.Home
-            : this.drawflow && this.drawflow.drawflow && this.drawflow.drawflow.Home
-              ? this.drawflow.drawflow.Home
+            : this.drawflow && this.drawflow.drawflow && this.drawgetHomeFrom(flow)
+              ? this.drawgetHomeFrom(flow)
               : null;
           if (!home || !home.data) return;
 
@@ -3820,24 +3794,13 @@ function markFlowNeedsSave(needed = true) {
       };
 
       document.getElementById("addSchedule").onclick = function() {
-        logAction("addSchedule button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("schedule", 0, 1, x, y, "schedule", {
-          cron: "",
-          repeatDays: [],
-          time: ""
-        });
-        markFlowNeedsSave(true);
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
+        try {
+          if (window.FE_Scheduler && typeof window.FE_Scheduler.open === "function") {
+            window.FE_Scheduler.open();
+          } else {
+            console.warn("FE_Scheduler not ready");
+          }
+        } catch (e) { console.warn("schedule popup open error", e); }
       };
 
       document.getElementById("addDevice").onclick = () => {
@@ -3847,20 +3810,9 @@ function markFlowNeedsSave(needed = true) {
         const { x, y } = getTopLeftOnScreenCoords();
 
         // 2) Add the Device-Action node at that spot
-        editor.addNode(
-          "device",      // node type
-          1,             // inputs
-          1,             // outputs
-          x, y,          // position
-          "device",      // CSS class
-          {
-            deviceId: "",
-            attribute: "",
-            command: "",
-            value: ""
-          },
-          nodeTileHtml(
-            "device",
+        editor.addNode("device", 1, 1, x, y, "device",
+          {deviceId: "", attribute: "", command: "", value: ""},
+          nodeTileHtml("device",
             { deviceId: "", attribute: "", command: "", value: "" }
           )
         );
@@ -3884,6 +3836,8 @@ function markFlowNeedsSave(needed = true) {
               el.setAttribute('data-node-type', 'device');
             }
           });
+        
+        try{ window.__autoRefresh = false; }catch(_){}
         }, 100);
 
         // 5) Final bookkeeping
@@ -3915,7 +3869,9 @@ function markFlowNeedsSave(needed = true) {
               }
             }
           });
-        }, 100);
+        
+try{ window.__autoRefresh = false; }catch(_){}
+}, 100);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -3954,7 +3910,9 @@ function markFlowNeedsSave(needed = true) {
               }
             }
           });
-        }, 100);
+        
+try{ window.__autoRefresh = false; }catch(_){}
+}, 100);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
@@ -4196,8 +4154,8 @@ function markFlowNeedsSave(needed = true) {
               let selected = editor.selected_id;
               if (!selected) {
                 // If nothing selected, pick the first node in the flow (if any)
-                const allIds = editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data
-                  ? Object.keys(editor.drawflow.Home.data)
+                const allIds = editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)
+                  ? Object.keys(getHomeDataFrom(editor))
                   : [];
                 if (allIds.length) {
                   selected = allIds[0];
@@ -4247,7 +4205,7 @@ function markFlowNeedsSave(needed = true) {
           __fe_stampViewport(flowObj);
           if (window.flowVars?.getLocalVars) flowObj.variables = window.flowVars.getLocalVars();
         } catch (e) {
-          alert("🛑 Failed to export flow:\n" + e);
+          alert("🛑 Failed to export flow:<br>" + e);
           return;
         }
 
@@ -4256,7 +4214,7 @@ function markFlowNeedsSave(needed = true) {
         try {
           payloadText = JSON.stringify({ flowName, ...flowObj }, null, 2);
         } catch (e) {
-          alert("🛑 Flow data could not be serialized to JSON:\n" + e);
+          alert("🛑 Flow data could not be serialized to JSON:<br>" + e);
           return;
         }
 
@@ -4279,7 +4237,7 @@ function markFlowNeedsSave(needed = true) {
             JSON.parse(payloadText);
             logAction(`🔧 Auto‑fixed JSON before upload`, "info");
           } catch (e2) {
-            alert("🛑 Could not auto‑fix JSON:\n" + e2.message);
+            alert("🛑 Could not auto‑fix JSON:<br>" + e2.message);
             return;
           }
         }
@@ -4320,7 +4278,7 @@ function markFlowNeedsSave(needed = true) {
             logAction(`🔁 Re‑uploaded fixed JSON`, "info");
           }
         } catch (e) {
-          alert("⚠️ Could not validate saved JSON:\n" + e);
+          alert("⚠️ Could not validate saved JSON:<br>" + e);
         }
 
         // 9) Clear dirty flag & log success
@@ -4330,7 +4288,9 @@ function markFlowNeedsSave(needed = true) {
 
       // --- Auto device and tile refresh every 5 seconds ---
       setInterval(async () => {
-        // Only run if credentials are filled and devices are loaded
+        
+      try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
+      // Only run if credentials are filled and devices are loaded
         const appIdEl = document.getElementById("hubitatAppId");
         const tokenEl = document.getElementById("hubitatToken");
         if (!(appIdEl && appIdEl.value && tokenEl && tokenEl.value)) return;
@@ -4380,7 +4340,9 @@ function markFlowNeedsSave(needed = true) {
           }, 30);
           //logAction("Tiles auto-refreshed.");
         }
-      }, 5000); // every 5 seconds
+      
+        try{ window.__autoRefresh = false; }catch(_){}
+        }, 5000); // every 5 seconds
 
     });
 
@@ -4650,7 +4612,9 @@ function markFlowNeedsSave(needed = true) {
             }, 10);
           });
         });
-      }, 1000);
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 1000);
 
       // ---- SNAP TO GRID ----
       const SNAP_GRID_SIZE = 20;
@@ -5035,10 +4999,6 @@ logBtn.textContent = "Logging Disabled";
         setTimeout(() => highlightFlowPath(run), delayMs);
       }
 
-      
-
-      
-      
       async function fetchHubitatFileContent(fileName) {
         const appId = document.getElementById("hubitatAppId").value.trim();
         const token = document.getElementById("hubitatToken").value.trim();
@@ -5140,7 +5100,6 @@ logBtn.textContent = "Logging Disabled";
         });
       });
 
-      // Full PATCH: prevent fetch error AND popup - Thanks to WarlockWeary
       // Replace fetchHubitatVarFileContent if it's missing
       if (typeof fetchHubitatVarFileContent !== "function") {
         window.fetchHubitatVarFileContent = async function(filename) {
@@ -5190,7 +5149,7 @@ logBtn.textContent = "Logging Disabled";
               node.outputs = { "output_1": { connections: [] } };
               fix = true;
             }
-          } else if (t === 'condition' || t === 'not' || t === 'and' || t === 'or' || t === 'notmatchingvar') {
+          } else if (t === 'condition' || t === 'notmatchingvar') {
             // 1 input, 2 outputs
             if (Object.keys(node.inputs).length !== 1) {
               node.inputs = { "input_1": { connections: [] } };
@@ -5273,7 +5232,7 @@ logBtn.textContent = "Logging Disabled";
 
         // 2) Strip out any device references
         if (flow?.drawflow?.Home?.data) {
-          Object.values(flow.drawflow.Home.data).forEach(node => {
+          Object.values(getHomeDataFrom(flow)).forEach(node => {
             if (node.data) {
               node.data.deviceId    = "";
               node.data.deviceIds   = [];
@@ -5418,9 +5377,9 @@ logBtn.textContent = "Logging Disabled";
             // Use best label from tile
             const tile = el.querySelector('.trigger-tile, .device-tile, .condition-tile, .logic-node, .comment-node, .timer-tile, .delay-tile, .drawflow_content_node, div');
             if (tile) {
-              txt = tile.textContent.trim().split('\n')[0].substring(0, 6);
+              txt = tile.textContent.trim().split('<br>')[0].substring(0, 6);
             } else {
-              txt = el.textContent.trim().split('\n')[0].substring(0, 6);
+              txt = el.textContent.trim().split('<br>')[0].substring(0, 6);
             }
           } else if (n.data && n.data.label) {
             txt = n.data.label.substring(0, 6);
@@ -5434,8 +5393,8 @@ logBtn.textContent = "Logging Disabled";
 
         function renderMinimap() {
           const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
+          if (!df || !df.Home || !getHomeDataFrom(df)) return;
+          const data = getHomeDataFrom(df);
           const nodes = Object.entries(data);
 
           if (!nodes.length) return;
@@ -5617,8 +5576,8 @@ logBtn.textContent = "Logging Disabled";
 
         document.getElementById(CANVAS_ID).addEventListener('click', function(e){
           const df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
-          if (!df || !df.Home || !df.Home.data) return;
-          const data = df.Home.data;
+          if (!df || !df.Home || !getHomeDataFrom(df)) return;
+          const data = getHomeDataFrom(df);
           const nodes = Object.values(data);
           if (!nodes.length) return;
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -5746,7 +5705,7 @@ logBtn.textContent = "Logging Disabled";
                   baseX: e.clientX,
                   baseY: e.clientY,
                   positions: dragSet.map(id => {
-                    const d = window.editor.drawflow.drawflow.Home.data[id];
+                    const d = window.getHomeDataFrom(editor)[id];
                     return { id, x: d.pos_x, y: d.pos_y };
                   })
                 };
@@ -5768,7 +5727,7 @@ logBtn.textContent = "Logging Disabled";
           dragStart.positions.forEach(pos => {
             const newX = pos.x + dx;
             const newY = pos.y + dy;
-            const data = window.editor.drawflow.drawflow.Home.data[pos.id];
+            const data = window.getHomeDataFrom(editor)[pos.id];
             data.pos_x = newX;
             data.pos_y = newY;
             // Use only Drawflow API for node move & redraw
@@ -5829,8 +5788,8 @@ logBtn.textContent = "Logging Disabled";
         setTimeout(() => {
           // Try to select a remaining node
           let remainingIds = [];
-          if (editor.drawflow && editor.drawflow.Home && editor.drawflow.Home.data) {
-            remainingIds = Object.keys(editor.drawflow.Home.data);
+          if (editor.drawflow && getHomeFrom(editor) && getHomeDataFrom(editor)) {
+            remainingIds = Object.keys(getHomeDataFrom(editor));
           }
           if (remainingIds.length) {
             editor.selected_id = remainingIds[0];
@@ -6483,7 +6442,7 @@ logBtn.textContent = "Logging Disabled";
 
         // 4) Filter to this flow (case-insensitive) and choose the most recent COMPLETED run
         const runs = list.filter(r => String(r.flowFile || '').toLowerCase() === want); // 
-        if (!runs.length) { logAction('No previous runs for this flow.', 'info'); return; }
+        if (!runs.length) { logAction('No previous runs for this editor.', 'info'); return; }
 
         // Most recent by last-step timestamp
         runs.sort((a,b) => {
@@ -6583,9 +6542,6 @@ logBtn.textContent = "Logging Disabled";
         switch (t) {
           // ── Logic & Comment nodes: never error ─────────────────────────────────
           case "donothing":
-          case "and":
-          case "or":
-          case "not":
           case "comment":
             break;
 
@@ -7252,7 +7208,9 @@ document.addEventListener('DOMContentLoaded', function () {
     saveBtn.addEventListener('click', function(){
       try {
         if (saveBtn.disabled) return;
-        setTimeout(function(){ alert('Variable has been added.'); }, 600);
+        setTimeout(function(){ /* alert removed: unified to app message */ 
+try{ window.__autoRefresh = false; }catch(_){}
+}, 600);
       } catch(e){ /* noop */ }
     }, true); // capture so we don't interfere
 
@@ -7572,7 +7530,9 @@ async function pollFlowTraceUntilEnd() {
   if (flowTracePollInterval) clearInterval(flowTracePollInterval);
 
   flowTracePollInterval = setInterval(async () => {
-    try {
+    
+try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
+try {
       const traces = await fetchHubitatFileContent('FE_flowtrace.json');
       const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
       const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
@@ -7606,79 +7566,111 @@ async function pollFlowTraceUntilEnd() {
       clearInterval(flowTracePollInterval);
       flowTracePollInterval = null;
     }
-  }, 500);
+  
+try{ window.__autoRefresh = false; }catch(_){}
+}, 500);
 }
 </script>
-<script>
-// Dock button: move flow to top-left with current zoom preserved
-(function(){
-  function getViewportView() {
-    try {
-      if (typeof window.__fe_getViewportView === "function") {
-        return window.__fe_getViewportView();
+  <script>
+    // Dock button: move flow to top-left with current zoom preserved
+    (function(){
+      function getViewportView() {
+        try {
+          if (typeof window.__fe_getViewportView === "function") {
+            return window.__fe_getViewportView();
+          }
+          var ed = window.editor || {};
+          var z = (typeof ed.zoom === "number") ? ed.zoom :
+                  (typeof ed.zoom_value === "number") ? ed.zoom_value : 1;
+          var x = (typeof ed.canvas_x === "number") ? ed.canvas_x :
+                  (typeof ed.pos_x === "number") ? ed.pos_x : 0;
+          var y = (typeof ed.canvas_y === "number") ? ed.canvas_y :
+                  (typeof ed.pos_y === "number") ? ed.pos_y : 0;
+          return { x: x, y: y, zoom: z };
+        } catch (e) { return { x: 0, y: 0, zoom: 1 }; }
       }
-      var ed = window.editor || {};
-      var z = (typeof ed.zoom === "number") ? ed.zoom :
-              (typeof ed.zoom_value === "number") ? ed.zoom_value : 1;
-      var x = (typeof ed.canvas_x === "number") ? ed.canvas_x :
-              (typeof ed.pos_x === "number") ? ed.pos_x : 0;
-      var y = (typeof ed.canvas_y === "number") ? ed.canvas_y :
-              (typeof ed.pos_y === "number") ? ed.pos_y : 0;
-      return { x: x, y: y, zoom: z };
-    } catch (e) { return { x: 0, y: 0, zoom: 1 }; }
-  }
-  function applyViewportView(view) {
-    try {
-      if (typeof window.__fe_applyViewportView === "function") {
-        window.__fe_applyViewportView(view);
-        return;
+      function applyViewportView(view) {
+        try {
+          if (typeof window.__fe_applyViewportView === "function") {
+            window.__fe_applyViewportView(view);
+            return;
+          }
+          var ed = window.editor || {};
+          var el = ed.precanvas ||
+                  document.querySelector("#drawflow .precanvas") ||
+                  document.querySelector(".precanvas") ||
+                  document.querySelector(".parent-drawflow .precanvas");
+          if (el) {
+            el.style.transformOrigin = "0 0";
+            el.style.transform = "translate(" + view.x + "px, " + view.y + "px) scale(" + view.zoom + ")";
+          }
+          if (typeof ed.canvas_x === "number") ed.canvas_x = view.x;
+          if (typeof ed.canvas_y === "number") ed.canvas_y = view.y;
+          if (typeof ed.pos_x === "number") ed.pos_x = view.x;
+          if (typeof ed.pos_y === "number") ed.pos_y = view.y;
+          if (typeof ed.zoom === "number") ed.zoom = view.zoom;
+          if (typeof ed.zoom_value === "number") ed.zoom_value = view.zoom;
+        } catch (e) {}
       }
-      var ed = window.editor || {};
-      var el = ed.precanvas ||
-               document.querySelector("#drawflow .precanvas") ||
-               document.querySelector(".precanvas") ||
-               document.querySelector(".parent-drawflow .precanvas");
-      if (el) {
-        el.style.transformOrigin = "0 0";
-        el.style.transform = "translate(" + view.x + "px, " + view.y + "px) scale(" + view.zoom + ")";
+      function dockFlowTopLeft(margin) {
+        try {
+          var df = document.getElementById("drawflow");
+          if (!df) return;
+          var nodes = df.querySelectorAll(".drawflow-node");
+          if (!nodes.length) return;
+          var minX = Infinity, minY = Infinity;
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var x = parseFloat(el.style.left) || 0;
+            var y = parseFloat(el.style.top)  || 0;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+          }
+          if (!isFinite(minX) || !isFinite(minY)) return;
+          var view = getViewportView();
+          var z = (view && view.zoom) ? view.zoom : 1;
+          var pad = (typeof margin === "number") ? margin : 20;
+          var xNew = pad - (minX * z);
+          var yNew = pad - (minY * z);
+          applyViewportView({ x: xNew, y: yNew, zoom: z });
+          if (typeof window.markFlowNeedsSave === "function") window.markFlowNeedsSave(true);
+        } catch (e) { if (window.console && console.warn) console.warn("Dock error:", e); }
       }
-      if (typeof ed.canvas_x === "number") ed.canvas_x = view.x;
-      if (typeof ed.canvas_y === "number") ed.canvas_y = view.y;
-      if (typeof ed.pos_x === "number") ed.pos_x = view.x;
-      if (typeof ed.pos_y === "number") ed.pos_y = view.y;
-      if (typeof ed.zoom === "number") ed.zoom = view.zoom;
-      if (typeof ed.zoom_value === "number") ed.zoom_value = view.zoom;
-    } catch (e) {}
-  }
-  function dockFlowTopLeft(margin) {
-    try {
-      var df = document.getElementById("drawflow");
-      if (!df) return;
-      var nodes = df.querySelectorAll(".drawflow-node");
-      if (!nodes.length) return;
-      var minX = Infinity, minY = Infinity;
-      for (var i = 0; i < nodes.length; i++) {
-        var el = nodes[i];
-        var x = parseFloat(el.style.left) || 0;
-        var y = parseFloat(el.style.top)  || 0;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-      }
-      if (!isFinite(minX) || !isFinite(minY)) return;
-      var view = getViewportView();
-      var z = (view && view.zoom) ? view.zoom : 1;
-      var pad = (typeof margin === "number") ? margin : 20;
-      var xNew = pad - (minX * z);
-      var yNew = pad - (minY * z);
-      applyViewportView({ x: xNew, y: yNew, zoom: z });
-      if (typeof window.markFlowNeedsSave === "function") window.markFlowNeedsSave(true);
-    } catch (e) { if (window.console && console.warn) console.warn("Dock error:", e); }
-  }
-  window.dockFlowTopLeft = dockFlowTopLeft;
-  document.addEventListener("DOMContentLoaded", function(){
+      window.dockFlowTopLeft = dockFlowTopLeft;
+      document.addEventListener("DOMContentLoaded", function(){
     var btn = document.getElementById("dockBtn");
     if (btn) btn.addEventListener("click", function(){ dockFlowTopLeft(20); });
-  });
+  
+    // Toggle canvas scrollbars (green = ON, grey = OFF)
+    (function(){
+      var sbtn = document.getElementById('toggleScrollbarsBtn');
+      var canvas = document.getElementById('drawflow');
+      if (!sbtn || !canvas) return;
+
+      function applySB(on){
+        // 1) Toggle overflow
+        canvas.style.setProperty('overflow', on ? 'auto' : 'hidden', 'important');
+        // 2) Button visual state
+        sbtn.style.backgroundColor = on ? '#4CAF50' : '#808080';
+        sbtn.style.color = '#fff';
+        sbtn.title = on ? 'Scrollbars: ON' : 'Scrollbars: OFF';
+        // 3) Persist
+        try { localStorage.setItem('fe_scrollbars_on', on ? '1' : '0'); } catch(_) {}
+      }
+
+      // Initial state (default ON unless storage says '0')
+      var initial = true;
+      try { initial = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_) {}
+      applySB(initial);
+
+      // Click to toggle
+      sbtn.addEventListener('click', function(){
+        var cur = true;
+        try { cur = (localStorage.getItem('fe_scrollbars_on') !== '0'); } catch(_) {}
+        applySB(!cur);
+      });
+    })();
+    });
 })();
 </script>
 
@@ -7727,7 +7719,7 @@ async function pollFlowTraceUntilEnd() {
       }
     } catch (e) {
       try { console.error(e); } catch(_) {}
-      alert('Failed to refresh variables from app:\n' + (e && e.message ? e.message : e));
+      alert('Failed to refresh variables from app:<br>' + (e && e.message ? e.message : e));
     }
   }
 
@@ -7814,7 +7806,7 @@ async function pollFlowTraceUntilEnd() {
       if (typeof window.renderVariableInspector === 'function') window.renderVariableInspector();
     }catch(e){
       try{ console.error(e); }catch(_){}
-      alert('Failed to refresh variables from app:\n' + (e && e.message ? e.message : e));
+      alert('Failed to refresh variables from app:<br>' + (e && e.message ? e.message : e));
     }
   }
 
@@ -7899,6 +7891,1988 @@ async function pollFlowTraceUntilEnd() {
 })();
 </script>
 
+<script>
+
+// === Drag/move hardening override (idempotent) ===
+(function ensureMoveNodeToPatched(){
+  const apply = () => {
+    try {
+      if (!window || !window.editor) return false;
+      if (window.editor && typeof window.editor.moveNodeTo === 'function' && window.editor.moveNodeTo.__patched) return true;
+      const ed = window.editor;
+      const patched = function(id, x, y) {
+        try {
+          // Update internal model
+          const nodes = (typeof getHomeDataFrom === 'function') ? getHomeDataFrom(this || ed) : {};
+          const n = nodes && nodes[id];
+          if (n) {
+            n.pos_x = Number(x)||0;
+            n.pos_y = Number(y)||0;
+          }
+          // Ask the library to update connections if available
+          if (this && typeof this.updateConnectionNodes === 'function') {
+            this.updateConnectionNodes('node-' + id);
+          } else if (ed && typeof ed.updateConnectionNodes === 'function') {
+            ed.updateConnectionNodes('node-' + id);
+          }
+          // If library exposes updateNodePosition, call that too for completeness
+          if (this && typeof this.updateNodePosition === 'function') {
+            try { this.updateNodePosition(id, Number(x)||0, Number(y)||0); } catch(_){}
+          } else if (ed && typeof ed.updateNodePosition === 'function') {
+            try { ed.updateNodePosition(id, Number(x)||0, Number(y)||0); } catch(_){}
+          }
+          // Minimal DOM sync as fallback
+          const el = document.getElementById('node-' + id);
+          if (el) {
+            el.style.left = (Number(x)||0) + 'px';
+            el.style.top = (Number(y)||0) + 'px';
+          }
+          if (typeof markFlowNeedsSave === 'function') markFlowNeedsSave(true);
+        } catch (e) {
+          console.error('moveNodeTo failed:', e);
+        }
+      };
+      patched.__patched = true;
+      ed.moveNodeTo = patched;
+      return true;
+    } catch (_) { return false; }
+  };
+  const t = setInterval(() => { if (apply()) clearInterval(t); }, 25);
+  apply();
+})();</script>
+
+<script>
+// === Save button "red again" fix: suppress dirty marks during and just after Save ===
+(function () {
+  if (window.__saveGuardInstalled) return;
+  window.__saveGuardInstalled = true;
+  window.__suppressDirtyUntil = 0;
+
+  // Wrap markFlowNeedsSave to honor suppression window
+  const _origMark = window.markFlowNeedsSave;
+  window.markFlowNeedsSave = function(needed = true) {
+    if (typeof needed === "undefined") needed = true;
+const now = Date.now();
+const suppressedSave = (window.__suppressDirtyUntil && now < window.__suppressDirtyUntil) ||
+                       (document && document.body && document.body.classList && document.body.classList.contains("is-saving"));
+const suppressedAuto = !!window.__autoRefresh;
+const btn = document.getElementById("sendFlow");
+if (suppressedAuto) {
+  try { if (typeof _origMark === "function") { /* skip during auto */ } } catch (_) {}
+  return;
+}
+if (suppressedSave) needed = false;
+if (btn) {
+  if (needed) btn.classList.add("need-save");
+  else btn.classList.remove("need-save");
+}
+try { if (typeof _origMark === "function" && !suppressedSave) _origMark(needed); } catch (_) {}
+};
+
+  function beginSaveSuppression(ms) {
+    const win = Math.max(900, Math.min(3000, Number(ms)||1700)); // 0.9s..3s
+    window.__suppressDirtyUntil = Date.now() + win;
+    document.body.classList.add("is-saving");
+    setTimeout(() => document.body.classList.remove("is-saving"), win + 100);
+    // Force-clear button at the end of suppression
+    setTimeout(() => {
+      const b = document.getElementById("sendFlow");
+      if (b) b.classList.remove("need-save");
+    }, win + 80);
+  }
+
+  // Attach capture listener so we run BEFORE the app's save handler
+  function attachGuard(){
+    const btn = document.getElementById("sendFlow");
+    if (!btn || btn.__saveGuardAttached) return;
+    btn.__saveGuardAttached = true;
+    btn.addEventListener("click", () => beginSaveSuppression(1800), true);
+  }
+
+  attachGuard();
+  // Re-attach if the toolbar is re-rendered
+  const mo = new MutationObserver(attachGuard);
+  mo.observe(document.documentElement || document.body, {childList: true, subtree: true});
+})();
+</script>
+
+<script>
+// === Dirty-suppression + moveNodeTo connector-safe override (idempotent) ===
+(function(){
+  if (window.__dirtyPatchInstalled) return;
+  window.__dirtyPatchInstalled = true;
+
+  // Global suppression window (used by Save and by auto-refresh nudges)
+  window.__suppressDirtyUntil = window.__suppressDirtyUntil || 0;
+  window.__autoRefresh = window.__autoRefresh || false;
+  window.beginDirtySuppression = function(ms, reason){
+    var win = Math.max(500, Math.min(4000, Number(ms)||1500));
+    window.__suppressDirtyUntil = Date.now() + win;
+    if (reason === "save") document.body.classList.add("is-saving");
+    setTimeout(function(){
+      if (reason === "save") {
+  try { document.body.classList.remove("is-saving"); } catch (_) {}
+  var btn = document.getElementById("sendFlow");
+  if (btn) btn.classList.remove("need-save");
+}
+// Do not clear need-save during interval/auto-refresh.
+}, win + 50);
+  };
+
+  // Wrap markFlowNeedsSave so it respects the suppression window
+  var _origMark = window.markFlowNeedsSave;
+  window.markFlowNeedsSave = function(needed){
+    if (typeof needed === "undefined") needed = true;
+    var suppressed = (Date.now() < (window.__suppressDirtyUntil||0)) ||
+                     document.body.classList.contains("is-saving") ||
+                     !!window.__autoRefresh;
+    var btn = document.getElementById("sendFlow");
+    if (suppressed) needed = false;
+    if (btn) {
+      if (needed) btn.classList.add("need-save");
+      else btn.classList.remove("need-save");
+    }
+    try { if (typeof _origMark === "function" && !suppressed) _origMark(needed); } catch(_){}
+  };
+
+  // Hook Save button so suppression starts BEFORE app's own save handler
+  function attachSaveHook(){
+    var btn = document.getElementById("sendFlow");
+    if (!btn || btn.__dirtyHookAttached) return;
+    btn.__dirtyHookAttached = true;
+    btn.addEventListener("click", function(){ window.beginDirtySuppression(2000, "save"); }, true);
+  }
+  attachSaveHook();
+  var mo = new MutationObserver(attachSaveHook);
+  mo.observe(document.documentElement || document.body, { childList:true, subtree:true });
+
+  // Patch editor.moveNodeTo to update position + lines WITHOUT flipping dirty
+  function patchMove(){
+    try {
+      var ed = window.editor;
+      if (!ed || typeof ed !== "object") return false;
+      if (ed.moveNodeTo && ed.moveNodeTo.__patchedSafe) return true;
+      var patched = function(id, x, y){
+        try {
+          // Update internal model (supports Home under either shape)
+          var h = (window.getHomeDataFrom ? window.getHomeDataFrom(ed) : null) || {};
+          var node = h && h[id];
+          var nx = Number(x)||0, ny = Number(y)||0;
+          if (node) { node.pos_x = nx; node.pos_y = ny; }
+
+          // Minimal DOM sync
+          var el = document.getElementById('node-' + id);
+          if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+
+          // Ask library to re-route connectors if available
+          if (typeof ed.updateConnectionNodes === 'function') {
+            ed.updateConnectionNodes('node-' + id);
+          }
+        } catch(e){ console && console.error && console.error('moveNodeTo (patched) error:', e); }
+      };
+      patched.__patchedSafe = true;
+      ed.moveNodeTo = patched;
+      return true;
+    } catch(_) { return false; }
+  }
+  var t = setInterval(function(){ if (patchMove()) clearInterval(t); }, 30);
+  patchMove();
+})();
+</script>
+
+<!-- BEGIN: Single-alert normalization -->
+<script>
+(function(){
+  try {
+    var prev = window.alert;
+    if (!prev || prev.__feVarMsgPatch) return;
+    function patched(msg){
+      try{
+        if (typeof msg === 'string'){
+          var m = msg.trim().toLowerCase();
+          if (m === 'variable saved') {
+            return prev.call(window, 'Variable has been added.');
+          }
+        }
+      }catch(_){}
+      return prev.apply(window, arguments);
+    }
+    patched.__feVarMsgPatch = true;
+    window.alert = patched;
+  } catch(_){}
+})();
+</script>
+<!-- END: Single-alert normalization -->
+
+<script>
+
+// === Re-open Schedule Trigger editor by double-clicking a Schedule tile ===
+(function attachScheduleDblclick() {
+  try {
+    document.addEventListener('dblclick', function(e) {
+      const tile = e.target.closest && e.target.closest('.schedule-tile');
+      if (!tile) return;
+      const nodeEl = tile.closest('.drawflow-node');
+      if (!nodeEl) return;
+      const idStr = (nodeEl.id || '').replace('node-', '');
+      const nodeId = parseInt(idStr, 10);
+      if (!window.editor || isNaN(nodeId)) return;
+      const node = window.editor.getNodeFromId(nodeId);
+      if (!node || node.name !== 'schedule') return;
+      // Prefer full spec if present, otherwise synthesize from legacy fields
+      const spec = node.data && (node.data.scheduleSpec || {
+        tz: undefined,
+        times: node.data.time ? [node.data.time] : [],
+        byday: Array.isArray(node.data.repeatDays) ? node.data.repeatDays : [],
+        cronText: node.data.cron || ''
+      });
+      if (window.FE_Scheduler && typeof window.FE_Scheduler.open === 'function') {
+        window.FE_Scheduler.open(spec, nodeId);
+      }
+    }, true);
+  } catch (err) {
+    console.warn('Failed to attach dblclick schedule editor:', err);
+  }
+})();
+
+</script>
+
+<!-- Scheduler Modal (single source of truth) -->
+<div id="fe-scheduler-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.45);">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; max-width:92vw; background:#1e1e1e; color:#eee; border:1px solid #555; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div style="padding:10px 14px; border-bottom:1px solid #444; display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-weight:600;">Schedule Trigger</div>
+      <button id="fe-sched-close" style="background:#333;border:0;color:#eee;padding:6px 10px;border-radius:6px;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:12px 14px; max-height:65vh; overflow:auto;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:12px;opacity:0.8;margin-bottom:4px;">Days (choose one or more)</label>
+        <div id="fe-sched-days" style="display:flex; flex-wrap:wrap; gap:8px;">
+          <!-- Days checkboxes injected -->
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" id="fe-sched-time-toggle">
+          <strong>Time</strong><span aria-hidden="true">▾</span>
+        </div>
+        <div id="fe-sched-time-panel" style="margin-top:6px; display:none;">
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input id="fe-sched-time-input" type="time" style="background:#2a2a2a;border:1px solid #555;color:#eee;padding:6px;border-radius:6px;">
+            <button id="fe-sched-time-add" style="background:#2f6fed;border:0;color:white;padding:6px 10px;border-radius:6px;cursor:pointer;">Add</button>
+          </div>
+          <div id="fe-sched-time-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer;" id="fe-sched-skip-toggle">
+          <strong>Skip dates</strong><span aria-hidden="true">▾</span>
+        </div>
+        <div id="fe-sched-skip-panel" style="margin-top:6px; display:none;">
+          <div style="font-size:12px;opacity:0.85;margin-bottom:6px;">(Optional) Dates to skip. Click + to add YYYY-MM-DD items.</div>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input id="fe-sched-skip-input" type="date" style="background:#2a2a2a;border:1px solid #555;color:#eee;padding:6px;border-radius:6px;">
+            <button id="fe-sched-skip-add" style="background:#2f6fed;border:0;color:white;padding:6px 10px;border-radius:6px;cursor:pointer;">Add</button>
+          </div>
+          <div id="fe-sched-skip-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <label style="display:block;font-size:12px;opacity:0.8;margin-bottom:4px;">Cron (auto)</label>
+        <input id="fe-sched-cron" type="text" readonly style="width:100%; background:#2a2a2a;border:1px solid #555;color:#bbb;padding:6px;border-radius:6px;">
+        <div style="font-size:11px;opacity:0.7;margin-top:4px;">Timezone is the hub's location timezone.</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px; border-top:1px solid #444; display:flex; justify-content:flex-end; gap:8px;">
+      <button id="fe-cron-reset" style="background:#333;border:0;color:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;">Reset</button>
+      <button id="fe-sched-cancel" style="background:#333;border:0;color:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;">Cancel</button>
+      <button id="fe-sched-insert" style="background:#3bb273;border:0;color:#102010;padding:8px 12px;border-radius:6px;cursor:pointer;font-weight:600;">Insert Trigger</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Build FE_Scheduler only once
+  if (window.FE_Scheduler && typeof window.FE_Scheduler.open === 'function') return;
+
+  const modal = document.getElementById('fe-scheduler-modal');
+  const daysHost = document.getElementById('fe-sched-days');
+  const timeToggle = document.getElementById('fe-sched-time-toggle');
+  const timePanel  = document.getElementById('fe-sched-time-panel');
+  const timeInput  = document.getElementById('fe-sched-time-input');
+  const timeAdd    = document.getElementById('fe-sched-time-add');
+  const timeList   = document.getElementById('fe-sched-time-list');
+
+  const skipToggle = document.getElementById('fe-sched-skip-toggle');
+  const skipPanel  = document.getElementById('fe-sched-skip-panel');
+  const skipInput  = document.getElementById('fe-sched-skip-input');
+  const skipAdd    = document.getElementById('fe-sched-skip-add');
+  const skipList   = document.getElementById('fe-sched-skip-list');
+
+  const cronEl     = document.getElementById('fe-sched-cron');
+
+  const btnCancel  = document.getElementById('fe-sched-cancel');
+  const btnClose   = document.getElementById('fe-sched-close');
+  const btnInsert  = document.getElementById('fe-sched-insert');
+
+  const DAY_CODES = ['SU','MO','TU','WE','TH','FR','SA'];
+  const DAY_LABEL = {SU:'Sun', MO:'Mon', TU:'Tue', WE:'Wed', TH:'Thu', FR:'Fri', SA:'Sat'};
+
+  function buildDays() {
+    daysHost.innerHTML = '';
+    DAY_CODES.forEach(code => {
+      const id = 'fe-sched-day-' + code;
+      const w = document.createElement('label');
+      w.style.display = 'inline-flex';
+      w.style.alignItems = 'center';
+      w.style.gap = '6px';
+      w.style.border = '1px solid #555';
+      w.style.padding = '6px 8px';
+      w.style.borderRadius = '6px';
+      w.style.cursor = 'pointer';
+      w.innerHTML = '<input type="checkbox" id="'+id+'" data-code="'+code+'"><span>'+DAY_LABEL[code]+'</span>';
+      daysHost.appendChild(w);
+    });
+  }
+
+  function getSelectedDays() {
+    return Array.from(daysHost.querySelectorAll('input[type=checkbox]:checked'))
+      .map(cb => cb.getAttribute('data-code'));
+  }
+
+  function getTimes() {
+    return Array.from(timeList.querySelectorAll('[data-time]')).map(x => x.getAttribute('data-time'));
+  }
+  function getSkipDates() {
+    return Array.from(skipList.querySelectorAll('[data-date]')).map(x => x.getAttribute('data-date'));
+  }
+
+  function badges(host, items, attr) {
+    host.innerHTML = '';
+    items.forEach(val => {
+      const b = document.createElement('span');
+      b.setAttribute(attr, val);
+      b.textContent = val;
+      b.style.background = '#2a2a2a';
+      b.style.border = '1px solid #555';
+      b.style.padding = '4px 8px';
+      b.style.borderRadius = '12px';
+      b.style.fontSize = '12px';
+      b.style.userSelect = 'none';
+      b.style.cursor = 'default';
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.style.marginLeft = '6px';
+      del.style.background = 'transparent';
+      del.style.color = '#999';
+      del.style.border = '0';
+      del.style.cursor = 'pointer';
+      del.onclick = () => { b.remove(); updateCronPreview(); };
+      b.appendChild(del);
+      host.appendChild(b);
+    });
+  }
+
+  function updateCronPreview() {
+    // Very simple generator: if one time -> classic cron. Many times -> show first and indicate +N
+    const days = getSelectedDays();
+    const times = getTimes();
+    if (!times.length) { cronEl.value = ''; return; }
+    const t = times[0]; // HH:MM
+    const [hh, mm] = t.split(':');
+    const dow = days.length ? days.join(',') : '*';
+    // Hubitat uses Quartz cron "sec min hour dom mon dow" -> Use "0 mm HH ? * DOW"
+    const dowForQuartz = days.length ? days.join(',') : '*';
+    const cron = `0 ${mm} ${hh} ? * ${dowForQuartz}`;
+    cronEl.value = cron + (times.length > 1 ? `  (+${times.length-1} more)` : '');
+  }
+
+  timeToggle.onclick = () => {
+    timePanel.style.display = (timePanel.style.display === 'none') ? 'block' : 'none';
+  };
+  skipToggle.onclick = () => {
+    skipPanel.style.display = (skipPanel.style.display === 'none') ? 'block' : 'none';
+  };
+  timeAdd.onclick = () => {
+    if (!timeInput.value) return;
+    const next = Array.from(timeList.querySelectorAll('[data-time]')).map(x => x.getAttribute('data-time'));
+    if (!next.includes(timeInput.value)) next.push(timeInput.value);
+    badges(timeList, next, 'data-time');
+    updateCronPreview();
+  };
+  skipAdd.onclick = () => {
+    if (!skipInput.value) return;
+    const next = Array.from(skipList.querySelectorAll('[data-date]')).map(x => x.getAttribute('data-date'));
+    if (!next.includes(skipInput.value)) next.push(skipInput.value);
+    badges(skipList, next, 'data-date');
+  };
+
+  function show() { modal.style.display = 'block'; }
+  function hide() { modal.style.display = 'none'; }
+
+  // Core: create/update node 
+  async function applyToNode(nodeIdOrNull) {
+    const times = getTimes();
+    const days = getSelectedDays();
+    const skip = getSkipDates();
+    const cron = cronEl.value.replace(/\\s+\\(\\+\\d+ more\\)$/, '').trim();
+
+    const data = {
+      type: 'schedule',
+      // legacy/friendly for tile
+      times: times,
+      repeatDays: days,
+      cron: cron,
+      // canonical spec for app side (no timezone field; hub tz is implied)
+      scheduleSpec: {
+        tz: undefined,
+        times: times,
+        byday: days,
+        skip_dates: skip,
+        advanced_cron: cron ? { expression: cron } : undefined,
+        preview: cron ? [cron] : []
+      }
+    };
+
+    if (!window.editor) return;
+    if (nodeIdOrNull && !isNaN(parseInt(nodeIdOrNull))) {
+      const id = parseInt(nodeIdOrNull);
+      const node = window.editor.getNodeFromId(id);
+      if (node) {
+        node.data = Object.assign({}, node.data || {}, data);
+        window.editor.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+        window.editor.updateNodeDataFromId(id, node.data);
+        markFlowNeedsSave(true);
+      }
+    } else {
+      // Create new node at the "next new node" coords like other add buttons do.
+      const nx = (window.newNodeOffsetX || 0) + 40;
+      const ny = (window.newNodeOffsetY || 0) + 40;
+      window.newNodeOffsetX = nx;
+      window.newNodeOffsetY = ny;
+      const html = nodeTileHtml('schedule', data, 0);
+      if (typeof window.editor?.addNode === 'function') {
+        const id = window.editor.addNode('schedule', 1, 1, nx, ny, 'schedule', data, html);
+        // center nudge fixes canvas line redraw
+        setTimeout(() => {
+          try { window.editor.moveNodeTo(id, nx+1, ny); window.editor.moveNodeTo(id, nx, ny); } catch(e){}
+        }, 20);
+        markFlowNeedsSave(true);
+      }
+    }
+  }
+
+  window.FE_Scheduler = {
+    open: function(spec, nodeId) {
+      // Initialize inputs
+      buildDays();
+      // Preload if editing
+      const d = (spec && typeof spec === 'object') ? spec : {};
+      const times = Array.isArray(d.times) ? d.times : (d.time ? [d.time] : []);
+      const byday = Array.isArray(d.byday) ? d.byday : (Array.isArray(d.repeatDays) ? d.repeatDays : []);
+      const skip  = Array.isArray(d.skip_dates) ? d.skip_dates : [];
+
+      // days
+      byday.forEach(code => {
+        const cb = daysHost.querySelector('input[data-code="'+code+'"]');
+        if (cb) cb.checked = true;
+      });
+      // times
+      badges(timeList, times, 'data-time');
+      // skip dates
+      badges(skipList, skip, 'data-date');
+
+      updateCronPreview();
+      show();
+
+      // Replace Insert label if editing
+      btnInsert.textContent = nodeId ? 'Save' : 'Insert Trigger';
+
+      // Wire once per open
+      btnInsert.onclick = () => { applyToNode(nodeId); hide(); };
+      btnCancel.onclick = btnClose.onclick = () => hide();
+    }
+  };
+})();
+</script>
+<script id="fe-scheduler-enhancer-js">
+// ==== Scheduler Popup Enhancer (inline) ====
+(function(){
+  function qs(s, r=document){ return r.querySelector(s); }
+  function qsa(s, r=document){ return Array.from(r.querySelectorAll(s)); }
+
+  // Utility: wire section headers to toggle bodies
+  function wireSections(root){
+    if(!root) return;
+    // Look for explicit sections first
+    const sections = qsa('.modal-card .section', root);
+    if(sections.length){
+      sections.forEach(sec => {
+        const hd = qs('.sec-hd', sec);
+        if(!hd) return;
+        // Ensure caret exists
+        if(!qs('.caret', hd)){
+          const span = document.createElement('span');
+          span.className = 'caret';
+          span.textContent = '▼';
+          hd.appendChild(span);
+        }
+        hd.addEventListener('click', () => {
+          sec.classList.toggle('open');
+        });
+      });
+      return;
+    }
+    // If no .section blocks found, guess by headings containing "Time" or "Skip Dates"
+    const labels = qsa('.modal-card h3, .modal-card h4, .modal-card .label, .modal-card .row-title', root);
+    labels.forEach(lab => {
+      const txt = (lab.textContent || '').trim().toLowerCase();
+      if(txt === 'time' || txt === 'skip dates' || txt === 'skip date' || txt.includes('time') || txt.includes('skip')){
+        lab.style.cursor = 'pointer';
+        if(!lab.querySelector('.caret')){
+          const c = document.createElement('span');
+          c.className = 'caret';
+          c.textContent = '▼';
+          c.style.marginLeft = '8px';
+          lab.appendChild(c);
+        }
+        const container = lab.closest('.row, .group, .fieldset, .section, .card, .block') || lab.parentElement;
+        const body = container ? (container.querySelector('.sec-bd, .body, .content, .fields, .details')) : null;
+        if(body){
+          container.classList.add('section');
+          (container.querySelector('.sec-hd') || lab).classList.add('sec-hd');
+          body.classList.add('sec-bd');
+          lab.addEventListener('click', () => container.classList.toggle('open'));
+        }
+      }
+    });
+  }
+
+  // Expose a helper to be called whenever the popup is created/shown
+  window.__feEnhanceSchedulerPopup = function(){
+    const root = document.getElementById('feSchedulePopup') || document.getElementById('scheduleModal') || document.getElementById('schedulePopup') || document.getElementById('fe-scheduler-modal');
+    if(!root) return;
+    // Hide timezone rows if any slip through
+    qsa('[data-field="timezone"], .timezone-row, .tz-row', root).forEach(el => el.style.display = 'none');
+    // Wire sections & add carets
+    wireSections(root);
+  };
+
+  // Try to run when DOM is ready and whenever a schedule popup is re-opened
+  document.addEventListener('DOMContentLoaded', () => {
+    // Common custom events — call enhancer when popup opens
+    ['fe:schedule:open','schedule:open','openSchedule','show:schedule'].forEach(evt => {
+      document.addEventListener(evt, () => { try{ window.__feEnhanceSchedulerPopup(); }catch(e){} });
+    });
+    // Also poll briefly after load in case popup was already injected
+    setTimeout(() => { try{ window.__feEnhanceSchedulerPopup(); }catch(e){} }, 500);
+  });
+})();
+
+</script>
+<script>
+// === FE Editor: Self-contained "Schedule Trigger" Cron UI (single-file) ===
+(function(){
+  const DAYS = ["SU","MO","TU","WE","TH","FR","SA"];
+  const DNAME = {SU:"Sun",MO:"Mon",TU:"Tue",WE:"Wed",TH:"Thu",FR:"Fri",SA:"Sat"};
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // ---------- inject modal + styles once ----------
+  function ensureCronModal(){
+    if (document.getElementById('fe-cron-overlay')) return;
+    const css = document.createElement('style');
+    css.id = 'fe-cron-style';
+    css.textContent = `
+#fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
+#fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+#fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
+#fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
+#fe-cron-body{padding:12px 14px}
+.fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.fe-col{display:flex;flex-direction:column;gap:6px}
+.fe-input,.fe-select{background:#1a2124;border:1px solid #3a454a;border-radius:8px;color:#e8f0f2;padding:6px 8px}
+.fe-chip{display:inline-block;border:1px solid #3a454a;background:#141a1d;color:#cde4ec;border-radius:999px;padding:3px 8px;margin:3px 6px 0 0;cursor:pointer;font-size:12px}
+.fe-hr{border:0;border-top:1px dashed #334047;margin:12px 0}
+#fe-cron-footer{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid #2f373b}
+#fe-cron-preview{max-height:120px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#111719;border:1px solid #2a3438;border-radius:8px;padding:8px}
+.fe-btn{cursor:pointer;border:1px solid #3a454a;background:#243037;color:#e8f0f2;padding:8px 12px;border-radius:10px}
+.fe-btn.primary{background:#3b7e9a;border-color:#4aa0c0}
+.fe-badge{display:inline-block;border:1px solid #3a454a;background:#12181b;color:#acd7e6;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+#fe-cron-days label{display:inline-flex;align-items:center;gap:6px;border:1px solid #3a454a;background:#141b1f;border-radius:10px;padding:4px 8px;margin:2px 4px 2px 0;user-select:none}
+#fe-cron-times div{display:flex;align-items:center;gap:6px;margin:4px 0}
+    `;
+    document.head.appendChild(css);
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+<div id="fe-cron-overlay" role="dialog" aria-modal="true" aria-labelledby="fe-cron-title">
+  <div id="fe-cron-modal">
+    <div id="fe-cron-hd">
+      <div><b id="fe-cron-title">Schedule Trigger</b><span id="fe-cron-badges"></span></div>
+      <button class="fe-btn" id="fe-cron-close" title="Close">✕</button>
+    </div>
+
+    <div class="fe-row" style="padding:8px 14px 0 14px;">
+      <div class="fe-col">
+        <label>Skip dates ▾</label>
+        <div class="fe-row">
+          <input id="fe-cron-exc-date" type="date" class="fe-input">
+          <button class="fe-btn" id="fe-cron-exc-add">Add</button>
+          <div id="fe-cron-exc-list" style="align-self:center"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fe-cron-tabs">
+      <button data-tab="quick" class="active">Quick</button>
+      <button data-tab="weekly">Weekly</button>
+      <button data-tab="monthly">Monthly</button>
+      <button data-tab="advanced">Advanced</button>
+    </div>
+
+    <div id="fe-cron-body">
+      <div data-pane="quick">
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-cron-times"></div>
+          <button class="fe-btn" id="fe-cron-add-time">Add time</button>
+        </div>
+        <div class="fe-col">
+          <label>Days</label>
+          <div id="fe-cron-days"></div>
+          <div>
+            <span class="fe-chip" data-preset="weekdays">Weekdays</span>
+            <span class="fe-chip" data-preset="weekends">Weekends</span>
+            <span class="fe-chip" data-preset="everyday">Every day</span>
+          </div>
+        </div>
+      </div>
+
+      <div data-pane="weekly" hidden>
+        <div class="fe-col">
+          <label>Every N weeks</label>
+          <input id="fe-week-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+        </div>
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-week-times"></div>
+          <button class="fe-btn" id="fe-week-add-time">Add time</button>
+        </div>
+        <div class="fe-col">
+          <label>Days</label>
+          <div id="fe-week-days"></div>
+        </div>
+      </div>
+
+      <div data-pane="monthly" hidden>
+        <div class="fe-row">
+          <div class="fe-col">
+            <label>Mode</label>
+            <select id="fe-month-mode" class="fe-select" style="width:220px">
+              <option value="dom">On day(s) of month</option>
+              <option value="nth">On the Nth weekday</option>
+            </select>
+          </div>
+          <div class="fe-col" id="fe-month-dom">
+            <label>Days (e.g. 1,15,-1)</label>
+            <input id="fe-month-days" class="fe-input" placeholder="1,15,-1">
+          </div>
+          <div class="fe-row" id="fe-month-nth" hidden>
+            <div class="fe-col">
+              <label>Nth</label>
+              <select id="fe-month-n" class="fe-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>Last</option></select>
+            </div>
+            <div class="fe-col">
+              <label>Weekday</label>
+              <select id="fe-month-wd" class="fe-select">
+                <option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option>
+                <option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option><option value="SU">Sunday</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="fe-col">
+          <label>Every N months</label>
+          <input id="fe-month-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+        </div>
+        <div class="fe-col">
+          <label>Time(s) ▾</label>
+          <div id="fe-month-times"></div>
+          <button class="fe-btn" id="fe-month-add-time">Add time</button>
+        </div>
+      </div>
+
+      <div data-pane="advanced" hidden>
+        <div class="fe-col">
+          <label>Cron expression</label>
+          <input id="fe-cron-raw" class="fe-input" placeholder="e.g. 0 14 * * 3  (2:00 pm Wednesdays)">
+          <div style="margin-top:6px">
+            <span class="fe-chip" data-cron="*/5 * * * *">Every 5 min</span>
+            <span class="fe-chip" data-cron="0 * * * *">Every hour</span>
+            <span class="fe-chip" data-cron="0 8 * * 1-5">Weekdays 8:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fe-hr"></div>
+      <div class="fe-row">
+        <div class="fe-col" style="flex:1">
+          <label>Preview (next 10)</label>
+          <div id="fe-cron-preview">(changes update live)</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fe-cron-footer">
+      <div><span id="fe-badge-rrule" class="fe-badge"></span><span id="fe-badge-cron" class="fe-badge"></span></div>
+      <div><button class="fe-btn" id="fe-cron-reset">Reset</button><button class="fe-btn" id="fe-cron-cancel">Cancel</button><button class="fe-btn primary" id="fe-cron-insert">Insert Trigger</button></div>
+    </div>
+  </div>
+</div>`;
+    
+// Remember which node this modal is editing
+if (typeof nodeId !== 'undefined') window.currentCronNodeId = nodeId;
+// Restore prior selections for this node
+if (window.currentCronNodeId) restoreScheduleUI(window.currentCronNodeId);
+document.body.appendChild(wrap.firstElementChild);
+  }
+
+  // ---------- helpers ----------
+  function fmtTime12(hhmm){
+    if(!hhmm) return '';
+    const [h,m] = hhmm.split(':').map(x=>parseInt(x,10));
+    const ampm = (h>=12?'PM':'AM');
+    const hr = ((h%12)||12);
+    return `${hr}:${String(m||0).padStart(2,'0')} ${ampm}`;
+  }
+  function daysSummary(list){
+    const set = new Set(list||[]);
+    if (DAYS.every(d=>set.has(d))) return 'Every day';
+    const wk = ['MO','TU','WE','TH','FR']; const we = ['SA','SU'];
+    const isWeekdays = wk.every(d=>set.has(d)) && we.every(d=>!set.has(d));
+    const isWeekends = we.every(d=>set.has(d)) && wk.every(d=>!set.has(d));
+    if (isWeekdays) return 'Weekdays';
+    if (isWeekends) return 'Weekends';
+    const ordered = DAYS.filter(d=>set.has(d)).map(d=>DNAME[d]).join(', ');
+    return ordered || '—';
+  }
+  function buildCronFor(hhmm, byWeekday){
+    // Very basic 5-field cron: m h * * DOW
+    if(!hhmm){ return ''; }
+    const [h,m] = hhmm.split(':');
+    const dow = (byWeekday && byWeekday.length && byWeekday.length<7)
+      ? byWeekday.map(d => ({SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6}[d])).join(',')
+      : '*';
+    return `${parseInt(m,10)} ${parseInt(h,10)} * * ${dow}`;
+  }
+
+  // ---------- UI wiring ----------
+  function fillDays(containerId, sel){
+    const host = document.getElementById(containerId);
+    host.innerHTML = '';
+    DAYS.forEach(d=>{
+      const id = `${containerId}-${d}`;
+      const w = document.createElement('label');
+      w.innerHTML = `<input type="checkbox" id="${id}"> ${DNAME[d]}`;
+      host.appendChild(w);
+      $('#'+id).checked = (sel||[]).includes(d);
+    });
+  }
+  function getDays(containerId){
+    return $$('#'+containerId+' input[type=checkbox]')
+      .filter(i=>i.checked).map(i=>i.id.split('-').pop());
+  }
+  function addTimeRow(hostId, val){
+    const host = document.getElementById(hostId);
+    const div = document.createElement('div');
+    div.innerHTML = `<input type="time" class="fe-input" value="${val||''}"><button class="fe-btn" title="Remove">✕</button>`;
+    host.appendChild(div);
+    div.querySelector('button').onclick = ()=> div.remove();
+  }
+  function getTimes(hostId){
+    return $$('#'+hostId+' input[type=time]').map(i=>i.value).filter(Boolean);
+  }
+  function badges(spec, outCron){
+    $('#fe-badge-rrule').textContent = spec.kind==='advanced_cron' ? '' : 'Cron';
+    $('#fe-badge-cron').textContent = outCron ? ('Cron: '+outCron) : '';
+  }
+
+  // ---------- open/close + read spec ----------
+  function openCron(spec, nodeId){
+    ensureCronModal();
+    const ov = $('#fe-cron-overlay');
+    ov.dataset.nodeId = (nodeId!=null? String(nodeId) : '');
+    // default spec
+    spec = spec || { kind:'quick', by_weekday:["MO","TU","WE","TH","FR"], times:["08:00"] };
+
+    // tabs
+    $$('#fe-cron-tabs button').forEach(b=>{
+      b.onclick = () => {
+        $$('#fe-cron-tabs button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const tab = b.getAttribute('data-tab');
+        $$('#fe-cron-body [data-pane]').forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
+      };
+    });
+
+    // times/days (quick)
+    fillDays('fe-cron-days', spec.by_weekday || []);
+    $('#fe-cron-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-cron-times', t));
+    $('#fe-cron-add-time').onclick = () => addTimeRow('fe-cron-times', '');
+
+    // presets
+    $$('#fe-cron-body [data-preset]').forEach(ch => ch.onclick = ()=>{
+      const k = ch.getAttribute('data-preset');
+      let val = [];
+      if (k==='everyday') val = DAYS.slice();
+      if (k==='weekdays') val = ['MO','TU','WE','TH','FR'];
+      if (k==='weekends') val = ['SA','SU'];
+      fillDays('fe-cron-days', val);
+      refreshPreview();
+    });
+
+    // weekly
+    $('#fe-week-interval').value = (spec.week_interval||1);
+    fillDays('fe-week-days', spec.by_weekday || []);
+    $('#fe-week-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-week-times', t));
+    $('#fe-week-add-time').onclick = ()=> addTimeRow('fe-week-times','');
+
+    // monthly
+    $('#fe-month-mode').value = (spec.month_mode || 'dom');
+    $('#fe-month-days').value = (spec.month_days || '');
+    $('#fe-month-n').value = (spec.month_n || '1');
+    $('#fe-month-wd').value = (spec.month_wd || 'MO');
+    $('#fe-month-interval').value = (spec.month_interval || 1);
+    toggleMonthlyMode();
+    function toggleMonthlyMode(){
+      const mode = $('#fe-month-mode').value;
+      $('#fe-month-dom').hidden = (mode!=='dom');
+      $('#fe-month-nth').hidden = (mode!=='nth');
+      refreshPreview();
+    }
+    $('#fe-month-mode').onchange = toggleMonthlyMode;
+    $('#fe-month-add-time').onclick = ()=> addTimeRow('fe-month-times','');
+    $('#fe-month-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-month-times', t));
+
+    // advanced
+    $('#fe-cron-raw').value = spec.cronText || '';
+    $$('#fe-cron-body [data-cron]').forEach(c=> c.onclick = ()=>{
+      $('#fe-cron-raw').value = c.getAttribute('data-cron');
+      refreshPreview();
+    });
+
+    // exclude dates
+    const excHost = $('#fe-cron-exc-list');
+    excHost.innerHTML='';
+    (spec.exclude_dates||[]).forEach(d=> addExc(d));
+    $('#fe-cron-exc-add').onclick = ()=>{
+      const v = $('#fe-cron-exc-date').value;
+      if (v) addExc(v);
+    };
+    function addExc(v){
+      const s = document.createElement('span');
+      s.className='fe-chip';
+      s.textContent=v;
+      s.title='Remove';
+      s.onclick=()=> s.remove();
+      excHost.appendChild(s);
+    }
+
+    // preview + badges
+    function readSpec(){
+      const activeTab = ($('#fe-cron-tabs .active')||{}).getAttribute && $('#fe-cron-tabs .active').getAttribute('data-tab');
+
+      const out = { kind: activeTab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind = 'advanced_cron';
+        out.cronText = $('#fe-cron-raw').value.trim();
+      } else if (out.kind==='weekly') {
+        out.by_weekday = getDays('fe-week-days');
+        out.times = getTimes('fe-week-times');
+        out.week_interval = Math.max(1, parseInt($('#fe-week-interval').value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = $('#fe-month-mode').value;
+        out.times = getTimes('fe-month-times');
+        out.month_interval = Math.max(1, parseInt($('#fe-month-interval').value||'1',10));
+        if (out.month_mode==='dom') {
+          out.month_days = ($('#fe-month-days').value||'').trim();
+        } else {
+          out.month_n = $('#fe-month-n').value;
+          out.month_wd = $('#fe-month-wd').value;
+        }
+      } else {
+        out.kind = 'quick';
+        out.by_weekday = getDays('fe-cron-days');
+        out.times = getTimes('fe-cron-times');
+      }
+      out.exclude_dates = $$('#fe-cron-exc-list .fe-chip').map(x=>x.textContent);
+      return out;
+    }
+    function refreshPreview(){
+  const s = readSpec();
+  const DOW_MAP = {SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6};
+  const toHM = (t)=>{ const [h,m] = String(t||'08:00').split(':').map(x=>parseInt(x,10)||0); return {h,m}; };
+  const fmt = (d)=>{
+    try{
+      return d.toLocaleString(undefined,{weekday:'short', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit'});
+    }catch(_){ return d.toString(); }
+  };
+  const isExcluded = (d)=>{
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+    const key = `${y}-${m}-${dd}`;
+    return (s.exclude_dates||[]).some(x=>String(x).slice(0,10)===key);
+  };
+  const pushIf = (arr, d)=>{ if (d > new Date() && !isExcluded(d)) arr.push(new Date(d)); };
+
+  let next = [];
+
+  if (s.kind === 'advanced_cron') {
+    const txt = (s.cronText||'').trim();
+    let mm=null, hh=null, dows='*';
+    const parts = txt.split(/\s+/);
+    if (parts.length>=5) { mm = parseInt(parts[0],10); hh = parseInt(parts[1],10); dows = parts[4]||'*'; }
+    const set = new Set();
+    if (dows==='*' || isNaN(mm)||isNaN(hh)) {
+      next = [txt];
+    } else {
+      const addRange=(a,b)=>{ for(let i=a;i<=b;i++) set.add(((i%7)+7)%7); };
+      dows.split(',').forEach(tok=>{
+        if (/^\d+-\d+$/.test(tok)){ const [a,b]=tok.split('-').map(n=>parseInt(n,10)); addRange(a,b); }
+        else if (/^\d+$/.test(tok)){ set.add(parseInt(tok,10)); }
+      });
+      let d = new Date(); d.setSeconds(0,0);
+      for(let i=0; next.length<10 && i<800; i++){
+        if (set.has(d.getDay()) || set.size===0) {
+          const cand = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0);
+          pushIf(next, cand);
+        }
+        d.setDate(d.getDate()+1);
+      }
+      next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+    }
+  } else if (s.kind === 'monthly') {
+    const times = (s.times && s.times.length ? s.times : ['08:00']).map(toHM);
+    const interval = Math.max(1, parseInt(s.month_interval||1,10));
+    let month = new Date(); month.setHours(0,0,0,0);
+    let count = 0;
+    while (next.length<10 && count<24){
+      if ((s.month_mode||'dom') === 'nth') {
+        const nth = (s.month_n||'1');
+        const wd = DOW_MAP[s.month_wd] ?? 1;
+        const first = new Date(month.getFullYear(), month.getMonth(), 1);
+        const day0 = first.getDay();
+        let date = 1 + ((wd - day0 + 7) % 7);
+        if (String(nth).toLowerCase()==='last'){
+          const lastDay = new Date(month.getFullYear(), month.getMonth()+1, 0);
+          const back = ((lastDay.getDay() - wd + 7) % 7);
+          date = lastDay.getDate() - back;
+        } else {
+          const k = parseInt(nth,10)||1;
+          date += 7*(k-1);
+        }
+        times.forEach(t=>pushIf(next, new Date(month.getFullYear(), month.getMonth(), date, t.h, t.m, 0, 0)));
+      } else {
+        const raw = String(s.month_days||'').trim();
+        const days = raw ? raw.split(/\s*,\s*/).filter(Boolean) : [];
+        const last = new Date(month.getFullYear(), month.getMonth()+1, 0).getDate();
+        (days.length?days:[1]).forEach(dv=>{
+          let dd = parseInt(dv,10);
+          if (String(dv).startsWith('-')) dd = last + 1 + dd;
+          if (dd>=1 && dd<=last){
+            times.forEach(t=>pushIf(next, new Date(month.getFullYear(), month.getMonth(), dd, t.h, t.m, 0, 0)));
+          }
+        });
+      }
+      count++;
+      month = new Date(month.getFullYear(), month.getMonth()+interval, 1);
+    }
+    next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+  } else {
+    const by = (s.by_weekday && s.by_weekday.length) ? s.by_weekday : ["SU","MO","TU","WE","TH","FR","SA"];
+    const weekInterval = s.kind==='weekly' ? Math.max(1, parseInt(s.week_interval||1,10)) : 1;
+    const times = (s.times && s.times.length ? s.times : ['08:00']).map(toHM);
+    const now = new Date();
+    const startMonday = new Date(now);
+    const dow = startMonday.getDay();
+    const diffToMon = (dow+6)%7;
+    startMonday.setDate(startMonday.getDate()-diffToMon);
+    startMonday.setHours(0,0,0,0);
+    let d = new Date(startMonday);
+    for (let days=0; next.length<10 && days<365; days++){
+      const thisWeekIndex = Math.floor((d - startMonday)/(7*24*3600*1000));
+      const weekOk = (thisWeekIndex % weekInterval)===0;
+      const code = Object.keys(DOW_MAP).find(k=>DOW_MAP[k]===d.getDay());
+      if (weekOk && by.includes(code)){
+        times.forEach(t=>pushIf(next, new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.h, t.m, 0, 0)));
+      }
+      d.setDate(d.getDate()+1);
+    }
+    next = next.sort((a,b)=>a-b).slice(0,10).map(fmt);
+  }
+
+  const host = document.getElementById('fe-cron-preview');
+  if (Array.isArray(next)) {
+    host.innerHTML = next.length ? next.join('<br>') : '(no upcoming times in range)';
+  } else {
+    host.textContent = next || '';
+  }
+  badges(s, (typeof s.cronText==='string' && s.cronText.trim()) ? s.cronText.trim() : '');
+}
+
+    // events
+    $('#fe-cron-close').onclick = ()=> $('#fe-cron-overlay').style.display='none';
+    $('#fe-cron-cancel').onclick = ()=> $('#fe-cron-overlay').style.display='none';
+    $$('#fe-cron-body input, #fe-cron-body select').forEach(el=> el.oninput = refreshPreview);
+
+    // show modal
+    $('#fe-cron-overlay').style.display='block';
+    refreshPreview();
+  }
+
+  // expose & wiring
+  const API = {
+    open: openCron,
+    getSpec: function(){ /* used during insert */ return null; }
+  };
+  window.FE_Cron = API;
+
+  // Intercept toolbar "Schedule Trigger" so it opens the popup (no auto-node)
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('#addSchedule');
+    if (!b) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+    // new node via Insert; here we just open UI with defaults
+    openCron(null, null);
+  }, true);
+
+  // Double-click schedule node to edit
+  document.addEventListener('DOMContentLoaded', function(){
+    ensureCronModal();
+    const df = document.getElementById('drawflow');
+    if (!df || df.__fe_sched_dbl) return;
+    df.__fe_sched_dbl = true;
+    df.addEventListener('dblclick', function(e){
+      const nodeEl = e.target && e.target.closest ? e.target.closest('.drawflow-node') : null;
+      if(!nodeEl) return;
+      const id = (nodeEl.id||'').replace('node-','');
+      if(!id || !window.editor) return;
+      try{
+        const n = window.editor.getNodeFromId(id);
+        if (!n || (n.name||'').toLowerCase()!=='schedule') return;
+        // Pre-fill from existing
+        const spec = (n.data && n.data.scheduleSpec) ? n.data.scheduleSpec : null;
+        openCron(spec||null, parseInt(id,10));
+      }catch(_){}
+    });
+  });
+
+  // Insert Trigger: add or update node + sticky tile content
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest && e.target.closest('#fe-cron-insert');
+    if (!btn) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+
+    const ov = document.getElementById('fe-cron-overlay');
+    // read spec from UI
+    function readSpecForSave(){
+      const active = ($('#fe-cron-tabs .active')||{}).getAttribute && $('#fe-cron-tabs .active').getAttribute('data-tab');
+      // reuse reader from openCron scope by rebuilding minimal spec:
+      // (We re-query fields directly to keep it self-contained.)
+      const out = { kind: active||'quick' };
+      if (out.kind==='advanced') {
+        out.kind='advanced_cron';
+        out.cronText = ($('#fe-cron-raw')||{}).value || '';
+        out.times = [];
+        out.by_weekday = [];
+      } else if (out.kind==='weekly') {
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-week-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-week-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.week_interval = Math.max(1, parseInt(($('#fe-week-interval')||{}).value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = ($('#fe-month-mode')||{}).value || 'dom';
+        out.times = Array.from(document.querySelectorAll('#fe-month-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.month_interval = Math.max(1, parseInt(($('#fe-month-interval')||{}).value||'1',10));
+        if (out.month_mode==='dom') out.month_days = ($('#fe-month-days')||{}).value || '';
+        else { out.month_n = ($('#fe-month-n')||{}).value || '1'; out.month_wd = ($('#fe-month-wd')||{}).value || 'MO'; }
+      } else {
+        out.kind='quick';
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-cron-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-cron-times input[type=time]')).map(i=>i.value).filter(Boolean);
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      // build simple cron(s)
+      const by = (out.by_weekday && out.by_weekday.length) ? out.by_weekday : DAYS.slice();
+      const times = out.times && out.times.length ? out.times : ['08:00'];
+      const cronList = (out.kind==='advanced_cron') ? [out.cronText||''] : times.map(t=>buildCronFor(t, by));
+      out.cronText = cronList.join(' • ');
+      return out;
+    }
+
+    const spec = readSpecForSave();
+    const by = (spec.by_weekday && spec.by_weekday.length) ? spec.by_weekday : DAYS.slice();
+    const times = spec.times && spec.times.length ? spec.times : ['08:00'];
+
+    // prepare tile data
+    const tileData = {
+      cron: spec.cronText || '',
+      repeatDays: by,
+      time: times[0] || '',
+      scheduleSpec: spec
+    };
+
+    // update existing or add new
+    if (ov && ov.dataset && ov.dataset.nodeId) {
+      const id = parseInt(ov.dataset.nodeId,10);
+      try{
+        const ed = window.editor;
+        const node = ed && ed.getNodeFromId ? ed.getNodeFromId(id) : null;
+        if (node) {
+          node.data = Object.assign({}, node.data, tileData);
+          if (typeof ed.updateNodeHtmlFromId === 'function') {
+            ed.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+          }
+        }
+              if (typeof ed.updateNodeDataFromId === 'function') { ed.updateNodeDataFromId(id, node.data); }
+        }catch(_){}
+    } else {
+      try {
+        const ed = window.editor;
+        // center-ish position
+        const vp = ed.precanvas.getBoundingClientRect();
+        const x = (ed.canvas_x * -1) + vp.width/2 - 90;
+        const y = (ed.canvas_y * -1) + vp.height/2 - 40;
+        ed.addNode('schedule', 0, 1, x, y, 'schedule', tileData);
+      } catch(_){}
+    }
+
+    try{ window.markFlowNeedsSave && window.markFlowNeedsSave(true); }catch(_){}
+    if (ov) ov.style.display='none';
+  });
+
+  // ---------- Tile rendering (sticky across refresh) ----------
+  (function installNodeTileHtmlOverride(){
+    const orig = window.nodeTileHtml;
+    function scheduleTileHtml(data){
+      const daysTxt = daysSummary((data && data.scheduleSpec && data.scheduleSpec.by_weekday) || (data && data.repeatDays) || []);
+      const timesArr = (data && data.scheduleSpec && data.scheduleSpec.times) || (data && data.times) || [];
+      const timeTxt = (timesArr.length ? timesArr.map(fmtTime12).join(', ') : (data && data.time ? fmtTime12(data.time) : '—'));
+      const cronTxt = (data && data.scheduleSpec && data.scheduleSpec.cronText) || (data && data.cron) || '';
+      return `
+        <div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>
+        <div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">
+          <div>Days: ${daysTxt}</div>
+          <div>Time: ${timeTxt}</div>
+        </div>
+        <div style="border-top:1px solid #3a454a;margin:8px 0"></div>
+        <div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">${cronTxt||''}</div>
+      `;
+    }
+    window.nodeTileHtml = function(name, data, id){
+      if ((name||'').toLowerCase()==='schedule') return scheduleTileHtml(data||{});
+      if (typeof orig === 'function') return orig(name, data, id);
+      // generic fallback
+      return `<div style="font-weight:600">${name||'Node'}</div>`;
+    };
+  })();
+
+  // Ensure any legacy timezone rows in other popups are hidden and caret-y sections get wired (if present)
+  document.addEventListener('DOMContentLoaded', function(){
+    // If your file had an enhancer, keep the behavior: hide timezone + add carets
+    try{
+      const root = document.getElementById('feSchedulePopup') || document.getElementById('scheduleModal') || document.getElementById('schedulePopup') || document.getElementById('fe-scheduler-modal');
+      if (root){
+        root.querySelectorAll('[data-field="timezone"], .timezone-row, .tz-row').forEach(el => el.style.display='none');
+      }
+    }catch(_){}
+  });
+})();
+</script>
+
+<!-- BEGIN_FE_CRON_ONLY -->
+<script>
+// Single-file Cron-based Schedule Trigger UI for FE Editor
+(function(){
+  const DAYS = ["SU","MO","TU","WE","TH","FR","SA"];
+  const DNAME = {SU:"Sun",MO:"Mon",TU:"Tue",WE:"Wed",TH:"Thu",FR:"Fri",SA:"Sat"};
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  function ensureCronModal(){
+    if (document.getElementById('fe-cron-overlay')) return;
+    const css = document.createElement('style');
+    css.id = 'fe-cron-style';
+    css.textContent = `#fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
+#fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+#fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
+#fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
+#fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
+#fe-cron-body{padding:12px 14px}.fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}.fe-col{display:flex;flex-direction:column;gap:6px}
+.fe-input,.fe-select{background:#1a2124;border:1px solid #3a454a;border-radius:8px;color:#e8f0f2;padding:6px 8px}
+.fe-chip{display:inline-block;border:1px solid #3a454a;background:#141a1d;color:#cde4ec;border-radius:999px;padding:3px 8px;margin:3px 6px 0 0;cursor:pointer;font-size:12px}
+.fe-hr{border:0;border-top:1px dashed #334047;margin:12px 0}
+#fe-cron-footer{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid #2f373b}
+#fe-cron-preview{max-height:120px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#111719;border:1px solid #2a3438;border-radius:8px;padding:8px}
+.fe-btn{cursor:pointer;border:1px solid #3a454a;background:#243037;color:#e8f0f2;padding:8px 12px;border-radius:10px}.fe-btn.primary{background:#3b7e9a;border-color:#4aa0c0}
+.fe-badge{display:inline-block;border:1px solid #3a454a;background:#12181b;color:#acd7e6;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+#fe-cron-days label{display:inline-flex;align-items:center;gap:6px;border:1px solid #3a454a;background:#141b1f;border-radius:10px;padding:4px 8px;margin:2px 4px 2px 0;user-select:none}
+#fe-cron-times div{display:flex;align-items:center;gap:6px;margin:4px 0}`;
+    document.head.appendChild(css);
+
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+    <div id="fe-cron-overlay" role="dialog" aria-modal="true" aria-labelledby="fe-cron-title">
+      <div id="fe-cron-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <b id="fe-cron-title">Schedule Trigger</b>
+          <div>
+            <button id="fe-cron-reset"
+                    style="margin-right:8px; padding:6px 14px; border-radius:7px; cursor:pointer;">
+              Reset
+            </button>
+            <button id="fe-cron-cancel"
+                    style="margin-right:8px; padding:6px 14px; border-radius:7px; cursor:pointer;">
+              Cancel
+            </button>
+            <button id="fe-cron-insert"
+                    style="padding:6px 14px; border-radius:7px; background:#3498db; color:#fff; cursor:pointer;">
+              Insert Trigger
+            </button>
+          </div>
+        </div>
+
+        <div class="fe-row" style="padding:8px 14px 0 14px;">
+          <div class="fe-col">
+            <label>Skip dates ▾</label>
+            <div class="fe-row">
+              <input id="fe-cron-exc-date" type="date" class="fe-input">
+              <button class="fe-btn" id="fe-cron-exc-add">Add</button>
+              <div id="fe-cron-exc-list" style="align-self:center"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="fe-cron-tabs">
+          <button data-tab="quick" class="active">Quick</button>
+          <button data-tab="weekly">Weekly</button>
+          <button data-tab="monthly">Monthly</button>
+          <button data-tab="advanced">Advanced</button>
+        </div>
+
+        <div id="fe-cron-body">
+          <div data-pane="quick">
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-cron-times"></div>
+              <button class="fe-btn" id="fe-cron-add-time">Add time</button>
+            </div>
+            <div class="fe-col">
+              <label>Days</label>
+              <div id="fe-cron-days"></div>
+              <div>
+                <span class="fe-chip" data-preset="weekdays">Weekdays</span>
+                <span class="fe-chip" data-preset="weekends">Weekends</span>
+                <span class="fe-chip" data-preset="everyday">Every day</span>
+              </div>
+            </div>
+          </div>
+
+          <div data-pane="weekly" hidden>
+            <div class="fe-col">
+              <label>Every N weeks</label>
+              <input id="fe-week-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+            </div>
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-week-times"></div>
+              <button class="fe-btn" id="fe-week-add-time">Add time</button>
+            </div>
+            <div class="fe-col">
+              <label>Days</label>
+              <div id="fe-week-days"></div>
+            </div>
+          </div>
+
+          <div data-pane="monthly" hidden>
+            <div class="fe-row">
+              <div class="fe-col">
+                <label>Mode</label>
+                <select id="fe-month-mode" class="fe-select" style="width:220px">
+                  <option value="dom">On day(s) of month</option>
+                  <option value="nth">On the Nth weekday</option>
+                </select>
+              </div>
+              <div class="fe-col" id="fe-month-dom">
+                <label>Days (e.g. 1,15,-1)</label>
+                <input id="fe-month-days" class="fe-input" placeholder="1,15,-1">
+              </div>
+              <div class="fe-row" id="fe-month-nth" hidden>
+                <div class="fe-col">
+                  <label>Nth</label>
+                  <select id="fe-month-n" class="fe-select"><option>1</option><option>2</option><option>3</option><option>4</option><option>Last</option></select>
+                </div>
+                <div class="fe-col">
+                  <label>Weekday</label>
+                  <select id="fe-month-wd" class="fe-select">
+                    <option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option>
+                    <option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option><option value="SU">Sunday</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="fe-col">
+              <label>Every N months</label>
+              <input id="fe-month-interval" type="number" min="1" class="fe-input" style="width:100px" value="1">
+            </div>
+            <div class="fe-col">
+              <label>Time(s) ▾</label>
+              <div id="fe-month-times"></div>
+              <button class="fe-btn" id="fe-month-add-time">Add time</button>
+            </div>
+          </div>
+
+          <div data-pane="advanced" hidden>
+            <div class="fe-col">
+              <label>Cron expression</label>
+              <input id="fe-cron-raw" class="fe-input" placeholder="e.g. 0 14 * * 3  (2:00 pm Wednesdays)">
+              <div style="margin-top:6px">
+                <span class="fe-chip" data-cron="*/5 * * * *">Every 5 min</span>
+                <span class="fe-chip" data-cron="0 * * * *">Every hour</span>
+                <span class="fe-chip" data-cron="0 8 * * 1-5">Weekdays 8:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fe-hr"></div>
+          <div class="fe-row">
+            <div class="fe-col" style="flex:1">
+              <label>Preview (next 10)</label>
+              <div id="fe-cron-preview">(changes update live)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+// Remember which node this modal is editing
+if (typeof nodeId !== 'undefined') window.currentCronNodeId = nodeId;
+// Restore prior selections for this node
+if (window.currentCronNodeId) restoreScheduleUI(window.currentCronNodeId);
+document.body.appendChild(wrap.firstElementChild);
+  }
+
+  function fmtTime12(hhmm){
+    if(!hhmm) return '';
+    const [h,m] = hhmm.split(':').map(x=>parseInt(x,10));
+    const ampm = (h>=12?'PM':'AM');
+    const hr = ((h%12)||12);
+    return `${hr}:${String(m||0).padStart(2,'0')} ${ampm}`;
+  }
+  function daysSummary(list){
+    const set = new Set(list||[]);
+    if (DAYS.every(d=>set.has(d))) return 'Every day';
+    const wk = ['MO','TU','WE','TH','FR']; const we = ['SA','SU'];
+    const isWeekdays = wk.every(d=>set.has(d)) && we.every(d=>!set.has(d));
+    const isWeekends = we.every(d=>set.has(d)) && wk.every(d=>!set.has(d));
+    if (isWeekdays) return 'Weekdays';
+    if (isWeekends) return 'Weekends';
+    const ordered = DAYS.filter(d=>set.has(d)).map(d=>DNAME[d]).join(', ');
+    return ordered || '—';
+  }
+  function buildCronFor(hhmm, byWeekday){
+    if(!hhmm){ return ''; }
+    const [h,m] = hhmm.split(':');
+    const dow = (byWeekday && byWeekday.length && byWeekday.length<7)
+      ? byWeekday.map(d => ({SU:0,MO:1,TU:2,WE:3,TH:4,FR:5,SA:6}[d])).join(',')
+      : '*';
+    return `${parseInt(m,10)} ${parseInt(h,10)} * * ${dow}`;
+  }
+  function fillDays(containerId, sel){
+    const host = document.getElementById(containerId);
+    host.innerHTML = '';
+    DAYS.forEach(d=>{
+      const id = `${containerId}-${d}`;
+      const w = document.createElement('label');
+      w.innerHTML = `<input type="checkbox" id="${id}"> ${DNAME[d]}`;
+      host.appendChild(w);
+      document.getElementById(id).checked = (sel||[]).includes(d);
+    });
+  }
+  function getDays(containerId){
+    return Array.from(document.querySelectorAll('#'+containerId+' input[type=checkbox]'))
+      .filter(i=>i.checked).map(i=>i.id.split('-').pop());
+  }
+  function addTimeRow(hostId, val){
+    const host = document.getElementById(hostId);
+    const div = document.createElement('div');
+    div.innerHTML = `<input type="time" class="fe-input" value="${val||''}"><button class="fe-btn" title="Remove">✕</button>`;
+    host.appendChild(div);
+    div.querySelector('button').onclick = ()=> div.remove();
+  }
+  function getTimes(hostId){
+    return Array.from(document.querySelectorAll('#'+hostId+' input[type=time]')).map(i=>i.value).filter(Boolean);
+  }
+  function badges(spec, outCron){
+    const b1 = document.getElementById('fe-badge-rrule'), b2 = document.getElementById('fe-badge-cron');
+    if (b1) b1.textContent = spec.kind==='advanced_cron' ? '' : 'Cron';
+    if (b2) b2.textContent = outCron ? ('Cron: '+outCron) : '';
+  }
+
+  function openCron(spec, nodeId){
+    ensureCronModal();
+    const ov = document.getElementById('fe-cron-overlay');
+    ov.dataset.nodeId = (nodeId!=null? String(nodeId) : '');
+    spec = spec || { kind:'quick', by_weekday:["MO","TU","WE","TH","FR"], times:["08:00"] };
+
+    // Tabs
+    Array.from(document.querySelectorAll('#fe-cron-tabs button')).forEach(b=>{
+      b.onclick = () => {
+        Array.from(document.querySelectorAll('#fe-cron-tabs button')).forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const tab = b.getAttribute('data-tab');
+        Array.from(document.querySelectorAll('#fe-cron-body [data-pane]')).forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
+      };
+    });
+
+    // Quick
+    fillDays('fe-cron-days', spec.by_weekday || []);
+    document.getElementById('fe-cron-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-cron-times', t));
+    document.getElementById('fe-cron-add-time').onclick = () => addTimeRow('fe-cron-times', '');
+
+    // Presets
+    Array.from(document.querySelectorAll('#fe-cron-body [data-preset]')).forEach(ch => ch.onclick = ()=>{
+      const k = ch.getAttribute('data-preset');
+      let val = [];
+      if (k==='everyday') val = DAYS.slice();
+      if (k==='weekdays') val = ['MO','TU','WE','TH','FR'];
+      if (k==='weekends') val = ['SA','SU'];
+      fillDays('fe-cron-days', val);
+      refreshPreview();
+    });
+
+    // Weekly
+    document.getElementById('fe-week-interval').value = (spec.week_interval||1);
+    fillDays('fe-week-days', spec.by_weekday || []);
+    document.getElementById('fe-week-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-week-times', t));
+    document.getElementById('fe-week-add-time').onclick = ()=> addTimeRow('fe-week-times','');
+
+    // Monthly
+    document.getElementById('fe-month-mode').value = (spec.month_mode || 'dom');
+    document.getElementById('fe-month-days').value = (spec.month_days || '');
+    document.getElementById('fe-month-n').value = (spec.month_n || '1');
+    document.getElementById('fe-month-wd').value = (spec.month_wd || 'MO');
+    document.getElementById('fe-month-interval').value = (spec.month_interval || 1);
+    const toggleMonthlyMode = () => {
+      const mode = document.getElementById('fe-month-mode').value;
+      document.getElementById('fe-month-dom').hidden = (mode!=='dom');
+      document.getElementById('fe-month-nth').hidden = (mode!=='nth');
+      refreshPreview();
+    };
+    document.getElementById('fe-month-mode').onchange = toggleMonthlyMode;
+    toggleMonthlyMode();
+    document.getElementById('fe-month-add-time').onclick = ()=> addTimeRow('fe-month-times','');
+    document.getElementById('fe-month-times').innerHTML='';
+    (spec.times||['08:00']).forEach(t=>addTimeRow('fe-month-times', t));
+
+    // Advanced
+    const cronRaw = document.getElementById('fe-cron-raw');
+    cronRaw.value = spec.cronText || '';
+    Array.from(document.querySelectorAll('#fe-cron-body [data-cron]')).forEach(c=> c.onclick = ()=>{
+      cronRaw.value = c.getAttribute('data-cron');
+      refreshPreview();
+    });
+
+    // Exclude dates
+    const excHost = document.getElementById('fe-cron-exc-list');
+    excHost.innerHTML='';
+    (spec.exclude_dates||[]).forEach(d=> addExc(d));
+    document.getElementById('fe-cron-exc-add').onclick = ()=>{
+      const v = document.getElementById('fe-cron-exc-date').value;
+      if (v) addExc(v);
+    };
+    function addExc(v){
+      const s = document.createElement('span');
+      s.className='fe-chip';
+      s.textContent=v;
+      s.title='Remove';
+      s.onclick=()=> s.remove();
+      excHost.appendChild(s);
+    }
+
+    function readSpec(){
+      const activeBtn = document.querySelector('#fe-cron-tabs .active');
+      const tab = activeBtn && activeBtn.getAttribute('data-tab');
+      const out = { kind: tab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind = 'advanced_cron';
+        out.cronText = (cronRaw.value||'').trim();
+      } else if (out.kind==='weekly') {
+        out.by_weekday = getDays('fe-week-days');
+        out.times = getTimes('fe-week-times');
+        out.week_interval = Math.max(1, parseInt((document.getElementById('fe-week-interval').value||'1'),10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = document.getElementById('fe-month-mode').value;
+        out.times = getTimes('fe-month-times');
+        out.month_interval = Math.max(1, parseInt((document.getElementById('fe-month-interval').value||'1'),10));
+        if (out.month_mode==='dom') {
+          out.month_days = (document.getElementById('fe-month-days').value||'').trim();
+        } else {
+          out.month_n = document.getElementById('fe-month-n').value;
+          out.month_wd = document.getElementById('fe-month-wd').value;
+        }
+      } else {
+        out.kind = 'quick';
+        out.by_weekday = getDays('fe-cron-days');
+        out.times = getTimes('fe-cron-times');
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      return out;
+    }
+    
+
+    document.getElementById('fe-cron-close').onclick = ()=> document.getElementById('fe-cron-overlay').style.display='none';
+    document.getElementById('fe-cron-cancel').onclick = ()=> document.getElementById('fe-cron-overlay').style.display='none';
+    Array.from(document.querySelectorAll('#fe-cron-body input, #fe-cron-body select')).forEach(el=> el.oninput = refreshPreview);
+
+    document.getElementById('fe-cron-overlay').style.display='block';
+    refreshPreview();
+  }
+
+  // Public API
+  window.FE_CRON = { open: openCron };
+
+  // Remove legacy popups in DOM at runtime (if present)
+  document.addEventListener('DOMContentLoaded', function(){
+    ['feSchedulePopup','schedulePopup','scheduleModal'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    // Hide timezone rows anywhere
+    document.querySelectorAll('[data-field="timezone"], .timezone-row, .tz-row').forEach(el => el.style.display='none');
+  });
+
+  // Toolbar "Schedule" opens the new popup (no auto-node)
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('#addSchedule');
+    if (!b) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+    openCron(null, null);
+  }, true);
+
+  // Double-click schedule node to edit
+  document.addEventListener('DOMContentLoaded', function(){
+    ensureCronModal();
+    const df = document.getElementById('drawflow');
+    if (!df || df.__fe_sched_dbl) return;
+    df.__fe_sched_dbl = true;
+    df.addEventListener('dblclick', function(e){
+      const nodeEl = e.target && e.target.closest ? e.target.closest('.drawflow-node') : null;
+      if(!nodeEl) return;
+      const id = (nodeEl.id||'').replace('node-','');
+      if(!id || !window.editor) return;
+      try{
+        const n = window.editor.getNodeFromId(id);
+        if (!n || (n.name||'').toLowerCase()!=='schedule') return;
+        const spec = (n.data && n.data.scheduleSpec) ? n.data.scheduleSpec : null;
+        openCron(spec||null, parseInt(id,10));
+      }catch(_){}
+    });
+  });
+
+  // Insert Trigger: add or update node + sticky tile content
+  document.addEventListener('click', function(e){
+    const btn = e.target && e.target.closest && e.target.closest('#fe-cron-insert');
+    if (!btn) return;
+    try{ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); }catch(_){}
+
+    const ov = document.getElementById('fe-cron-overlay');
+    function readSpecForSave(){
+      const activeBtn = document.querySelector('#fe-cron-tabs .active');
+      const tab = activeBtn && activeBtn.getAttribute('data-tab');
+      const out = { kind: tab||'quick' };
+      if (out.kind==='advanced') {
+        out.kind='advanced_cron';
+        out.cronText = (document.getElementById('fe-cron-raw')||{}).value || '';
+        out.times = []; out.by_weekday = [];
+      } else if (out.kind==='weekly') {
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-week-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-week-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.week_interval = Math.max(1, parseInt((document.getElementById('fe-week-interval')||{}).value||'1',10));
+      } else if (out.kind==='monthly') {
+        out.month_mode = (document.getElementById('fe-month-mode')||{}).value || 'dom';
+        out.times = Array.from(document.querySelectorAll('#fe-month-times input[type=time]')).map(i=>i.value).filter(Boolean);
+        out.month_interval = Math.max(1, parseInt((document.getElementById('fe-month-interval')||{}).value||'1',10));
+        if (out.month_mode==='dom') out.month_days = (document.getElementById('fe-month-days')||{}).value || '';
+        else { out.month_n = (document.getElementById('fe-month-n')||{}).value || '1'; out.month_wd = (document.getElementById('fe-month-wd')||{}).value || 'MO'; }
+      } else {
+        out.kind='quick';
+        out.by_weekday = Array.from(document.querySelectorAll('#fe-cron-days input:checked')).map(i=>i.id.split('-').pop());
+        out.times = Array.from(document.querySelectorAll('#fe-cron-times input[type=time]')).map(i=>i.value).filter(Boolean);
+      }
+      out.exclude_dates = Array.from(document.querySelectorAll('#fe-cron-exc-list .fe-chip')).map(x=>x.textContent);
+      const by = (out.by_weekday && out.by_weekday.length) ? out.by_weekday : DAYS.slice();
+      const times = out.times && out.times.length ? out.times : ['08:00'];
+      const cronList = (out.kind==='advanced_cron') ? [out.cronText||''] : times.map(t=>buildCronFor(t, by));
+      out.cronText = cronList.join(' • ');
+      return out;
+    }
+
+    const spec = readSpecForSave();
+    const by = (spec.by_weekday && spec.by_weekday.length) ? spec.by_weekday : DAYS.slice();
+    const times = spec.times && spec.times.length ? spec.times : ['08:00'];
+
+    const tileData = {
+      cron: spec.cronText || '',
+      repeatDays: by,
+      time: times[0] || '',
+      scheduleSpec: spec
+    };
+
+    if (ov && ov.dataset && ov.dataset.nodeId) {
+      const id = parseInt(ov.dataset.nodeId,10);
+      try{
+        const ed = window.editor;
+        const node = ed && ed.getNodeFromId ? ed.getNodeFromId(id) : null;
+        if (node) {
+          node.data = Object.assign({}, node.data, tileData);
+          if (typeof ed.updateNodeHtmlFromId === 'function') {
+            ed.updateNodeHtmlFromId(id, nodeTileHtml('schedule', node.data, id));
+          }
+        }
+              if (typeof ed.updateNodeDataFromId === 'function') { ed.updateNodeDataFromId(id, node.data); }
+        }catch(_){}
+    } else {
+      try {
+        const ed = window.editor;
+        const vp = ed.precanvas.getBoundingClientRect();
+        const x = (ed.canvas_x * -1) + vp.width/2 - 90;
+        const y = (ed.canvas_y * -1) + vp.height/2 - 40;
+        ed.addNode('schedule', 0, 1, x, y, 'schedule', tileData);
+      } catch(_){}
+    }
+
+    try{ window.markFlowNeedsSave && window.markFlowNeedsSave(true); }catch(_){}
+    document.getElementById('fe-cron-overlay').style.display='none';
+  });
+
+  // Tile rendering override (only schedule)
+  (function installNodeTileHtmlOverride(){
+    const orig = window.nodeTileHtml;
+    function scheduleTileHtml(data){
+      const daysTxt = daysSummary((data && data.scheduleSpec && data.scheduleSpec.by_weekday) || (data && data.repeatDays) || []);
+      const timesArr = (data && data.scheduleSpec && data.scheduleSpec.times) || (data && data.times) || [];
+      const timeTxt = (timesArr.length ? timesArr.map(fmtTime12).join(', ') : (data && data.time ? fmtTime12(data.time) : '—'));
+      const cronTxt = (data && data.scheduleSpec && data.scheduleSpec.cronText) || (data && data.cron) || '';
+      return `
+        <div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>
+        <div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">
+          <div>Days: ${daysTxt}</div>
+          <div>Time: ${timeTxt}</div>
+        </div>
+        <div style="border-top:1px solid #3a454a;margin:8px 0"></div>
+        <div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">${cronTxt||''}</div>
+      `;
+    }
+    window.nodeTileHtml = function(name, data, id){
+      if ((name||'').toLowerCase()==='schedule') return scheduleTileHtml(data||{});
+      if (typeof orig === 'function') return orig(name, data, id);
+      return `<div style="font-weight:600">${name||'Node'}</div>`;
+    };
+  })();
+
+  // Back-compat: route any old callers
+  window.openSchedulePopup = function(nodeId){
+    openCron(null, nodeId || null);
+  };
+})();
+</script>
+<!-- END_FE_CRON_ONLY -->
+
+
+<!-- === Injected: Schedule tile expanded summary === -->
+<script>
+(function(){
+  // Helper: 24h "HH:MM" -> "h:MM AM/PM"
+  function __fmtTime12(t){
+    try {
+      if (!t) return "—";
+      // Already looks like 12h? Return as-is.
+      if (/am|pm/i.test(t)) return t.replace(/\s+/g,' ').toUpperCase();
+      const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return t;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12; if (h === 0) h = 12;
+      return h + ":" + min + " " + ampm;
+    } catch(_) { return t; }
+  }
+
+  // Render an expanded summary for the Schedule node
+  window.scheduleTileHtml = function scheduleTileHtml(data){
+    const spec = (data && data.scheduleSpec) || {};
+    const kind = String(spec.kind || data.kind || 'quick').toLowerCase();
+
+    const by = (spec.by_weekday && spec.by_weekday.length ? spec.by_weekday
+              : (Array.isArray(data.repeatDays) ? data.repeatDays : [])) || [];
+
+    const timesArr = (Array.isArray(spec.times) && spec.times.length ? spec.times
+                   : (Array.isArray(data.times) && data.times.length ? data.times
+                   : (data.time ? [data.time] : [])));
+
+    const cronTxt = spec.cronText || data.cronText || data.cron || '';
+
+    const DNAME = {SU:"Sun", MO:"Mon", TU:"Tue", WE:"Wed", TH:"Thu", FR:"Fri", SA:"Sat"};
+    const WD_FULL = {SU:"Sunday", MO:"Monday", TU:"Tuesday", WE:"Wednesday", TH:"Thursday", FR:"Friday", SA:"Saturday"};
+
+    function commaList(arr){ return (arr||[]).filter(Boolean).join(', '); }
+
+    function daysTxt(){
+      try {
+        if (typeof daysSummary === 'function') return daysSummary(by || []);
+      } catch(_){}
+      if (!by || !by.length) return "—";
+      return by.map(d => DNAME[d] || d).join(', ');
+    }
+
+    function timesTxt(){
+      if (!timesArr || !timesArr.length) return "—";
+      return timesArr.map(t => (typeof fmtTime12 === 'function' ? fmtTime12(t) : __fmtTime12(t))).join(', ');
+    }
+
+    const lines = [];
+    if (kind === 'advanced_cron' || kind === 'cron') {
+      lines.push('<div>Mode: Advanced</div>');
+    } else if (kind === 'weekly') {
+      const every = Number(spec.week_interval || data.week_interval || 1);
+      lines.push('<div>Mode: Weekly (every ' + every + ' week' + (every===1?'':'s') + ')</div>');
+      lines.push('<div>Days: ' + daysTxt() + '</div>');
+    } else if (kind === 'monthly') {
+      const nMonths = Number(spec.month_interval || data.month_interval || 1);
+      lines.push('<div>Mode: Monthly (every ' + nMonths + ' month' + (nMonths===1?'':'s') + ')</div>');
+      const mode = (spec.month_mode || data.month_mode || 'dom'); // dom or nthweekday
+      if (mode === 'dom') {
+        const md = (spec.month_days != null ? spec.month_days : data.month_days);
+        const mdText = (Array.isArray(md) ? md.join(', ') : (md || '')).toString().trim() || '—';
+        lines.push('<div>On day(s): ' + mdText + '</div>');
+      } else {
+        const nth = (spec.month_n || data.month_n || '1');
+        const wd  = (WD_FULL[spec.month_wd] || WD_FULL[data.month_wd]) || spec.month_wd || data.month_wd || 'Monday';
+        lines.push('<div>On: ' + nth + ' ' + wd + '</div>');
+      }
+    } else {
+      // quick (default)
+      lines.push('<div>Mode: Quick</div>');
+      lines.push('<div>Days: ' + daysTxt() + '</div>');
+    }
+
+    // Times shown for all non-advanced modes
+    if (!(kind === 'advanced_cron' || kind === 'cron')) {
+      lines.push('<div>Time' + ((timesArr && timesArr.length>1)?'s':'') + ': ' + timesTxt() + '</div>');
+    }
+
+    // Exclusions
+    const ex = Array.isArray(spec.exclude_dates) ? spec.exclude_dates : (Array.isArray(data.exclude_dates) ? data.exclude_dates : []);
+    if (ex.length) {
+      const preview = ex.length <= 3 ? commaList(ex) : (ex.slice(0,3).join(', ') + ', +' + (ex.length-3) + ' more');
+      lines.push('<div>Skip: ' + preview + '</div>');
+    }
+
+    return (
+      '<div class="tile-title" style="font-weight:600;margin-bottom:4px">Schedule</div>' +
+      '<div class="tile-sub" style="font-size:12px;opacity:.9;line-height:1.35">' +
+        lines.join('') +
+      '</div>' +
+      '<div style="border-top:1px solid #ffffff;margin:8px 0;opacity:.7"></div>' +
+      '<div class="tile-cron" style="font-family:ui-monospace,Consolas,monospace;font-size:12px;opacity:.95">' + (cronTxt || '') + '</div>'
+    );
+  };
+
+  // Wrap nodeTileHtml to route Schedule tiles to our renderer
+  function __installWrapper(){
+    if (typeof window.nodeTileHtml !== 'function') return false;
+    if (window.__nodeTileWrapped) return true;
+    const __orig = window.nodeTileHtml;
+    window.nodeTileHtml = function(type, data, nodeId){
+      try {
+        const t = String(type || '').toLowerCase();
+        if (t === 'schedule' || t.indexOf('schedule') !== -1) {
+          return window.scheduleTileHtml(data || {});
+        }
+      } catch(_) {}
+      return __orig(type, data, nodeId);
+    };
+    window.__nodeTileWrapped = true;
+    return true;
+  }
+
+  if (!__installWrapper()) {
+    const iv = setInterval(function(){ if(__installWrapper()) clearInterval(iv); }, 50);
+    setTimeout(function(){ try{ clearInterval(iv);}catch(_){}} , 4000);
+  }
+})();
+</script>
+<!-- === /Injected: Schedule tile expanded summary === -->
+<script>
+// === Preserve Active Cron Tab ===
+(function(){
+  const tabButtons = document.querySelectorAll('#fe-cron-tabs button');
+  if (tabButtons.length) {
+    // Restore last active
+    const lastTab = localStorage.getItem('feCronActiveTab') || 'quick';
+    tabButtons.forEach(btn => {
+      const pane = document.querySelector(`[data-pane="${btn.dataset.tab}"]`);
+      if (btn.dataset.tab === lastTab) {
+        btn.classList.add('active');
+        if (pane) pane.hidden = false;
+      } else {
+        btn.classList.remove('active');
+        if (pane) pane.hidden = true;
+      }
+      btn.addEventListener('click', () => {
+        localStorage.setItem('feCronActiveTab', btn.dataset.tab);
+      });
+    });
+  }
+})();
+
+
+// === Schedule Trigger persistence helpers ===
+function saveScheduleNode(nodeId, patch = {}) {
+  try {
+    const node = editor.getNodeFromId(nodeId);
+    if (!node) return;
+    node.data = node.data || {};
+    Object.assign(node.data, patch);
+    // mark dirty so Save button turns red
+    if (typeof window.markDirty === "function") { window.markDirty(); }
+  } catch(e){ console.error("[Schedule] saveScheduleNode error:", e); }
+}
+
+// Apply saved values from node.data back into the modal UI
+function restoreScheduleUI(nodeId) {
+  try {
+    const node = editor.getNodeFromId(nodeId);
+    if (!node) return;
+    const d = node.data || {};
+    // active tab
+    const tabs = document.querySelectorAll('#fe-cron-tabs button');
+    const panes = document.querySelectorAll('#fe-cron-body [data-pane]');
+    const active = d.activeTab || 'quick';
+    tabs.forEach(btn => {
+      const on = (btn.dataset.tab === active);
+      btn.classList.toggle('active', on);
+      const pane = document.querySelector(`[data-pane="${btn.dataset.tab}"]`);
+      if (pane) pane.hidden = !on;
+    });
+    // cron raw
+    if (d.cron) {
+      const raw = document.getElementById('fe-cron-raw');
+      if (raw) raw.value = d.cron;
+    }
+    // quick times
+    if (Array.isArray(d.quickTimes)) {
+      const wrap = document.getElementById('fe-cron-times');
+      if (wrap) {
+        wrap.innerHTML = '';
+        d.quickTimes.forEach(t => {
+          const inp = document.createElement('input');
+          inp.type = 'time';
+          inp.className = 'fe-input';
+          inp.value = t;
+          wrap.appendChild(inp);
+        });
+      }
+    }
+    // quick days
+    if (Array.isArray(d.quickDays)) {
+      const daysWrap = document.getElementById('fe-cron-days');
+      if (daysWrap) {
+        daysWrap.querySelectorAll('[data-day]').forEach(el => {
+          el.classList.toggle('active', d.quickDays.includes(el.dataset.day));
+        });
+      }
+    }
+    // weekly interval / times / days
+    const wInt = document.getElementById('fe-week-interval');
+    if (wInt && d.weekInterval) wInt.value = d.weekInterval;
+    if (Array.isArray(d.weekTimes)) {
+      const wTimes = document.getElementById('fe-week-times');
+      if (wTimes) {
+        wTimes.innerHTML = '';
+        d.weekTimes.forEach(t => {
+          const inp = document.createElement('input');
+          inp.type = 'time'; inp.className='fe-input'; inp.value = t;
+          wTimes.appendChild(inp);
+        });
+      }
+    }
+    if (Array.isArray(d.weekDays)) {
+      const wDays = document.getElementById('fe-week-days');
+      if (wDays) {
+        wDays.querySelectorAll('[data-day]').forEach(el => {
+          el.classList.toggle('active', d.weekDays.includes(el.dataset.day));
+        });
+      }
+    }
+    // monthly
+    if (d.monthMode) {
+      const mm = document.getElementById('fe-month-mode');
+      if (mm) mm.value = d.monthMode;
+    }
+    if (d.monthDays) {
+      const md = document.getElementById('fe-month-days');
+      if (md) md.value = d.monthDays;
+    }
+    if (d.monthNth) {
+      const mn = document.getElementById('fe-month-n');
+      if (mn) mn.value = d.monthNth;
+    }
+    if (d.monthWd) {
+      const mw = document.getElementById('fe-month-wd');
+      if (mw) mw.value = d.monthWd;
+    }
+    if (d.monthInterval) {
+      const mi = document.getElementById('fe-month-interval');
+      if (mi) mi.value = d.monthInterval;
+    }
+    // skip dates
+    if (Array.isArray(d.skipDates)) {
+      const list = document.getElementById('fe-cron-exc-list');
+      if (list) {
+        list.innerHTML = d.skipDates.map(s => `<span class="fe-chip">${s}</span>`).join(' ');
+      }
+    }
+    // preview
+    if (d.previewHtml) {
+      const prev = document.getElementById('fe-cron-preview');
+      if (prev) prev.innerHTML = d.previewHtml;
+    }
+  } catch(e){ console.error("[Schedule] restoreScheduleUI error:", e); }
+}
+
+
+// Persist active tab per-node
+document.addEventListener("click", (e)=>{
+  const btn = e.target.closest && e.target.closest('#fe-cron-tabs button');
+  if (!btn) return;
+  const activeNodeId = window.currentCronNodeId;
+  if (!activeNodeId) return;
+  saveScheduleNode(activeNodeId, { activeTab: btn.dataset.tab });
+});
+
+</script>
 </body>
 </html>
 <!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
@@ -8091,7 +10065,9 @@ async function pollFlowTraceUntilEnd() {
       vm.__savePoll = setInterval(function(){
         var fx2 = findControls(vm);
         if (fx2 && fx2.saveBtn) setBtnStyle(fx2.saveBtn, evaluateReady(fx2));
-      }, 400);
+      
+try{ window.__autoRefresh = false; }catch(_){}
+}, 400);
     }
   }
 
@@ -8109,6 +10085,7 @@ async function pollFlowTraceUntilEnd() {
   else install();
   window.addEventListener('load', function(){ setTimeout(install, 200); });
 })();
+
+
 </script>
 <!-- END: Variable Manager Save Button Enforcer -->
-
