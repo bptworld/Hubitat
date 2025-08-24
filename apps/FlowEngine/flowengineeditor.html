@@ -34,42 +34,7 @@ if (typeof hasHomeData !== 'function') {
 }
 
 
-    (async function ensureHubitatCredentials() {
-      // 1) Load saved or prompt until we have non-empty values
-      let appId = localStorage.getItem('hubitatAppId') || '';
-      let token = localStorage.getItem('hubitatToken') || '';
-      while (!appId) {
-        appId = prompt('Enter your Hubitat App ID (from the One app):');
-      }
-      while (!token) {
-        token = prompt('Enter your Hubitat Access Token (from the One app):');
-      }
-
-      // 2) Save and pre-fill the inputs when they exist
-      localStorage.setItem('hubitatAppId', appId.trim());
-      localStorage.setItem('hubitatToken', token.trim());
-      document.addEventListener('DOMContentLoaded', () => {
-        const a = document.getElementById('hubitatAppId');
-        const t = document.getElementById('hubitatToken');
-        if (a) a.value = appId.trim();
-        if (t) t.value = token.trim();
-      });
-
-      // 3) Test the credentials by calling listFiles once
-      try {
-        const res = await fetch(`/apps/api/${appId}/listFiles?access_token=${token}`);
-        if (!res.ok) throw new Error();
-      } catch (e) {
-        // Bad App ID or Token: clear and restart
-        localStorage.removeItem('hubitatAppId');
-        localStorage.removeItem('hubitatToken');
-        alert('Hubitat credentials invalid. You will be prompted again.');
-        location.reload();
-        return;
-      }
-      // If we reach here, credentials are good and parsing continues…
-    })();
-  
+    /* legacy popup removed */
 document.addEventListener('click', function(e){
   const resetBtn = e.target && e.target.closest ? e.target.closest('#fe-cron-reset') : null;
   if (!resetBtn) return;
@@ -127,14 +92,23 @@ document.addEventListener('click', function(e){
 <body>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('hubitatAppId').value = window.hubitatAppId;
-      document.getElementById('hubitatToken').value = window.hubitatToken;
-    });
-  </script>
+  try {
+    const a = (localStorage.getItem('hubitatAppId') || '').trim();
+    const t = (localStorage.getItem('hubitatToken') || '').trim();
+    const ai = document.getElementById('hubitatAppId');
+    const ti = document.getElementById('hubitatToken');
+    if (ai) ai.value = a;
+    if (ti) ti.value = t;
+    if (typeof updateHubitatButtonStates === 'function') {
+      updateHubitatButtonStates();
+    }
+  } catch (_){}
+});
+</script>
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.054</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.055</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -2528,6 +2502,16 @@ try{ window.__autoRefresh = false; }catch(_){}
       }
 
       window.renderEditor = function renderEditor(node) {
+        // If this is a Schedule node, show a message in the Node Editor instead of opening any popup
+        if (node && (node.type === 'schedule' || node.name === 'schedule' || node.title === 'Schedule Trigger' || node.label === 'Schedule')) {
+          const msg = `<div style="margin:12px 8px;padding:10px;border:1px dashed #888;border-radius:8px;font-size:14px;line-height:1.4;">
+            <b>Double-click Tile to open Schedule Editor</b>
+          </div>`;
+          // ensure header exists, then append message
+          nodeEditor.innerHTML += msg;
+          return;
+        }
+
         const panel = document.getElementById("nodeEditor");
         if (panel) panel.style.display = '';
         if (!node) {
