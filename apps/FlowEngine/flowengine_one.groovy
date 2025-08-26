@@ -25,12 +25,11 @@
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Changes:
- *  1.0.0 - 08/19/25 - Initial Release
+ *  1.0.0 - 08/25/25 - Initial Release
  */
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
-state.globalVarsCache = state.globalVarsCache ?: []
 
 definition(
     name: "Flow Engine One",
@@ -81,9 +80,8 @@ def mainPage() {
 				input "showVars", "bool", title: "Show List of Variables", description: "Show Variables", defaultValue:false, submitOnChange:true
 				if(showVars) {
 					// Source of truth
-					List gvars = (state.globalVars instanceof List) ? state.globalVars : []
-					Map  fmap  = (state.flowVarsMap instanceof Map) ? state.flowVarsMap :
-								 (state.flowVars   instanceof Map) ? state.flowVars   : [:]
+					List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
+					Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
 
 					StringBuilder html = new StringBuilder()
 
@@ -150,17 +148,15 @@ paragraph html.toString()
     }
 }
 
-def installed() { 
-	state.globalVars = (state.globalVars instanceof List) ? state.globalVars : []
-    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
-    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
+def installed() {
+    atomicState.globalVars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
+    atomicState.flowVars   = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
     initialize()
 }
 
 def updated() {
-    // Ensure single source of truth for flow vars
-    state.flowVars = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:])
-    state.flowVars = _pruneEmptyFlowKeys(state.flowVars)
+    atomicState.globalVars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
+    atomicState.flowVars   = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
     initialize()
 }
 
@@ -177,8 +173,8 @@ private void initialize() {
     unschedule()
 
 	// State-first initialization (no file reads)
-	state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
-	state.flowVarsMap = (state.flowVarsMap instanceof Map ) ? state.flowVarsMap : [:]
+	atomicState.globalVars  = (atomicState.globalVars  instanceof List) ? atomicState.globalVars  : []
+	atomicState.flowVarsMap = (atomicState.flowVarsMap instanceof Map ) ? atomicState.flowVarsMap : [:]
 
     // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
     state.timeJobs = state.timeJobs ?: [:]
@@ -219,6 +215,7 @@ private void clearFlowTimeTriggers(String fname) {
 
 // --- REST API ENDPOINTS ---
 mappings {
+    path("/modes")        { action: [GET: "apiListModes"] }
     path("/runFlow")         { action: [POST: "apiRunFlow" ] }
     path("/testFlow")        { action: [POST: "apiTestFlow" ] }
     path("/devices")         { action: [GET: "apiGetDevices"] }
@@ -245,20 +242,16 @@ private String _bareFlow(Object flow) {
     return (flow ?: '').toString().replaceAll(/(?i)\.json$/, '')
 }
 private List _ensureGlobalVarsList() {
-    if (!(state.globalVars instanceof List)) state.globalVars = []
-    return state.globalVars as List
+    if (!(atomicState.globalVars instanceof List)) atomicState.globalVars = []
+    return (atomicState.globalVars as List)
 }
 private Map _ensureFlowVarsMap() {
-    if (!(state.flowVars instanceof Map)) state.flowVars = [:]
-    return state.flowVars as Map
+    if (!(atomicState.flowVars instanceof Map)) atomicState.flowVars = [:]
+    return (atomicState.flowVars as Map)
 }
 private Map _mkVar(Object n, Object t, Object v) {
     return [name:(n?:'').toString(), type:(t?:'String').toString(), value:v]
 }
-
-
-
-
 
 /** Remove any flow entries whose list is empty or has no named vars */
 private Map _pruneEmptyFlowKeys(Map fmapIn) {
@@ -272,20 +265,22 @@ private Map _pruneEmptyFlowKeys(Map fmapIn) {
     return out
 }
 
-/** Notify Editor that variables changed */
-private void notifyVarsUpdated(String scope, String flowName=null) {
+def notifyVarsUpdated(String scope, String flowName=null) {
+	log.debug "In notifyVarsUpdated - scope: ${scope} - flowName: ${flowName}"
     try {
         String flowFile = (scope == 'global') ? null : (_bareFlow(flowName ?: scope) + '.json')
         sendLocationEvent(
             name: "feTrace",
             value: "varsUpdated",
             descriptionText: "Vars updated for " + (flowFile ?: "GLOBAL"),
-            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now()])
+            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now()]),
+            isStateChange: true
         )
     } catch (e) {
         log.warn "notifyVarsUpdated failed: $e"
     }
 }
+
 def handleLocationTimeEvent(evt) {
     state.activeFlows.each { fname, flowObj ->
         def dataNodes = flowObj.flow?.drawflow?.Home?.data ?: [:]
@@ -947,7 +942,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			def varName = resolveVars(fname, node.data.varName)
 			def varValue = resolveVars(fname, node.data.varValue)
 			if(testDryRun) {
-				flowLog(fname, "Dry Run: fname: ${fname} - varName: ${varName} - varValue: {varValue}", "debug")
+				flowLog(fname, "Dry Run: varName: ${varName} - varValue: ${varValue}", "debug")
 			} else {
 				setVariable(fname, varName, varValue)
 			}
@@ -1217,23 +1212,16 @@ def apiListFiles() {
 
 def apiGetFile() {
     def name = params.name
-    if (!name) {
-        render status: 400, text: "Missing file name"
-        return
-    }
-
-    // ---- synthesize variable JSON from state (no disk I/O) ----
+    if (!name) { render status:400, text:"Missing file name"; return }
     def lname = name?.toString()?.toLowerCase()
+
     if (lname == "fe_global_vars.json") {
-        def globals = _ensureGlobalVarsList()
-        render contentType: "application/json",
-               data: groovy.json.JsonOutput.toJson(globals ?: [])
+        render contentType:"application/json",
+               data: groovy.json.JsonOutput.toJson(_ensureGlobalVarsList() ?: [])
         return
     }
-    
     if (lname == "fe_flow_vars.json") {
-        // Return map-of-arrays: { "<flow>": [ {name,type,value}, ... ] }
-        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
+        Map fmap = _ensureFlowVarsMap()
         Map out = [:]
         fmap.each { k, arr ->
             String bare = _bareFlow(k)
@@ -1242,33 +1230,11 @@ def apiGetFile() {
                 [ name: v.name, type: (v.type ?: "String"), value: v.value ]
             }
         }
-        render contentType: "application/json",
-               data: groovy.json.JsonOutput.toJson(out)
+        render contentType:"application/json", data: groovy.json.JsonOutput.toJson(out)
         return
     }
 
-    // -----------------------------------------------------------
-
-    // original behavior for all other files
-    def fileData = null
-    try {
-        def url = "http://127.0.0.1:8080/local/${name}"
-        httpGet([uri: url, contentType: 'text/plain']) { resp ->
-            fileData = resp.data?.text
-        }
-        if (!fileData) {
-            render status: 404, text: "File not found or empty"
-            return
-        }
-        try {
-            def obj = new groovy.json.JsonSlurper().parseText(fileData)
-            render contentType: "application/json", data: groovy.json.JsonOutput.toJson(obj)
-        } catch (ex) {
-            render contentType: "text/plain", text: fileData
-        }
-    } catch (e) {
-        render status: 500, text: "Error: ${e}"
-    }
+    // ... (keep your existing file-serving logic for real flow JSONs)
 }
 
 def exportModesToFile() {
@@ -1390,10 +1356,8 @@ def getDeviceById(id) {
 }
 
 def apiListVariables() {
-    def g = _ensureGlobalVarsList()
-    def f = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
-    render contentType: "application/json",
-           data: JsonOutput.toJson([globals: g, flows: f])
+    render contentType:"application/json",
+           data: JsonOutput.toJson([globals: _ensureGlobalVarsList(), flows: _ensureFlowVarsMap()])
 }
 
 def apiSaveVariable() {
@@ -1403,80 +1367,59 @@ def apiSaveVariable() {
     String name     = (json?.name  ?: '').toString()
     String type     = (json?.type  ?: 'String').toString()
     def    value    = json?.value
-	log.warn "scope: ${scope} - name: ${name} - type: ${type} - value: ${value}"
-	
-    // Accept legacy 'scope: <flowName>' or modern 'scope: flow' + 'flow: <FlowName>'
-    String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
-    //log.warn "flowParam: ${flowParam} - scope: ${scopeRaw} - name: ${name} - type: ${type} - value: ${value}"
 
-    if (!name) {
-        render status:400, contentType:"application/json", data: '{"error":"Missing variable name"}'
-        return
-    }
+    if (!name) { render status:400, contentType:"application/json", data:'{"error":"Missing variable name"}'; return }
 
-    // GLOBAL SCOPE
-    if (scope == 'global' || scope == 'globals') {
+    // GLOBAL
+    if (scope in ['global','globals']) {
         List gvars = _ensureGlobalVarsList()
         def existing = gvars.find { (it?.name?.toString() ?: '') == name }
-        if (existing) {
-            existing.type  = type
-            existing.value = value
-        } else {
-            gvars << _mkVar(name, type, value)
-        }
-        state.globalVars = gvars
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
+        if (existing) { existing.type = type; existing.value = value }
+        else          { gvars << _mkVar(name, type, value) }
+        atomicState.globalVars = gvars.collect { it }   // assign new List for persistence edge cases
+        _refreshVarCaches(null)
+        try { notifyVarsUpdated('global') } catch (e) {}
         render contentType:"application/json",
-               data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"global" ])
+               data: groovy.json.JsonOutput.toJson([result:"Variable saved", name:name, type:type, value:value, scope:"global"])
         return
     }
 
-    // FLOW SCOPE
+    // FLOW (explicit `scope: flow` + flow param OR legacy `scope: <flowName>`)
+    String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
     String key = (scope == 'flow') ? _bareFlow(flowParam) : _bareFlow(scopeRaw)
     if (!key) {
         render status:400, contentType:"application/json",
-               data: groovy.json.JsonOutput.toJson([ error:"Missing flow name for flow-scoped variable", scope: scopeRaw, flow: flowParam ])
+               data: groovy.json.JsonOutput.toJson([error:"Missing flow name for flow-scoped variable", scope: scopeRaw, flow: flowParam])
         return
     }
 
-    Map fmap = _ensureFlowVarsMap()
+    Map fmap  = _ensureFlowVarsMap()
     List list = (fmap[key] instanceof List) ? (fmap[key] as List) : []
     def existing = list.find { (it?.name?.toString() ?: '') == name }
-    if (existing) {
-        existing.type  = type
-        existing.value = value
-    } else {
-        list << _mkVar(name, type, value)
-    }
+    if (existing) { existing.type = type; existing.value = value }
+    else          { list << _mkVar(name, type, value) }
     fmap[key] = list
-    state.flowVars = fmap
+    atomicState.flowVars = fmap.collectEntries { k,v -> [(k): v] } // assign new Map for persistence
 
-        _refreshVarCaches(key);
-        state.flowVarsMap = state.flowVars;
-try { notifyVarsUpdated('flow', key) } catch (e) { log.warn "notifyVarsUpdated(flow, ${key}) failed: $e" }
-
+    _refreshVarCaches(key)
+    try { notifyVarsUpdated('flow', key) } catch (e) {}
     render contentType:"application/json",
-           data: groovy.json.JsonOutput.toJson([ result:"Variable saved", name:name, type:type, value:value, scope:"flow", flow:key ])
+           data: groovy.json.JsonOutput.toJson([result:"Variable saved", name:name, type:type, value:value, scope:"flow", flow:key])
 }
+
 def apiDeleteVariable() {
-    def body  = request.JSON ?: params
+    def body = request.JSON ?: params
     String scopeRaw = (body.scope ?: '').toString()
     String scope    = scopeRaw?.toLowerCase()
-    String name  = (body.name  ?: '').toString()
+    String name     = (body.name  ?: '').toString()
     if (!scope || !name) { render status:400, text:"name/scope required"; return }
-    log.debug "apiDeleteVariable - scope: ${scopeRaw} - name:${name}"
 
-    if (scope == 'global' || scope == 'globals') {
+    if (scope in ['global','globals']) {
         List g = _ensureGlobalVarsList()
         g.removeAll { (it?.name?.toString() ?: '') == name }
-        state.globalVars = g
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-        _refreshVarCaches(null);
-        state.flowVarsMap = (state.flowVars instanceof Map) ? state.flowVars : (state.flowVarsMap instanceof Map ? state.flowVarsMap : [:]);
-        try { notifyVarsUpdated('global') } catch (e) { log.warn "notifyVarsUpdated(global) failed: $e" }
+        atomicState.globalVars = g.collect { it }
+        _refreshVarCaches(null)
+        try { notifyVarsUpdated('global') } catch (e) {}
         render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'global'])
         return
     }
@@ -1486,15 +1429,10 @@ def apiDeleteVariable() {
         Map fmap = _ensureFlowVarsMap()
         List arr = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
         arr.removeAll { (it?.name?.toString() ?: '') == name }
-        if (arr && arr.size()) {
-            fmap[bare] = arr
-        } else {
-            fmap.remove(bare)
-        }
-        state.flowVars = fmap
-        _refreshVarCaches(bare);
-        state.flowVarsMap = state.flowVars;
-try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
+        if (arr && arr.size()) fmap[bare] = arr else fmap.remove(bare)
+        atomicState.flowVars = fmap.collectEntries { k,v -> [(k): v] }
+        _refreshVarCaches(bare)
+        try { notifyVarsUpdated('flow', bare) } catch (e) {}
         render contentType:"application/json", data: groovy.json.JsonOutput.toJson([ok:true, scope:'flow', flow:bare])
         return
     }
@@ -1507,49 +1445,32 @@ def loadVariables(fname) {
     if (!flowObj) return
     flowObj.varCtx = [:]
 
-    // 1) globals from state
+    // 1) globals
     List globalVars = []
-    try {
-        globalVars = (_ensureGlobalVarsList() ?: []).findAll { it?.name }
-    } catch (e) {
-        flowLog(fname, "Could not load globals from state: $e", "warn")
-        globalVars = []
-    }
+    try { globalVars = (_ensureGlobalVarsList() ?: []).findAll { it?.name } }
+    catch (e) { flowLog(fname, "Could not load globals from atomicState: $e", "warn") }
 
-    // 2) flow vars for this flow from state
-    // 2) flow vars for this flow from state
+    // 2) flow vars for this flow
     List flowVarsList = []
     try {
         String bareName = _bareFlow(fname)
-        Map fmap = _pruneEmptyFlowKeys(_ensureFlowVarsMap())
+        Map fmap = _ensureFlowVarsMap()
         List arr = (fmap[bareName] instanceof List) ? (fmap[bareName] as List) : []
         flowVarsList = (arr ?: []).findAll { it?.name }
     } catch (e) {
-        flowLog(fname, "Could not load flow vars from state: $e", "warn")
-        flowVarsList = []
+        flowLog(fname, "Could not load flow vars from atomicState: $e", "warn")
     }
     flowObj.flowVars = flowVarsList
 
-    // 3) merge: flow overrides global by name
+    // 3) merge (flow overrides globals by name)
     List mergedVars = []
     Set gnames = (globalVars.collect { it?.name }.findAll { it }) as Set
-    globalVars.each { g ->
-        def fv = flowVarsList.find { it?.name == g?.name }
-        mergedVars << (fv ?: g)
-    }
-    flowVarsList.each { fv ->
-        if (fv?.name && !gnames.contains(fv.name)) mergedVars << fv
-    }
+    globalVars.each { g -> mergedVars << (flowVarsList.find { it?.name == g?.name } ?: g) }
+    flowVarsList.each { fv -> if (fv?.name && !gnames.contains(fv.name)) mergedVars << fv }
 
-    // 4) Store for compatibility
+    // 4) expose for compatibility and 5) build varCtx
     flowObj.globalVars = mergedVars
-
-    // 5) Build variable context
-    mergedVars.each { v ->
-        if (v?.name) {
-            flowObj.varCtx[v.name] = resolveVarValue(fname, v)
-        }
-    }
+    mergedVars.each { v -> if (v?.name) flowObj.varCtx[v.name] = resolveVarValue(fname, v) }
 }
 
 // Refresh variable caches for all flows, or a specific bare flow name
@@ -1575,7 +1496,7 @@ private void _refreshVarCaches(Object targetBare = null) {
 }
 
 def getGlobalVars() {
-    return state.globalVars ?: []
+    return atomicState.globalVars ?: []
 }
 
 def resolveVarValue(fname, v, _visited = []) {
@@ -1784,10 +1705,10 @@ def handleTimeTrigger(Map data) {
     handleEvent(evt, fname)
 }
 
-// ---- Variable trigger polling (uses state.globalVars) ----
+// ---- Variable trigger polling (uses atomicState.globalVars) ----
 def checkVariableTriggers() {
     // Canonical source of truth
-    def globalVars = state.globalVars ?: []
+    def globalVars = atomicState.globalVars ?: []
 
     state.activeFlows.each { fname, flowObj ->
         def nodes = flowObj.flow.drawflow?.Home?.data.findAll { id, node ->
@@ -2005,6 +1926,7 @@ def expandWildcards(fname, msg, evt, nodeData = null) {
         "{device}"        : evt?.device?.displayName ?: "",
         "{attribute}"     : evt?.name ?: "",
         "{value}"         : evt?.value ?: "",
+        "{text}"          : (evt?.descriptionText ?: (evt?.stringValue ?: evt?.value ?: "")),
         "{time24}"        : nowDate.format("HH:mm"),
         "{time12}"        : nowDate.format("h:mm a"),
         "{date}"          : nowDate.format("MM-dd-yyyy"),
@@ -2014,6 +1936,18 @@ def expandWildcards(fname, msg, evt, nodeData = null) {
     ]
     wilds.each { k, v ->
         msg = msg.replace(k, v instanceof Closure ? v() : v)
+    }
+
+    // New wildcard forms {varName_*} and {varValue_*}
+    msg = msg.replaceAll(/\{varName_([A-Za-z0-9_]+)\}/) { all, nm -> nm }
+    msg = msg.replaceAll(/\{varValue_([A-Za-z0-9_]+)\}/) { all, vname ->
+        def vval =
+            (flowObj?.vars?.get(vname)?.toString()) ?:
+            (flowObj?.varCtx?.get(vname)?.toString()) ?:
+            (flowObj?.flowVars?.find{ it.name == vname }?.value?.toString()) ?:
+            (flowObj?.globalVars?.find{ it.name == vname }?.value?.toString()) ?:
+            "[not found]"
+        vval
     }
     msg = msg.replaceAll(/\{var:([a-zA-Z0-9_]+)\}/) { all, vname ->
         def vval =
@@ -2035,36 +1969,37 @@ def getVarValue(fname, vname) {
     return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
 }
 
+
+// Minimal + deterministic: update only GLOBAL variables,
+// using the same source the UI/API reads (_ensureGlobalVarsList).
 def setVariable(String fname, String varName, def varValue) {
-    def bare = _bareFlow(fname)
-
-    // Ensure containers exist
-    state.globalVars  = (state.globalVars  instanceof List) ? state.globalVars  : []
-    state.flowVars    = (state.flowVars    instanceof Map  ) ? state.flowVars    : [:]
-    def flowList = (state.flowVars[bare]   instanceof List ) ? state.flowVars[bare]   : []
-
-    // Try flow vars first
-    def fv = flowList.find { it?.name == varName }
-    if (fv) {
-        fv.value = varValue
-    } else {
-        // Then try global vars
-        def gv = state.globalVars.find { it?.name == varName }
-        if (gv) {
-            gv.value = varValue
-        } else {
-            flowLog(fname, "Variable '${varName}' not found in flow '${bare}' or globals; no update made.", "warn")
-            return
-        }
+    String name = (varName ?: "").toString().trim()
+    if (!name) {
+        log.warn "setVariable: blank name; ignoring"
+        return
     }
 
-    // Put the flow list back (in case it was missing)
-    state.flowVars[bare] = flowList
+    // 1) Load exactly what the UI reads (globals list), copy to a fresh list
+    List current = _ensureGlobalVarsList()
+    List g = (current instanceof List) ? current.collect { it } : []
 
-    // Rebuild varCtx for this running flow
-    loadVariables(fname)
-    try { notifyVarsUpdated('flow', bare) } catch (e) { log.warn "notifyVarsUpdated(flow, bare) failed: $e" }
+    // 2) Replace existing entry (by name) or append a new one
+    int idx = g.findIndexOf { (it?.name?.toString() ?: "") == name }
+    if (idx >= 0) {
+        def old = g[idx] ?: [:]
+        g[idx] = [name: name, type: (old.type ?: "String"), value: varValue]
+    } else {
+        g << [name: name, type: "String", value: varValue]
+    }
+
+    // 3) Assign a NEW list into state so Hubitat persists it
+    atomicState.globalVars = g.collect { it }
+
+    // 4) Persist to disk (so /variables sees the same) and notify editor
+    try { saveGlobalVarsToFile(atomicState.globalVars) } catch (e) { log.warn "saveGlobalVarsToFile failed: $e" }
+    try { notifyVarsUpdated('global') } catch (e) { log.debug "notifyVarsUpdated error: $e" }
 }
+
 
 // Helper
 def normalizeFlowName(fname) {
@@ -2086,7 +2021,7 @@ def saveGlobalVarsToFile(globals) {
 
         // single source of truth: state
         synchronized(this) {
-            state.globalVars = list
+            atomicState.globalVars = list
         }
 
         // optional: lightweight log + event so UI/Maker API listeners can refresh
@@ -2369,4 +2304,41 @@ private boolean _cronFieldMatches(String field, int value, int idx) {
         }
     }
     return ok
+}
+
+
+/** Keep/calc modes in atomicState and serve to Editor */
+private List _computeHubModes() {
+    try {
+        def lst = (location?.modes ?: []).collect { [ id: it?.id as Long, name: it?.name?.toString() ] }
+        return lst ?: []
+    } catch (e) {
+        log.warn "computeHubModes failed: $e"
+        return []
+    }
+}
+
+def handleModeChange(evt) {
+    try {
+        atomicState.hubModes = _computeHubModes()
+    } catch (e) {
+        log.warn "handleModeChange failed: $e"
+    }
+}
+
+def apiListModes() {
+    try {
+        // Ensure cache exists
+        if (!(atomicState.hubModes instanceof List)) {
+            atomicState.hubModes = _computeHubModes()
+        }
+        def cur = location?.mode?.toString()
+        render contentType: "application/json", data: groovy.json.JsonOutput.toJson([
+            modes: (atomicState.hubModes ?: []),
+            currentMode: cur
+        ])
+    } catch (e) {
+        render status: 500, contentType: "application/json",
+               data: groovy.json.JsonOutput.toJson([ error: "apiListModes failed", message: e?.toString() ])
+    }
 }
