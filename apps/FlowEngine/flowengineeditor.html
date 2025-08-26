@@ -108,7 +108,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.055</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.056</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -3449,90 +3449,21 @@ try{ window.__autoRefresh = false; }catch(_){}
           };
           el.appendChild(msgInput);
 
-          // --- New: Use Variable in Msg checkbox ---
-          const varRow = document.createElement("div");
-          varRow.style = "margin-top:10px;margin-bottom:4px;";
-          const varCheckbox = document.createElement("input");
-          varCheckbox.type = "checkbox";
-          varCheckbox.id = "msgVarCheckbox";
-          varCheckbox.checked = !!node.data.useMsgVar;
-          varCheckbox.style.marginRight = "4px";
-          varCheckbox.onchange = () => {
-            node.data.useMsgVar = varCheckbox.checked;
-            if (!varCheckbox.checked) {
-              node.data.msgVarName = "";
-            }
-            editor.updateNodeDataFromId(node.id, node.data);
-            markFlowNeedsSave(true);
-            renderEditor(node);
-          };
-          varRow.appendChild(varCheckbox);
-
-          const varLabel = document.createElement("label");
-          varLabel.htmlFor = "msgVarCheckbox";
-          varLabel.textContent = "Use Variable in Msg";
-          varRow.appendChild(varLabel);
-
-          el.appendChild(varRow);
-
-          // --- New: Variable Name dropdown if checked ---
-          let varDropdown;
-          if (varCheckbox.checked) {
-            const varDiv = document.createElement("div");
-            varDiv.style = "margin:5px 0 8px 0;";
-
-            const ddLabel = document.createElement("label");
-            ddLabel.textContent = "Variable Name";
-            ddLabel.style.marginRight = "8px";
-            varDiv.appendChild(ddLabel);
-
-            // Combine and sort flow and global variables
-            let flowFile = window.flowVars?.getCurrentFlowFile?.();
-            let flowVars = (flowFile && window.FE_flowvars && window.FE_flowvars[flowFile]) ? window.FE_flowvars[flowFile] : [];
-            let globalVars = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
-            let allVars = [...flowVars, ...globalVars];
-            let varNames = [...new Set(allVars.map(v => v.name))].sort((a, b) => a.localeCompare(b));
-
-            varDropdown = document.createElement("select");
-            varDropdown.style.minWidth = "120px";
-            varDropdown.style.marginLeft = "2px";
-
-            // Option to require a selection
-            varDropdown.appendChild(new Option("-- Select --", ""));
-            varNames.forEach(vn => {
-              let opt = document.createElement("option");
-              opt.value = vn;
-              opt.textContent = vn;
-              if (vn === node.data.msgVarName) opt.selected = true;
-              varDropdown.appendChild(opt);
-            });
-
-            varDropdown.onchange = () => {
-              node.data.msgVarName = varDropdown.value;
-              editor.updateNodeDataFromId(node.id, node.data);
-              markFlowNeedsSave(true);
-            };
-
-            varDiv.appendChild(varDropdown);
-            el.appendChild(varDiv);
-          }
-
           // --- Wildcard/Variable info ---
           const wildcardMsg = document.createElement("div");
           wildcardMsg.style.fontSize = "13px";
           wildcardMsg.style.marginTop = "7px";
           wildcardMsg.style.color = "#b7cdfd";
-          wildcardMsg.innerHTML =
-            '<b><u>Wildcards:</u></b><br>' +
+          wildcardMsg.innerHTML = '<b><u>Wildcards:</u></b><br>' +
             '<b>{device}</b> – Event device name/label<br>' +
             '<b>{value}</b> – Event value<br>' +
             '<b>{text}</b> – Event description or text<br>' +
             '<b>{time24}</b> – Event time (24-hour, e.g. 14:32)<br>' +
             '<b>{time12}</b> – Event time (12-hour, e.g. 3:00 pm)<br>' +
             '<b>{date}</b> – Event date (MM-DD-YYYY, e.g. 06-19-2025)<br>' +
-            '<b>{now}</b> – Current system date & time (now)<br>' +
-            '<b>{variableName}</b> – Selected variable name<br>' +
-            '<b>{variableValue}</b> – Selected variable value<br>' +
+            '<b>{now}</b> – Current system date & time<br>' +
+            '<b>{varName_<i>AnyVar</i>}</b> – literal variable name<br>' +
+            '<b>{varValue_<i>AnyVar</i>}</b> – value of the named variable<br>' +
             '<span style="color:#eee;">Example: {device} has become {value} at {time12} on {date}</span>';
           el.appendChild(wildcardMsg);
         }
@@ -5016,30 +4947,41 @@ logBtn.textContent = "Logging Disabled";
       }
 
       async function fetchHubitatFileContent(fileName) {
-        const appId = document.getElementById("hubitatAppId").value.trim();
-        const token = document.getElementById("hubitatToken").value.trim();
-        if (!appId || !token) {
-          logAction("Enter App ID and Access Token!", "error");
-          throw new Error("Missing credentials");
-        }
-        const fullName = fileName.endsWith(".json") ? fileName : fileName + ".json";
-        const fileUrl  = `/apps/api/${appId}/getFile?name=${encodeURIComponent(fullName)}&access_token=${token}`;
-        try {
-          const response = await fetch(fileUrl);
-          const raw = await response.text();
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${raw}`);
-          }
-          try {
-            return JSON.parse(raw);
-          } catch (err) {
-            throw new Error("File is not valid JSON: " + raw);
-          }
-        } catch (e) {
-          logAction("Failed to fetch file content: " + e.message, "error");
-          throw e;
-        }
-      }
+  // Unified file fetcher:
+  // - For user-editable flows: ALWAYS use /local/<name>.json
+  // - For internal FE_* files (e.g., FE_flowtrace.json): use the Hubitat app file endpoint
+  const ensureJson = (txt) => {
+    try { return JSON.parse(txt); } catch (_) { return txt; }
+  };
+
+  const full = (String(fileName||"").endsWith(".json") ? String(fileName) : String(fileName) + ".json");
+
+  // Treat files starting with FE_ as internal artifacts managed by the app
+  const isInternal = /^FE_/i.test(full);
+
+  if (!isInternal) {
+    const url = `/local/${encodeURIComponent(full)}?ts=${Date.now()}`;
+    return fetch(url, { method: "GET", cache: "no-store" })
+      .then(res => res.ok ? res.text() : Promise.reject(new Error(`GET ${url} failed: ${res.status}`)))
+      .then(ensureJson);
+  }
+
+  // Internal files fetched from the app API
+  const appId = (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
+  const token = (document.getElementById("hubitatToken")?.value || localStorage.getItem('hubitatToken') || '').trim();
+  if (!appId || !token) {
+    logAction("Enter App ID and Access Token!", "error");
+    return Promise.reject(new Error("Missing credentials"));
+  }
+  const url = `/apps/api/${appId}/getFile?name=${encodeURIComponent(full)}&access_token=${encodeURIComponent(token)}`;
+  return fetch(url, { method: "GET", cache: "no-store" })
+    .then(async res => {
+      const raw = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${raw}`);
+      return ensureJson(raw);
+    })
+    .catch(e => { logAction("Failed to fetch file content: " + (e?.message || e), "error"); throw e; });
+}
 
       document.addEventListener("DOMContentLoaded", function () {
         const drawflow = document.getElementById("drawflow");
@@ -6506,13 +6448,16 @@ window.addEventListener('DOMContentLoaded', function() {
 
         // 3) Load and normalize FE_flowtrace.json to an array of runs
         let resp;
-        try {
-          resp = await fetchHubitatFileContent('FE_flowtrace.json');
-        } catch (e) {
-          logAction('Failed to read FE_flowtrace.json: ' + e, 'error');
-          return;
-        }
-        const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []); // 
+try {
+  const u = `/local/FE_flowtrace.json?ts=${Date.now()}`;
+  const r = await fetch(u, { cache: 'no-store' });
+  const t = await r.text();
+  resp = JSON.parse(t);
+} catch (e) {
+  logAction('Failed to read FE_flowtrace.json: ' + (e && e.message ? e.message : e), 'error');
+  return;
+}
+const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []); // 
         if (!list.length) { logAction('No flow traces found.', 'info'); return; }
 
         // 4) Filter to this flow (case-insensitive) and choose the most recent COMPLETED run
@@ -7608,7 +7553,7 @@ async function pollFlowTraceUntilEnd() {
     
 try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
 try {
-      const traces = await fetchHubitatFileContent('FE_flowtrace.json');
+      const traces = (await (async ()=>{  const u=`/local/FE_flowtrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
       const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
       const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
       if (!runs.length) return;
