@@ -108,7 +108,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.056</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.057</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -297,24 +297,15 @@ document.addEventListener('click', function(e){
   <script src="FE_html2canvas.min.js"></script>
   <script>
     // === SAFE HELPERS to access drawflow.Home across legacy/new JSON shapes ===
-    function getHomeFrom(o) {
-      try {
-        if (!o || typeof o !== "object") return { data: {} };
-        const df = o.drawflow || o;
-        if (!df) return { data: {} };
-        if (df.Home && typeof df.Home === "object") return df.Home;
-        if (df.drawflow && df.drawflow.Home && typeof df.drawflow.Home === "object") return df.drawflow.Home;
-      } catch (_) {}
-      return { data: {} };
-    }
-    function getHomeDataFrom(o) {
-      const h = getHomeFrom(o);
-      return (h && h.data && typeof h.data === "object") ? h.data : {};
-    }
-    function hasHomeData(o) {
-      const h = getHomeFrom(o);
-      return !!(h && h.data && typeof h.data === "object");
-    }
+    
+/* duplicate of getHomeFrom removed (safe) */
+
+    
+/* duplicate of getHomeDataFrom removed (safe) */
+
+    
+/* duplicate of hasHomeData removed (safe) */
+
 
     // 1) Fetch the list of flow-files from Hubitat
     async function fetchHubitatFiles() {
@@ -2548,7 +2539,7 @@ try{ window.__autoRefresh = false; }catch(_){}
               node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
-              window.renderEditor(node);
+              
             },
             true // multi-select ENABLED
           );
@@ -2574,7 +2565,7 @@ try{ window.__autoRefresh = false; }catch(_){}
               node.data.value = "";
               editor.updateNodeDataFromId(node.id, node.data);
               markFlowNeedsSave(true);
-              window.renderEditor(node);
+              
             },
             true // multi-select ENABLED
           );
@@ -2819,7 +2810,7 @@ try{ window.__autoRefresh = false; }catch(_){}
                 );
               }
               markFlowNeedsSave(true);
-              window.renderEditor(node);
+              
             },
             true // multi-select
           );
