@@ -569,7 +569,9 @@ def apiTestFlow() {
 
 // ---- Main Event Handler ----
 def handleEvent(evt, fname) {
-	flowLog(fname, "In handleEvent - evt: ${evt}", "debug")
+    flowLog(fname, "────────────────────────────────────────────────────────────────────────────", "debug")
+    flowLog(fname, "In handleEvent - evt: ${evt}", "debug")
+
     def flowObj = state.activeFlows[fname]
     if (!flowObj?.flow) return
 
@@ -585,53 +587,61 @@ def handleEvent(evt, fname) {
         try {
             notifyFlowTrace(fname, null, "cancelled")
         } catch (ex) {
-            log.warn "[${fname}] Failed to write cancel‑trace: $ex"
+            log.warn "[${fname}] Failed to write cancel-trace: $ex"
         }
 
-        // 3) Clear per‑run trackers
+        // 3) Clear per-run trackers
         flowObj.tapTracker?.clear()
         flowObj.holdTracker?.clear()
     }
+
+    // ── New run token (used to cancel stale delayed resumes) ───────────────
+    flowObj.runId = ((flowObj.runId ?: 0L) + 1L)
+    def currentRunId = flowObj.runId
 
     // ── Mark running & reset trackers ──────────────────────────────────────
     flowObj.isRunning   = true
     flowObj.tapTracker  = [:]
     flowObj.holdTracker = [:]
+	flowObj.pending     = 0
 
     // ── Locate & fire trigger nodes ────────────────────────────────────────
     def triggerNodes = getTriggerNodes(fname, evt)
     triggerNodes.each { triggerId, triggerNode ->
         def pattern = triggerNode.data.clickPattern ?: "single"
-        // UI‑test override
+
+        // UI-test override
         if (evt instanceof Map && evt.pattern && evt.pattern == pattern) {
             flowLog(fname, "Forcing '${pattern}' trigger (UI Test)", "debug")
             evaluateNode(fname, triggerId, evt)
             return
         }
+
         switch(pattern) {
             case "single":
-                flowLog(fname, "Single‑tap trigger", "debug")
+                flowLog(fname, "Single-tap trigger", "debug")
                 evaluateNode(fname, triggerId, evt)
                 break
             case "double":
             case "triple":
-                // … your existing tap/hold logic here …
+                // your existing tap/hold pattern logic
                 handleTapHoldPattern(fname, triggerId, triggerNode, evt)
                 break
             default:
-				flowLog(fname, "----- Trigger -  triggerId: ${triggerId} = evt: ${evt} -----", "info")
+                flowLog(fname, "----- Trigger -  triggerId: ${triggerId} = evt: ${evt} -----", "info")
                 evaluateNode(fname, triggerId, evt)
         }
     }
 
-    // ── End‑of‑flow cleanup ────────────────────────────────────────────────
+    // ── End-of-flow cleanup ────────────────────────────────────────────────
     try {
-        notifyFlowTrace(fname, null, "endOfFlow")
-    } catch (ex) {
-        log.warn "[${fname}] Failed to write end‑of‑flow trace: $ex"
-    } finally {
-        flowObj.isRunning = false
-    }
+		if (!(flowObj.pending ?: 0)) {
+			notifyFlowTrace(fname, null, "endOfFlow")
+			flowObj.isRunning = false
+		}
+	} catch (ex) {
+		log.warn "[${fname}] Failed to write end-of-flow trace: $ex"
+	}
 }
 
 // ---- Node Evaluation (ALL node types, with delay logic preserved) ----
@@ -919,37 +929,71 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			}
             break
 
-        case "delayMin":
-			flowLog(fname, "In evaluateNode - delayMin", "debug")
-            def min = (node.data.delayMin ?: 1) as Integer
-            pauseExecution(min * 60000)
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
+        case "delayMin": 
+			Integer min = (node.data.delayMin ?: node.data.min ?: 1) as Integer
+			Long ms = min * 60000L
+			flowLog(fname, "In evaluateNode - delayMin (${min} min → ${ms} ms)", "debug")
 
-        case "delay":
-		flowLog(fname, "In evaluateNode - delayMs: ${node.data.delayMs} - node: ${node.data}", "debug")
-            def ms = (node.data.ms ?: 1000) as Integer
-            pauseExecution(ms)
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
+			node.outputs?.output_1?.connections?.each { conn ->
+				// track a pending continuation
+				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
 
-        case "setVariable":
-			flowLog(fname, "In evaluateNode - setVariable (dryRun=${testDryRun})", "debug")
-			def varName = resolveVars(fname, node.data.varName)
-			def varValue = resolveVars(fname, node.data.varValue)
-			if(testDryRun) {
-				flowLog(fname, "Dry Run: varName: ${varName} - varValue: ${varValue}", "debug")
-			} else {
-				setVariable(fname, varName, varValue)
+				runInMillis(
+					ms,
+					"resumeAfterDelay",
+					[ data: [
+						fname: fname,
+						nextId: conn.node,
+						evt: _packEvt(evt),
+						runId: (state.activeFlows[fname]?.runId ?: 0L)
+					], overwrite: false ]
+				)
 			}
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
+			break
+
+		case "delay": 
+			Integer ms = (node.data.delayMs ?: node.data.ms ?: 1000) as Integer
+			flowLog(fname, "In evaluateNode - delay (ms=${ms})", "debug")
+
+			node.outputs?.output_1?.connections?.each { conn ->
+				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
+
+				runInMillis(
+					ms as Long,
+					"resumeAfterDelay",
+					[ data: [
+						fname: fname,
+						nextId: conn.node,
+						evt: _packEvt(evt),
+						runId: (state.activeFlows[fname]?.runId ?: 0L)
+					], overwrite: false ]
+				)
+			}
+			break
+
+		case "setVariable":
+			flowLog(fname, "In evaluateNode - setVariable (dryRun=${testDryRun})", "debug")
+
+			String varName  = resolveVars(fname, node.data.varName)
+			def    varValue = resolveVars(fname, node.data.varValue)
+			String varType  = (node.data?.varType ?: "String").toString()
+
+			// Decide scope smartly (explicit → existing vars → default Flow)
+			def target = _resolveVarScopeAndKey(fname, node.data as Map, varName)  // [scope, key]
+			String scope = target.scope
+			String key   = target.key   // bare flow name for flow scope; null for global
+
+			if (testDryRun) {
+				flowLog(fname, "Dry Run: scope=${scope} name=${varName} value=${varValue}", "debug")
+			} else {
+				_saveVariableInternal(fname, scope, varName, varType, varValue)
+			}
+
+			// continue downstream
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			break
 
         case "saveDeviceState":
 			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
@@ -1473,7 +1517,6 @@ def loadVariables(fname) {
     mergedVars.each { v -> if (v?.name) flowObj.varCtx[v.name] = resolveVarValue(fname, v) }
 }
 
-// Refresh variable caches for all flows, or a specific bare flow name
 private void _refreshVarCaches(Object targetBare = null) {
     try {
         Map af = (state.activeFlows instanceof Map) ? (state.activeFlows as Map) : [:]
@@ -1705,7 +1748,6 @@ def handleTimeTrigger(Map data) {
     handleEvent(evt, fname)
 }
 
-// ---- Variable trigger polling (uses atomicState.globalVars) ----
 def checkVariableTriggers() {
     // Canonical source of truth
     def globalVars = atomicState.globalVars ?: []
@@ -1783,7 +1825,7 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-// Everything else: device, time, and variable triggers
+	// Everything else: device, time, and variable triggers
     return dataNodes.findAll { id, node ->
         if (node.name != "eventTrigger") return false
 
@@ -1877,7 +1919,6 @@ void notifyFlowTrace(String flowFile, def nodeId, String nodeType) {
     }
 }
 
-// ---- Notification support ----
 def sendNotification(fname, data, evt) {
 	flowLog(fname, "In sendNotification - data: ${data} - evt: ${evt}", "debug")
     def msg = data.message ?: ""
@@ -1969,9 +2010,6 @@ def getVarValue(fname, vname) {
     return flowObj.vars?.get(vname) ?: flowObj.varCtx?.get(vname) ?: ""
 }
 
-
-// Minimal + deterministic: update only GLOBAL variables,
-// using the same source the UI/API reads (_ensureGlobalVarsList).
 def setVariable(String fname, String varName, def varValue) {
     String name = (varName ?: "").toString().trim()
     if (!name) {
@@ -2000,13 +2038,10 @@ def setVariable(String fname, String varName, def varValue) {
     try { notifyVarsUpdated('global') } catch (e) { log.debug "notifyVarsUpdated error: $e" }
 }
 
-
-// Helper
 def normalizeFlowName(fname) {
     return fname?.replaceAll(/(?i)\.json$/, '')
 }
 
-// State-only replacement (keeps old name for compatibility)
 def saveGlobalVarsToFile(globals) {
     try {
         // normalize to [{name,type,value}, ...]
@@ -2036,7 +2071,6 @@ def saveGlobalVarsToFile(globals) {
     }
 }
 
-// --- Comparators ---
 def evaluateComparator(actual, expected, cmp) {
     // normalize operator and log each invocation
     String op = (cmp ?: '').toString().toLowerCase()
@@ -2092,7 +2126,6 @@ def evaluateComparator(actual, expected, cmp) {
     }
 }
 
-// helper to coerce any value into a double
 private double toDouble(x) {
     if (x instanceof Number) {
         return ((Number)x).doubleValue()
@@ -2118,7 +2151,6 @@ private int toTimeMinutes(String value) {
     return (parts[0].toInteger() * 60) + parts[1].toInteger()
 }
 
-// ── Helper to coerce String or Number into an Integer ───────────────────
 private Integer parseIntValue(val, Integer defaultVal = 0) {
     try {
         if (val instanceof Number) return val as Integer
@@ -2141,7 +2173,6 @@ def handleOffsetSunEvent(data) {
     handleEvent(evt, fname)
 }
 
-// Minimal HTML escape for safe rendering in paragraphs
 private String _hx(Object x) {
     String s = x == null ? "" : x.toString()
     s = s.replaceAll("&", "&amp;")
@@ -2164,17 +2195,11 @@ def installCheck(){
     }
 }
 
-/**
- * Auto-register schedules after flows are loaded
- */
 def afterFlowLoad() {
     state.activeFlows?.each { fname, fobj ->
         }
 }
 
-/**
- * Unified saveFlow: persists flow JSON, updates state, and only re-registers schedules if cron set changed.
- */
 private List _collectCronsFromFlow(Object flowObj) {
     try {
         def nodes = (flowObj?.nodes instanceof Collection) ? flowObj.nodes : []
@@ -2217,9 +2242,6 @@ def saveFlow(String fname, Object flowObj) {
 	}
 }
 
-/**
- * Ensure the per-minute poller is set (used for HH:mm, DOW, and cron schedule nodes).
- */
 def refreshAllSchedules() {
     try {
         unschedule("pollTimeTriggers")     // clear just the minute poller if present
@@ -2227,9 +2249,6 @@ def refreshAllSchedules() {
     schedule("0 * * ? * * *", "pollTimeTriggers")
 }
 
-/**
- * Remove a flow without disturbing global schedules.
- */
 def removeFlow(fname) {
     if(state.activeFlows?.containsKey(fname)) {
         state.activeFlows.remove(fname)
@@ -2238,11 +2257,6 @@ def removeFlow(fname) {
     }
 }
 
-/**
- * Evaluate a 5-field cron (m h dom mon dow) against the current time.
- * Accepts basic wildcards (*), lists (1,2,5), ranges (1-5), and steps (15 or 1-30/2).
- * If a 6-field input (s m h dom mon dow) is given, seconds are ignored.
- */
 private boolean _cronMatchesNow(String cronExpr, Date now = new Date()) {
     if (!cronExpr) return false
     def parts = cronExpr.trim().split(/\s+/)
@@ -2306,8 +2320,6 @@ private boolean _cronFieldMatches(String field, int value, int idx) {
     return ok
 }
 
-
-/** Keep/calc modes in atomicState and serve to Editor */
 private List _computeHubModes() {
     try {
         def lst = (location?.modes ?: []).collect { [ id: it?.id as Long, name: it?.name?.toString() ] }
@@ -2341,4 +2353,117 @@ def apiListModes() {
         render status: 500, contentType: "application/json",
                data: groovy.json.JsonOutput.toJson([ error: "apiListModes failed", message: e?.toString() ])
     }
+}
+
+private Map _packEvt(evt) {
+    if (evt instanceof Map) return evt
+    try {
+        return [
+            name     : evt?.name,
+            value    : evt?.value,
+            deviceId : evt?.deviceId?.toString(),
+            date     : (evt?.date ? evt.date.getTime() : null),
+            descriptionText: evt?.descriptionText
+        ]
+    } catch (ignored) {
+        return [ name: evt?.name, value: evt?.value ]
+    }
+}
+
+private Map _unpackEvt(Map m) {
+    if (!m) return [:]
+    if (m.date) { try { m.date = new Date(m.date as Long) } catch (ignored) {} }
+    return m
+}
+
+def resumeAfterDelay(Map data) {
+    String fname = data.fname
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj) return
+
+    if ((flowObj.runId ?: -1L) != (data.runId ?: -2L)) {
+        flowLog(fname, "Stale delay resume ignored (runId=${data.runId}, current=${flowObj.runId})", "debug")
+        return
+    }
+
+    def evt  = _unpackEvt(data.evt as Map)
+    def next = (data.nextId ?: "").toString()
+
+    def freshVisited = new HashSet()
+    evaluateNode(fname, next, evt, null, freshVisited)
+
+    // this resume finished; update counter
+    flowObj.pending = Math.max((flowObj.pending ?: 0) - 1, 0)
+
+    // if nothing pending, finalize the trace/run now
+    if (flowObj.pending == 0) {
+        try { notifyFlowTrace(fname, null, "endOfFlow") } catch (_){}
+        flowObj.isRunning = false
+    }
+}
+
+private void _saveVariableInternal(String fname, String scope, String name, String type, def value) {
+    if (!name) return
+    scope = (scope ?: "flow").toLowerCase()
+    type  = (type  ?: "String").toString()
+
+    if (scope in ["global","globals"]) {
+        // Update GLOBAL list
+        List gvars = _ensureGlobalVarsList()
+        def existing = gvars.find { (it?.name?.toString() ?: "") == name }
+        if (existing) { existing.type = type; existing.value = value }
+        else          { gvars << _mkVar(name, type, value) }
+        // assign fresh list to ensure persistence
+        atomicState.globalVars = gvars.collect { it }
+        try {
+            _refreshVarCaches(null)
+            notifyVarsUpdated("global", null)
+        } catch (Throwable ignore) {}
+        return
+    }
+
+    // FLOW scope (default)
+    String bare = _bareFlow(fname)  // runtime flow name
+    Map fmap    = _ensureFlowVarsMap()
+    List list   = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
+
+    def existing = list.find { (it?.name?.toString() ?: "") == name }
+    if (existing) { existing.type = type; existing.value = value }
+    else          { list << _mkVar(name, type, value) }
+
+    fmap[bare] = list
+    // assign fresh map to ensure persistence
+    atomicState.flowVars = fmap.collectEntries { k, v -> [(k): v] }
+
+    try {
+        _refreshVarCaches(bare)
+        notifyVarsUpdated("flow", bare)
+    } catch (Throwable ignore) {}
+}
+
+private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
+    String explicit = ((nodeData?.varScope ?: nodeData?.scope) ?: "").toString().toLowerCase()
+    if (explicit in ["flow","global","globals"]) {
+        return [scope: (explicit == "global" || explicit == "globals") ? "global" : "flow",
+                key:   (explicit == "flow") ? _bareFlow(fname) : null]
+    }
+    // boolean hints some editor builds use
+    if (nodeData?.isGlobal == true || nodeData?.useGlobal == true) {
+        return [scope: "global", key: null]
+    }
+
+    // Look at what actually exists right now
+    String bare = _bareFlow(fname)
+    Map fmap    = _ensureFlowVarsMap()
+    List flowL  = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
+    List gvars  = _ensureGlobalVarsList()
+
+    boolean flowHas   = flowL?.any { (it?.name?.toString() ?: "") == varName }
+    boolean globalHas = gvars?.any { (it?.name?.toString() ?: "") == varName }
+
+    if (flowHas)   return [scope: "flow",   key: bare]
+    if (globalHas) return [scope: "global", key: null]
+
+    // Default for brand-new names: Flow (more specific)
+    return [scope: "flow", key: bare]
 }
