@@ -764,6 +764,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				}
 			}
 			break
+		
         case "schedule":
             // Pass-through trigger for Schedule node – just continue downstream
             flowLog(fname, "In evaluateNode - schedule (cron=" + (node?.data?.cron ?: node?.data?.scheduleSpec?.cronText) + ")", "debug")
@@ -772,73 +773,70 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             }
             break
 
-
-
 		case "condition":
 			flowLog(fname, "In evaluateNode - condition", "debug")
 			try {
 				def attr       = node.data.attribute
-				def comparator = node.data.comparator?.toLowerCase()
+				def comparator = (node.data.comparator ?: '').toString().toLowerCase()
 				def expected   = resolveVars(fname, node.data.value)
 				def logic      = (node.data.logic?.toString() ?: "or").toLowerCase()
 				boolean passes = false
 
-				// 1) TIME‑RANGE (“between”) always uses real clock
+				// 1) TIME-RANGE (“between”) always uses real clock
 				if ((attr in ["currentTime","timeOfDay"]) && comparator == "between") {
-					Date now      = new Date()
-					int  actualMin = now.hours * 60 + now.minutes
-
-					List bounds = (node.data.value instanceof List)
-								  ? node.data.value
-								  : [ node.data.value?.toString() ]
+					Date now = new Date()
+					int actualMin = now.hours * 60 + now.minutes
+					List bounds = (node.data.value instanceof List) ? node.data.value : [ node.data.value?.toString() ]
 					if (bounds.size() == 2) {
 						int lowMin  = toTimeMinutes(bounds[0].toString())
 						int highMin = toTimeMinutes(bounds[1].toString())
 						passes = (actualMin >= lowMin && actualMin <= highMin)
-						flowLog(fname, "---------- In evaluateNode-condition1 -------start", "info")
-						flowLog(fname, "In evaluateNode-condition1: actualMin: ${actualMin} | lowMin: ${lowMin} | highMin: ${highMin} | passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition1 ---------end", "info")
 					} else {
 						log.warn "Condition 'between' on ${attr} needs two values, got ${bounds}"
 						passes = false
 					}
 				}
-				// 2) incomingValue override for all other comparators
+				// 2) incomingValue override
 				else if (incomingValue != null) {
 					passes = evaluateComparator(incomingValue, expected, comparator)
-					flowLog(fname, "---------- In evaluateNode-condition2 -------start", "info")
-					flowLog(fname, "In evaluateNode-condition2: incomingValue: ${incomingValue} | expected: ${expected} | comparator: ${comparator} | passes: ${passes}", "info")
-					flowLog(fname, "---------- In evaluateNode-condition2 ---------end", "info")
 				}
-				// 3) Multi‑device AND/OR logic for real attributes
+				// 3) Device OR Variable evaluation
 				else {
-					def devIds = []
+					// Collect device ids if present
+					List devIds = []
 					if (node.data.deviceIds instanceof List && node.data.deviceIds) {
 						devIds = node.data.deviceIds
 					} else if (node.data.deviceId) {
 						devIds = [ node.data.deviceId ]
 					}
 
-					if (logic in ["and","all"]) {
-						flowLog(fname, "---------- In evaluateNode-condition-and -------start", "info")
+					// ── VARIABLE branch: no devices (or explicit __variable__)
+					if (!devIds || devIds.isEmpty() || devIds.contains("__variable__")) {
+						String varName = (node.data.variableName ?: node.data.varName ?: attr)?.toString()
+						flowObj = state.activeFlows[fname]
+
+						// Pull from varCtx first (resolved/typed), then raw lists
+						def actual =
+							flowObj?.varCtx?.get(varName) ?:
+							(flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }) ?:
+							(flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) })
+
+						passes = evaluateComparator(actual, expected, comparator ?: '==')
+						flowLog(fname, "Condition(variable): ${varName}=${actual} ${comparator ?: '=='} ${expected} ⇒ ${passes}", "debug")
+					}
+					// ── DEVICE branch: same logic you had before
+					else if (logic in ["and","all"]) {
 						passes = devIds.every { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
-							flowLog(fname, "In evaluateNode-condition-and: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
 							evaluateComparator(actual, expected, comparator ?: '==')
 						}
-						flowLog(fname, "In evaluateNode-condition-and: passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition-and ---------end", "info")
 					} else {
-						flowLog(fname, "---------- In evaluateNode-condition-or -------start", "info")
 						passes = devIds.any { devId ->
 							def device = getDeviceById(devId)
 							def actual = device ? device.currentValue(attr) : null
-							flowLog(fname, "In evaluateNode-condition-or: actual: ${actual} | expected: ${expected} | comparator: ${comparator}", "info")
 							evaluateComparator(actual, expected, comparator ?: '==')
 						}
-						flowLog(fname, "In evaluateNode-condition-or: passes: ${passes}", "info")
-						flowLog(fname, "---------- In evaluateNode-condition-or -------end", "info")
 					}
 				}
 
@@ -1124,10 +1122,8 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 		
 		case "repeat":
 			flowLog(fname, "In evaluateNode - repeat", "debug")
-			// flowObj is already declared in this scope; just initialize its repeatCounts map:
 			if (!flowObj.repeatCounts) flowObj.repeatCounts = [:]
 
-			// Pull the repeat mode ("count" or "until")
 			def mode = node.data.repeatMode ?: "count"
 
 			if (mode == "count") {
@@ -1143,7 +1139,6 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				} else {
 					flowLog(fname, "Repeat node (count): reached ${repeatMax}, moving on.", "info")
 					flowObj.repeatCounts[nodeId.toString()] = 0
-					// fire downstream once
 					node.outputs?.output_1?.connections?.each { conn ->
 						evaluateNode(fname, conn.node, evt, null, visited)
 					}
@@ -1151,28 +1146,35 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			else if (mode == "until") {
 				// —— UNTIL mode ——
-				def devIds = []
+				// device ids (may be empty or "__variable__")
+				List devIds = []
 				if (node.data.deviceIds instanceof List && node.data.deviceIds) {
 					devIds = node.data.deviceIds
 				} else if (node.data.deviceId) {
-					devIds = [node.data.deviceId]
+					devIds = [ node.data.deviceId ]
 				}
+
 				def attr       = node.data.attribute
 				def comparator = node.data.comparator
 				def expected   = resolveVars(fname, node.data.value)
 
-				// Determine currentValue
+				// Determine currentValue from: variable OR device OR event snapshot
 				def currentValue = null
-				if (evt?.name == attr && evt.value != null) {
+				boolean variableMode = (!devIds || devIds.isEmpty() || devIds.contains("__variable__"))
+
+				if (variableMode) {
+					String varName = (node.data.variableName ?: node.data.varName ?: attr)?.toString()
+					currentValue = _getVarActual(fname, varName)
+					flowLog(fname, "Repeat(until) VAR: ${varName} → ${currentValue}", "debug")
+				} else if (evt?.name == attr && evt.value != null) {
 					currentValue = evt.value
 				} else if (devIds && devIds[0]) {
 					currentValue = getDeviceById(devIds[0])?.currentValue(attr)
 				}
 
-				// Evaluate the condition
 				def passes = evaluateComparator(currentValue, expected, comparator)
 				if (!passes) {
-					flowLog(fname, "Repeat node (until): condition not met (${attr} ${comparator} ${expected}), looping.", "info")
+					flowLog(fname, "Repeat node (until): condition not met (${attr ?: 'var'} ${comparator} ${expected}), looping.", "info")
 					recheckAllTriggers(fname)
 				} else {
 					flowLog(fname, "Repeat node (until): condition met, moving on.", "info")
@@ -2466,4 +2468,12 @@ private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
 
     // Default for brand-new names: Flow (more specific)
     return [scope: "flow", key: bare]
+}
+
+// Get current value of a variable by name (prefers typed/ resolved varCtx)
+private def _getVarActual(String fname, String varName) {
+    def flowObj = state.activeFlows[fname]
+    return flowObj?.varCtx?.get(varName) ?:
+           (flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }) ?:
+           (flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) })
 }
