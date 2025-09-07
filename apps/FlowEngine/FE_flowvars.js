@@ -162,16 +162,10 @@
     html += "  <input id='newVarName' placeholder='Variable Name' style='width:180px;font-size:13px;padding:2px 5px;'>";
     html += "  <label for='newVarValue' style='margin-top:5px;'>Initial Value</label>";
     html += "  <input id='newVarValue' placeholder='Initial Value' style='width:180px;font-size:13px;padding:2px 5px;'>";
-    html += "  <label for='newVarType' style='margin-top:5px;'>Type</label>";
-    html += "  <select id='newVarType' style='width:110px;font-size:13px;'><option value=''> (select) </option><option value='String'>String</option><option value='Number'>Number</option><option value='Boolean'>Boolean</option></select>";
     html += "  <button id='saveNewVarBtn' style='background:#1d9d53;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;margin-top:12px;cursor:pointer;'>Save</button>";
     html += "</div>";
-    html += "<hr><b>Delete a Variable</b><br>";
-    html += "<div id='deleteVarRow' style='display:flex;flex-direction:column;gap:8px;margin:10px 0 0 0;align-items:flex-start;'>";
-    html += "  <label for='deleteVarSelect'>Variable Name</label>";
-    html += "  <select id='deleteVarSelect' style='width:210px;font-size:13px;'><option value=''> (select) </option></select>";
-    html += "  <button id='deleteVarBtn' style='background:#e64b4b;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;'>Delete</button>";
-    html += "</div>";
+    // [split] Delete section moved to its own panel.
+
 
     el.innerHTML = html;
 
@@ -194,7 +188,6 @@
     // Grab inputs for validation helpers
     var scopeSel = document.getElementById("newVarScope");
     var nameEl   = document.getElementById("newVarName");
-    var typeSel  = document.getElementById("newVarType");
     var valEl    = document.getElementById("newVarValue");
 
     updateDeleteVarDropdown();
@@ -286,7 +279,6 @@
     // Only this function changes how the Save button looks/behaves
     function setSaveState() {
       var scope = (scopeSel && scopeSel.value || "").trim();
-      var type  = (typeSel  && typeSel.value  || "").trim();
       var rawName = (nameEl && nameEl.value   || "").trim();
       var name = rawName.replace(/[^a-zA-Z0-9_-]/g, "");
 
@@ -303,7 +295,7 @@
         nameEl && nameEl.classList.remove("fe-dup");
       }
 
-      var disable = !!saveInFlight || !scope || !type || !name || !!nameDup;
+      var disable = !!saveInFlight || !scope || !name || !!nameDup;
 
       // HARD disable via attribute only (no pointer-events hacks)
       if (saveBtn) saveBtn.disabled = disable;
@@ -315,7 +307,6 @@
     if (scopeSel) scopeSel.addEventListener("change", setSaveState);
     if (nameEl)  nameEl.addEventListener("input",  setSaveState);
     if (valEl)   valEl.addEventListener("input",   setSaveState);
-    if (typeSel) typeSel.addEventListener("change", setSaveState);
     // initial
     setSaveState();
 
@@ -333,15 +324,11 @@
         var scope = (scopeSel && scopeSel.value || "").trim();
         var name  = (nameEl  && nameEl.value  || "").trim();
         var value = (valEl   && valEl.value   || "");
-        var type  = (typeSel && typeSel.value || "");
+        var type  = 'String';
 
         name  = name.replace(/[^a-zA-Z0-9_-]/g, "");
         value = String(value).replace(/['"]/g, "").replace(/[^\w\s\-.,:;!?@#$/(){}\[\]=+*<>\\]/g, "");
-
-        if (type === "Number")  value = Number(value);
-        if (type === "Boolean") value = (value === "true" || value === "1");
-
-        var flowFile = (root.getCurrentFlowFile && root.getCurrentFlowFile()) || currentFlow || "";
+var flowFile = (root.getCurrentFlowFile && root.getCurrentFlowFile()) || currentFlow || "";
         await saveVariableToApp({ scope: scope, flowFile: flowFile, name: name, type: type, value: value });
 
         // local reflect (upsert)
@@ -369,7 +356,6 @@
         if (scopeSel) scopeSel.value = "";
         if (nameEl)   nameEl.value   = "";
         if (valEl)    valEl.value    = "";
-        if (typeSel)  typeSel.value  = "";
         if (nameEl && nameEl.focus) nameEl.focus();
         setSaveState();
 
@@ -431,7 +417,172 @@
     root.setCurrentFlowVars = function (flowFile) { return root.setCurrentFlowFile(flowFile); };
   }
 
+  
   // -------------------------
+  // Delete Variable UI (standalone section)
+  // -------------------------
+  root.renderDeleteSection = function(el) {
+    if (!el) return;
+    var html = "";
+    html += "<div id='deleteVarRow' style='display:flex;flex-direction:column;gap:8px;margin:10px 0 0 0;align-items:flex-start;'>";
+    html += "  <label for='deleteVarSelect'>Variable Name</label>";
+    html += "  <select id='deleteVarSelect' style='width:210px;font-size:13px;'><option value=''> (select) </option></select>";
+    html += "  <button id='deleteVarBtn' style='background:#e64b4b;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;'>Delete</button>";
+    html += "</div>";
+    el.innerHTML = html;
+
+    function resetBtnLocal(id) {
+      var node = document.getElementById(id);
+      if (!node || !node.parentNode) return null;
+      var clone = node.cloneNode(true);
+      node.parentNode.replaceChild(clone, node);
+      return document.getElementById(id);
+    }
+
+    // populate dropdown initially
+    try { updateDeleteVarDropdown(); } catch(_){}
+
+    var delBtn = resetBtnLocal("deleteVarBtn");
+    if (delBtn) delBtn.onclick = async function () {
+      var sel = document.getElementById("deleteVarSelect");
+      var rawName = (sel && sel.value) || "";
+      if (!rawName) return alert("Choose a variable to delete.");
+      if (!confirm("This can not be undone. Are you sure?")) return;
+
+      // Scope is stored on the option itself
+      var opt = sel && sel.options && sel.options[sel.selectedIndex];
+      var scope = (opt && opt.dataset && (opt.dataset.scope === "flow" ? "flow" : opt.dataset.scope === "global" ? "global" : "")) || "";
+      var name  = rawName;
+
+      if (!scope || !name) { alert("Variable selection could not be parsed."); return; }
+
+      var flowFile = (root.getCurrentFlowFile && root.getCurrentFlowFile()) || "";
+
+      try {
+        await deleteVariableInApp({ scope: scope, flowFile: flowFile, name: name });
+      } catch (e) {
+        alert("Delete failed: " + (e && e.message ? e.message : String(e)));
+        return;
+      }
+
+      // local remove from mirrors
+      try {
+        if (scope === "global") {
+          if (Array.isArray(window.FE_global_vars)) {
+            window.FE_global_vars = window.FE_global_vars.filter(function(v){ return v && v.name !== name; });
+          }
+        } else if (scope === "flow") {
+          var key = (String(flowFile||"")).replace(/\.json$/i, "");
+          if (window.FE_flowvars && Array.isArray(window.FE_flowvars[key])) {
+            window.FE_flowvars[key] = window.FE_flowvars[key].filter(function(v){ return v && v.name !== name; });
+          }
+        }
+      } catch(_){}
+
+      try { if (typeof window.renderVariableInspector === "function") window.renderVariableInspector(); } catch(_){}
+      try { updateDeleteVarDropdown(); } catch(_){}
+      alert("Deleted variable: " + name);
+    };
+  };
+
+  // -------------------------
+  // Edit Variable UI (standalone section)
+  // -------------------------
+  root.renderEditSection = function(el) {
+    if (!el) return;
+    var html = "";
+    html += "<div id='editVarRow' style='display:flex;flex-direction:column;gap:8px;margin:10px 0 0 0;align-items:flex-start;'>";
+    html += "  <label for='editVarSelect'>Variable Name</label>";
+    html += "  <select id='editVarSelect' style='width:240px;font-size:13px;'><option value=''> (select) </option></select>";
+    html += "  <label for='editVarValue' style='margin-top:5px;'>New Value</label>";
+    html += "  <input id='editVarValue' placeholder='New Value' style='width:220px;font-size:13px;padding:2px 5px;'>";
+    html += "  <button id='editVarBtn' style='background:#1d78d9;color:#fff;border:none;border-radius:7px;padding:4px 24px;font-size:15px;'>Change</button>";
+    html += "</div>";
+    el.innerHTML = html;
+
+    function currentFlowKey() {
+      try { return (root.getCurrentFlowFile && String(root.getCurrentFlowFile()).replace(/\.json$/i,"")) || ""; } catch(_){ return ""; }
+    }
+
+    function updateEditVarDropdown() {
+      var sel = document.getElementById("editVarSelect");
+      if (!sel) return;
+      var opts = ["<option value=''> (select) </option>"];
+      try {
+        var globals = Array.isArray(window.FE_global_vars) ? window.FE_global_vars.slice() : [];
+        globals.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+        globals.forEach(function(g){
+          if (g && g.name) opts.push("<option data-scope='global' data-type='"+(g.type||"String")+"' value='"+String(g.name).replace(/'/g,"&#39;")+"'>"+g.name+"</option>");
+        });
+      } catch(_){}
+
+      try {
+        var key = currentFlowKey();
+        var map = window.FE_flowvars || {};
+        var flows = Array.isArray(map) ? [] : (map[key] || map[key+".json"] || []);
+        flows = flows.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+        flows.forEach(function(f){
+          if (f && f.name) opts.push("<option data-scope='flow' data-type='"+(f.type||"String")+"' value='"+String(f.name).replace(/'/g,"&#39;")+"'>"+f.name+" (flow)</option>");
+        });
+      } catch(_){}
+
+      sel.innerHTML = opts.join("");
+    }
+
+    // initial populate and also expose globally so refreshVarsAndInspector can call it
+    updateEditVarDropdown();
+    try { window.updateEditVarDropdown = updateEditVarDropdown; } catch(_){}
+
+    var editBtn = document.getElementById("editVarBtn");
+    var valEl   = document.getElementById("editVarValue");
+    var selEl   = document.getElementById("editVarSelect");
+
+    if (editBtn) editBtn.onclick = async function () {
+      var sel = selEl;
+      var rawName = (sel && sel.value) || "";
+      if (!rawName) { alert("Choose a variable to edit."); return; }
+      var opt = sel && sel.options && sel.options[sel.selectedIndex];
+      var scope = (opt && opt.dataset && (opt.dataset.scope === "flow" ? "flow" : opt.dataset.scope === "global" ? "global" : "")) || "";
+      if (!scope) { alert("Variable scope not found."); return; }
+      var name = rawName;
+      var type = (opt && opt.dataset && opt.dataset.type) || "String";
+      var value = (valEl && valEl.value) || "";
+
+      // sanitize value similar to Save
+      value = String(value).replace(/['"]/g, "").replace(/[^\w\s\-.,:;!?@#$/(){}\[\]=+*<>\\]/g, "");
+if (type === "Boolean") value = (String(value).toLowerCase() === "true" || value === 1 || value === "1");
+
+      var flowFile = (root.getCurrentFlowFile && root.getCurrentFlowFile()) || "";
+
+      try {
+        await saveVariableToApp({ scope: scope, flowFile: flowFile, name: name, type: type, value: value });
+      } catch (e) {
+        alert("Change failed: " + (e && e.message ? e.message : String(e)));
+        return;
+      }
+
+      // update local mirrors
+      try {
+        if (scope === "global") {
+          var g = Array.isArray(window.FE_global_vars) ? window.FE_global_vars : [];
+          var gi = -1; for (var i=0;i<g.length;i++) if (g[i] && g[i].name === name) { gi = i; break; }
+          if (gi >= 0) g[gi].value = value; else g.push({ name:name, type:type, value:value });
+          window.FE_global_vars = g;
+        } else if (scope === "flow") {
+          var key = String(flowFile||"").replace(/\.json$/i,"");
+          var m = window.FE_flowvars || (window.FE_flowvars = {});
+          var arr = Array.isArray(m[key]) ? m[key] : (Array.isArray(m[key+'.json']) ? m[key+'.json'] : []);
+          var fi = -1; for (var j=0;j<arr.length;j++) if (arr[j] && arr[j].name === name) { fi = j; break; }
+          if (fi >= 0) arr[fi].value = value; else arr.push({ name:name, type:type, value:value });
+          m[key] = arr; m[key+'.json'] = arr;
+        }
+      } catch(_){}
+
+      try { if (typeof window.renderVariableInspector === "function") window.renderVariableInspector(); } catch(_){}
+      alert("Updated variable: " + name);
+    };
+  };
+// -------------------------
   // Inspector helpers
   // -------------------------
   window.updateDeleteVarDropdown = function updateDeleteVarDropdown() {
