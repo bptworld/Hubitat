@@ -108,7 +108,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.058</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.059</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -263,15 +263,30 @@ document.addEventListener('click', function(e){
             style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
         </div>
       </div>
-      <div><hr></div>
       <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
         <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
           <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Add/Delete Variables
+          Add Variables
         </div>
         <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
       </div>
-      <div id="logBox"
+
+      <div id="variableDeletePanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+        <div id="variableDeleteHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+          <span id="variableDeleteArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Delete Variable
+        </div>
+        <div id="variableDeleteContent" style="display:none; padding:0 10px 8px 16px;"></div>
+      </div>
+      
+      <div id="variableEditPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+        <div id="variableEditHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+          <span id="variableEditArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+          Edit Variable
+        </div>
+        <div id="variableEditContent" style="display:none; padding:0 10px 8px 16px;"></div>
+      </div>
+<div id="logBox"
           style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
                   border-top:1px solid #333; padding-top:10px; font-family:monospace;
                   font-size:12px;">
@@ -297,15 +312,6 @@ document.addEventListener('click', function(e){
   <script src="FE_html2canvas.min.js"></script>
   <script>
     // === SAFE HELPERS to access drawflow.Home across legacy/new JSON shapes ===
-    
-/* duplicate of getHomeFrom removed (safe) */
-
-    
-/* duplicate of getHomeDataFrom removed (safe) */
-
-    
-/* duplicate of hasHomeData removed (safe) */
-
 
     // 1) Fetch the list of flow-files from Hubitat
     async function fetchHubitatFiles() {
@@ -9975,6 +9981,63 @@ document.addEventListener("click", (e)=>{
   });
 })();
 </script>
+
+<script>
+(function(){
+  function bindToggle(hId, cId, aId){
+    var h=document.getElementById(hId), c=document.getElementById(cId), a=document.getElementById(aId);
+    if (a) a.style.transform = (c && c.style.display === 'none') ? 'rotate(-90deg)' : 'rotate(0deg)';
+    if(!h||!c) return;
+    h.addEventListener('click', function(){
+      var open = (c.style.display==='none');
+      c.style.display = open ? 'block' : 'none';
+      if(a) a.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+    });
+  }
+  bindToggle('variableDeleteHeader','variableDeleteContent','variableDeleteArrow');
+  try{
+    if (window.flowVars && typeof window.flowVars.renderDeleteSection === 'function') {
+      window.flowVars.renderDeleteSection(document.getElementById('variableDeleteContent'));
+    }
+  }catch(e){ console.warn('renderDeleteSection failed', e); }
+})();
+</script>
+
+
+<script>
+(function(){
+  function bindToggle(hId, cId, aId){
+    var h=document.getElementById(hId), c=document.getElementById(cId), a=document.getElementById(aId);
+    if (a) a.style.transform = (c && c.style.display === 'none') ? 'rotate(-90deg)' : 'rotate(0deg)';
+    if(!h||!c) return;
+    h.addEventListener('click', function(){
+      var open = (c.style.display==='none');
+      c.style.display = open ? 'block' : 'none';
+      if(a) a.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+    });
+  }
+  bindToggle('variableEditHeader','variableEditContent','variableEditArrow');
+  try{
+    if (window.flowVars && typeof window.flowVars.renderEditSection === 'function') {
+      window.flowVars.renderEditSection(document.getElementById('variableEditContent'));
+    }
+  }catch(e){ console.warn('renderEditSection failed', e); }
+
+  // Also refresh the dropdown when vars refresh
+  try{
+    if (typeof refreshVarsAndInspector === 'function' && !refreshVarsAndInspector.__patchedForEdit) {
+      const _rv = refreshVarsAndInspector;
+      window.refreshVarsAndInspector = async function() {
+        const r = await _rv.apply(this, arguments);
+        try { if (typeof window.updateEditVarDropdown === 'function') window.updateEditVarDropdown(); } catch(_) {}
+        return r;
+      }
+      window.refreshVarsAndInspector.__patchedForEdit = true;
+    }
+  }catch(_){}
+})();
+</script>
+
 </body>
 </html>
 <!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
@@ -10191,4 +10254,3 @@ try{ window.__autoRefresh = false; }catch(_){}
 
 </script>
 <!-- END: Variable Manager Save Button Enforcer -->
-
