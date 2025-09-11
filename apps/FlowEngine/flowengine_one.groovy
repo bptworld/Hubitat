@@ -24,8 +24,6 @@
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  * ------------------------------------------------------------------------------------------------------------------------------
- *  Changes:
- *  1.0.0 - 08/25/25 - Initial Release
  */
 
 import groovy.json.JsonSlurper
@@ -63,7 +61,7 @@ def mainPage() {
                 paragraph "<table width='100%'><tr><td align='center'><div style='font-size: 20px;font-weight: bold;'><a href='http://${location.hub.localIP}/local/flowengineeditor.html' target=_blank>Flow Engine Editor</a></div><div><small>Click to create Flows!</small></div></td></tr></table>"
                 paragraph "<center>Tip: Once you open the Editor and enter in your appId/Token, go ahead and Bookmark the Editor.  This way you may never need to open this app again.  Control everything from within the Editor!</center>"
                 paragraph "<hr>"
-            }
+                            }
 
             section(getFormat("header-green", " Select Flow Files to Enable")) {
                 getFileList()
@@ -98,30 +96,28 @@ def mainPage() {
 
 					html << "<hr style='margin:8px 0;border:0;border-top:1px solid #444;'>"
 
-					
-
-// Flow maps — show each flow’s list (ONLY flows that actually have vars)
-Map nonEmpty = _pruneEmptyFlowKeys(fmap)
-def flowKeys = nonEmpty?.keySet()?.collect{ it?.toString() }?.sort{ (it ?: '').toLowerCase() } ?: []
-html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Flow Variables</div>"
-if (!flowKeys) {
-    html << "<div style='margin-left:8px;color:#999'>(no flow variables)</div>"
-} else {
-    flowKeys.each { flowName ->
-        List lst = (nonEmpty[flowName] instanceof List) ? (nonEmpty[flowName] as List) : []
-        def showName = flowName?.toString()
-        html << "<div style='margin:6px 0 2px 0; text-decoration:underline;'>${_hx(showName)}</div>"
-        def sortedF = lst.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
-        if (sortedF && sortedF.size()) {
-            sortedF.each { v ->
-                html << "<div style='margin-left:16px'>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
-            }
-        } else {
-            html << "<div style='margin-left:16px;color:#999'>(none)</div>"
-        }
-    }
-}
-paragraph html.toString()
+					// Flow maps — show each flow’s list (ONLY flows that actually have vars)
+					Map nonEmpty = _pruneEmptyFlowKeys(fmap)
+					def flowKeys = nonEmpty?.keySet()?.collect{ it?.toString() }?.sort{ (it ?: '').toLowerCase() } ?: []
+					html << "<div style='margin:6px 0 4px 0; font-weight:600;'>Flow Variables</div>"
+					if (!flowKeys) {
+						html << "<div style='margin-left:8px;color:#999'>(no flow variables)</div>"
+					} else {
+						flowKeys.each { flowName ->
+							List lst = (nonEmpty[flowName] instanceof List) ? (nonEmpty[flowName] as List) : []
+							def showName = flowName?.toString()
+							html << "<div style='margin:6px 0 2px 0; text-decoration:underline;'>${_hx(showName)}</div>"
+							def sortedF = lst.findAll{ it?.name }.sort{ (it.name ?: '').toString().toLowerCase() }
+							if (sortedF && sortedF.size()) {
+								sortedF.each { v ->
+									html << "<div style='margin-left:16px'>${_hx(v.name)} (${_hx(v.type ?: 'String')}) = ${_hx(v.value)}</div>"
+								}
+							} else {
+								html << "<div style='margin-left:16px;color:#999'>(none)</div>"
+							}
+						}
+					}
+					paragraph html.toString()
 				}
             }
 
@@ -819,7 +815,8 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 						def actual =
 							flowObj?.varCtx?.get(varName) ?:
 							(flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }) ?:
-							(flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) })
+							(flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }) ?:
+							(getGlobalVar(varName)?.value)
 
 						passes = evaluateComparator(actual, expected, comparator ?: '==')
 						flowLog(fname, "Condition(variable): ${varName}=${actual} ${comparator ?: '=='} ${expected} ⇒ ${passes}", "debug")
@@ -991,7 +988,64 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			node.outputs?.output_1?.connections?.each { conn ->
 				evaluateNode(fname, conn.node, evt, null, visited)
 			}
-			break
+
+
+        case "countdown":
+            flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
+
+            String varName   = resolveVars(fname, (node.data.varName ?: "").toString())
+            String md        = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "MM-DD"
+
+            if (!varName) {
+                flowLog(fname, "countdown: missing varName", "warn")
+                break
+            }
+            if (!md || !(md ==~ /\d{2}-\d{2}/)) {
+                flowLog(fname, "countdown: missing/invalid targetDate (expect MM-DD), got '${md}'", "warn")
+                break
+            }
+
+            // Compute days until next occurrence of MM-DD (midnight-to-midnight in hub TZ)
+            TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+            Calendar nowCal = Calendar.getInstance(tz)
+            nowCal.set(Calendar.MILLISECOND, 0)
+            Calendar startCal = Calendar.getInstance(tz)
+            startCal.set(Calendar.HOUR_OF_DAY, 0)
+            startCal.set(Calendar.MINUTE, 0)
+            startCal.set(Calendar.SECOND, 0)
+            startCal.set(Calendar.MILLISECOND, 0)
+
+            int year  = nowCal.get(Calendar.YEAR)
+            int month = md.substring(0,2).toInteger()
+            int day   = md.substring(3,5).toInteger()
+
+            Calendar targetCal = Calendar.getInstance(tz)
+            targetCal.set(Calendar.YEAR, year)
+            targetCal.set(Calendar.MONTH, month - 1)
+            targetCal.set(Calendar.DAY_OF_MONTH, day)
+            targetCal.set(Calendar.HOUR_OF_DAY, 0)
+            targetCal.set(Calendar.MINUTE, 0)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+
+            if (targetCal.getTime().before(startCal.getTime())) {
+                targetCal.add(Calendar.YEAR, 1)
+            }
+
+            long msPerDay = 24L * 60L * 60L * 1000L
+            long diffMs   = targetCal.getTimeInMillis() - startCal.getTimeInMillis()
+            int days      = Math.ceil(diffMs / (double) msPerDay) as int
+
+            if (testDryRun) {
+                flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
+            } else {
+                _saveVariableInternal(fname, "flow", varName, "Integer", days)
+            }
+
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
 
         case "saveDeviceState":
 			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
@@ -1188,6 +1242,120 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			}
 			break
 
+		case "countdown":
+			flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
+
+			String varName    = resolveVars(fname, (node.data.varName ?: "").toString())
+			String targetStr  = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "YYYY-MM-DD"
+
+			if (!varName) {
+				flowLog(fname, "countdown: missing varName", "warn")
+				break
+			}
+			if (!targetStr) {
+				flowLog(fname, "countdown: missing targetDate", "warn")
+				break
+			}
+
+			// compute whole days until target date (midnight-to-midnight in hub TZ)
+			TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+			Date now    = new Date()
+			Date today0 = now.clearTime()
+			use (groovy.time.TimeCategory) {
+				today0 = today0.clone() // ensure we can use it safely
+			}
+
+			Date target
+			try {
+				target = Date.parse("yyyy-MM-dd", targetStr)
+				target = target.clearTime()
+			} catch (e) {
+				flowLog(fname, "countdown: invalid date '${targetStr}'", "warn")
+				break
+			}
+
+			long msPerDay = 24L * 60L * 60L * 1000L
+			long diffMs   = target.time - today0.time
+			int  days     = Math.ceil(diffMs / (double) msPerDay) as int
+
+			if (testDryRun) {
+				flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
+			} else {
+				// Force Flow scope per your request
+				_saveVariableInternal(fname, "flow", varName, "Integer", days)
+			}
+
+			// continue downstream
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			break
+
+		case "motionDirection":
+			// Gate: only continue when A & B last-active are within window.
+			flowLog(fname, "In evaluateNode - motionDirection (incoming=${incomingValue})", "debug")
+
+			int  gapSec   = (node?.data?.maxGapSec ?: 5) as Integer
+			long windowMs = Math.max(1, gapSec) * 1000L
+			String varName = (node?.data?.varName ?: "").toString()
+
+			String direction = null
+			Long aTs = null
+			Long bTs = null
+
+			// If an event-driven evaluation passed us a direction, use it
+			if (incomingValue instanceof String &&
+				["in","out"].contains(incomingValue.toString().toLowerCase())) {
+				direction = incomingValue.toString().toUpperCase()
+			} else {
+				// Editor Test (or non-event invocation): compute from device history
+				def aDev = getDeviceById(node?.data?.deviceAId)
+				def bDev = getDeviceById(node?.data?.deviceBId)
+
+				if (!aDev || !bDev) {
+					flowLog(fname, "MotionDirection: missing Motion A or B device, blocking.", "warn")
+					return false
+				}
+
+				aTs = _lastMotionActiveTs(aDev)
+				bTs = _lastMotionActiveTs(bDev)
+
+				if (!(aTs && bTs)) {
+					flowLog(fname, "MotionDirection: could not find last 'active' for A or B, blocking.", "info")
+					return false
+				}
+
+				long dt = Math.abs(aTs - bTs)
+				if (dt > windowMs) {
+					flowLog(fname, "MotionDirection: last actives not within ${gapSec}s (Δ=${dt/1000G}s), blocking.", "info")
+					return false
+				}
+
+				direction = (aTs <= bTs) ? "In" : "Out"
+			}
+
+			// Update node data for tile status (A/B times)
+			try {
+				node.data.__lastATs = aTs ?: node.data.__lastATs
+				node.data.__lastBTs = bTs ?: node.data.__lastBTs
+			} catch (ignored) {}
+
+			// Save to variable if requested
+			if (varName) {
+				try {
+					_saveVariableInternal(fname, "flow", varName, "String", direction)
+					notifyVarsUpdated("flow", _bareFlow(fname))
+				} catch (e) {
+					flowLog(fname, "MotionDirection: failed to save var '${varName}': ${e}", "warn")
+				}
+			}
+
+			// Continue downstream with the computed direction
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(fname, conn.node, evt, direction, visited)
+			}
+			return direction
+
         default:
             log.warn "Unknown node type: ${node.name}"
     }
@@ -1329,11 +1497,13 @@ def loadAndStartFlow(fname) {
         savedDeviceStates: [:],
         flowVars: [],
         globalVars: [],
-        vars: [:]
+        vars: [:],
+        mdTracker: [:]
     ]
     loadVariables(fname)
     subscribeToTriggers(fname)
-	scheduleTimeBasedTriggers(fname)
+    scheduleTimeBasedTriggers(fname)
+    subscribeMotionDirection(fname)
 }
 
 def getFileList() {
@@ -1402,8 +1572,25 @@ def getDeviceById(id) {
 }
 
 def apiListVariables() {
-    render contentType:"application/json",
-           data: JsonOutput.toJson([globals: _ensureGlobalVarsList(), flows: _ensureFlowVarsMap()])
+    try {
+        List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
+        Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
+
+        def out = [globals: gvars, flows: fmap]
+        render contentType: "application/json", data: groovy.json.JsonOutput.toJson(out)
+    } catch (e) {
+        render status: 500, contentType: "application/json", data: '{"error":"vars list failed"}'
+    }
+    try {
+        List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
+        Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
+        //log.debug "FE(app) /variables sizes g=${gvars?.size()} flows="+(fmap?.size()))
+        def out = [globals: gvars, flows: fmap]
+        render contentType: "application/json", data: groovy.json.JsonOutput.toJson(out)
+    } catch (e) {
+        log.error "FE(app) /variables failed: ${e}"
+        render status: 500, contentType: "application/json", data: '{"error":"vars list failed"}'
+    }
 }
 
 def apiSaveVariable() {
@@ -1429,7 +1616,7 @@ def apiSaveVariable() {
                data: groovy.json.JsonOutput.toJson([result:"Variable saved", name:name, type:type, value:value, scope:"global"])
         return
     }
-
+	
     // FLOW (explicit `scope: flow` + flow param OR legacy `scope: <flowName>`)
     String flowParam = (json?.flow ?: json?.flowName ?: json?.flow_file ?: '').toString()
     String key = (scope == 'flow') ? _bareFlow(flowParam) : _bareFlow(scopeRaw)
@@ -1607,6 +1794,34 @@ def subscribeToTriggers(String fname) {
     }
 }
 
+void subscribeMotionDirection(String fname) {
+    def flowObj  = state.activeFlows[fname]
+    if (!flowObj?.flow) return
+
+    flowObj.mdTracker = flowObj.mdTracker ?: [:]
+
+    def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
+    dataNodes.each { nodeId, node ->
+        if (node?.name != "motionDirection") return
+
+        String aId = node?.data?.deviceAId?.toString()
+        String bId = node?.data?.deviceBId?.toString()
+        if (!aId || !bId) return
+
+        def devA = getDeviceById(aId)
+        def devB = getDeviceById(bId)
+        if (devA) subscribe(devA, "motion", "mdGenericHandler")
+        if (devB) subscribe(devB, "motion", "mdGenericHandler")
+
+        // init per-node tracker
+        flowObj.mdTracker[nodeId.toString()] = [
+            lastA : null as Long,
+            lastB : null as Long,
+            lastDir: null
+        ]
+    }
+}
+
 def genericDeviceHandler(evt) {
     // Snapshot keys to avoid ConcurrentModificationException if handleEvent mutates state
     def keys = (state.activeFlows?.keySet() ?: []) as List
@@ -1622,6 +1837,113 @@ def genericDeviceHandler(evt) {
             }
         }
     }
+}
+
+void mdGenericHandler(evt) {
+    // snapshot flow keys to avoid CME
+    def keys = (state.activeFlows?.keySet() ?: []) as List
+    keys.each { fname ->
+        try {
+            processMotionDirectionEvent(fname, evt)
+        } catch (Throwable e) {
+            log.warn "[${fname}] mdGenericHandler error: ${e}"
+        }
+    }
+}
+
+private void processMotionDirectionEvent(String fname, evt) {
+    if (!evt || (evt.name?.toString()?.toLowerCase() != "motion")) return
+    if (!"${evt.value}".equalsIgnoreCase("active")) return  // only care about 'active'
+
+    def flowObj   = state.activeFlows[fname]
+    def dataNodes = flowObj?.flow?.drawflow?.Home?.data ?: [:]
+    if (!flowObj) return
+
+    flowObj.mdTracker = flowObj.mdTracker ?: [:]
+    String incomingDevId = evt.deviceId?.toString()
+
+    dataNodes.each { nodeId, node ->
+        if (node?.name != "motionDirection") return
+
+        String aId = node?.data?.deviceAId?.toString()
+        String bId = node?.data?.deviceBId?.toString()
+        if (!aId || !bId) return
+
+        // only consider nodes that reference this device
+        if (!(incomingDevId in [aId, bId])) return
+
+        // window in ms (default 5s)
+        int gapSec = (node?.data?.maxGapSec ?: 5) as Integer
+        long windowMs = Math.max(1, gapSec) * 1000L
+
+        // per-node tracker
+        def t = (flowObj.mdTracker[nodeId.toString()] ?: [:]) as Map
+        Long nowMs = (evt.date instanceof Date ? evt.date.time : new Date().time) as Long
+
+        if (incomingDevId == aId) { t.lastA = nowMs }
+        if (incomingDevId == bId) { t.lastB = nowMs }
+
+        // if both exist and are within window → compute direction
+        if (t.lastA && t.lastB) {
+            long dt = Math.abs(t.lastA - t.lastB)
+            if (dt <= windowMs) {
+                String direction = (t.lastA <= t.lastB) ? "In" : "Out"
+                t.lastDir = direction
+
+				String varName = (node?.data?.varName ?: "").toString()
+				if (varName) {
+					try {
+						_saveVariableInternal(fname, "flow", varName, "String", direction)
+						notifyVarsUpdated("flow", _bareFlow(fname))
+					} catch (e) {
+						log.warn "[${fname}] Motion Direction: failed to save var '${varName}': ${e}"
+					}
+				}
+                // continue the graph starting from THIS node, passing the direction
+                try {
+                    evaluateNode(fname, nodeId.toString(), evt, direction, new HashSet())
+                } catch (Throwable ex) {
+                    log.warn "[${fname}] Motion Direction evaluate error: ${ex}"
+                }
+
+                // reset pair so we need a fresh A/B for the next decision
+                t.lastA = null
+                t.lastB = null
+            }
+        }
+
+        flowObj.mdTracker[nodeId.toString()] = t
+    }
+}
+
+// Returns the most recent time (millis) when the device's motion attribute was 'active'.
+// Uses Hubitat-safe 'now()' to compute the lookback window.
+private Long _lastMotionActiveTs(dev, int lookbackSec = 86400 /* 24h */) {
+    if (!dev) return null
+    try {
+        Date since = new Date(now() - (lookbackSec * 1000L))
+        def states = dev?.statesSince("motion", since, [max: 50]) ?: []
+        def actives = states.findAll { (it?.value?.toString()?.toLowerCase()) == "active" }
+        if (actives && !actives.isEmpty()) {
+            actives.sort { a, b -> (b?.date?.time ?: 0L) <=> (a?.date?.time ?: 0L) }
+            return actives[0]?.date?.time as Long
+        }
+    } catch (ignored) {
+        // fall through to eventsSince if statesSince not available
+    }
+    try {
+        Date since = new Date(now() - (lookbackSec * 1000L))
+        def evts = dev?.eventsSince(since, [max: 100]) ?: []
+        def actives = evts.findAll { e ->
+            (e?.name?.toString()?.toLowerCase() == "motion") &&
+            (e?.value?.toString()?.toLowerCase() == "active")
+        }
+        if (actives && !actives.isEmpty()) {
+            actives.sort { a, b -> (b?.date?.time ?: 0L) <=> (a?.date?.time ?: 0L) }
+            return actives[0]?.date?.time as Long
+        }
+    } catch (ignored) {}
+    return null
 }
 
 private void scheduleTimeBasedTriggers(String fname) {
@@ -1765,7 +2087,8 @@ def checkVariableTriggers() {
         if (!nodes) return
 
         // Map: varName -> value for quick lookups
-        def globalMap = globalVars.collectEntries { [(it.name): it.value] }
+
+        def globalMap = (globalVars).collectEntries { [(it.name): it.value] }
 
         nodes.each { id, node ->
             def varName = node.data?.variableName
@@ -2445,10 +2768,11 @@ private void _saveVariableInternal(String fname, String scope, String name, Stri
 
 private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
     String explicit = ((nodeData?.varScope ?: nodeData?.scope) ?: "").toString().toLowerCase()
-    if (explicit in ["flow","global","globals"]) {
-        return [scope: (explicit == "global" || explicit == "globals") ? "global" : "flow",
-                key:   (explicit == "flow") ? _bareFlow(fname) : null]
-    }
+	if (explicit in ["flow","global","globals"]) {
+		return [scope: (explicit == "global" || explicit == "globals") ? "global" : "flow",
+				key  : (explicit == "flow") ? _bareFlow(fname) : null]
+	}
+
     // boolean hints some editor builds use
     if (nodeData?.isGlobal == true || nodeData?.useGlobal == true) {
         return [scope: "global", key: null]
@@ -2473,7 +2797,14 @@ private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
 // Get current value of a variable by name (prefers typed/ resolved varCtx)
 private def _getVarActual(String fname, String varName) {
     def flowObj = state.activeFlows[fname]
-    return flowObj?.varCtx?.get(varName) ?:
-           (flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }) ?:
-           (flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) })
+    def fromCtx    = flowObj?.varCtx?.get(varName)
+    if (fromCtx != null) return fromCtx
+
+    def fromFlow   = flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
+    if (fromFlow != null) return fromFlow
+
+    def fromGlobal = flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
+    if (fromGlobal != null) return fromGlobal
+
+    try { return getGlobalVar(varName)?.value } catch (ignored) { return null }
 }
