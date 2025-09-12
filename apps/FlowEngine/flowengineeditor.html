@@ -188,8 +188,7 @@ document.addEventListener('click', function(e){
       <b>|</b>
       <select id="specialTilesDropdown" title="Special Tiles" style="vertical-align:middle;">
         <option value="">-- Special Nodes --</option>
-        <option value="countdown">Countdown Tile</option>
-        <option value="devicetovar">Devices to Variable Tile</option>
+        <option value="addCountdown">Countdown Tile</option>
         <option value="addMotionDirection">Motion Direction</option>
       </select>
       <button id="addCountdown" title="Add a Countdown" style="display:none;">Countdown</button>
@@ -306,7 +305,7 @@ document.addEventListener('click', function(e){
       if (!sel.__specialHooked) {
         sel.__specialHooked = true;
         sel.addEventListener('change', function(){
-          const id = this.value; // e.g. "addCountdown" or "addMotionDirection"
+          const id = this.value;
           if (!id) return;
           const btn = document.getElementById(id);
           if (btn && typeof btn.click === 'function') btn.click();
@@ -3933,7 +3932,7 @@ document.addEventListener('click', function(e){
         window.newNodeCounter++;
       };
     
-      document.getElementById("addDeviceToVar").onclick = function () {
+      document.getElementById("addDeviceToVar").onclick = () => {
         logAction("addDeviceToVar button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("notMatchingVar", 1, 2, x, y, "notMatchingVar", {
