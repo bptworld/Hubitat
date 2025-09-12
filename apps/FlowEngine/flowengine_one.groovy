@@ -699,108 +699,108 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 
     switch (node.name) {
 		case "eventTrigger":
-			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
+            flowLog(fname, "In evaluateNode - eventTrigger", "debug")
 
-			// 1) Read config
-			def expected = resolveVars(fname, node?.data?.value)
-			String logic = (node?.data?.logic?.toString() ?: "or").toLowerCase()
-			String comp  = (node?.data?.comparator ?: "==").toString()
+            // 1) Read config
+            def expected = resolveVars(fname, node?.data?.value)
+            String logic = (node?.data?.logic?.toString() ?: "or").toLowerCase()
+            String comp  = (node?.data?.comparator ?: "==").toString()
 
-			// 2) Device IDs (supports single deviceId or multi deviceIds)
-			List<String> devIds = []
-			if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
-				devIds = node.data.deviceIds.collect { it?.toString() }
-			} else if (node?.data?.deviceId) {
-				devIds = [ node.data.deviceId?.toString() ]
-			}
-			if (!devIds) {
-				flowLog(fname, "eventTrigger: no deviceIds configured", "warn")
-				return null
-			}
+            // 2) Device IDs (supports single deviceId or multi deviceIds)
+            List<String> devIds = []
+            if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
+                devIds = node.data.deviceIds.collect { it?.toString() }
+            } else if (node?.data?.deviceId) {
+                devIds = [ node.data.deviceId?.toString() ]
+            }
+            if (!devIds) {
+                flowLog(fname, "eventTrigger: no deviceIds configured", "warn")
+                return null
+            }
 
-			// 3) Attribute: configured -> event name -> "switch"
-			String attr = (node?.data?.attribute?.toString()?.trim())
-			if (!attr) attr = evt?.name?.toString() ?: "switch"
+            // 3) Attribute: configured -> event name -> "switch"
+            String attr = (node?.data?.attribute?.toString()?.trim())
+            if (!attr) attr = evt?.name?.toString() ?: "switch"
 
-			// 4) Fast path: evaluate against the INCOMING EVENT first
-			boolean pass = false
+            // 4) Fast path: evaluate against the INCOMING EVENT first
+            boolean pass = false
 
-			// Resolve test events that only provide a device *label*
-			String evtDevId = (evt?.deviceId?.toString() ?: "")
-			if (!evtDevId && evt?.device) {
-				String resolved = getDeviceIdByLabel(evt.device?.toString())
-				if (resolved) evtDevId = resolved
-			}
+            // Resolve test events that only provide a device *label*
+            String evtDevId = (evt?.deviceId?.toString() ?: "")
+            if (!evtDevId && evt?.device) {
+                String resolved = getDeviceIdByLabel(evt.device?.toString())
+                if (resolved) evtDevId = resolved
+            }
 
-			boolean idMatch =
-				(evtDevId && devIds?.contains(evtDevId)) ||
-				(!evtDevId && (devIds?.contains("__time__") || devIds?.contains("__variable__")))
+            boolean idMatch =
+                (evtDevId && devIds?.contains(evtDevId)) ||
+                (!evtDevId && (devIds?.contains("__time__") || devIds?.contains("__variable__")))
 
-			boolean nameMatch = attr.equalsIgnoreCase(evt?.name?.toString() ?: "")
-			boolean eventMatches = idMatch && nameMatch
+            // Fix: treat timeOfDay as compatible with sunrise/sunset event names
+            boolean nameMatch =
+                attr.equalsIgnoreCase(evt?.name?.toString() ?: "") ||
+                (attr.equalsIgnoreCase("timeOfDay") &&
+                 ["sunrise","sunset"].contains((evt?.name ?: "").toString().toLowerCase()))
 
-			if (eventMatches) {
-				if ((node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changes")
-				 || (node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changed")) {
-					// Test events often don't have isStateChange; treat them as a change
-					def sc = null
-					try { sc = evt?.isStateChange } catch (ignored) {}
-					pass = (sc == null) ? true : (sc == true || "${sc}" == "true")
-				} else {
-					pass = evaluateComparator(evt?.value, expected, (node?.data?.comparator ?: "==").toString())
-				}
-			}
+            boolean eventMatches = idMatch && nameMatch
 
-			// 5) Snapshot fallback (handles AND and multi-device OR)
-			if (!pass) {
-				List<Map> checks = devIds.collect { did ->
-					def cur = (did == "__time__")
-						? currentTimePseudoValue(attr)
-						: currentDeviceAttr(did, attr)
-					[devId: did, cur: cur]
-				}
+            if (eventMatches) {
+                if ((node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changes")
+                 || (node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changed")) {
+                    // Test events often don't have isStateChange; treat them as a change
+                    def sc = null
+                    try { sc = evt?.isStateChange } catch (ignored) {}
+                    pass = (sc == null) ? true : (sc == true || "${sc}" == "true")
+                } else {
+                    pass = evaluateComparator(evt?.value, expected, (node?.data?.comparator ?: "==").toString())
+                }
+            }
 
-				pass = (logic == "and")
-					? checks.every { evaluateComparator(it.cur, expected, comp) }
-					: checks.any   { evaluateComparator(it.cur, expected, comp) }
+            // 5) Snapshot fallback (handles AND and multi-device OR)
+            if (!pass) {
+                List<Map> checks = devIds.collect { did ->
+                    def cur = (did == "__time__")
+                        ? currentTimePseudoValue(attr)  // returns null for timeOfDay when not at sun event
+                        : currentDeviceAttr(did, attr)
+                    [devId: did, cur: cur]
+                }
 
-				if (!pass) {
-					String snap = checks.collect { "${it.devId}:${it.cur}" }.join(", ")
-					flowLog(fname, "eventTrigger: gate not passed (logic=${logic}, attr=${attr}, comparator=${comp}, expected=${expected}) snapshot=[${snap}]", "info")
-					return null
-				}
-			}
+                pass = (logic == "and")
+                    ? checks.every { evaluateComparator(it.cur, expected, comp) }
+                    : checks.any   { evaluateComparator(it.cur, expected, comp) }
 
-			// 6) Gate PASSED — start a run (don’t cancel on non-AND triggers)
-			try {
-				flowObj = state.activeFlows[fname] ?: [:]
+                if (!pass) {
+                    String snap = checks.collect { "${it.devId}:${it.cur}" }.join(", ")
+                    flowLog(fname, "eventTrigger: gate not passed (logic=${logic}, attr=${attr}, comparator=${comp}, expected=${expected}) snapshot=[${snap}]", "info")
+                    return null
+                }
+            }
 
-				// Only auto-cancel an existing run if THIS trigger is an AND gate.
-				// For non-AND (single device / OR) we preserve the last trace.
-				if (logic == "and" && flowObj?.isRunning && flowObj?._live?.runId) {
-					try { notifyFlowTrace(fname, null, "cancelled") } catch (e) {}
-				}
+            // 6) Gate PASSED — start a run (don’t cancel on non-AND triggers)
+            try {
+                def flowObj2 = state.activeFlows[fname] ?: [:]
 
-				def idToken = UUID.randomUUID().toString()
+                if (logic == "and" && flowObj2?.isRunning && flowObj2?._live?.runId) {
+                    try { notifyFlowTrace(fname, null, "cancelled") } catch (e) {}
+                }
 
-				// Keep both for downstream helpers that look at either field
-				flowObj._live     = [runId:idToken, started:new Date().time]
-				flowObj.runId     = idToken           // <— important: some schedulers read this
-				flowObj.isRunning = true
+                def idToken = UUID.randomUUID().toString()
+                flowObj2._live     = [runId:idToken, started:new Date().time]
+                flowObj2.runId     = idToken
+                flowObj2.isRunning = true
+                state.activeFlows[fname] = flowObj2
 
-				state.activeFlows[fname] = flowObj
+                try { notifyFlowTrace(fname, null, "start") } catch (e) {}
+            } catch (ignore) {}
 
-				try { notifyFlowTrace(fname, null, "start") } catch (e) {}
-			} catch (ignore) {}
-
-			// 7) Trace the trigger node (light it) and fan out
-			try { notifyFlowTrace(fname, nodeId, node?.name) } catch (e) {}
-			node?.outputs?.each { outName, outObj ->
-				outObj?.connections?.each { conn ->
-					evaluateNode(fname, conn.node?.toString(), evt, null, visited)
-				}
-			}
-			return null
+            // 7) Trace the trigger node (light it) and fan out
+            try { notifyFlowTrace(fname, nodeId, node?.name) } catch (e) {}
+            node?.outputs?.each { outName, outObj ->
+                outObj?.connections?.each { conn ->
+                    evaluateNode(fname, conn.node?.toString(), evt, null, visited)
+                }
+            }
+            return null
 		
         case "schedule":
             // Pass-through trigger for Schedule node – just continue downstream
@@ -2183,7 +2183,6 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-    
     // Schedule cron (Schedule node): route directly by matching cron text
     if (evt?.name == "schedule") {
         return dataNodes.findAll { id, node ->
@@ -2196,7 +2195,7 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-	// Everything else: device, time, and variable triggers
+    // Everything else: device, time, and variable triggers
     return dataNodes.findAll { id, node ->
         if (node.name != "eventTrigger") return false
 
@@ -2208,12 +2207,15 @@ def getTriggerNodes(String fname, evt) {
             devIds = [ node.data.deviceId ]
         }
 
-        // 1) Time-based: "__time__" triggers (attribute must match event)
-        if (devIds.contains("__time__") && node.data.attribute == evt.name) {
-            return true
+        // 1) Time-based: "__time__" triggers
+        if (devIds.contains("__time__")) {
+            // Fix: accept either exact event name OR "timeOfDay"
+            if (node.data.attribute == evt.name || (node.data.attribute?.toString()?.equalsIgnoreCase("timeOfDay"))) {
+                return true
+            }
         }
 
-        // 2) Variable-based: "__variable__" triggers (variableName/varName/attribute must match event)
+        // 2) Variable-based: "__variable__" triggers
         if (devIds.contains("__variable__")) {
             def varName = node.data.variableName ?: node.data.varName ?: node.data.attribute
             if (varName == evt.name) {
