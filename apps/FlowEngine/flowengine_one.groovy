@@ -1227,61 +1227,67 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			break
 
 		case "countdown":
-            flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
+			flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
 
-            String varName   = resolveVars(fname, (node.data.varName ?: "").toString())
-            String md        = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "MM-DD"
+			String varName = resolveVars(fname, (node.data.varName ?: "").toString())
+			String md      = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "MM-DD"
 
-            if (!varName) {
-                flowLog(fname, "countdown: missing varName", "warn")
-                break
-            }
-            if (!md || !(md ==~ /\d{2}-\d{2}/)) {
-                flowLog(fname, "countdown: missing/invalid targetDate (expect MM-DD), got '${md}'", "warn")
-                break
-            }
+			if (!varName) {
+				flowLog(fname, "countdown: missing varName", "warn")
+				break
+			}
+			if (!md || !(md ==~ /\d{2}-\d{2}/)) {
+				flowLog(fname, "countdown: missing/invalid targetDate (expect MM-DD), got '${md}'", "warn")
+				break
+			}
 
-            // Compute days until next occurrence of MM-DD (midnight-to-midnight in hub TZ)
-            TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
-            Calendar nowCal = Calendar.getInstance(tz)
-            nowCal.set(Calendar.MILLISECOND, 0)
-            Calendar startCal = Calendar.getInstance(tz)
-            startCal.set(Calendar.HOUR_OF_DAY, 0)
-            startCal.set(Calendar.MINUTE, 0)
-            startCal.set(Calendar.SECOND, 0)
-            startCal.set(Calendar.MILLISECOND, 0)
+			// Compute days until next occurrence of MM-DD (midnight-to-midnight in hub TZ)
+			TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+			Calendar nowCal = Calendar.getInstance(tz)
+			nowCal.set(Calendar.MILLISECOND, 0)
 
-            int year  = nowCal.get(Calendar.YEAR)
-            int month = md.substring(0,2).toInteger()
-            int day   = md.substring(3,5).toInteger()
+			Calendar startCal = Calendar.getInstance(tz)
+			startCal.set(Calendar.HOUR_OF_DAY, 0)
+			startCal.set(Calendar.MINUTE, 0)
+			startCal.set(Calendar.SECOND, 0)
+			startCal.set(Calendar.MILLISECOND, 0)
 
-            Calendar targetCal = Calendar.getInstance(tz)
-            targetCal.set(Calendar.YEAR, year)
-            targetCal.set(Calendar.MONTH, month - 1)
-            targetCal.set(Calendar.DAY_OF_MONTH, day)
-            targetCal.set(Calendar.HOUR_OF_DAY, 0)
-            targetCal.set(Calendar.MINUTE, 0)
-            targetCal.set(Calendar.SECOND, 0)
-            targetCal.set(Calendar.MILLISECOND, 0)
+			int year  = nowCal.get(Calendar.YEAR)
+			int month = md.substring(0,2).toInteger()
+			int day   = md.substring(3,5).toInteger()
 
-            if (targetCal.getTime().before(startCal.getTime())) {
-                targetCal.add(Calendar.YEAR, 1)
-            }
+			Calendar targetCal = Calendar.getInstance(tz)
+			targetCal.set(Calendar.YEAR, year)
+			targetCal.set(Calendar.MONTH, month - 1)
+			targetCal.set(Calendar.DAY_OF_MONTH, day)
+			targetCal.set(Calendar.HOUR_OF_DAY, 0)
+			targetCal.set(Calendar.MINUTE, 0)
+			targetCal.set(Calendar.SECOND, 0)
+			targetCal.set(Calendar.MILLISECOND, 0)
 
-            long msPerDay = 24L * 60L * 60L * 1000L
-            long diffMs   = targetCal.getTimeInMillis() - startCal.getTimeInMillis()
-            int days      = Math.ceil(diffMs / (double) msPerDay) as int
+			if (targetCal.getTime().before(startCal.getTime())) {
+				targetCal.add(Calendar.YEAR, 1)
+			}
 
-            if (testDryRun) {
-                flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
-            } else {
-                _saveVariableInternal(fname, "flow", varName, "Integer", days)
-            }
+			long msPerDay = 24L * 60L * 60L * 1000L
+			long diffMs   = targetCal.getTimeInMillis() - startCal.getTimeInMillis()
+			int days      = Math.ceil(diffMs / (double) msPerDay) as int
 
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
+			if (testDryRun) {
+				flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
+			} else {
+				// write to the scope the user selected (Global vs Flow), then notify UI
+				Map target   = _resolveVarScopeAndKey(fname, (node?.data ?: [:]) as Map, varName)
+				String scope = target?.scope ?: "flow"
+				_saveVariableInternal(fname, scope, varName, "Integer", days)
+				notifyVarsUpdated(scope, scope == "flow" ? _bareFlow(fname) : null)
+				flowLog(fname, "countdown: saved ${varName}=${days} to ${scope}", "info")
+			}
+
+			node.outputs?.output_1?.connections?.each { conn ->
+				evaluateNode(fname, conn.node, evt, null, visited)
+			}
+			break
 		
 		case "motionDirection":
 			flowLog(fname, "In evaluateNode - motionDirection (incoming=${incomingValue})", "debug")
