@@ -563,87 +563,122 @@ def apiTestFlow() {
            ])
 }
 
+// Returns true if this eventTrigger node’s gate would pass *right now*.
+// Checks the incoming event first (handles OR/changes correctly),
+// then falls back to a snapshot across devices (AND / multi-device).
+private boolean _eventTriggerWouldPass(String fname, def nodeOrEntry, def evt) {
+    // Normalize to a node Map
+    Map node
+    if (nodeOrEntry instanceof Map.Entry) {
+        node = (nodeOrEntry as Map.Entry).value as Map
+    } else if (nodeOrEntry instanceof Map) {
+        node = (Map) nodeOrEntry
+    } else {
+        def dn = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
+        node = dn[nodeOrEntry?.toString()]
+    }
+    if (!(node instanceof Map)) return false
+
+    // Devices
+    List<String> ids = []
+    if (node?.data?.deviceIds instanceof Collection) {
+        ids = (node.data.deviceIds as Collection).collect { it?.toString() }
+    } else if (node?.data?.deviceId) {
+        ids = [ node.data.deviceId?.toString() ]
+    }
+    ids = ids.findAll { it }
+    if (!ids) return false
+
+    // Config
+    String logic      = (node?.data?.logic ?: 'or').toString().toLowerCase()
+    String comparator = (node?.data?.comparator ?: '==').toString()
+    def    expected   = node?.data?.value
+    String attr       = (node?.data?.attribute?.toString()?.trim())
+    if (!attr) attr = evt?.name?.toString() ?: 'switch'
+
+    // 1) Fast-path: evaluate against the incoming EVENT (fixes 'changes' & single-device)
+    String evtDevId = evt?.deviceId?.toString() ?: ""
+    boolean eventMatches = ids.contains(evtDevId) && attr.equalsIgnoreCase(evt?.name?.toString() ?: "")
+    if (eventMatches) {
+        if (comparator.equalsIgnoreCase('changes') || comparator.equalsIgnoreCase('changed')) {
+            def sc = null
+            try { sc = evt?.isStateChange } catch (ignored) {}
+            if (sc == null) return true
+            if (sc == true || "${sc}" == "true") return true
+        } else {
+            if (evaluateComparator(evt?.value, expected, comparator)) return true
+        }
+        // fall through to snapshot if event didn't satisfy comparator
+    }
+
+    // 2) Snapshot fallback: AND/OR across all selected devices
+    def snapshot = ids.collect { did -> [id: did, cur: currentDeviceAttr(did, attr)] }
+    boolean passed = (logic == 'and')
+        ? snapshot.every { evaluateComparator(it.cur, expected, comparator) }
+        : snapshot.any   { evaluateComparator(it.cur, expected, comparator) }
+    return passed
+}
+
 // ---- Main Event Handler ----
 def handleEvent(evt, fname) {
+    // Load/prepare flow object
+    def flowObj = state.activeFlows?.get(fname)
+    if (!flowObj) {
+        flowObj = [
+            flow         : readFlowFile(fname),
+            isRunning    : false,
+            _live        : null,
+            pending      : 0,
+            evalCount    : 0,
+            lastVarValues: [:],
+            lastMotionTs : [:]
+        ]
+        state.activeFlows[fname] = flowObj
+    }
+
     flowLog(fname, "────────────────────────────────────────────────────────────────────────────", "debug")
     flowLog(fname, "In handleEvent - evt: ${evt}", "debug")
 
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj?.flow) return
+    // NOTE: Do NOT cancel anything here; only start/cancel a run once a trigger actually PASSES.
+    def triggersRaw = getTriggerNodes(fname, evt) ?: []
 
-    // ── If already running, cancel it ──────────────────────────────────────
-    if (flowObj.isRunning) {
-        flowLog(fname, "----- Cancelling previous run; starting new -----", "warn")
+    // Normalize triggers → list of node maps (supports Map, Map.Entry, List, or single id)
+    List<Map> triggerNodes = []
+    if (triggersRaw instanceof Map) {
+        triggersRaw.each { k, v -> if (v instanceof Map) triggerNodes << v }
+    } else if (triggersRaw instanceof Collection) {
+        triggersRaw.each { n ->
+            if (n instanceof Map.Entry)      triggerNodes << ((Map.Entry) n).value
+            else if (n instanceof Map)       triggerNodes << n
+            else {
+                def dn  = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
+                def one = dn[n?.toString()]
+                if (one instanceof Map) triggerNodes << one
+            }
+        }
+    } else if (triggersRaw) {
+        def dn  = state.activeFlows[fname]?.flow?.drawflow?.Home?.data ?: [:]
+        def one = dn[triggersRaw?.toString()]
+        if (one instanceof Map) triggerNodes << one
+    }
 
-        // 1) Cancel any scheduled helpers
-        unschedule("clearTapTracker")
-        unschedule("clearHoldTracker")
-
-        // 2) Emit a cancel trace
+    // Let each trigger decide if it passes; the trigger case will start/trace the run.
+    triggerNodes.each { nodeMap ->
+        String nodeId = nodeMap?.id?.toString()
+        if (!nodeId) return
         try {
-            notifyFlowTrace(fname, null, "cancelled")
+            flowLog(fname, "Single-tap trigger", "debug")
+            evaluateNode(fname, nodeId, evt)
         } catch (ex) {
-            log.warn "[${fname}] Failed to write cancel-trace: $ex"
-        }
-
-        // 3) Clear per-run trackers
-        flowObj.tapTracker?.clear()
-        flowObj.holdTracker?.clear()
-    }
-
-    // ── New run token (used to cancel stale delayed resumes) ───────────────
-    flowObj.runId = ((flowObj.runId ?: 0L) + 1L)
-    def currentRunId = flowObj.runId
-
-    // ── Mark running & reset trackers ──────────────────────────────────────
-    flowObj.isRunning   = true
-    flowObj.tapTracker  = [:]
-    flowObj.holdTracker = [:]
-	flowObj.pending     = 0
-
-    // ── Locate & fire trigger nodes ────────────────────────────────────────
-    def triggerNodes = getTriggerNodes(fname, evt)
-    triggerNodes.each { triggerId, triggerNode ->
-        def pattern = triggerNode.data.clickPattern ?: "single"
-
-        // UI-test override
-        if (evt instanceof Map && evt.pattern && evt.pattern == pattern) {
-            flowLog(fname, "Forcing '${pattern}' trigger (UI Test)", "debug")
-            evaluateNode(fname, triggerId, evt)
-            return
-        }
-
-        switch(pattern) {
-            case "single":
-                flowLog(fname, "Single-tap trigger", "debug")
-                evaluateNode(fname, triggerId, evt)
-                break
-            case "double":
-            case "triple":
-                // your existing tap/hold pattern logic
-                handleTapHoldPattern(fname, triggerId, triggerNode, evt)
-                break
-            default:
-                flowLog(fname, "----- Trigger -  triggerId: ${triggerId} = evt: ${evt} -----", "info")
-                evaluateNode(fname, triggerId, evt)
+            flowLog(fname, "evaluateNode error from trigger ${nodeId}: ${ex}", "warn")
         }
     }
-
-    // ── End-of-flow cleanup ────────────────────────────────────────────────
-    try {
-		if (!(flowObj.pending ?: 0)) {
-			notifyFlowTrace(fname, null, "endOfFlow")
-			flowObj.isRunning = false
-		}
-	} catch (ex) {
-		log.warn "[${fname}] Failed to write end-of-flow trace: $ex"
-	}
 }
 
 // ---- Node Evaluation (ALL node types, with delay logic preserved) ----
 def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
-	testDryRun = state.activeFlows[fname].testDryRun
-	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - evt: ${evt} - dryRun: ${testDryRun}", "info")
+	def testDryRun = (state.activeFlows[fname]?.testDryRun as Boolean) ?: false
+	flowLog(fname, "In evaluateNode - fname: ${fname} - nodeId: ${nodeId} - dryRun: ${testDryRun}", "info")
     def flowObj = state.activeFlows[fname]
     if (!visited) visited = new HashSet()
 			if (visited.contains(nodeId)) return null
@@ -653,7 +688,11 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     if (!node) return null
 	
 	try {
-		notifyFlowTrace(fname, nodeId, node?.name)
+		// Trace most nodes immediately on entry,
+		// but NOT gate-style nodes that shouldn't glow unless they actually pass.
+		if (!(node?.name in ["eventTrigger", "motionDirection"])) {
+			notifyFlowTrace(fname, nodeId, node?.name)
+		}
 	} catch (e) {
 		log.warn "Failed to write flow trace: $e"
 	}
@@ -662,104 +701,106 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 		case "eventTrigger":
 			flowLog(fname, "In evaluateNode - eventTrigger", "debug")
 
-			// ── 1) Comparator & expected value ───────────────────────────────────
-			def comparator = node.data.comparator
-			def expected   = resolveVars(fname, node.data.value)
+			// 1) Read config
+			def expected = resolveVars(fname, node?.data?.value)
+			String logic = (node?.data?.logic?.toString() ?: "or").toLowerCase()
+			String comp  = (node?.data?.comparator ?: "==").toString()
 
-			// ── 2) AND/OR logic defaulting to OR ────────────────────────────────
-			def logic = (node.data.logic?.toString() ?: "or").toLowerCase()
-
-			// ── 3) Build list of device IDs ─────────────────────────────────────
+			// 2) Device IDs (supports single deviceId or multi deviceIds)
 			List<String> devIds = []
-			if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-				devIds = node.data.deviceIds.collect { it.toString() }
-			} else if (node.data.deviceId) {
-				devIds = [ node.data.deviceId.toString() ]
-			} else {
-				flowLog(fname, "eventTrigger: no deviceId(s) defined", "warn")
-				return
+			if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
+				devIds = node.data.deviceIds.collect { it?.toString() }
+			} else if (node?.data?.deviceId) {
+				devIds = [ node.data.deviceId?.toString() ]
+			}
+			if (!devIds) {
+				flowLog(fname, "eventTrigger: no deviceIds configured", "warn")
+				return null
 			}
 
-			// ── 4) Strict value & pattern matching ──────────────────────────────
-			def expectedValue   = node.data.value
-			def expectedPattern = node.data.clickPattern
-			def eventValue      = (evt instanceof Map) ? evt.value        : evt?.value
-			def eventPattern    = (evt instanceof Map) ? evt.pattern      : null
+			// 3) Attribute: configured -> event name -> "switch"
+			String attr = (node?.data?.attribute?.toString()?.trim())
+			if (!attr) attr = evt?.name?.toString() ?: "switch"
 
-			if (expectedValue && eventValue && expectedValue.toString() != eventValue.toString()) {
-				flowLog(fname, "eventTrigger did NOT match value: expected=${expectedValue}, actual=${eventValue}", "debug")
-				return
-			}
-			if (expectedPattern && eventPattern && expectedPattern.toString() != eventPattern.toString()) {
-				flowLog(fname, "eventTrigger did NOT match pattern: expected=${expectedPattern}, actual=${eventPattern}", "debug")
-				return
-			}
+			// 4) Fast path: evaluate against the INCOMING EVENT first
+			boolean pass = false
 
-			// ── 5) DEVICE‑FILTER & AND‑MODE ONLY FOR REAL EVENTS ────────────────
-			if (!(evt instanceof Map)) {
-				// 5a) Figure out which device actually fired
-				String incomingId = null
-				if (evt.deviceId != null) {
-					incomingId = evt.deviceId.toString()
-				}
-				// map sunrise/sunset → "__time__"
-				else if (evt?.name in ["sunrise","sunset"]) {
-					incomingId = "__time__"
-				}
-
-				// 5b) Drop anything not in our devIds
-				if (!(incomingId in devIds)) {
-					flowLog(fname, "eventTrigger: event from ${incomingId} not in ${devIds}", "debug")
-					return
-				}
-
-				// 5c) If AND‑mode, require ALL devices’ currentValues to match
-				if (logic in ["and","all"]) {
-					boolean allMatch = devIds.every { devId ->
-						def device = getDeviceById(devId)
-						def actual = device ? device.currentValue(node.data.attribute) : null
-						evaluateComparator(actual, expected, comparator ?: '==')
-					}
-					flowLog(fname, "eventTrigger AND across ${devIds} ⇒ ${allMatch}", "debug")
-					if (!allMatch) {
-						return
-					}
-				}
+			// Resolve test events that only provide a device *label*
+			String evtDevId = (evt?.deviceId?.toString() ?: "")
+			if (!evtDevId && evt?.device) {
+				String resolved = getDeviceIdByLabel(evt.device?.toString())
+				if (resolved) evtDevId = resolved
 			}
 
-			// ── 6) Time‑of‑day “between” filter (only if __time__ is in devIds) ─
-			if ("__time__" in devIds &&
-				node.data.attribute == "timeOfDay" &&
-				comparator?.toLowerCase() == "between") {
+			boolean idMatch =
+				(evtDevId && devIds?.contains(evtDevId)) ||
+				(!evtDevId && (devIds?.contains("__time__") || devIds?.contains("__variable__")))
 
-				Date now      = (evt.date as Date) ?: new Date()
-				int actualMin = now.hours * 60 + now.minutes
+			boolean nameMatch = attr.equalsIgnoreCase(evt?.name?.toString() ?: "")
+			boolean eventMatches = idMatch && nameMatch
 
-				List bounds = (node.data.value instanceof List)
-					? node.data.value
-					: [ node.data.value.toString() ]
-
-				if (bounds.size() == 2) {
-					int lowMin  = toTimeMinutes(bounds[0].toString())
-					int highMin = toTimeMinutes(bounds[1].toString())
-					flowLog(fname, "timeOfDay between → actual:${actualMin}, low:${lowMin}, high:${highMin}", "debug")
-					if (!(actualMin >= lowMin && actualMin <= highMin)) {
-						flowLog(fname, "timeOfDay outside range, skipping", "debug")
-						return
-					}
+			if (eventMatches) {
+				if ((node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changes")
+				 || (node?.data?.comparator?.toString() ?: "==").equalsIgnoreCase("changed")) {
+					// Test events often don't have isStateChange; treat them as a change
+					def sc = null
+					try { sc = evt?.isStateChange } catch (ignored) {}
+					pass = (sc == null) ? true : (sc == true || "${sc}" == "true")
 				} else {
-					log.warn "timeOfDay 'between' needs two values, got ${bounds}"
-					return
+					pass = evaluateComparator(evt?.value, expected, (node?.data?.comparator ?: "==").toString())
 				}
 			}
 
-			// ── 7) All checks passed—fire downstream ──────────────────────────────
-			node.outputs?.each { outName, outObj ->
-				outObj.connections?.each { conn ->
-					evaluateNode(fname, conn.node, evt, null, visited)
+			// 5) Snapshot fallback (handles AND and multi-device OR)
+			if (!pass) {
+				List<Map> checks = devIds.collect { did ->
+					def cur = (did == "__time__")
+						? currentTimePseudoValue(attr)
+						: currentDeviceAttr(did, attr)
+					[devId: did, cur: cur]
+				}
+
+				pass = (logic == "and")
+					? checks.every { evaluateComparator(it.cur, expected, comp) }
+					: checks.any   { evaluateComparator(it.cur, expected, comp) }
+
+				if (!pass) {
+					String snap = checks.collect { "${it.devId}:${it.cur}" }.join(", ")
+					flowLog(fname, "eventTrigger: gate not passed (logic=${logic}, attr=${attr}, comparator=${comp}, expected=${expected}) snapshot=[${snap}]", "info")
+					return null
 				}
 			}
-			break
+
+			// 6) Gate PASSED — start a run (don’t cancel on non-AND triggers)
+			try {
+				flowObj = state.activeFlows[fname] ?: [:]
+
+				// Only auto-cancel an existing run if THIS trigger is an AND gate.
+				// For non-AND (single device / OR) we preserve the last trace.
+				if (logic == "and" && flowObj?.isRunning && flowObj?._live?.runId) {
+					try { notifyFlowTrace(fname, null, "cancelled") } catch (e) {}
+				}
+
+				def idToken = UUID.randomUUID().toString()
+
+				// Keep both for downstream helpers that look at either field
+				flowObj._live     = [runId:idToken, started:new Date().time]
+				flowObj.runId     = idToken           // <— important: some schedulers read this
+				flowObj.isRunning = true
+
+				state.activeFlows[fname] = flowObj
+
+				try { notifyFlowTrace(fname, null, "start") } catch (e) {}
+			} catch (ignore) {}
+
+			// 7) Trace the trigger node (light it) and fan out
+			try { notifyFlowTrace(fname, nodeId, node?.name) } catch (e) {}
+			node?.outputs?.each { outName, outObj ->
+				outObj?.connections?.each { conn ->
+					evaluateNode(fname, conn.node?.toString(), evt, null, visited)
+				}
+			}
+			return null
 		
         case "schedule":
             // Pass-through trigger for Schedule node – just continue downstream
@@ -988,64 +1029,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			node.outputs?.output_1?.connections?.each { conn ->
 				evaluateNode(fname, conn.node, evt, null, visited)
 			}
-
-
-        case "countdown":
-            flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
-
-            String varName   = resolveVars(fname, (node.data.varName ?: "").toString())
-            String md        = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "MM-DD"
-
-            if (!varName) {
-                flowLog(fname, "countdown: missing varName", "warn")
-                break
-            }
-            if (!md || !(md ==~ /\d{2}-\d{2}/)) {
-                flowLog(fname, "countdown: missing/invalid targetDate (expect MM-DD), got '${md}'", "warn")
-                break
-            }
-
-            // Compute days until next occurrence of MM-DD (midnight-to-midnight in hub TZ)
-            TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
-            Calendar nowCal = Calendar.getInstance(tz)
-            nowCal.set(Calendar.MILLISECOND, 0)
-            Calendar startCal = Calendar.getInstance(tz)
-            startCal.set(Calendar.HOUR_OF_DAY, 0)
-            startCal.set(Calendar.MINUTE, 0)
-            startCal.set(Calendar.SECOND, 0)
-            startCal.set(Calendar.MILLISECOND, 0)
-
-            int year  = nowCal.get(Calendar.YEAR)
-            int month = md.substring(0,2).toInteger()
-            int day   = md.substring(3,5).toInteger()
-
-            Calendar targetCal = Calendar.getInstance(tz)
-            targetCal.set(Calendar.YEAR, year)
-            targetCal.set(Calendar.MONTH, month - 1)
-            targetCal.set(Calendar.DAY_OF_MONTH, day)
-            targetCal.set(Calendar.HOUR_OF_DAY, 0)
-            targetCal.set(Calendar.MINUTE, 0)
-            targetCal.set(Calendar.SECOND, 0)
-            targetCal.set(Calendar.MILLISECOND, 0)
-
-            if (targetCal.getTime().before(startCal.getTime())) {
-                targetCal.add(Calendar.YEAR, 1)
-            }
-
-            long msPerDay = 24L * 60L * 60L * 1000L
-            long diffMs   = targetCal.getTimeInMillis() - startCal.getTimeInMillis()
-            int days      = Math.ceil(diffMs / (double) msPerDay) as int
-
-            if (testDryRun) {
-                flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
-            } else {
-                _saveVariableInternal(fname, "flow", varName, "Integer", days)
-            }
-
-            node.outputs?.output_1?.connections?.each { conn ->
-                evaluateNode(fname, conn.node, evt, null, visited)
-            }
-            break
+			break
 
         case "saveDeviceState":
 			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
@@ -1243,116 +1227,130 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			break
 
 		case "countdown":
-			flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
+            flowLog(fname, "In evaluateNode - countdown (dryRun=${testDryRun})", "debug")
 
-			String varName    = resolveVars(fname, (node.data.varName ?: "").toString())
-			String targetStr  = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "YYYY-MM-DD"
+            String varName   = resolveVars(fname, (node.data.varName ?: "").toString())
+            String md        = resolveVars(fname, (node.data.targetDate ?: "").toString())   // "MM-DD"
 
-			if (!varName) {
-				flowLog(fname, "countdown: missing varName", "warn")
-				break
-			}
-			if (!targetStr) {
-				flowLog(fname, "countdown: missing targetDate", "warn")
-				break
-			}
+            if (!varName) {
+                flowLog(fname, "countdown: missing varName", "warn")
+                break
+            }
+            if (!md || !(md ==~ /\d{2}-\d{2}/)) {
+                flowLog(fname, "countdown: missing/invalid targetDate (expect MM-DD), got '${md}'", "warn")
+                break
+            }
 
-			// compute whole days until target date (midnight-to-midnight in hub TZ)
-			TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
-			Date now    = new Date()
-			Date today0 = now.clearTime()
-			use (groovy.time.TimeCategory) {
-				today0 = today0.clone() // ensure we can use it safely
-			}
+            // Compute days until next occurrence of MM-DD (midnight-to-midnight in hub TZ)
+            TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+            Calendar nowCal = Calendar.getInstance(tz)
+            nowCal.set(Calendar.MILLISECOND, 0)
+            Calendar startCal = Calendar.getInstance(tz)
+            startCal.set(Calendar.HOUR_OF_DAY, 0)
+            startCal.set(Calendar.MINUTE, 0)
+            startCal.set(Calendar.SECOND, 0)
+            startCal.set(Calendar.MILLISECOND, 0)
 
-			Date target
-			try {
-				target = Date.parse("yyyy-MM-dd", targetStr)
-				target = target.clearTime()
-			} catch (e) {
-				flowLog(fname, "countdown: invalid date '${targetStr}'", "warn")
-				break
-			}
+            int year  = nowCal.get(Calendar.YEAR)
+            int month = md.substring(0,2).toInteger()
+            int day   = md.substring(3,5).toInteger()
 
-			long msPerDay = 24L * 60L * 60L * 1000L
-			long diffMs   = target.time - today0.time
-			int  days     = Math.ceil(diffMs / (double) msPerDay) as int
+            Calendar targetCal = Calendar.getInstance(tz)
+            targetCal.set(Calendar.YEAR, year)
+            targetCal.set(Calendar.MONTH, month - 1)
+            targetCal.set(Calendar.DAY_OF_MONTH, day)
+            targetCal.set(Calendar.HOUR_OF_DAY, 0)
+            targetCal.set(Calendar.MINUTE, 0)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
 
-			if (testDryRun) {
-				flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
-			} else {
-				// Force Flow scope per your request
-				_saveVariableInternal(fname, "flow", varName, "Integer", days)
-			}
+            if (targetCal.getTime().before(startCal.getTime())) {
+                targetCal.add(Calendar.YEAR, 1)
+            }
 
-			// continue downstream
-			node.outputs?.output_1?.connections?.each { conn ->
-				evaluateNode(fname, conn.node, evt, null, visited)
-			}
-			break
+            long msPerDay = 24L * 60L * 60L * 1000L
+            long diffMs   = targetCal.getTimeInMillis() - startCal.getTimeInMillis()
+            int days      = Math.ceil(diffMs / (double) msPerDay) as int
 
+            if (testDryRun) {
+                flowLog(fname, "Dry Run: ${varName} = ${days}", "debug")
+            } else {
+                _saveVariableInternal(fname, "flow", varName, "Integer", days)
+            }
+
+            node.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node, evt, null, visited)
+            }
+            break
+		
 		case "motionDirection":
-			// Gate: only continue when A & B last-active are within window.
 			flowLog(fname, "In evaluateNode - motionDirection (incoming=${incomingValue})", "debug")
 
-			int  gapSec   = (node?.data?.maxGapSec ?: 5) as Integer
-			long windowMs = Math.max(1, gapSec) * 1000L
-			String varName = (node?.data?.varName ?: "").toString()
-
-			String direction = null
-			Long aTs = null
-			Long bTs = null
-
-			// If an event-driven evaluation passed us a direction, use it
-			if (incomingValue instanceof String &&
-				["in","out"].contains(incomingValue.toString().toLowerCase())) {
-				direction = incomingValue.toString().toUpperCase()
-			} else {
-				// Editor Test (or non-event invocation): compute from device history
-				def aDev = getDeviceById(node?.data?.deviceAId)
-				def bDev = getDeviceById(node?.data?.deviceBId)
-
-				if (!aDev || !bDev) {
-					flowLog(fname, "MotionDirection: missing Motion A or B device, blocking.", "warn")
-					return false
-				}
-
-				aTs = _lastMotionActiveTs(aDev)
-				bTs = _lastMotionActiveTs(bDev)
-
-				if (!(aTs && bTs)) {
-					flowLog(fname, "MotionDirection: could not find last 'active' for A or B, blocking.", "info")
-					return false
-				}
-
-				long dt = Math.abs(aTs - bTs)
-				if (dt > windowMs) {
-					flowLog(fname, "MotionDirection: last actives not within ${gapSec}s (Δ=${dt/1000G}s), blocking.", "info")
-					return false
-				}
-
-				direction = (aTs <= bTs) ? "In" : "Out"
+			// Node config
+			String aId = "${node?.data?.deviceAId ?: ''}"
+			String bId = "${node?.data?.deviceBId ?: ''}"
+			if (!aId || !bId) {
+				flowLog(fname, "MotionDirection: missing device A/B ids, blocking.", "warn")
+				return null
 			}
 
-			// Update node data for tile status (A/B times)
-			try {
-				node.data.__lastATs = aTs ?: node.data.__lastATs
-				node.data.__lastBTs = bTs ?: node.data.__lastBTs
-			} catch (ignored) {}
+			// gap seconds (accept number or string)
+			Integer gapSec
+			def rawGap = (node?.data?.maxGapSec)
+			if (rawGap instanceof Number)       gapSec = ((Number)rawGap).intValue()
+			else if (rawGap)                    gapSec = rawGap.toString().isInteger() ? rawGap.toString().toInteger() : 5
+			else                                gapSec = 5
+			long windowMs = Math.max(1, gapSec) * 1000L
 
-			// Save to variable if requested
+			// Use existing flowObj; DO NOT redeclare
+			flowObj = state.activeFlows[fname] ?: flowObj
+			flowObj.mdTracker = flowObj.mdTracker ?: [:]
+			def t = (flowObj.mdTracker["${nodeId}"] ?: [:]) as Map
+
+			// If called via an event, mark the last active sensor time
+			if (evt?.name?.toString()?.equalsIgnoreCase("motion") && evt?.value?.toString()?.equalsIgnoreCase("active")) {
+				String incId = "${evt?.deviceId ?: ''}"
+				long nowMs   = (evt?.date instanceof Date) ? ((Date)evt.date).time : (new Date().time)
+				if (incId == aId) t.lastA = nowMs
+				if (incId == bId) t.lastB = nowMs
+				flowObj.mdTracker["${nodeId}"] = t
+			}
+
+			// Need both sides to have fired recently
+			if (!(t.lastA && t.lastB)) {
+				flowLog(fname, "MotionDirection: waiting for both sensors to be active.", "info")
+				return null
+			}
+
+			long dt = Math.abs((t.lastA as long) - (t.lastB as long))
+			if (dt > windowMs) {
+				flowLog(fname, "MotionDirection: last actives not within ${gapSec}s (Δ=${(dt/1000.0)}s), blocking.", "info")
+				return null
+			}
+
+			// Decide direction
+			String direction = ((t.lastA as long) <= (t.lastB as long)) ? "In" : "Out"
+			t.lastDir = direction
+			flowObj.mdTracker["${nodeId}"] = t
+
+			// Optional variable write (resolve scope correctly)
+			String varName = (node?.data?.varName ?: "").toString()
 			if (varName) {
 				try {
-					_saveVariableInternal(fname, "flow", varName, "String", direction)
-					notifyVarsUpdated("flow", _bareFlow(fname))
+					Map target = _resolveVarScopeAndKey(fname, (node?.data ?: [:]) as Map, varName)
+					String scope = (target?.scope ?: "flow")
+					_saveVariableInternal(fname, scope, varName, "String", direction)
+					notifyVarsUpdated(scope, target?.key)
 				} catch (e) {
-					flowLog(fname, "MotionDirection: failed to save var '${varName}': ${e}", "warn")
+					log.warn "[${fname}] Motion Direction: failed to save var '${varName}': ${e}"
 				}
 			}
 
-			// Continue downstream with the computed direction
+			// Only now that the direction is valid do we TRACE and fan out
+			try { notifyFlowTrace(fname, nodeId, node?.name) } catch (e) {}
+
 			node.outputs?.output_1?.connections?.each { conn ->
-				evaluateNode(fname, conn.node, evt, direction, visited)
+				evaluateNode(fname, conn.node?.toString(), evt, direction, visited)
 			}
 			return direction
 
@@ -1569,6 +1567,11 @@ def readFlowFile(fname) {
 
 def getDeviceById(id) {
     return settings.masterDeviceList?.find { it.id.toString() == id?.toString() }
+}
+
+def currentDeviceAttr(def devId, String attr) {
+    def dev = getDeviceById("${devId}")
+    return dev ? dev.currentValue(attr) : null
 }
 
 def apiListVariables() {
@@ -1839,80 +1842,117 @@ def genericDeviceHandler(evt) {
     }
 }
 
-void mdGenericHandler(evt) {
-    // snapshot flow keys to avoid CME
+def mdGenericHandler(evt) {
+    // Snapshot keys to avoid CME
     def keys = (state.activeFlows?.keySet() ?: []) as List
     keys.each { fname ->
         try {
-            processMotionDirectionEvent(fname, evt)
+            def flowObj   = state.activeFlows[fname]
+            def dataNodes = flowObj?.flow?.drawflow?.Home?.data ?: [:]
+            // Only bother if this flow actually has a Motion Direction node
+            boolean hasMD = dataNodes.values().any { it?.name == "motionDirection" }
+            if (hasMD) {
+                processMotionDirectionEvent(fname?.toString(), evt)
+            }
         } catch (Throwable e) {
-            log.warn "[${fname}] mdGenericHandler error: ${e}"
+            log.warn "[${fname}] mdGenericHandler error: ${e}; evtName=${evt?.name}, evtValue=${evt?.value}, devId=${evt?.deviceId}"
         }
     }
 }
 
-private void processMotionDirectionEvent(String fname, evt) {
-    if (!evt || (evt.name?.toString()?.toLowerCase() != "motion")) return
-    if (!"${evt.value}".equalsIgnoreCase("active")) return  // only care about 'active'
+private void processMotionDirectionEvent(String fname, def evt) {
+    try {
+        // only react to motion:active
+        if (!(evt?.name?.toString()?.equalsIgnoreCase("motion") &&
+              evt?.value?.toString()?.equalsIgnoreCase("active"))) return
 
-    def flowObj   = state.activeFlows[fname]
-    def dataNodes = flowObj?.flow?.drawflow?.Home?.data ?: [:]
-    if (!flowObj) return
+        def flowObj   = state.activeFlows[fname]
+        def dataNodes = flowObj?.flow?.drawflow?.Home?.data ?: [:]
+        if (!flowObj || dataNodes.isEmpty()) return
 
-    flowObj.mdTracker = flowObj.mdTracker ?: [:]
-    String incomingDevId = evt.deviceId?.toString()
+        flowObj.mdTracker = flowObj.mdTracker ?: [:]
+        String incomingDevId = evt?.deviceId?.toString() ?: ""
 
-    dataNodes.each { nodeId, node ->
-        if (node?.name != "motionDirection") return
+        dataNodes.each { nodeId, node ->
+            if (node?.name != "motionDirection") return
 
-        String aId = node?.data?.deviceAId?.toString()
-        String bId = node?.data?.deviceBId?.toString()
-        if (!aId || !bId) return
+            String aId = node?.data?.deviceAId?.toString() ?: ""
+            String bId = node?.data?.deviceBId?.toString() ?: ""
+            if (!aId || !bId) return
+            if (!(incomingDevId in [aId, bId])) return
 
-        // only consider nodes that reference this device
-        if (!(incomingDevId in [aId, bId])) return
+            // window (default 5s), parse safely from number or string
+            int gapSec = 5
+            def rawGap = node?.data?.maxGapSec
+            try {
+                if (rawGap instanceof Number)       gapSec = ((Number)rawGap).intValue()
+                else if (rawGap)                    gapSec = Integer.parseInt(rawGap.toString().trim())
+            } catch (ignored) { gapSec = 5 }
+            long windowMs = Math.max(1, gapSec) * 1000L
 
-        // window in ms (default 5s)
-        int gapSec = (node?.data?.maxGapSec ?: 5) as Integer
-        long windowMs = Math.max(1, gapSec) * 1000L
+            // timestamp (prefer evt.date if available)
+            long nowMs = (evt?.date instanceof Date) ? ((Date)evt.date).time : (new Date().time)
 
-        // per-node tracker
-        def t = (flowObj.mdTracker[nodeId.toString()] ?: [:]) as Map
-        Long nowMs = (evt.date instanceof Date ? evt.date.time : new Date().time) as Long
+            // per-node tracker
+            String key = nodeId?.toString()
+            Map t = (flowObj.mdTracker[key] ?: [:]) as Map
+            if (incomingDevId == aId) t.lastA = nowMs
+            if (incomingDevId == bId) t.lastB = nowMs
+            flowObj.mdTracker[key] = t
 
-        if (incomingDevId == aId) { t.lastA = nowMs }
-        if (incomingDevId == bId) { t.lastB = nowMs }
+            // Need both sides to have fired at least once
+            if (!(t.lastA && t.lastB)) {
+                flowLog(fname, "MotionDirection: waiting for both sensors to be active.", "info")
+                return
+            }
 
-        // if both exist and are within window → compute direction
-        if (t.lastA && t.lastB) {
-            long dt = Math.abs(t.lastA - t.lastB)
-            if (dt <= windowMs) {
-                String direction = (t.lastA <= t.lastB) ? "In" : "Out"
-                t.lastDir = direction
+            long dt = Math.abs((t.lastA as long) - (t.lastB as long))
 
-				String varName = (node?.data?.varName ?: "").toString()
-				if (varName) {
-					try {
-						_saveVariableInternal(fname, "flow", varName, "String", direction)
-						notifyVarsUpdated("flow", _bareFlow(fname))
-					} catch (e) {
-						log.warn "[${fname}] Motion Direction: failed to save var '${varName}': ${e}"
-					}
+            // ---- NEW: overlap fallback ----
+            // Even if edges aren't within window, proceed if BOTH are currently active.
+            def devA = getDeviceById(aId)
+            def devB = getDeviceById(bId)
+            boolean aActiveNow = devA?.currentValue("motion")?.toString()?.equalsIgnoreCase("active")
+            boolean bActiveNow = devB?.currentValue("motion")?.toString()?.equalsIgnoreCase("active")
+            boolean withinWindow = (dt <= windowMs)
+            boolean bothActiveNow = (aActiveNow && bActiveNow)
+
+            if (!(withinWindow || bothActiveNow)) {
+                flowLog(fname, "MotionDirection: last actives not within ${gapSec}s (Δ=${(dt/1000.0)}s) and both not active now, blocking.", "info")
+                return
+            }
+            // --------------------------------
+
+            // Decide direction by first activation time
+            String direction = ((t.lastA as long) <= (t.lastB as long)) ? "In" : "Out"
+            t.lastDir = direction
+            flowObj.mdTracker[key] = t
+
+            // optional: write to var if configured
+			String varName = (node?.data?.varName ?: "").toString()
+			if (varName) {
+				try {
+					Map target = _resolveVarScopeAndKey(fname, (node?.data ?: [:]) as Map, varName)
+					String scope = target?.scope ?: "flow"
+					_saveVariableInternal(fname, scope, varName, "String", direction)
+					notifyVarsUpdated(scope, scope == "flow" ? (_bareFlow(fname)) : null)
+					flowLog(fname, "MotionDirection: saved ${varName}='${direction}' to ${scope}", "debug")
+				} catch (e) {
+					log.warn "[${fname}] Motion Direction: failed to save var '${varName}': ${e}"
 				}
-                // continue the graph starting from THIS node, passing the direction
-                try {
-                    evaluateNode(fname, nodeId.toString(), evt, direction, new HashSet())
-                } catch (Throwable ex) {
-                    log.warn "[${fname}] Motion Direction evaluate error: ${ex}"
-                }
+			}
 
-                // reset pair so we need a fresh A/B for the next decision
-                t.lastA = null
-                t.lastB = null
+            // TRACE the MD node now that it passed
+            try { notifyFlowTrace(fname, key, "motionDirection") } catch (e) {}
+
+            // FAN OUT DIRECTLY to MD's children (do not re-enter MD)
+            def mdNode = dataNodes[key]
+            mdNode?.outputs?.output_1?.connections?.each { conn ->
+                evaluateNode(fname, conn.node?.toString(), evt, direction)
             }
         }
-
-        flowObj.mdTracker[nodeId.toString()] = t
+    } catch (Throwable outer) {
+        log.warn "[${fname}] processMotionDirectionEvent failed: ${outer}"
     }
 }
 
@@ -2184,64 +2224,49 @@ def getTriggerNodes(String fname, evt) {
     }
 }
 
-void notifyFlowTrace(String flowFile, def nodeId, String nodeType) {
-    if (!flowFile) return
-    // One live run per flowFile
-    state._live = state._live ?: [:]
-    def live = state._live[flowFile] ?: [runId: null, prev: null, finished: false]
+private void notifyFlowTrace(String flowFile, String nodeId, String nodeType) {
+    state._live = (state._live ?: [:])
 
-    // Start a new run on first node or when file changes / ended
-    if (!live.runId || nodeType == "eventTrigger" || live.finished) {
-        live.runId   = "${now()}_${Math.abs(new Random().nextInt())}"
-        live.prev    = null
-        live.finished = false
-        state._live[flowFile] = live
+    Date nowObj = new Date()
+    long nowMs  = nowObj.time
 
-        sendLocationEvent(
-            name: "feTrace",
-            value: "start",
-            descriptionText: "Live trace start for ${flowFile}",
-            data: JsonOutput.toJson([type:"start", flowFile: flowFile, runId: live.runId, ts: now()])
-        )
-        // reset in-memory last run for this flow
-        state.flowTraces = (state.flowTraces instanceof List) ? state.flowTraces : []
-        state.flowTraces.removeAll { it.flowFile == flowFile }
-        state.flowTraces << [runId: live.runId, flowFile: flowFile, steps: []]
-    }
-
-    // Append step to in-memory last run
-    def step = [flowFile: flowFile, nodeId: nodeId, nodeType: nodeType, timestamp: now()]
-    def thisFlow = state.flowTraces.find { it.flowFile == flowFile && it.runId == live.runId }
-    if (thisFlow) {
-        thisFlow.steps << step
-        if (thisFlow.steps.size() > 200) thisFlow.steps = thisFlow.steps[-200..-1]
-    }
-
-    // Push live step (prev -> nodeId)
-    sendLocationEvent(
-        name: "feTrace",
-        value: "step",
-        descriptionText: "Live trace step for ${flowFile}",
-        data: JsonOutput.toJson([
-            type: "step", flowFile: flowFile, runId: live.runId,
-            nodeId: nodeId, prevNodeId: live.prev, nodeType: nodeType, ts: now()
-        ])
-    )
-    live.prev = nodeId
+    def live = (state._live[flowFile] ?: [runId: null, finished: true])
     state._live[flowFile] = live
 
-    // On end, finalize + write file once (for your Last Trace button)
-    if (nodeType == "endOfFlow") {
-        live.finished = true
-        state._live[flowFile] = live
-        saveFlow("FE_flowtrace.json", state.flowTraces)
-        sendLocationEvent(
-            name: "feTrace",
-            value: "end",
-            descriptionText: "Live trace end for ${flowFile}",
-            data: JsonOutput.toJson([type:"end", flowFile: flowFile, runId: live.runId, ts: now()])
-        )
+    boolean startingRun = (!live.runId || nodeType == "eventTrigger" || (live.finished == true))
+    if (startingRun) {
+        live.runId   = nowMs          // was: System.currentTimeMillis()
+        live.started = nowMs
+        live.finished = false
+
+        state.flowTraces = (state.flowTraces ?: [])
+        state.flowTraces.removeAll { it.flowFile == flowFile }
+        state.flowTraces << [flowFile: flowFile, started: nowMs, steps: [], finished: false]
+
+        try {
+            sendLocationEvent(name: "feTrace", value: "start",
+                data: [flowFile: flowFile, started: nowMs])
+        } catch (ignored) {}
     }
+
+    def step = [ts: nowMs, nodeType: nodeType, nodeId: nodeId]  // ensure we use nowMs consistently
+    def thisFlow = state.flowTraces?.find { it.flowFile == flowFile }
+    if (thisFlow) {
+        thisFlow.steps << step
+        if (nodeType in ["endOfFlow", "cancelled"]) {
+            thisFlow.finished = true
+            live.finished = true
+        }
+        try { saveFlow("FE_flowtrace.json", state.flowTraces) } catch (e) {
+            log.warn "[${flowFile}] Failed to write FE_flowtrace.json: ${e}"
+        }
+    }
+
+    try {
+        def val = (nodeType in ["endOfFlow","cancelled"]) ? "end" : "step"
+        sendLocationEvent(name: "feTrace", value: val,
+            data: [flowFile: flowFile, step: step, finished: (val == "end")])
+    } catch (ignored) {}
 }
 
 def sendNotification(fname, data, evt) {
@@ -2766,31 +2791,35 @@ private void _saveVariableInternal(String fname, String scope, String name, Stri
     } catch (Throwable ignore) {}
 }
 
+// Decide where to write a variable (flow vs global) based on the node's data and existing vars.
 private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
+    // 1) Explicit scope from the editor wins
     String explicit = ((nodeData?.varScope ?: nodeData?.scope) ?: "").toString().toLowerCase()
-	if (explicit in ["flow","global","globals"]) {
-		return [scope: (explicit == "global" || explicit == "globals") ? "global" : "flow",
-				key  : (explicit == "flow") ? _bareFlow(fname) : null]
-	}
-
-    // boolean hints some editor builds use
+    if (explicit in ["flow", "global", "globals"]) {
+        return [
+            scope: explicit.startsWith("global") ? "global" : "flow",
+            key  : explicit.startsWith("flow")   ? _bareFlow(fname) : null
+        ]
+    }
+    // Back-compat flags the editor might send
     if (nodeData?.isGlobal == true || nodeData?.useGlobal == true) {
         return [scope: "global", key: null]
     }
 
-    // Look at what actually exists right now
+    // 2) No explicit scope: look at what exists
     String bare = _bareFlow(fname)
-    Map fmap    = _ensureFlowVarsMap()
-    List flowL  = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
-    List gvars  = _ensureGlobalVarsList()
+    List flowList   = (_ensureFlowVarsMap()[bare] instanceof List) ? (_ensureFlowVarsMap()[bare] as List) : []
+    List globalList = _ensureGlobalVarsList()
 
-    boolean flowHas   = flowL?.any { (it?.name?.toString() ?: "") == varName }
-    boolean globalHas = gvars?.any { (it?.name?.toString() ?: "") == varName }
+    boolean flowHas   = flowList?.any   { (it?.name?.toString() ?: "") == varName }
+    boolean globalHas = globalList?.any { (it?.name?.toString() ?: "") == varName }
 
-    if (flowHas)   return [scope: "flow",   key: bare]
-    if (globalHas) return [scope: "global", key: null]
+    // Prefer Global when both exist to match “I picked Global in the editor”
+    if (globalHas && !flowHas) return [scope: "global", key: null]
+    if (flowHas   && !globalHas) return [scope: "flow",   key: bare]
+    if (globalHas &&  flowHas)   return [scope: "global", key: null]
 
-    // Default for brand-new names: Flow (more specific)
+    // Default for new names (no collision): Flow
     return [scope: "flow", key: bare]
 }
 
@@ -2807,4 +2836,25 @@ private def _getVarActual(String fname, String varName) {
     if (fromGlobal != null) return fromGlobal
 
     try { return getGlobalVar(varName)?.value } catch (ignored) { return null }
+}
+
+private String getDeviceIdByLabel(String label) {
+    if (!label) return null
+    def dev = settings?.masterDeviceList?.find { d ->
+        def dn = (d?.displayName ?: d?.label ?: d?.name)?.toString()
+        dn?.equalsIgnoreCase(label?.toString())
+    }
+    return dev?.id?.toString()
+}
+
+// Return a "current" value for time pseudo-device, used by snapshot fallback
+private String currentTimePseudoValue(String attr) {
+    TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+    Date now = new Date()
+    switch ((attr ?: "").toString().toLowerCase()) {
+        case "currenttime": return now.format("HH:mm", tz)
+        case "dayofweek":   return now.format("EEEE", tz)
+        case "timeofday":   return null   // only true at actual sunrise/sunset events
+        default:            return null
+    }
 }
