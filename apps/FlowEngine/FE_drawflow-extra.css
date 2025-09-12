@@ -151,7 +151,11 @@ button:hover { background: #02c258; }
   color: #000 !important;
   opacity: 1 !important;
 }
-.drawflow-node.condition {
+.drawflow-node.condition,
+.drawflow-node.countdown,
+.drawflow-node.motiondirection,
+.drawflow-node.motionDirection,
+.drawflow-node.devicetovar {
   background: #fc9331 !important;
   border: 2.2px solid #ffffff !important;
   color: #000 !important;
@@ -193,6 +197,24 @@ button:hover { background: #02c258; }
 }
 .drawflow-node.schedule {
   background: #fb0101 !important;
+  border: 2.2px solid #ffffff !important;
+  color: #000 !important;
+  opacity: 1 !important;
+}
+.drawflow-node.savedevicestate,
+.drawflow-node.saveDeviceState,
+.drawflow-node.restoredevicestate,
+.drawflow-node.restoreDeviceState {
+  background: #fc31d7 !important;
+  border: 2.2px solid #ffffff !important;
+  color: #000 !important;
+  opacity: 1 !important;
+}
+.drawflow-node.repeat,
+.drawflow-node.delay,
+.drawflow-node.delaymin,
+.drawflow-node.delayMin {
+  background: #b8fa01 !important;
   border: 2.2px solid #ffffff !important;
   color: #000 !important;
   opacity: 1 !important;
@@ -506,4 +528,29 @@ button:hover { background: #02c258; }
 #drawflow .drawflow {
   min-width: 2000px;
   min-height: 1400px;
+}
+
+/* ── Unified selection and hover styles for all nodes ───────────── */
+.drawflow-node.selected,
+.drawflow-node.condition.selected,
+.drawflow-node.device.selected,
+.drawflow-node.eventTrigger.selected,
+.drawflow-node.setVariable.selected,
+.drawflow-node.notification.selected,
+.drawflow-node.comment.selected,
+.drawflow-node.and.selected,
+.drawflow-node.or.selected,
+.drawflow-node.not.selected,
+.drawflow-node.schedule.selected,
+.drawflow-node.countdown.selected,
+.drawflow-node.motiondirection.selected,
+.drawflow-node.devicetovar.selected {
+  border: 3px solid #02f84c !important;
+  box-shadow: 0 0 8px 2px #02f84c80 !important;
+}
+
+.drawflow-node:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 0 6px 1px #ffffff33 !important;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
 }
