@@ -93,7 +93,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.060</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.062</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -147,6 +147,10 @@ document.addEventListener('click', function(e){
         <button id="statusButton" title="Toggle node status badges"
           style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
           Status
+        </button>
+        <button id="minimapToggleButton" title="Toggle mini-map"
+          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
+          Mini-map
         </button>
       </div>
       <b>|</b>
@@ -293,7 +297,7 @@ document.addEventListener('click', function(e){
   <div id="minimap-container"
     style="position:fixed; bottom:24px; right:28px; width:240px; height:140px; background:#181d20cc; border-radius:12px; z-index:9999; box-shadow:0 2px 10px #0008; border:2px solid #444; overflow:hidden; cursor:pointer; display:none;">
     <canvas id="minimap-canvas" width="240" height="140"></canvas>
-    <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">minimap</div>
+    <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
   <script src="FE_drawflow-js.min.js"></script>
   <script src="FE_html2canvas.min.js"></script>
@@ -602,6 +606,86 @@ document.addEventListener('click', function(e){
         });
         updateStatusBtn();
       }
+    })();
+
+    (function setupMinimapToggle(){
+      const btn = document.getElementById('minimapToggleButton');
+      const box = document.getElementById('minimap-container');
+      const cvs = document.getElementById('minimap-canvas');
+      let intervalId = null;
+
+      // Persisted state
+      const KEY = 'fe_minimap_visible';
+      function isOn(){ return localStorage.getItem(KEY) === '1'; }
+      function setOn(v){ localStorage.setItem(KEY, v ? '1' : '0'); }
+
+      function updateBtn(){
+        if (!btn) return;
+        btn.style.backgroundColor = isOn() ? '#4CAF50' : '#808080';
+        btn.textContent = 'Mini-map';
+      }
+
+      async function renderMinimapOnce(){
+        if (!box || box.style.display === 'none') return;
+        if (!window.html2canvas || !cvs) return;
+
+        const target = document.getElementById('drawflow');
+        if (!target) return;
+
+        try {
+          // Snapshot the drawflow area at a small scale and draw into our canvas
+          const shot = await html2canvas(target, {
+            backgroundColor: null,
+            logging: false,
+            scale: 0.18
+          });
+          const ctx = cvs.getContext('2d');
+          ctx.clearRect(0,0,cvs.width,cvs.height);
+          ctx.drawImage(shot, 0, 0, cvs.width, cvs.height);
+        } catch(_){}
+      }
+
+      function startLoop(){
+        if (intervalId) return;
+        intervalId = setInterval(renderMinimapOnce, 600);
+      }
+      function stopLoop(){
+        if (!intervalId) return;
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+
+      function applyVisibility(){
+        if (!box) return;
+        const on = isOn();
+        box.style.display = on ? 'block' : 'none';
+        updateBtn();
+        if (on) { renderMinimapOnce(); startLoop(); } else { stopLoop(); }
+      }
+
+      if (btn) {
+        btn.addEventListener('click', () => {
+          setOn(!isOn());
+          applyVisibility();
+          try { markFlowNeedsSave(true); } catch(_){}
+        });
+      }
+
+      // Also refresh the mini-map when viewport likely changes
+      const hookViewportRefresh = () => {
+        if (!window.refreshConnectionsSoon) return;
+        const orig = window.refreshConnectionsSoon;
+        if (orig.__minimapHooked) return;
+        window.refreshConnectionsSoon = function(){
+          try { orig.apply(this, arguments); } catch(_){}
+          renderMinimapOnce();
+        };
+        window.refreshConnectionsSoon.__minimapHooked = true;
+      };
+      hookViewportRefresh();
+
+      // Initialize from persisted state
+      applyVisibility();
     })();
 
     function renderVariableInspector() {
@@ -1460,7 +1544,7 @@ document.addEventListener('click', function(e){
           }
         } catch(_){}
         return `<div class="countdown-tile">
-          Countdown<br>
+          <b>Countdown</b><br>
           <span style="font-size:11px">
             ${vName} ← days until ${dStr}
             <hr style="margin:4px 0;border-top:1px solid #888;">
@@ -1484,7 +1568,7 @@ document.addEventListener('click', function(e){
       if (t === "donothing") {
         return `
           <div class="logic-node">
-            Do Nothing
+            <b>Do Nothing</b><br>
             ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
           </div>`;
       }
@@ -1498,12 +1582,12 @@ document.addEventListener('click', function(e){
         } else if (data && data.minutes) {
           label = `Delay ${data.minutes} min`;
         }
-        return `<div class="logic-node">${label}${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+        return `<div class="delay-node"><b>${label}</b>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
       }
       if (t === "delaymin") {
         const errorStyle = getErrorStyle(type, data);
         let label = data && data.delayMin ? `Delay ${data.delayMin} min` : "Delay (min)";
-        return `<div class="logic-node">${label}${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+        return `<div class="delaymin-node"><b>${label}</b>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
       }
 
       if (t === "countdown") {
@@ -1522,7 +1606,7 @@ document.addEventListener('click', function(e){
           }
         } catch(_){}
         return `<div class="countdown-tile">
-          Countdown<br>
+          <br>Countdown</b><br>
           <span style="font-size:11px">
             ${vName} ← days until ${dStr}
             <hr style="margin:4px 0;border-top:1px solid #888;">
@@ -1593,7 +1677,7 @@ document.addEventListener('click', function(e){
 
         return `
           <div class="motiondirection-tile">
-            Motion Direction<br>
+            <b>Motion Direction</b><br>
             <span style="font-size:11px;">
               A: ${aLabel}<br>
               B: ${bLabel}<br>
@@ -1608,12 +1692,12 @@ document.addEventListener('click', function(e){
       if (t === "savedevicestate") {
         const errorStyle = getErrorStyle(type, data);
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+        return `<div class="savedevicestate-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
       }
       if (t === "restoredevicestate") {
         const errorStyle = getErrorStyle(type, data);
         let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="device-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+        return `<div class="restoredevicestate-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
       }
 
       if (t === "comment") {
@@ -1624,7 +1708,7 @@ document.addEventListener('click', function(e){
         }
         let txt = data && data.text ? data.text : "(No comment)";
         return `<div class="comment-tile">
-          Comment<hr>
+          <b>Comment</b><hr>
           <div>${txt}</div>
           ${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}
         </div>`;
@@ -1652,7 +1736,7 @@ document.addEventListener('click', function(e){
         }
         
         return `<div class="schedule-tile">
-          Schedule<br>
+          <b>Schedule</b><br>
             <span style="font-size:11px">
               <span>Days: ${repeatDays}</span><br>
               <span>Time: ${times}</span><br>
@@ -1681,8 +1765,8 @@ document.addEventListener('click', function(e){
           description = `Max ${max} time${max !== 1 ? "s" : ""}`;
         }
 
-        return `<div class="repeat-tile" style="position:relative;">
-          Repeat<br>
+        return `<div class="repeat-tile"">
+          <b>Repeat</b><br>
           <span style="font-size:11px">
             ${description}
           </span>
@@ -1720,7 +1804,7 @@ document.addEventListener('click', function(e){
         }
         if (currentValue === undefined) currentValue = "";
         return `<div class="setVariable-tile">
-          Set Variable<br>
+          <b>Set Variable</b><br>
           <span style="font-size:11px">
             ${vName} = ${vValue}
             <hr style="margin:4px 0;border-top:1px solid #888;">
@@ -1743,7 +1827,7 @@ document.addEventListener('click', function(e){
         const mode  = data.append ? "Append" : "Overwrite";
 
         return `<div class="setVariable-tile">
-          Devices to a Variable<br>
+          <b>Devices to a Variable</b><br>
           <span style="font-size:11px">
             ${devLabel ? "Devices: " + devLabel + "<br>" : ""}
             ${attribute ? "Attr: " + attribute + "<br>" : ""}
@@ -1864,7 +1948,7 @@ document.addEventListener('click', function(e){
 
         return `
           <div class="notification-tile">
-            ${notifType} Notifications<br>
+            <b>${notifType} Notifications</b><br>
             <span style="font-size:11px">
               Device: ${devLabelStr}<br>
               ${msg ? `Message: "${msg}"<br>` : ""}
@@ -1933,7 +2017,7 @@ document.addEventListener('click', function(e){
 
         return `
           <div class="${tileClass}" ${errorStyle}>
-            ${isCondition ? "Condition" : "Event Trigger"}<br>
+            ${isCondition ? "<b>Condition</b>" : "<b>Event Trigger</b>"}<br>
             <span style="font-size:11px">
               ${mainText}<br>
               ${logicHtml}
@@ -2004,7 +2088,7 @@ document.addEventListener('click', function(e){
 
         return `
           <div class="${tileClass}" ${errorStyle}>
-            Action<br>
+            <b>Action</b><br>
             <span style="font-size:11px">
               ${label} ${cmd || ''} ${val || ''}<br><hr>
             </span>
@@ -2435,7 +2519,7 @@ document.addEventListener('click', function(e){
           const container = el || document.createElement("div");
 
           const h = document.createElement("div");
-          h.innerHTML = "<b>Countdown</b>";
+          h.innerHTML = "Countdown";
           h.style.marginBottom = "8px";
           container.appendChild(h);
 
@@ -4319,6 +4403,7 @@ document.addEventListener('click', function(e){
       document.getElementById("newFlow").onclick  = async function() {
         if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
           editor.clear();
+          __fe_clearMinimap();
           document.getElementById("flowName").textContent = "";      // clear name
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
           markFlowNeedsSave(false);
@@ -5565,9 +5650,8 @@ document.addEventListener('click', function(e){
         const CANVAS_ID = 'minimap-canvas';
         const STORAGE_KEY = "fe_minimap_pos";
 
-        // Show minimap on load
+        // Respect saved visibility
         const container = document.getElementById(MINIMAP_ID);
-        container.style.display = '';
 
         // ---- DRAGGABLE MINIMAP LOGIC (with persistent storage) ----
         let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
@@ -6481,6 +6565,7 @@ document.addEventListener('click', function(e){
 
           // 6) clear the canvas state
           editor.clear();
+          __fe_clearMinimap();
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
         
           // 7) reset any “in-use” flags and re-load globals
@@ -6555,13 +6640,30 @@ document.addEventListener('click', function(e){
         try {
           const pos = JSON.parse(localStorage.getItem('fe_minimap_pos'));
           if (pos && pos.left != null && pos.top != null) {
-            mm.style.left = pos.left + 'px';
-            mm.style.top  = pos.top  + 'px';
+            mm.style.left  = pos.left + 'px';
+            mm.style.top   = pos.top  + 'px';
+            mm.style.right = 'auto';
+            mm.style.bottom= 'auto';
           }
-        } catch(_){}  
-        mm.style.display = 'block';
-        // re-render if available
-        if (typeof renderMinimap === 'function') renderMinimap();
+        } catch (_) {}
+
+        // Respect persisted visibility (same key used by the toggle)
+        const on = (localStorage.getItem('fe_minimap_visible') === '1');
+        mm.style.display = on ? 'block' : 'none';
+
+        // If visible, try a render so it isn't just an empty box
+        if (on) {
+          if (typeof renderMinimap === 'function') renderMinimap();
+          // give editor/layout a tick if needed
+          setTimeout(() => { if (typeof renderMinimap === 'function') renderMinimap(); }, 300);
+        }
+
+        // Best-effort keep the button color in sync on load (without reaching into the closure)
+        const btn = document.getElementById('minimapToggleButton');
+        if (btn) {
+          btn.style.backgroundColor = on ? '#4CAF50' : '#808080';
+          btn.textContent = 'Mini-map';
+        }
       });
 
       // ── DRAG & PERSIST POSITION ───────────────────────────────────
@@ -8794,9 +8896,9 @@ document.addEventListener('click', function(e){
     #fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
     #fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
     #fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
-    #fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
-    #fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
-    #fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
+    #fe-cron-tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:2px solid #4a5b62}
+    #fe-cron-tabs button{cursor:pointer;border:2px solid #5a6b72;background:#2b353a;color:#e0f4ff;padding:8px 14px;border-radius:10px}
+    #fe-cron-tabs button.active{background:#35505c;border-color:#00ff88;box-shadow:0 0 8px 2px #00ff8899}
     #fe-cron-body{padding:12px 14px}
     .fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
     .fe-col{display:flex;flex-direction:column;gap:6px}
@@ -9642,9 +9744,14 @@ document.addEventListener('click', function(e){
             Array.from(document.querySelectorAll('#fe-cron-tabs button')).forEach(x=>x.classList.remove('active'));
             b.classList.add('active');
             const tab = b.getAttribute('data-tab');
-            Array.from(document.querySelectorAll('#fe-cron-body [data-pane]')).forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
+            Array.from(document.querySelectorAll('#fe-cron-body [data-pane]'))
+              .forEach(p=>p.hidden = p.getAttribute('data-pane')!==tab);
           };
         });
+
+        const initialTab = (spec.kind === 'advanced_cron' ? 'advanced' : (spec.kind || 'quick'));
+        const initBtn = document.querySelector(`#fe-cron-tabs [data-tab="${initialTab}"]`);
+        if (initBtn) initBtn.click();
 
         // Quick
         fillDays('fe-cron-days', spec.by_weekday || []);
@@ -10167,6 +10274,20 @@ document.addEventListener('click', function(e){
       }catch(_){}
     })();
   </script>
+
+    <script>
+    // Clears the minimap canvas immediately.
+    function __fe_clearMinimap() {
+      try {
+        var c = document.getElementById('minimap-canvas');
+        if (c && c.getContext) {
+          var ctx = c.getContext('2d');
+          if (ctx) ctx.clearRect(0, 0, c.width, c.height);
+        }
+      } catch (_) {}
+    }
+    </script>
+    
 </body>
 </html>
 <!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
@@ -10453,4 +10574,14 @@ document.addEventListener('click', function(e){
       console.warn('placement-fix init error', e);
     }
   })();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('.schedule-tabs button');
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  });
 </script>
