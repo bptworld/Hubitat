@@ -523,13 +523,24 @@ def apiTestFlow() {
                     testDate.hours   = parts[0].toInteger()
                     testDate.minutes = parts[1].toInteger()
                 }
-                def evt = [
-                    name:           node.data.attribute,     // "timeOfDay"
-                    value:          node.data.value,         // e.g. [sunrise, 20:00]
-                    date:           testDate,
-                    descriptionText:"Simulated time trigger at ${value}"
-                ]
-                handleEvent(evt, fname)
+                // Build a realistic time event:
+// If testing sunrise/sunset on a timeOfDay trigger, emit evt.name as 'sunrise'/'sunset'
+String attr = (node.data.attribute ?: "").toString()
+String vstr = (value ?: "").toString()
+String ename = attr
+if (attr.equalsIgnoreCase("timeOfDay")) {
+    String low = vstr.toLowerCase()
+    if (low in ["sunrise","sunset"]) {
+        ename = low   // route only to matching flows
+    }
+}
+def evt = [
+    name:           ename,
+    value:          vstr,
+    date:           testDate,
+    descriptionText:"Simulated time trigger at ${value}"
+]
+handleEvent(evt, fname)
             }
             else if (devId == "__variable__") {
                 // New: Simulate a variable event for testing
@@ -974,15 +985,13 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				// track a pending continuation
 				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
 
-				runInMillis(
-					ms,
+				// Per-delay token to keep resume valid even if runId changes
+state.activeFlows[fname].pendingTokens = (state.activeFlows[fname].pendingTokens ?: []) + []
+def uuidToken = java.util.UUID.randomUUID().toString()
+state.activeFlows[fname].pendingTokens << uuidToken
+runInMillis(ms,
 					"resumeAfterDelay",
-					[ data: [
-						fname: fname,
-						nextId: conn.node,
-						evt: _packEvt(evt),
-						runId: (state.activeFlows[fname]?.runId ?: 0L)
-					], overwrite: false ]
+					[ data: [ fname: fname, nextId: conn.node, evt: _packEvt(evt), runId: (state.activeFlows[fname]?.runId ?: 0L), token: uuidToken ], overwrite: false ]
 				)
 			}
 			break
@@ -994,15 +1003,13 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			node.outputs?.output_1?.connections?.each { conn ->
 				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
 
-				runInMillis(
-					ms as Long,
+				// Per-delay token to keep resume valid even if runId changes
+state.activeFlows[fname].pendingTokens = (state.activeFlows[fname].pendingTokens ?: []) + []
+def uuidToken = java.util.UUID.randomUUID().toString()
+state.activeFlows[fname].pendingTokens << uuidToken
+runInMillis(ms as Long,
 					"resumeAfterDelay",
-					[ data: [
-						fname: fname,
-						nextId: conn.node,
-						evt: _packEvt(evt),
-						runId: (state.activeFlows[fname]?.runId ?: 0L)
-					], overwrite: false ]
+					[ data: [ fname: fname, nextId: conn.node, evt: _packEvt(evt), runId: (state.activeFlows[fname]?.runId ?: 0L), token: uuidToken ], overwrite: false ]
 				)
 			}
 			break
@@ -1032,11 +1039,22 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			break
 
         case "saveDeviceState":
+			
 			flowLog(fname, "In evaluateNode - saveDeviceState (dryRun=${testDryRun})", "debug")
-            def devId = node.data.deviceId
-            if (devId) {
-                def device = getDeviceById(devId)
-                if (device) {
+            // Support multi-device selection: deviceIds[] or legacy deviceId
+            List devIds = []
+            if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
+                devIds = node.data.deviceIds.collect { it?.toString() }
+            } else if (node?.data?.deviceId) {
+                devIds = [ node.data.deviceId?.toString() ]
+            }
+            if (!devIds || devIds.isEmpty()) {
+                flowLog(fname, "saveDeviceState: no deviceIds configured", "warn")
+            } else {
+                flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
+                devIds.each { devId ->
+                    def device = getDeviceById(devId)
+                    if (!device) return
                     def devState = [:]
                     device.supportedAttributes.each { attr ->
                         try {
@@ -1044,47 +1062,77 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
                             if (val != null) devState[attr.name] = val
                         } catch (e) {}
                     }
-					if(testDryRun) {
-						flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
-					} else {
-						flowObj.savedDeviceStates = flowObj.savedDeviceStates ?: [:]
-						flowObj.savedDeviceStates[devId] = devState
-					}
+                    if (testDryRun) {
+                        flowLog(fname, "Dry Run: save state for ${device} → ${devState}", "debug")
+                    } else {
+                        flowObj.savedDeviceStates[devId] = devState
+						flowLog(fname, "Saved state for ${device}: ${devState}", "info")
+                    }
                 }
             }
+            // continue downstream
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
-
-        case "restoreDeviceState":
+		
+		case "restoreDeviceState":
 			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${testDryRun})", "debug")
-			def devId = node.data.deviceId
-			if (devId) {
-				def device = getDeviceById(devId)
-				def devState = flowObj.savedDeviceStates?.get(devId)
-				if(testDryRun) {
-					flowLog(fname, "Dry Run: device: ${device} - devState: ${devState}", "debug")
-				} else {
-					if (device && devState) {
-						devState.each { attrName, attrValue ->
-							try {
-								def cmd = "set${attrName.capitalize()}"
-								if (device.hasCommand(cmd)) {
-									device."${cmd}"(attrValue)
-								} else if (attrName == "switch" && device.hasCommand(attrValue)) {
-									device."${attrValue}"()
-								}
-							} catch (e) {}		
-						}
-					}
-				}
-			}
+            // Support multi-device selection: deviceIds[] or legacy deviceId
+            List devIds = []
+            if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
+                devIds = node.data.deviceIds.collect { it?.toString() }
+            } else if (node?.data?.deviceId) {
+                devIds = [ node.data.deviceId?.toString() ]
+            }
+            if (!devIds || devIds.isEmpty()) {
+                flowLog(fname, "restoreDeviceState: no deviceIds configured", "warn")
+            } else {
+                devIds.each { devId ->
+                    def device   = getDeviceById(devId)
+                    def devState = flowObj?.savedDeviceStates?.get(devId)
+                    if (!device) {
+                        flowLog(fname, "restoreDeviceState: device not found for id=${devId}", "warn")
+                        return
+                    }
+                    if (!(devState instanceof Map) || devState.isEmpty()) {
+                        flowLog(fname, "restoreDeviceState: no saved state for ${device}", "warn")
+                        return
+                    }
+                    if (testDryRun) {
+                        flowLog(fname, "Dry Run: restore state for ${device} ← ${devState}", "info")
+                    } else {
+						flowLog(fname, "Restoring state for ${device}: ${devState}", "info")
+                        // 1) Switch first if present
+                        def sw = devState['switch']
+                        if (sw && device.hasCommand(sw)) {
+                            try { device."${sw}"() } catch (e) { flowLog(fname, "restoreDeviceState: switch restore failed: ${e}", "warn") }
+                        }
+                        // 2) Restore other attributes via setter methods
+                        devState.each { attrName, attrValue ->
+                            if (attrName == 'switch') return
+                            try {
+                                def cmd = "set${attrName.capitalize()}"
+                                if (device.hasCommand(cmd)) {
+                                    def arg = attrValue
+                                    if (cmd in ["setLevel","setHue","setSaturation","setColorTemperature"] && "${attrValue}".isInteger()) {
+                                        arg = "${attrValue}".toInteger()
+                                    }
+                                    device."${cmd}"(arg)
+                                }
+                            } catch (e) {
+                                flowLog(fname, "restoreDeviceState: ${device} ${attrName} restore failed: ${e}", "warn")
+                            }
+                        }
+                    }
+                }
+            }
+            // continue downstream
             node.outputs?.output_1?.connections?.each { conn ->
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
-
+		
         case "notMatchingVar":
 			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
 			// 1) Resolve variable name
@@ -2209,12 +2257,28 @@ def getTriggerNodes(String fname, evt) {
 
         // 1) Time-based: "__time__" triggers
         if (devIds.contains("__time__")) {
-            // Fix: accept either exact event name OR "timeOfDay"
-            if (node.data.attribute == evt.name || (node.data.attribute?.toString()?.equalsIgnoreCase("timeOfDay"))) {
+            String attr   = (node.data.attribute ?: "").toString()
+            def expected  = node.data.value
+            String evName = (evt?.name ?: "").toString().toLowerCase()
+
+            // Only treat as time event if the incoming event is actually a time signal
+            if (evName in ["sunrise","sunset"]) {
+                boolean attrOk = attr.equalsIgnoreCase("timeOfDay") || attr.equalsIgnoreCase(evName)
+                boolean valOk
+                if (expected instanceof List) {
+                    valOk = expected.collect{ it?.toString()?.toLowerCase() }.contains(evName)
+                } else {
+                    valOk = (expected?.toString()?.toLowerCase() == evName)
+                }
+                if (attrOk && valOk) {
+                    return true
+                }
+            } else if (attr == evt.name) {
+                // For other time attrs like currentTime/dayOfWeek we only match exact attr name
                 return true
             }
+            // Otherwise, do not route this non-time event to a time trigger
         }
-
         // 2) Variable-based: "__variable__" triggers
         if (devIds.contains("__variable__")) {
             def varName = node.data.variableName ?: node.data.varName ?: node.data.attribute
@@ -2735,134 +2799,78 @@ private Map _unpackEvt(Map m) {
 }
 
 def resumeAfterDelay(Map data) {
-    String fname = data.fname
-    def flowObj = state.activeFlows[fname]
-    if (!flowObj) return
-
-    if ((flowObj.runId ?: -1L) != (data.runId ?: -2L)) {
-        flowLog(fname, "Stale delay resume ignored (runId=${data.runId}, current=${flowObj.runId})", "debug")
-        return
-    }
-
-    def evt  = _unpackEvt(data.evt as Map)
-    def next = (data.nextId ?: "").toString()
-
-    def freshVisited = new HashSet()
-    evaluateNode(fname, next, evt, null, freshVisited)
-
-    // this resume finished; update counter
-    flowObj.pending = Math.max((flowObj.pending ?: 0) - 1, 0)
-
-    // if nothing pending, finalize the trace/run now
-    if (flowObj.pending == 0) {
-        try { notifyFlowTrace(fname, null, "endOfFlow") } catch (_){}
-        flowObj.isRunning = false
-    }
-}
-
-private void _saveVariableInternal(String fname, String scope, String name, String type, def value) {
-    if (!name) return
-    scope = (scope ?: "flow").toLowerCase()
-    type  = (type  ?: "String").toString()
-
-    if (scope in ["global","globals"]) {
-        // Update GLOBAL list
-        List gvars = _ensureGlobalVarsList()
-        def existing = gvars.find { (it?.name?.toString() ?: "") == name }
-        if (existing) { existing.type = type; existing.value = value }
-        else          { gvars << _mkVar(name, type, value) }
-        // assign fresh list to ensure persistence
-        atomicState.globalVars = gvars.collect { it }
-        try {
-            _refreshVarCaches(null)
-            notifyVarsUpdated("global", null)
-        } catch (Throwable ignore) {}
-        return
-    }
-
-    // FLOW scope (default)
-    String bare = _bareFlow(fname)  // runtime flow name
-    Map fmap    = _ensureFlowVarsMap()
-    List list   = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
-
-    def existing = list.find { (it?.name?.toString() ?: "") == name }
-    if (existing) { existing.type = type; existing.value = value }
-    else          { list << _mkVar(name, type, value) }
-
-    fmap[bare] = list
-    // assign fresh map to ensure persistence
-    atomicState.flowVars = fmap.collectEntries { k, v -> [(k): v] }
-
+    // Robust, token-tolerant resume with null-safe guards
     try {
-        _refreshVarCaches(bare)
-        notifyVarsUpdated("flow", bare)
-    } catch (Throwable ignore) {}
-}
+        // Ensure containers exist
+        state.activeFlows = state.activeFlows ?: [:]
+        String fname = (data?.fname ?: '').toString()
+        if (!fname) { log.warn "resumeAfterDelay: missing fname in data"; return }
 
-// Decide where to write a variable (flow vs global) based on the node's data and existing vars.
-private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
-    // 1) Explicit scope from the editor wins
-    String explicit = ((nodeData?.varScope ?: nodeData?.scope) ?: "").toString().toLowerCase()
-    if (explicit in ["flow", "global", "globals"]) {
-        return [
-            scope: explicit.startsWith("global") ? "global" : "flow",
-            key  : explicit.startsWith("flow")   ? _bareFlow(fname) : null
-        ]
-    }
-    // Back-compat flags the editor might send
-    if (nodeData?.isGlobal == true || nodeData?.useGlobal == true) {
-        return [scope: "global", key: null]
-    }
+        def flowObj = state.activeFlows[fname]
+        if (!(flowObj instanceof Map)) {
+            flowLog(fname, "resumeAfterDelay: flowObj missing; reconstructing minimal container", "warn")
+            flowObj = [ pending: 0, pendingTokens: [] ]
+            state.activeFlows[fname] = flowObj
+        }
+        if (!(flowObj.pendingTokens instanceof List)) {
+            flowObj.pendingTokens = []
+            state.activeFlows[fname] = flowObj
+        }
 
-    // 2) No explicit scope: look at what exists
-    String bare = _bareFlow(fname)
-    List flowList   = (_ensureFlowVarsMap()[bare] instanceof List) ? (_ensureFlowVarsMap()[bare] as List) : []
-    List globalList = _ensureGlobalVarsList()
+        def token   = data?.token
+        def nextId  = (data?.nextId ?: '').toString()
+        def runId   = data?.runId
+        def evtPack = data?.evt
 
-    boolean flowHas   = flowList?.any   { (it?.name?.toString() ?: "") == varName }
-    boolean globalHas = globalList?.any { (it?.name?.toString() ?: "") == varName }
+        boolean accepts = false
+        List pend = (flowObj.pendingTokens as List)
 
-    // Prefer Global when both exist to match “I picked Global in the editor”
-    if (globalHas && !flowHas) return [scope: "global", key: null]
-    if (flowHas   && !globalHas) return [scope: "flow",   key: bare]
-    if (globalHas &&  flowHas)   return [scope: "global", key: null]
+        // Prefer token authorization
+        if (token && pend.contains(token)) accepts = true
 
-    // Default for new names (no collision): Flow
-    return [scope: "flow", key: bare]
-}
+        // Fallback: accept if there's no active runId, or runId matches
+        if (!accepts) {
+            def cur = flowObj.runId
+            if (!cur || cur == (runId ?: "")) accepts = true
+        }
 
-// Get current value of a variable by name (prefers typed/ resolved varCtx)
-private def _getVarActual(String fname, String varName) {
-    def flowObj = state.activeFlows[fname]
-    def fromCtx    = flowObj?.varCtx?.get(varName)
-    if (fromCtx != null) return fromCtx
+        if (!accepts) {
+            flowLog(fname, "Stale delay resume ignored (runId=${runId}, current=${flowObj.runId}, token=${token})", "debug")
+            return
+        }
 
-    def fromFlow   = flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
-    if (fromFlow != null) return fromFlow
+        // Consume token (if present)
+        if (token && pend.contains(token)) {
+            flowObj.pendingTokens = pend.findAll { it != token }
+            state.activeFlows[fname] = flowObj
+        }
 
-    def fromGlobal = flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
-    if (fromGlobal != null) return fromGlobal
+        // Decrement pending counter safely
+        try {
+            int p = (flowObj.pending ?: 0) as int
+            flowObj.pending = (p > 0) ? (p - 1) : 0
+            state.activeFlows[fname] = flowObj
+        } catch (Exception ignored) { }
 
-    try { return getGlobalVar(varName)?.value } catch (ignored) { return null }
-}
+        // Unpack event if helper exists
+        def evt = null
+        try { evt = _unpackEvt(evtPack as Map) } catch (Exception e) { evt = evtPack }
 
-private String getDeviceIdByLabel(String label) {
-    if (!label) return null
-    def dev = settings?.masterDeviceList?.find { d ->
-        def dn = (d?.displayName ?: d?.label ?: d?.name)?.toString()
-        dn?.equalsIgnoreCase(label?.toString())
-    }
-    return dev?.id?.toString()
-}
+        if (!nextId) { flowLog(fname, "resumeAfterDelay: missing nextId; nothing to resume", "warn"); return }
 
-// Return a "current" value for time pseudo-device, used by snapshot fallback
-private String currentTimePseudoValue(String attr) {
-    TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
-    Date now = new Date()
-    switch ((attr ?: "").toString().toLowerCase()) {
-        case "currenttime": return now.format("HH:mm", tz)
-        case "dayofweek":   return now.format("EEEE", tz)
-        case "timeofday":   return null   // only true at actual sunrise/sunset events
-        default:            return null
+        // Use a fresh visited set when resuming
+        def freshVisited = new java.util.HashSet()
+        evaluateNode(fname, nextId.toString(), evt, null, freshVisited)
+
+        // Finalize if nothing else is pending
+        if ((flowObj.pending ?: 0) == 0) {
+            try {
+                notifyFlowTrace(fname, null, "endOfFlow")
+            } catch (Exception e) { }
+            flowObj.isRunning = false
+            state.activeFlows[fname] = flowObj
+        }
+    } catch (Exception e) {
+        log.error getExceptionMessageWithLine(e)
     }
 }
