@@ -88,12 +88,18 @@ document.addEventListener('click', function(e){
 }
 </style>
 
+
+<style>
+  #sendFlow { background:#4CAF50; color:#fff; }
+  #sendFlow.need-save { background:#d9534f !important; color:#fff !important; }
+</style>
+
 </head>
 <body>
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.062</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.063</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -215,16 +221,6 @@ document.addEventListener('click', function(e){
     <div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
       <b>Node Editor</b>
     </div>
-      <div>
-        <button id="lastTraceBtn"
-          style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
-          Last Trace
-        </button>
-        <button id="clearTraceBtn"
-          style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
-          Clear Trace
-        </button>
-      </div>
       <div id="nodeEditor">Right Click a node to edit</div>
       <div>
         <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
@@ -1689,15 +1685,39 @@ document.addEventListener('click', function(e){
           </div>`;
       }
 
-      if (t === "savedevicestate") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="savedevicestate-tile"><b>Save Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+            if (t === "savedevicestate") {
+        const errorStyle = (typeof getErrorStyle === "function") ? getErrorStyle(type, data) : "";
+        const labels = Array.isArray(data?.deviceLabels) ? data.deviceLabels.filter(Boolean)
+              : (data?.deviceLabel ? [data.deviceLabel] : []);
+        const ids = Array.isArray(data?.deviceIds) ? data.deviceIds.filter(Boolean)
+              : (data?.deviceId ? [data.deviceId] : []);
+        const displayList = labels.length ? labels : ids;
+        const display = displayList.length ? displayList.join(", ") : "<i>Pick device…</i>";
+        const lockedIcon = (data && data.locked)
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : '';
+        return `<div class="savedevicestate-tile">
+          <b>Save Device State</b><br>
+          <span style="font-size:11px"${errorStyle ? " " + errorStyle : ""}>${display}</span>
+          ${lockedIcon}
+        </div>`;
       }
-      if (t === "restoredevicestate") {
-        const errorStyle = getErrorStyle(type, data);
-        let label = data.deviceLabel || data.deviceId || "<i>Pick device…</i>";
-        return `<div class="restoredevicestate-tile"><b>Restore Device State</b><br><span style="font-size:11px">${label}</span>${data.locked ? `<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>` : ""}</div>`;
+            if (t === "restoredevicestate") {
+        const errorStyle = (typeof getErrorStyle === "function") ? getErrorStyle(type, data) : "";
+        const labels = Array.isArray(data?.deviceLabels) ? data.deviceLabels.filter(Boolean)
+              : (data?.deviceLabel ? [data.deviceLabel] : []);
+        const ids = Array.isArray(data?.deviceIds) ? data.deviceIds.filter(Boolean)
+              : (data?.deviceId ? [data.deviceId] : []);
+        const displayList = labels.length ? labels : ids;
+        const display = displayList.length ? displayList.join(", ") : "<i>Pick device…</i>";
+        const lockedIcon = (data && data.locked)
+          ? '<div style="position:absolute;top:6px;right:8px;font-size:18px;color:#fa2b2b;" title="Locked">&#128274;</div>'
+          : '';
+        return `<div class="restoredevicestate-tile">
+          <b>Restore Device State</b><br>
+          <span style="font-size:11px"${errorStyle ? " " + errorStyle : ""}>${display}</span>
+          ${lockedIcon}
+        </div>`;
       }
 
       if (t === "comment") {
@@ -2357,6 +2377,17 @@ document.addEventListener('click', function(e){
           : node.data.deviceId
             ? [node.data.deviceId]
             : [];
+        // Special case: Variable pseudo-device
+        if (devIds.length === 1 && devIds[0] === "__variable__") {
+          // Ensure single-select semantics for variable conditions
+          node.data.deviceId = "__variable__";
+          // Render the dedicated Variable UI (name dropdown, comparator, value)
+          if (typeof buildVariableTriggerEditor === "function") {
+            buildVariableTriggerEditor(el, node, false);
+            return;
+          }
+        }
+
 
         // collect shared attribute names across selected devices
         const sharedAttrs = Array.from(new Set(
@@ -3681,27 +3712,67 @@ document.addEventListener('click', function(e){
           return;
         }
 
-        if (node.name === "saveDeviceState" || node.name === "restoreDeviceState") {
-          el.innerHTML = `${node.name === "saveDeviceState" ? "Save Device State" : "Restore Device State"}<br><br>`;
+        
+        if (node.name === "saveDeviceState") {
+          el.innerHTML = `Save Device State<br><br>`;
 
           const devLabel = document.createElement("label");
-          devLabel.textContent = "Device";
+          devLabel.textContent = "Device(s)";
           devLabel.style.display = "block";
           el.appendChild(devLabel);
+
+          const selected = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds
+            : (node.data.deviceId ? [node.data.deviceId] : []);
 
           renderDevicePicker(
             el,
             devices,
-            node.data.deviceId ? [node.data.deviceId] : [],
+            selected,
             (newSelectedIds, newDeviceLabels) => {
-              node.data.deviceId = newSelectedIds[0] || "";
-              node.data.deviceLabel = newDeviceLabels[0] || "";
+              node.data.deviceIds = Array.isArray(newSelectedIds) ? newSelectedIds : [];
+              node.data.deviceLabels = Array.isArray(newDeviceLabels) ? newDeviceLabels : [];
+              // legacy mirrors for backward compatibility
+              node.data.deviceId = node.data.deviceIds[0] || "";
+              node.data.deviceLabel = node.data.deviceLabels[0] || "";
               editor.updateNodeDataFromId(node.id, node.data);
               editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
               markFlowNeedsSave(true);
-            },
-            true // multi-select
+            }
           );
+
+          return;
+        }
+
+
+        
+        if (node.name === "restoreDeviceState") {
+          el.innerHTML = `Restore Device State<br><br>`;
+
+          const devLabel = document.createElement("label");
+          devLabel.textContent = "Device(s)";
+          devLabel.style.display = "block";
+          el.appendChild(devLabel);
+
+          const selected = Array.isArray(node.data.deviceIds)
+            ? node.data.deviceIds
+            : (node.data.deviceId ? [node.data.deviceId] : []);
+
+          renderDevicePicker(
+            el,
+            devices,
+            selected,
+            (newSelectedIds, newDeviceLabels) => {
+              node.data.deviceIds = Array.isArray(newSelectedIds) ? newSelectedIds : [];
+              node.data.deviceLabels = Array.isArray(newDeviceLabels) ? newDeviceLabels : [];
+              node.data.deviceId = node.data.deviceIds[0] || "";
+              node.data.deviceLabel = node.data.deviceLabels[0] || "";
+              editor.updateNodeDataFromId(node.id, node.data);
+              editor.updateNodeHtmlFromId(node.id, nodeTileHtml(node.name, node.data, node.id));
+              markFlowNeedsSave(true);
+            }
+          );
+
           return;
         }
 
@@ -3907,59 +3978,30 @@ document.addEventListener('click', function(e){
         });
       }
 
-      document.getElementById("drawflow").addEventListener("mousedown", function(e) {
-        const nodeElem = e.target.closest('.drawflow-node');
-
-        // --- Multi-select with Ctrl/Cmd ---
-        if ((e.ctrlKey || e.metaKey) && nodeElem) {
-          const nodeId = nodeElem.id.replace(/^node-/, "");
-          if (!nodeId) return;
-          window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-          if (window._multiSelectedNodes.has(nodeId)) {
-            window._multiSelectedNodes.delete(nodeId);
-          } else {
-            window._multiSelectedNodes.add(nodeId);
-          }
-          updateNodeSelectionUI();
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-
-        // --- Clear all selections and close editor when clicking background ---
-        if (!nodeElem && !(e.ctrlKey || e.metaKey)) {
-          window._multiSelectedNodes = new Set();
-          updateNodeSelectionUI();
-          if (window.editor) window.editor.selected_id = null;
-
-          // The real node editor in your app is "nodeEditor"!
-          const nodeEditor = document.getElementById("nodeEditor");
-          if (nodeEditor) {
-            nodeEditor.innerHTML = "Click a node to edit";
-            nodeEditor.style.display = "";
-          }
-          return;
-        }
-      });
-
-      // Add moveNodeTo to Drawflow (polyfill for versions that lack it)
+      /* removed legacy drawflow mousedown DnD/multi-select handler */
+// Add moveNodeTo to Drawflow (polyfill for versions that lack it)
       if (!editor.moveNodeTo) {
         editor.moveNodeTo = function(nodeId, x, y) {
-          // Robustly find the Home flow data
-          let home = this.drawflow && this.drawflow.Home
-            ? this.drawflow.Home
-            : this.drawflow && this.drawflow.drawflow && this.drawgetHomeFrom(flow)
-              ? this.drawgetHomeFrom(flow)
-              : null;
+          // Robustly find the Home flow data without relying on undefined globals
+          var home = null;
+          try {
+            if (typeof getHomeFrom === 'function') {
+              home = getHomeFrom(this.drawflow || this);
+            } else if (this && this.drawflow) {
+              home = (this.drawflow.Home) ? this.drawflow.Home
+                    : (this.drawflow.drawflow && this.drawflow.drawflow.Home) ? this.drawflow.drawflow.Home
+                    : null;
+            }
+          } catch(_){ home = null; }
           if (!home || !home.data) return;
 
-          const node = home.data[nodeId];
+          var node = home.data[nodeId];
           if (!node) return;
           node.pos_x = x;
           node.pos_y = y;
 
           // Move the actual HTML node in the DOM
-          const htmlNode = document.getElementById("node-" + nodeId);
+          var htmlNode = document.getElementById("node-" + nodeId);
           if (htmlNode) {
             htmlNode.style.left = x + "px";
             htmlNode.style.top = y + "px";
@@ -3967,7 +4009,7 @@ document.addEventListener('click', function(e){
 
           // Also rerender lines
           if (typeof this.updateConnectionNodes === "function") {
-            this.updateConnectionNodes(`node-${nodeId}`);
+            try { this.updateConnectionNodes("node-" + nodeId); } catch(_){}
           }
         }
       }
@@ -4080,9 +4122,7 @@ document.addEventListener('click', function(e){
       document.getElementById("addSaveDeviceState").onclick = function() {
         logAction("addSaveDeviceState button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("saveDeviceState", 1, 1, x, y, "saveDeviceState", {
-         deviceId: "", deviceLabel: "" 
-        }, nodeTileHtml("saveDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        editor.addNode("saveDeviceState", 1, 1, x, y, "saveDeviceState", { deviceIds: [], deviceLabels: [], deviceId:"", deviceLabel:"" }, nodeTileHtml("saveDeviceState", { deviceId: "", deviceLabel: "" }, ));
         markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
@@ -4100,9 +4140,7 @@ document.addEventListener('click', function(e){
       document.getElementById("addRestoreDeviceState").onclick = function() {
         logAction("addRestoreDeviceState button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("restoreDeviceState", 1, 1, x, y, "restoreDeviceState", {
-         deviceId: "", deviceLabel: "" 
-        }, nodeTileHtml("restoreDeviceState", { deviceId: "", deviceLabel: "" }, ));
+        editor.addNode("restoreDeviceState", 1, 1, x, y, "restoreDeviceState", { deviceIds: [], deviceLabels: [], deviceId:"", deviceLabel:"" }, nodeTileHtml("restoreDeviceState", { deviceId: "", deviceLabel: "" }, ));
         markFlowNeedsSave(true);
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
@@ -4403,7 +4441,6 @@ document.addEventListener('click', function(e){
       document.getElementById("newFlow").onclick  = async function() {
         if (confirm("Clear all nodes and start a new flow? This cannot be undone.")) {
           editor.clear();
-          __fe_clearMinimap();
           document.getElementById("flowName").textContent = "";      // clear name
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
           markFlowNeedsSave(false);
@@ -4623,7 +4660,12 @@ document.addEventListener('click', function(e){
         // 9) Clear dirty flag & log success
         markFlowNeedsSave(false);
         logAction(`Sent flow "${flowName}" to Hubitat File Manager.`, "success");
-      };
+      
+
+// Ensure Save button returns to green even if suppression was active
+try { markFlowNeedsSave(false); } catch(_){}
+try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
+};
 
       // --- Auto device and tile refresh every 5 seconds ---
       setInterval(async () => {
@@ -5066,6 +5108,16 @@ document.addEventListener('click', function(e){
                 if (topName) { topName.textContent = (flowFileName || "").replace(/\.json$/i,""); try{ fitFlowName(); }catch(_){}}
                 if (topFlags) topFlags.innerHTML = `Flow is Active | ${loggingEnabled ? "Logging is Enabled" : "Logging is Disabled"}`;
                 statusDiv.innerHTML = `
+                  <div>
+                    <button id="lastTraceBtn"
+                      style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+                      Last Trace
+                    </button>
+                    <button id="clearTraceBtn"
+                      style="margin-left:2px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;background:#808080;color:#fff;border:none;">
+                      Clear Trace
+                    </button>
+                  </div>
                   <input id="testFlowInput" type="text"
                         placeholder="Test value..."
                         style="margin:4px 0; padding:7px 9px; border:1px solid #aaa; border-radius:5px; font-size:12px; width:160px; margin-right:8px;">
@@ -5630,20 +5682,35 @@ document.addEventListener('click', function(e){
     </script>
     <script>
       // A global Set to track selected nodes for multi-select
-      window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-
+      // FE Selection: normalized Set wrapper (accepts '123' and 'node-123')
+      if (!window._multiSelectedNodes || !window._multiSelectedNodes.__patched) {
+        (function(){
+          function norm(v){ return (v==null)? null : String(v).replace(/^node-/, ''); }
+          const inner = new Set();
+          window._multiSelectedNodes = {
+            __patched: true,
+            _inner: inner,
+            add: function(v){ inner.add(norm(v)); return this; },
+            delete: function(v){ return inner.delete(norm(v)); },
+            has: function(v){ return inner.has(norm(v)); },
+            clear: function(){ inner.clear(); },
+            forEach: function(cb, thisArg){ inner.forEach(function(v){ cb.call(thisArg, v); }); },
+            get size(){ return inner.size; },
+            [Symbol.iterator]: function(){ return inner[Symbol.iterator](); }
+          };
+        })();
+      }
       // Call this to update visual selection UI
-      function updateNodeSelectionUI() {
-        document.querySelectorAll('.drawflow-node').forEach(node => {
-          const id = node.getAttribute('id');
-          if (window._multiSelectedNodes.has(id)) {
-            node.classList.add('multi-selected');
-          } else {
-            node.classList.remove('multi-selected');
-          }
+            function updateNodeSelectionUI() {
+        var has = (window._multiSelectedNodes && window._multiSelectedNodes.has.bind(window._multiSelectedNodes)) || function(){return false;};
+        document.querySelectorAll('.drawflow-node').forEach(function(node){
+          var raw = node.getAttribute('id') || '';
+          var norm = String(raw).replace(/^node-/, '');
+          if (has(norm) || has(raw)) node.classList.add('multi-selected');
+          else node.classList.remove('multi-selected');
         });
       }
-
+      
       window.addEventListener('DOMContentLoaded', function() {
         const W = 240, H = 140;
         const MINIMAP_ID = 'minimap-container';
@@ -6052,119 +6119,18 @@ document.addEventListener('click', function(e){
       });
       window.addEventListener('DOMContentLoaded', function() {
         window._multiSelectedNodes = new Set();
-        let dragStart = null, dragMoving = false;
+/* removed legacy attachNodeListeners */
+let animationFrame = null;
 
-        function attachNodeListeners() {
-          document.querySelectorAll('.drawflow-node').forEach(el => {
-            if (el._multiNodeHandled) return; // Only attach once
-            el._multiNodeHandled = true;
-
-            // After you’ve rendered your nodes, attach this to each one:
-            document.querySelectorAll('.drawflow-node').forEach(el => {
-              el.addEventListener('mousedown', function(e) {
-                // Only left‑click starts selection/drag
-                if (e.button !== 0) return;
-
-                // --- PATCH: Let Drawflow handle port connections natively ---
-                if (e.target.classList.contains('input') ||
-                    e.target.classList.contains('output')) {
-                  return;
-                }
-
-                const nodeId = this.id.replace('node-', '');
-                const node   = window.editor.getNodeFromId(nodeId);
-
-                // --- PATCH: Prevent drag if node is locked ---
-                if (node?.data?.locked) {
-                  // Ctrl/Cmd = toggle multi‑select on locked node (no dragging)
-                  if (e.ctrlKey || e.metaKey) {
-                    if (window._multiSelectedNodes.has(nodeId)) {
-                      window._multiSelectedNodes.delete(nodeId);
-                    } else {
-                      window._multiSelectedNodes.add(nodeId);
-                    }
-                    updateMultiSelectUI();
-                  }
-                  e.stopPropagation();
-                  e.preventDefault();
-                  return;
-                }
-
-                // --- Single‑select handling (unlocked node) ---
-                if (!window._multiSelectedNodes.has(nodeId)) {
-                  window._multiSelectedNodes.clear();
-                  window._multiSelectedNodes.add(nodeId);
-                  updateMultiSelectUI();
-                }
-
-                // --- Determine which nodes to drag ---
-                let dragSet;
-                if (window._multiSelectedNodes.size > 1 &&
-                    window._multiSelectedNodes.has(nodeId)) {
-                  dragSet = Array.from(window._multiSelectedNodes);
-                } else {
-                  dragSet = [nodeId];
-                }
-
-                // If any selected node is locked, cancel drag
-                if (dragSet.some(id => {
-                  const n = window.editor.getNodeFromId(id);
-                  return n?.data?.locked;
-                })) {
-                  return;
-                }
-
-                // --- INITIATE GROUP DRAG ---
-                dragStart = {
-                  baseX: e.clientX,
-                  baseY: e.clientY,
-                  positions: dragSet.map(id => {
-                    const d = window.getHomeDataFrom(editor)[id];
-                    return { id, x: d.pos_x, y: d.pos_y };
-                  })
-                };
-                dragMoving = false;
-                document.body.style.userSelect = "none";
-                e.preventDefault();
-                e.stopPropagation();
-              });
-            });
-          });
-        }
-        let animationFrame = null;
-
-        document.addEventListener('mousemove', function(e){
-          if (!dragStart) return;
-          const dx = e.clientX - dragStart.baseX;
-          const dy = e.clientY - dragStart.baseY;
-          if (Math.abs(dx) + Math.abs(dy) > 1) dragMoving = true;
-          dragStart.positions.forEach(pos => {
-            const newX = pos.x + dx;
-            const newY = pos.y + dy;
-            const data = window.getHomeDataFrom(editor)[pos.id];
-            data.pos_x = newX;
-            data.pos_y = newY;
-            // Use only Drawflow API for node move & redraw
-            if (window.editor && typeof window.editor.moveNodeTo === "function") {
-              window.editor.moveNodeTo(Number(pos.id), newX, newY);
-            }
-          });
-        });
-
-        document.addEventListener('mouseup', function(e){
-          dragStart = null;
-          dragMoving = false;
-        });
-
-        // Ensure every node has handler after creation/import
+        /* removed legacy listener for mousemove */
+/* removed legacy listener for mouseup */
+// Ensure every node has handler after creation/import
         if (window.editor) {
           window.editor.on('nodeCreated', function() {
-            setTimeout(attachNodeListeners, 1);
-            updateMultiSelectUI();
+updateMultiSelectUI();
           });
           window.editor.on('import', function() {
-            setTimeout(attachNodeListeners, 1);
-            updateMultiSelectUI();
+updateMultiSelectUI();
           });
           window.editor.on('nodeRemoved', function(id) {
             window._multiSelectedNodes.delete(String(id));
@@ -6172,8 +6138,7 @@ document.addEventListener('click', function(e){
           });
         }
         // Initial attach for existing nodes
-        setTimeout(attachNodeListeners, 100);
-      });
+});
 
       function getMultiSelectedNodeIds() {
         return Array.from(window._multiSelectedNodes || []);
@@ -6565,7 +6530,6 @@ document.addEventListener('click', function(e){
 
           // 6) clear the canvas state
           editor.clear();
-          __fe_clearMinimap();
           document.getElementById("nodeEditor").innerHTML = "Click a node to edit";
         
           // 7) reset any “in-use” flags and re-load globals
@@ -6820,7 +6784,9 @@ document.addEventListener('click', function(e){
       document.addEventListener('DOMContentLoaded', startFlowTraceStream);
 
       // Clear Trace
-      document.getElementById('clearTraceBtn').addEventListener('click', () => {
+      /* delegated handler for clearTraceBtn (button can be injected later) */
+function __fe_handleClearTrace(){
+
         // clear node highlights
         document.querySelectorAll(
           '.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path'
@@ -6840,9 +6806,19 @@ document.addEventListener('click', function(e){
         }
 
         logAction('🗑️ Trace cleared', 'info');
-      });
+      
+}
+(function(){
+  const __btn=document.getElementById('clearTraceBtn');
+  if(__btn) __btn.addEventListener('click', __fe_handleClearTrace);
+  document.addEventListener('click', function(e){
+    const t = e.target && (e.target.id === 'clearTraceBtn' || (e.target.closest && e.target.closest('#clearTraceBtn')));
+    if(t) { e.preventDefault(); __fe_handleClearTrace(); }
+  }, true);
+})();
+/* delegated handler for lastTraceBtn (button can be injected later) */
+async function __fe_handleLastTrace(){
 
-      document.getElementById('lastTraceBtn').addEventListener('click', async () => {
         // 1) Clear previous highlights
         document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path')
           .forEach(n => n.classList.remove('executed','last-executed','flow-path'));
@@ -6920,9 +6896,17 @@ document.addEventListener('click', function(e){
           const el = document.getElementById('lastRunLine');
           if (el) el.textContent = `Last Run: ${d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})} - ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`; // 
         }
-      });
-
-      function hideTestUI() {
+      
+}
+(function(){
+  const __btn=document.getElementById('lastTraceBtn');
+  if(__btn) __btn.addEventListener('click', __fe_handleLastTrace);
+  document.addEventListener('click', function(e){
+    const t = e.target && (e.target.id === 'lastTraceBtn' || (e.target.closest && e.target.closest('#lastTraceBtn')));
+    if(t) { e.preventDefault(); __fe_handleLastTrace(); }
+  }, true);
+})();
+function hideTestUI() {
         const statusDiv = document.getElementById("flowTesterContent") || document.getElementById("flowTesterContent") || document.getElementById("flowTestStatus");
         if (!statusDiv) return;
 
@@ -7337,9 +7321,25 @@ document.addEventListener('click', function(e){
         if (window.__fe_multiSelectInstalled__) return;
         window.__fe_multiSelectInstalled__ = true;
 
-        window._multiSelectedNodes = window._multiSelectedNodes || new Set();
-
-        function nodeIdFromEl(el) {
+        // FE Selection: normalized Set wrapper (accepts '123' and 'node-123')
+if (!window._multiSelectedNodes || !window._multiSelectedNodes.__patched) {
+  (function(){
+    function norm(v){ return (v==null)? null : String(v).replace(/^node-/, ''); }
+    const inner = new Set();
+    window._multiSelectedNodes = {
+      __patched: true,
+      _inner: inner,
+      add: function(v){ inner.add(norm(v)); return this; },
+      delete: function(v){ return inner.delete(norm(v)); },
+      has: function(v){ return inner.has(norm(v)); },
+      clear: function(){ inner.clear(); },
+      forEach: function(cb, thisArg){ inner.forEach(function(v){ cb.call(thisArg, v); }); },
+      get size(){ return inner.size; },
+      [Symbol.iterator]: function(){ return inner[Symbol.iterator](); }
+    };
+  })();
+}
+function nodeIdFromEl(el) {
           if (!el) return null;
           const id = el.id || "";
           return id.startsWith("node-") ? id.slice(5) : null;
@@ -8362,89 +8362,27 @@ document.addEventListener('click', function(e){
 
       // Wrap markFlowNeedsSave to honor suppression window
       const _origMark = window.markFlowNeedsSave;
-      window.markFlowNeedsSave = function(needed = true) {
-        if (typeof needed === "undefined") needed = true;
-      const now = Date.now();
-      const suppressedSave = (window.__suppressDirtyUntil && now < window.__suppressDirtyUntil) ||
-                            (document && document.body && document.body.classList && document.body.classList.contains("is-saving"));
-      const suppressedAuto = !!window.__autoRefresh;
-      const btn = document.getElementById("sendFlow");
-      if (suppressedAuto) {
-        try { if (typeof _origMark === "function") { /* skip during auto */ } } catch (_) {}
-        return;
-      }
-      if (suppressedSave) needed = false;
-      if (btn) {
-        if (needed) btn.classList.add("need-save");
-        else btn.classList.remove("need-save");
-      }
-      try { if (typeof _origMark === "function" && !suppressedSave) _origMark(needed); } catch (_) {}
-      };
-
-      function beginSaveSuppression(ms) {
-        const win = Math.max(900, Math.min(3000, Number(ms)||1700)); // 0.9s..3s
-        window.__suppressDirtyUntil = Date.now() + win;
-        document.body.classList.add("is-saving");
-        setTimeout(() => document.body.classList.remove("is-saving"), win + 100);
-        // Force-clear button at the end of suppression
-        setTimeout(() => {
-          const b = document.getElementById("sendFlow");
-          if (b) b.classList.remove("need-save");
-        }, win + 80);
-      }
-
-      // Attach capture listener so we run BEFORE the app's save handler
-      function attachGuard(){
-        const btn = document.getElementById("sendFlow");
-        if (!btn || btn.__saveGuardAttached) return;
-        btn.__saveGuardAttached = true;
-        btn.addEventListener("click", () => beginSaveSuppression(1800), true);
-      }
-
-      attachGuard();
-      // Re-attach if the toolbar is re-rendered
-      const mo = new MutationObserver(attachGuard);
-      mo.observe(document.documentElement || document.body, {childList: true, subtree: true});
-    })();
-  </script>
-  <script>
-    // === Dirty-suppression + moveNodeTo connector-safe override (idempotent) ===
-    (function(){
-      if (window.__dirtyPatchInstalled) return;
-      window.__dirtyPatchInstalled = true;
-
-      // Global suppression window (used by Save and by auto-refresh nudges)
-      window.__suppressDirtyUntil = window.__suppressDirtyUntil || 0;
-      window.__autoRefresh = window.__autoRefresh || false;
-      window.beginDirtySuppression = function(ms, reason){
-        var win = Math.max(500, Math.min(4000, Number(ms)||1500));
-        window.__suppressDirtyUntil = Date.now() + win;
-        if (reason === "save") document.body.classList.add("is-saving");
-        setTimeout(function(){
-          if (reason === "save") {
-      try { document.body.classList.remove("is-saving"); } catch (_) {}
-      var btn = document.getElementById("sendFlow");
-      if (btn) btn.classList.remove("need-save");
-    }
-    // Do not clear need-save during interval/auto-refresh.
-    }, win + 50);
-      };
-
-      // Wrap markFlowNeedsSave so it respects the suppression window
-      var _origMark = window.markFlowNeedsSave;
-      window.markFlowNeedsSave = function(needed){
-        if (typeof needed === "undefined") needed = true;
-        var suppressed = (Date.now() < (window.__suppressDirtyUntil||0)) ||
-                        document.body.classList.contains("is-saving") ||
-                        !!window.__autoRefresh;
-        var btn = document.getElementById("sendFlow");
-        if (suppressed) needed = false;
-        if (btn) {
-          if (needed) btn.classList.add("need-save");
-          else btn.classList.remove("need-save");
-        }
-        try { if (typeof _origMark === "function" && !suppressed) _origMark(needed); } catch(_){}
-      };
+window.markFlowNeedsSave = function(needed = true) {
+  if (typeof needed === "undefined") needed = true;
+  const btn = document.getElementById("sendFlow");
+  // ALWAYS honor clearing requests immediately
+  if (needed === false) {
+    if (btn) btn.classList.remove("need-save");
+    try { if (typeof _origMark === "function") _origMark(false); } catch(_){}
+    return;
+  }
+  // Otherwise, allow existing suppression for auto-refresh / saving
+  const now = Date.now();
+  const suppressed =
+    (window.__suppressDirtyUntil && now < window.__suppressDirtyUntil) ||
+    (document && document.body && document.body.classList && document.body.classList.contains("is-saving")) ||
+    !!window.__autoRefresh;
+  if (btn) {
+    if (needed) btn.classList.add("need-save");
+    else btn.classList.remove("need-save");
+  }
+  try { if (typeof _origMark === "function" && !suppressed) _origMark(needed); } catch(_){}
+};
 
       // Hook Save button so suppression starts BEFORE app's own save handler
       function attachSaveHook(){
@@ -8896,9 +8834,9 @@ document.addEventListener('click', function(e){
     #fe-cron-overlay{position:fixed;inset:0;background:#0009;display:none;z-index:10000}
     #fe-cron-modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;max-width:95vw;background:#1c2326;border:1px solid #3b4448;border-radius:14px;color:#e8f0f2;box-shadow:0 12px 40px #000c;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
     #fe-cron-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2f373b}
-    #fe-cron-tabs{display:flex;gap:8px;padding:10px 14px;border-bottom:2px solid #4a5b62}
-    #fe-cron-tabs button{cursor:pointer;border:2px solid #5a6b72;background:#2b353a;color:#e0f4ff;padding:8px 14px;border-radius:10px}
-    #fe-cron-tabs button.active{background:#35505c;border-color:#00ff88;box-shadow:0 0 8px 2px #00ff8899}
+    #fe-cron-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #2f373b}
+    #fe-cron-tabs button{cursor:pointer;border:1px solid #3a454a;background:#222b2f;color:#cfe6ee;padding:6px 10px;border-radius:10px}
+    #fe-cron-tabs button.active{background:#2d3940;border-color:#4a5b62}
     #fe-cron-body{padding:12px 14px}
     .fe-row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
     .fe-col{display:flex;flex-direction:column;gap:6px}
@@ -8935,7 +8873,7 @@ document.addEventListener('click', function(e){
           </div>
         </div>
 
-        <div id="fe-cron-tabs">
+        <div id="schedule-tabs">
           <button data-tab="quick" class="active">Quick</button>
           <button data-tab="weekly">Weekly</button>
           <button data-tab="monthly">Monthly</button>
@@ -10275,19 +10213,536 @@ document.addEventListener('click', function(e){
     })();
   </script>
 
-    <script>
-    // Clears the minimap canvas immediately.
-    function __fe_clearMinimap() {
-      try {
-        var c = document.getElementById('minimap-canvas');
-        if (c && c.getContext) {
-          var ctx = c.getContext('2d');
-          if (ctx) ctx.clearRect(0, 0, c.width, c.height);
-        }
-      } catch (_) {}
+<!-- Selection Guardian v2: authoritative paint from _multiSelectedNodes -->
+<script>
+(function(){
+  if (window.__feSelGuardianV2) return; window.__feSelGuardianV2 = true;
+  function norm(v){ return (v==null)? null : String(v).replace(/^node-/, ''); }
+  function paint(){
+    var has = (window._multiSelectedNodes && window._multiSelectedNodes.has.bind(window._multiSelectedNodes)) || function(){return false;};
+    document.querySelectorAll('#drawflow .drawflow-node').forEach(function(node){
+      var raw = node.id || '';
+      var n = norm(raw);
+      if (has(n) || has(raw)) node.classList.add('multi-selected'); else node.classList.remove('multi-selected');
+    });
+  }
+  // Burst repaint near interactions & DOM mutations
+  var raf=0, n=0;
+  function burst(){
+    if (raf) return;
+    n=10;
+    (function tick(){
+      paint();
+      if (--n>0) raf=requestAnimationFrame(tick); else raf=0;
+    })();
+  }
+  ['mousedown','mouseup','click','keydown','input'].forEach(function(t){
+    document.addEventListener(t, burst, true);
+  });
+  var root = document.getElementById('drawflow');
+  if (root){
+    var mo = new MutationObserver(burst);
+    mo.observe(root, {childList:true, subtree:true, attributes:true, attributeFilter:['class','style']});
+  }
+  // First paint
+  paint();
+})();
+</script>
+
+<!-- FE CLEAN DnD v7 (body overlay, group-drag, normalized selection) -->
+<style id="fe-clean-dnd-style-v7">
+  #__feDndOverlay{position:fixed; z-index:99999; pointer-events:auto; background:transparent;}
+</style>
+<script>
+(function(){
+  if (window.__feCleanDndV7) return; window.__feCleanDndV7 = true;
+  const root = document.getElementById('drawflow');
+  if (!root) return;
+
+  // Ensure normalized selection facade exists
+  (function(){
+    if (!window._multiSelectedNodes || !window._multiSelectedNodes.__patched){
+      function norm(v){ return (v==null)? null : String(v).replace(/^node-/, ''); }
+      const inner = new Set();
+      window._multiSelectedNodes = {
+        __patched: true,
+        _inner: inner,
+        add: function(v){ inner.add(norm(v)); return this; },
+        delete: function(v){ return inner.delete(norm(v)); },
+        has: function(v){ return inner.has(norm(v)); },
+        clear: function(){ inner.clear(); },
+        forEach: function(cb, thisArg){ inner.forEach(function(v){ cb.call(thisArg, v); }); },
+        get size(){ return inner.size; },
+        [Symbol.iterator]: function(){ return inner[Symbol.iterator](); }
+      };
     }
-    </script>
+  })();
+
+  // Make overlay
+  let overlay = document.getElementById('__feDndOverlay');
+  if (!overlay){ overlay = document.createElement('div'); overlay.id='__feDndOverlay'; document.body.appendChild(overlay); }
+
+  function placeOverlay(){
+    const r = root.getBoundingClientRect();
+    overlay.style.left = r.left + 'px';
+    overlay.style.top  = r.top + 'px';
+    overlay.style.width  = r.width + 'px';
+    overlay.style.height = r.height + 'px';
+  }
+  placeOverlay();
+  window.addEventListener('resize', placeOverlay);
+  window.addEventListener('scroll', placeOverlay, true);
+  const ro = new ResizeObserver(placeOverlay); try{ ro.observe(root); }catch(_){}
+
+  function elAt(e){
+    overlay.style.pointerEvents = 'none';
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    overlay.style.pointerEvents = 'auto';
+    return el;
+  }
+  function nodeEl(el){ return el && el.closest ? el.closest('.drawflow-node') : null; }
+  function nodeIdFromEl(el){ if (!el) return null; const raw=el.id||''; return String(raw).replace(/^node-/, ''); }
+  function isPort(el){ return !!(el && el.closest && (el.closest('.point') || el.closest('.output, .input'))); }
+  function isInteractive(el){ return !!(el && el.closest && el.closest('input,textarea,select,button,[contenteditable="true"]')); }
+  function isBg(el){
+    if (!el) return false;
+    if (el === root) return true;
+    return !!(el.classList && (el.classList.contains('precanvas') || el.classList.contains('drawflow')));
+  }
+
+  function getPos(id){
+    try{
+      if (window.editor && typeof window.editor.getNodeFromId === 'function'){
+        const n = window.editor.getNodeFromId(id);
+        return {x:Number(n?.pos_x||0), y:Number(n?.pos_y||0)};
+      }
+    }catch(_){}
+    const el = document.getElementById('node-'+id);
+    return {x:Number((el && parseFloat(el.style.left))||0), y:Number((el && parseFloat(el.style.top))||0)};
+  }
+  function moveTo(id,x,y){
+    try{
+      if (window.editor && typeof window.editor.moveNodeTo === 'function'){
+        window.editor.moveNodeTo(Number(id), x, y);
+        return;
+      }
+    }catch(_){}
+    const el = document.getElementById('node-'+id);
+    if (el){ el.style.left = x+'px'; el.style.top = y+'px'; }
+  }
+
+  function paintSel(){
+    if (typeof updateNodeSelectionUI === 'function') { try{ updateNodeSelectionUI(); }catch(_){ } }
+  }
+
+  // DnD state
+  let drag = null; // {ids:Set, origins:Map, sx, sy, moved}
+  const CLICK_TOL = 4;
+  let bgDown = null, bgDragging = false;
+
+  // Prevent upstream capture listeners from acting on overlay-targeted events
+  function swallow(e){ if (e.target === overlay){ try{ e.stopImmediatePropagation(); }catch(_){ } } }
+overlay.addEventListener('mousedown', function(e){
+    if (e.button !== 0) return;
+    const under = elAt(e);
+    if (!under) return;
+
+    // Let inputs inside nodes work normally
+    if (isInteractive(under)){
+      // temporarily let this click through
+      overlay.style.pointerEvents = 'none';
+      setTimeout(()=>{ overlay.style.pointerEvents = 'auto'; }, 0);
+      return;
+    }
+
     
+// 🔧 Allow Drawflow to start a connection when clicking on a port
+const __portEl = (under && under.closest) ? under.closest('.input, .output') : null;
+    if (__portEl) {
+  // Let this entire drag pass through to the real canvas
+  overlay.style.pointerEvents = 'none';
+  const restore = function(){
+    overlay.style.pointerEvents = 'auto';
+    document.removeEventListener('mouseup', restore, true);
+  };
+  document.addEventListener('mouseup', restore, true);
+  try {
+    // Re-dispatch the original mousedown so Drawflow can begin the link
+    __portEl.dispatchEvent(new MouseEvent('mousedown', {
+      bubbles: true, cancelable: true, view: window,
+      clientX: e.clientX, clientY: e.clientY, button: e.button || 0
+    }));
+  } catch (_){}
+  return;
+}
+
+const nEl = nodeEl(under);
+    const meta = e.ctrlKey || e.metaKey;
+
+    if (nEl && !isPort(under)){
+      const id = nodeIdFromEl(nEl);
+      // Toggle or set selection
+      if (meta){
+        if (window._multiSelectedNodes.has(id)) window._multiSelectedNodes.delete(id);
+        else window._multiSelectedNodes.add(id);
+      } else if (!window._multiSelectedNodes.has(id) || window._multiSelectedNodes.size>1){
+        window._multiSelectedNodes.clear();
+        window._multiSelectedNodes.add(id);
+      }
+      paintSel();
+                try {
+                  window.__feSelectedId = id;
+                  if (window.editor) {
+                    window.editor.selected_id = String(id);
+                    if (typeof window.renderEditor === 'function' && typeof window.editor.getNodeFromId === 'function') {
+                      const nd = window.editor.getNodeFromId(id);
+                      if (nd) window.renderEditor(nd);
+                    }
+                  }
+                } catch(_) {}
+                // Start group drag for the selection set
+      const ids = new Set(); window._multiSelectedNodes.forEach(v => ids.add(String(v)));
+      const origins = new Map();
+      ids.forEach(nid => { const p = getPos(nid); origins.set(nid, p); });
+      drag = { ids, origins, sx:e.clientX, sy:e.clientY, moved:false };
+      e.preventDefault();
+      return;
+    }
+
+    if (isBg(under)){
+      bgDown = {x:e.clientX, y:e.clientY};
+      bgDragging = false;
+      return;
+    }
+  }, true);
+
+  overlay.addEventListener('mousemove', function(e){
+    if (!drag){
+      if (bgDown){
+        if (Math.abs(e.clientX - bgDown.x)>CLICK_TOL || Math.abs(e.clientY - bgDown.y)>CLICK_TOL) bgDragging = true;
+      }
+      return;
+    }
+    const dx = e.clientX - drag.sx;
+    const dy = e.clientY - drag.sy;
+    if (dx || dy) drag.moved = true;
+    drag.ids.forEach(function(nid){
+      const orig = drag.origins.get(nid) || {x:0,y:0};
+      moveTo(nid, orig.x + dx, orig.y + dy);
+    });
+    e.preventDefault();
+  }, true);
+
+  overlay.addEventListener('mouseup', function(e){
+    if (drag){
+      if (drag.moved && typeof window.markFlowNeedsSave === 'function'){ try{ window.markFlowNeedsSave(true); }catch(_){ } }
+      drag = null;
+      e.preventDefault();
+      return;
+    }
+  }, true);
+
+  overlay.addEventListener('click', function(e){
+    const under = elAt(e);
+    if (!under) return;
+    if (nodeEl(under) && !isPort(under)){
+      // nothing: selection already handled on mousedown
+      e.preventDefault();
+      return;
+    }
+    if (isBg(under) && bgDown && !bgDragging){
+       try{ window.__feSelectionAllowClear && window.__feSelectionAllowClear(240); }catch(_){} // true background click: clear selection
+      if (window._multiSelectedNodes) window._multiSelectedNodes.clear();
+      paintSel();
+      e.preventDefault();
+      return;
+    }
+  }, true);
+
+  // Keep overlay selection painted through DOM churn
+  const mo = new MutationObserver(paintSel);
+  mo.observe(root, {childList:true, subtree:true});
+  paintSel();
+
+// Forward right-click/contextmenu to underlying element
+overlay.addEventListener('contextmenu', function(e){
+  const under = elAt(e);
+  if (!under) return;
+  try {
+    const evt = new MouseEvent('contextmenu', {
+      bubbles: true, cancelable: true, view: window,
+      clientX: e.clientX, clientY: e.clientY, button: 2
+    });
+    under.dispatchEvent(evt);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  } catch(_) {}
+}, true);
+
+
+// Forward double-click to underlying element
+overlay.addEventListener('dblclick', function(e){
+  const under = elAt(e);
+  if (!under) return;
+  try {
+    const evt = new MouseEvent('dblclick', {
+      bubbles: true, cancelable: true, view: window,
+      clientX: e.clientX, clientY: e.clientY, button: e.button || 0
+    });
+    under.dispatchEvent(evt);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  } catch(_) {}
+}, true);
+
+})();
+</script>
+
+<!-- FE Selection Protector v1: prevent unsolicited clears and normalize IDs -->
+<script>
+(function(){
+  if (window.__feSelProtectorV1) return; window.__feSelProtectorV1 = true;
+  const state = { inner: new Set(), allowClearUntil: 0 };
+  function now(){ try { return performance.now(); } catch(_){ return Date.now(); } }
+  function norm(v){ return (v==null)? null : String(v).replace(/^node-/, ''); }
+  const api = {
+    __patched: true,
+    add: function(v){ state.inner.add(norm(v)); return this; },
+    delete: function(v){ return state.inner.delete(norm(v)); },
+    has: function(v){ return state.inner.has(norm(v)); },
+    clear: function(){ if (now() <= state.allowClearUntil) { state.inner.clear(); } return this; },
+    forEach: function(cb, thisArg){ state.inner.forEach(function(v){ cb.call(thisArg, v); }); },
+    get size(){ return state.inner.size; },
+    [Symbol.iterator]: function(){ return state.inner[Symbol.iterator](); }
+  };
+  Object.defineProperty(window, '_multiSelectedNodes', {
+    configurable: true,
+    get: function(){ return api; },
+    set: function(val){
+      try {
+        const next = [];
+        if (val && typeof val.forEach === 'function') { val.forEach(function(v){ next.push(norm(v)); }); }
+        const wantClear = next.length === 0 && state.inner.size > 0;
+        if (wantClear && now() > state.allowClearUntil) {
+          // Ignore unsolicited clears
+          return;
+        }
+        state.inner.clear();
+        next.forEach(function(v){ state.inner.add(v); });
+      } catch(_){}
+    }
+  });
+  window.__feSelectionAllowClear = function(ms){ state.allowClearUntil = now() + (ms||160); };
+  window.__feSelectionGet = function(){ return Array.from(state.inner); };
+})();
+</script>
+
+<!-- FE Selection Heartbeat v1: re-assert selection & editor panel -->
+<script>
+(function(){
+  if (window.__feSelHeartbeatV1) return; window.__feSelHeartbeatV1 = true;
+  function paint(){
+    try {
+      if (typeof updateNodeSelectionUI === 'function') updateNodeSelectionUI();
+      var ids = (window.__feSelectionGet && window.__feSelectionGet()) || [];
+      if (ids && ids.length && window.editor) {
+        var cur = String(window.editor.selected_id || '');
+        var want = String(ids[0]);
+        if (!cur || cur !== want) {
+          window.editor.selected_id = want;
+          if (typeof window.renderEditor === 'function' && typeof window.editor.getNodeFromId === 'function') {
+            var nd = window.editor.getNodeFromId(want);
+            if (nd) window.renderEditor(nd);
+          }
+        }
+      }
+    } catch(_){}
+  }
+  setInterval(paint, 900);
+})();
+</script>
+
+<!-- FE ctx-menu passthrough patch -->
+<script>
+(function(){
+  if (window.__feCtxMenuPassThrough) return; window.__feCtxMenuPassThrough = true;
+
+  function $(id){ return document.getElementById(id); }
+  function overlay(){ return $("__feDndOverlay"); }
+  function menuEl(){
+    return document.getElementById("df-ctx-menu") || document.getElementById("df-multi-menu");
+  }
+  function setOverlayPassThrough(pass){
+    const ov = overlay();
+    if (ov) ov.style.pointerEvents = pass ? "none" : "auto";
+  }
+  function closeMenus(){
+    const a = $("df-ctx-menu"); if (a) a.remove();
+    const b = $("df-multi-menu"); if (b) b.remove();
+  }
+
+  // When any context menu opens, temporarily disable overlay hit-testing,
+  // so clicks land on the menu items (not the overlay).
+  document.addEventListener("contextmenu", function(){
+    setTimeout(function(){
+      if (menuEl()) setOverlayPassThrough(true);
+    }, 0);
+  }, true);
+
+  // Click anywhere outside an open menu closes it and restores overlay.
+  document.addEventListener("click", function(e){
+    const m = menuEl();
+    if (!m){ setOverlayPassThrough(false)
+      return;
+    }
+    if (!m.contains(e.target)){
+      closeMenus();
+      setOverlayPassThrough(false);
+    }
+  }, true);
+
+  // Esc also closes
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape"){
+      closeMenus();
+      setOverlayPassThrough(false);
+    }
+  }, true);
+
+  // Safety net: if the menu disappears due to other code, restore overlay.
+  const mo = new MutationObserver(function(){
+    if (!menuEl()) setOverlayPassThrough(false);
+  });
+  try{ mo.observe(document.body, {childList:true, subtree:true}); }catch(_){}
+})();
+</script>
+
+<!-- FE: Auto-hide Node Editor when nothing is selected -->
+<script>
+(function(){
+  if (window.__feNodeEditorAutoHide) return;
+  window.__feNodeEditorAutoHide = true;
+
+  function panel(){ return document.getElementById('nodeEditorPanel'); }
+  function drawflowEl(){ return document.getElementById('drawflow'); }
+
+  function hasSelection(){
+    // treat either single- or multi-select as "selected"
+    return !!document.querySelector('.drawflow-node.selected, .drawflow-node.multi-selected');
+  }
+
+  function setPanelVisible(v){
+    const p = panel();
+    if (!p) return;
+    p.style.display = v ? 'block' : 'none';
+  }
+
+  function update(){
+    setPanelVisible(hasSelection());
+  }
+
+  // Initial state on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', update, {once:true});
+  } else {
+    update();
+  }
+
+  // Observe selection class changes and node add/removals
+  const df = drawflowEl();
+  if (df && window.MutationObserver){
+    const mo = new MutationObserver(function(muts){
+      for (const m of muts){
+        if (m.type === 'attributes' && m.attributeName === 'class') { update(); return; }
+        if (m.type === 'childList') { update(); return; }
+      }
+    });
+    try{ mo.observe(df, {subtree:true, attributes:true, attributeFilter:['class'], childList:true}); }catch(_){}
+  }
+
+  // Also react to generic clicks and key events that tend to change selection
+  document.addEventListener('click', update, true);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') setTimeout(update, 0);
+  }, true);
+
+  // If your editor exposes events, hook them conservatively (won't throw if absent)
+  function hookEditorBus(){
+    try {
+      if (window.editor && typeof window.editor.on === 'function'){
+        if (!window.editor.__nodeEditorHideHooked){
+          window.editor.on('nodeSelected', function(){ update(); });
+          window.editor.on('nodeUnselected', function(){ update(); });
+          window.editor.__nodeEditorHideHooked = true;
+        }
+      }
+    } catch(_){}
+  }
+  hookEditorBus();
+  // Try again once later in case editor loads after
+  setTimeout(hookEditorBus, 800);
+})();
+</script>
+<script>
+// --- FE patch: ensure you can start a new connection by dragging from the small circle ('.point') ---
+(function(){
+  try{
+    var overlay = document.getElementById('__feDndOverlay');
+    if (!overlay) return;
+    overlay.addEventListener('mousedown', function(e){
+      if (e.button !== 0) return;
+      // If the original handler already handled it, nothing to do.
+      // We only ensure that the event is re-fired on the most specific element ('.point' > '.input/.output').
+      // Calculate the element under the mouse
+      overlay.style.pointerEvents = 'none';
+      var under = document.elementFromPoint(e.clientX, e.clientY);
+      overlay.style.pointerEvents = 'auto';
+      if (!under) return;
+      var port = (under.closest && (under.closest('.point') || under.closest('.input, .output'))) || null;
+      if (!port) return;
+      // Pass through the drag fully
+      overlay.style.pointerEvents = 'none';
+      const restore = function(){
+        overlay.style.pointerEvents = 'auto';
+        document.removeEventListener('mouseup', restore, true);
+      };
+      document.addEventListener('mouseup', restore, true);
+      try {
+        port.dispatchEvent(new MouseEvent('mousedown', {
+          bubbles: true, cancelable: true, view: window,
+          clientX: e.clientX, clientY: e.clientY, button: e.button || 0
+        }));
+      } catch(_){}
+    }, true);
+  }catch(_){}
+})();
+</script>
+
+<script>
+(function(){
+  try{
+    var overlay = document.getElementById('__feDndOverlay');
+    if (!overlay) return;
+    // If Drawflow marks a connection drag (adds 'connecting' class) on the canvas, auto-disable overlay
+    document.addEventListener('mousemove', function(){
+      try{
+        var df = document.querySelector('#drawflow');
+        if (!df) return;
+        var connecting = !!document.querySelector('.drawflow .connecting, .main-path'); // rough check
+        if (connecting && overlay.style.pointerEvents !== 'none'){
+          overlay.style.pointerEvents = 'none';
+        }
+      }catch(_){}
+    }, true);
+    document.addEventListener('mouseup', function(){
+      if (overlay.style.pointerEvents === 'none'){
+        overlay.style.pointerEvents = 'auto';
+      }
+    }, true);
+  }catch(_){}
+})();
+</script>
+
 </body>
 </html>
 <!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
@@ -10335,8 +10790,6 @@ document.addEventListener('click', function(e){
     if (!window.__ctrlMultiSelectBound) {
       var draw = document.getElementById("drawflow");
       if (draw) {
-        window.__ctrlMultiSelectBound = true;
-
         // ctrl/cmd + click toggles selection of the targeted node
         draw.addEventListener("mousedown", function(e) {
           if (!(e.ctrlKey || e.metaKey)) return;
@@ -10362,7 +10815,7 @@ document.addEventListener('click', function(e){
           var nodeElem = e.target.closest && e.target.closest('.drawflow-node');
           if (nodeElem) return;
           if (window._multiSelectedNodes && window._multiSelectedNodes.size) {
-            window._multiSelectedNodes.clear();
+             try{ window.__feSelectionAllowClear && window.__feSelectionAllowClear(240); }catch(_){} window._multiSelectedNodes.clear();
             window.updateNodeSelectionUI && window.updateNodeSelectionUI();
           }
         }, true);
