@@ -88,7 +88,6 @@ document.addEventListener('click', function(e){
 }
 </style>
 
-
 <style>
   #sendFlow { background:#4CAF50; color:#fff; }
   #sendFlow.need-save { background:#d9534f !important; color:#fff !important; }
@@ -99,7 +98,7 @@ document.addEventListener('click', function(e){
   <div id="headline">
     <div>
       <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.063</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.064</small></div>
       <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
       <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
       <select id="hubitatFileDropdown"
@@ -5400,7 +5399,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
         async function fetchHubitatFileContent(fileName) {
           // Unified file fetcher:
           // - For user-editable flows: ALWAYS use /local/<name>.json
-          // - For internal FE_* files (e.g., FE_flowtrace.json): use the Hubitat app file endpoint
+          // - For internal FE_* files (e.g., FE_lasttrace.json): use the Hubitat app file endpoint
           const ensureJson = (txt) => {
             try { return JSON.parse(txt); } catch (_) { return txt; }
           };
@@ -6817,7 +6816,7 @@ function __fe_handleClearTrace(){
   }, true);
 })();
 /* delegated handler for lastTraceBtn (button can be injected later) */
-async function __fe_handleLastTrace(){
+async function __fe_handleLastTraceFile(){
 
         // 1) Clear previous highlights
         document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path')
@@ -6831,15 +6830,15 @@ async function __fe_handleLastTrace(){
         if (!raw) { logAction('No flow loaded.', 'warn'); return; }
         const want = raw.toLowerCase().endsWith('.json') ? raw.toLowerCase() : (raw.toLowerCase() + '.json'); // 
 
-        // 3) Load and normalize FE_flowtrace.json to an array of runs
+        // 3) Load and normalize FE_lasttrace.json to an array of runs
         let resp;
         try {
-          const u = `/local/FE_flowtrace.json?ts=${Date.now()}`;
+          const u = `/local/FE_lasttrace.json?ts=${Date.now()}`;
           const r = await fetch(u, { cache: 'no-store' });
           const t = await r.text();
           resp = JSON.parse(t);
         } catch (e) {
-          logAction('Failed to read FE_flowtrace.json: ' + (e && e.message ? e.message : e), 'error');
+          logAction('Failed to read FE_lasttrace.json: ' + (e && e.message ? e.message : e), 'error');
           return;
         }
         const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []); // 
@@ -6900,10 +6899,10 @@ async function __fe_handleLastTrace(){
 }
 (function(){
   const __btn=document.getElementById('lastTraceBtn');
-  if(__btn) __btn.addEventListener('click', __fe_handleLastTrace);
+  if(__btn) __btn.addEventListener('click', __fe_handleLastTraceFile);
   document.addEventListener('click', function(e){
     const t = e.target && (e.target.id === 'lastTraceBtn' || (e.target.closest && e.target.closest('#lastTraceBtn')));
-    if(t) { e.preventDefault(); __fe_handleLastTrace(); }
+    if(t) { e.preventDefault(); __fe_handleLastTraceFile(); }
   }, true);
 })();
 function hideTestUI() {
@@ -7954,7 +7953,7 @@ function nodeIdFromEl(el) {
         
     try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
     try {
-          const traces = (await (async ()=>{  const u=`/local/FE_flowtrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
+          const traces = (await (async ()=>{  const u=`/local/FE_lasttrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
           const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
           const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
           if (!runs.length) return;
@@ -10740,6 +10739,221 @@ overlay.addEventListener('dblclick', function(e){
       }
     }, true);
   }catch(_){}
+})();
+</script>
+
+
+<!-- FE patch: dirty-suppression shim + robust LastTrace loader -->
+<script>
+// --- beginDirtySuppression shim (safe if already defined) ---
+if (typeof window.beginDirtySuppression !== 'function') {
+  window.beginDirtySuppression = function(ms = 1500, reason = '') {
+    try {
+      var dur = Number(ms) || 0;
+      window.__suppressDirtyUntil = Date.now() + dur;
+      if (document.body && document.body.classList) {
+        document.body.classList.add('is-saving');
+        setTimeout(function(){ try { document.body.classList.remove('is-saving'); } catch(_) {} }, dur + 250);
+      }
+    } catch(_) {}
+  };
+}
+
+// --- Helper: load LastTrace from either FE_lastTrace.json (new) or FE_lasttrace.json (legacy) ---
+async function __fe_fetchLastTraceFlexible() {
+  const urls = [
+    `/local/FE_lastTrace.json?ts=${Date.now()}`,
+    `/local/FE_lasttrace.json?ts=${Date.now()}`
+  ];
+  let lastErr = null;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { cache: 'no-store' });
+      const t = await r.text();
+      return JSON.parse(t);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('No Last Trace file found');
+}
+
+// --- Replacement __fe_handleLastTraceFile (overrides any earlier version) ---
+async function __fe_handleLastTraceFile(){
+  // 1) Clear previous highlights
+  document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path')
+    .forEach(n => n.classList.remove('executed','last-executed','flow-path'));
+  document.querySelectorAll('.main-path.highlighted, .main-path.live-highlight')
+    .forEach(p => { p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('highlighted','live-highlight'); });
+
+  // 2) Determine the active flow filename shown in the UI
+  const nameEl = document.getElementById('flowName');
+  const raw = (nameEl ? nameEl.textContent : (window.currentFlowFile || '')).trim();
+  if (!raw) { (window.logAction||console.log)('No flow loaded.'); return; }
+  const want = raw.toLowerCase().endsWith('.json') ? raw.toLowerCase() : (raw.toLowerCase() + '.json');
+
+  // 3) Read the Last Trace file (try both legacy and new names)
+  let resp;
+  try {
+    resp = await __fe_fetchLastTraceFlexible();
+  } catch (e) {
+    (window.logAction||console.error)('Failed to read FE_lastTrace/FE_lasttrace: ' + (e && e.message ? e.message : e));
+    return;
+  }
+
+  // 4) Normalize → array of runs, then filter for this flow
+  const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []);
+  if (!list.length) { (window.logAction||console.log)('No previous runs recorded.'); return; }
+
+  const runs = list.filter(r => String(r.flowFile || '').toLowerCase() === want);
+  if (!runs.length) { (window.logAction||console.log)('No previous runs for this flow.'); return; }
+
+  // 5) Sort newest first and prefer a completed run
+  runs.sort((a,b) => {
+    const ta = (a.steps && a.steps.length) ? (a.steps[a.steps.length - 1].ts || 0) : (a.started || 0);
+    const tb = (b.steps && b.steps.length) ? (b.steps[b.steps.length - 1].ts || 0) : (b.started || 0);
+    return tb - ta;
+  });
+  const isEndish = (s) => {
+    const t = String(s?.nodeType || s?.step || '').toLowerCase();
+    return t === 'endofflow' || t === 'cancelled' || t === 'end';
+  };
+  const completed = runs.find(r => r.finished || isEndish((r.steps||[])[(r.steps||[]).length-1])) || runs[0];
+
+  // 6) Extract node steps and paint them
+  const realSteps = (completed.steps || []).filter(s => s && s.nodeId);
+  if (!realSteps.length) { (window.logAction||console.log)('Trace had no node steps.'); return; }
+
+  // Nodes
+  realSteps.forEach((step, idx) => {
+    const el = document.getElementById(`node-${step.nodeId}`);
+    if (el) {
+      el.classList.add('executed');
+      if (idx === realSteps.length - 1) el.classList.add('last-executed');
+    }
+  });
+
+  // Edges
+  for (let i = 0; i < realSteps.length - 1; i++) {
+    const from = realSteps[i].nodeId, to = realSteps[i+1].nodeId;
+    const sel = `.connection.node_out_node-${from}.node_in_node-${to} .main-path`;
+    const path = document.querySelector(sel) ||
+                 document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
+    if (path) {
+      path.setAttribute('stroke','limegreen');
+      path.setAttribute('style','stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
+      path.classList.add('highlighted');
+    }
+  }
+
+  // 7) Update “Last Run” label
+  const lastTs = (realSteps[realSteps.length - 1]?.ts) || completed.started || null;
+  if (lastTs) {
+    const d = new Date(lastTs);
+    const el = document.getElementById('lastRunLine');
+    if (el) el.textContent =
+      `Last Run: ${d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})} - ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+  }
+
+  (window.logAction||console.log)('Last Trace (FE_lasttrace.json) loaded.');
+}
+
+// Ensure button triggers the new handler even if injected later
+(function(){
+  const __btn=document.getElementById('lastTraceBtn');
+  if(__btn) __btn.addEventListener('click', __fe_handleLastTraceFile);
+  document.addEventListener('click', function(e){
+    const t = e.target && (e.target.id === 'lastTraceBtn' || (e.target.closest && e.target.closest('#lastTraceBtn')));
+    if(t) { e.preventDefault(); __fe_handleLastTraceFile(); }
+  }, true);
+})();
+</script>
+
+
+<!-- FE patch v3: LastTrace uses only FE_lasttrace.json -->
+<script>
+window.__fe_handleLastTraceFile = async function(){
+  try {
+    // Clear highlights
+    document.querySelectorAll('.drawflow-node.executed, .drawflow-node.last-executed, .drawflow-node.flow-path')
+      .forEach(n => n.classList.remove('executed','last-executed','flow-path'));
+    document.querySelectorAll('.main-path.highlighted, .main-path.live-highlight')
+      .forEach(p => { p.removeAttribute('stroke'); p.removeAttribute('style'); p.classList.remove('highlighted','live-highlight'); });
+
+    const nameEl = document.getElementById('flowName');
+    const raw = (nameEl ? nameEl.textContent : (window.currentFlowFile || '')).trim();
+    if (!raw) { (window.logAction||console.log)('No flow loaded.'); return; }
+    const want = raw.toLowerCase().endsWith('.json') ? raw.toLowerCase() : (raw.toLowerCase() + '.json');
+
+    // Always read FE_lasttrace.json
+    let resp;
+    try {
+      const r = await fetch(`/local/FE_lasttrace.json?ts=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) { (window.logAction||console.error)(`HTTP ${r.status} loading FE_lasttrace.json`); return; }
+      const txt = await r.text();
+      resp = JSON.parse(txt);
+    } catch (e) {
+      (window.logAction||console.error)('Failed to read FE_lasttrace.json: ' + (e && e.message ? e.message : e));
+      return;
+    }
+
+    const list = Array.isArray(resp) ? resp : (resp && Array.isArray(resp.flows) ? resp.flows : []);
+    if (!list.length) { (window.logAction||console.log)('No runs recorded in FE_lasttrace.json.'); return; }
+
+    const runs = list.filter(r => String(r.flowFile || '').toLowerCase() === want);
+    if (!runs.length) { (window.logAction||console.log)(`No runs for "${want}".`); return; }
+
+    runs.sort((a,b) => {
+      const ta = (a.steps && a.steps.length) ? (a.steps[a.steps.length - 1].ts || 0) : (a.started || 0);
+      const tb = (b.steps && b.steps.length) ? (b.steps[b.steps.length - 1].ts || 0) : (b.started || 0);
+      return tb - ta;
+    });
+
+    const completed = runs[0];
+    const realSteps = (completed.steps || []).filter(s => s && s.nodeId);
+    if (!realSteps.length) { (window.logAction||console.log)('Trace had no node steps.'); return; }
+
+    realSteps.forEach((step, idx) => {
+      const el = document.getElementById(`node-${step.nodeId}`);
+      if (el) {
+        el.classList.add('executed');
+        if (idx === realSteps.length - 1) el.classList.add('last-executed');
+      }
+    });
+
+    for (let i = 0; i < realSteps.length - 1; i++) {
+      const from = realSteps[i].nodeId, to = realSteps[i+1].nodeId;
+      const sel = `.connection.node_out_node-${from}.node_in_node-${to} .main-path`;
+      const path = document.querySelector(sel) ||
+                   document.querySelector(`.connection[data-from="${from}"][data-to="${to}"] .main-path`);
+      if (path) {
+        path.setAttribute('stroke','limegreen');
+        path.setAttribute('style','stroke: limegreen !important; stroke-width: 8px !important; filter: drop-shadow(0 0 6px #0f0) !important;');
+        path.classList.add('highlighted');
+      }
+    }
+
+    const lastTs = (realSteps[realSteps.length - 1]?.ts) || completed.started || null;
+    if (lastTs) {
+      const d = new Date(lastTs);
+      const el = document.getElementById('lastRunLine');
+      if (el) el.textContent =
+        `Last Run: ${d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})} - ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+    }
+
+    (window.logAction||console.log)('Last Trace (FE_lasttrace.json) loaded from FE_lasttrace.json.');
+  } catch (err) {
+    (window.logAction||console.error)('Last Trace render error: ' + (err?.message || err));
+  }
+};
+
+(function(){
+  const __btn=document.getElementById('lastTraceBtn');
+  if(__btn && !__btn.__lt_hooked) { __btn.__lt_hooked = true; __btn.addEventListener('click', window.__fe_handleLastTraceFile); }
+  document.addEventListener('click', function(e){
+    const t = e.target && (e.target.id === 'lastTraceBtn' || (e.target.closest && e.target.closest('#lastTraceBtn')));
+    if(t) { e.preventDefault(); window.__fe_handleLastTraceFile(); }
+  }, true);
 })();
 </script>
 
