@@ -56,6 +56,7 @@
 
   // mirrors for inspector + delete dropdown
   var globalVars  = Array.isArray(window.FE_global_vars) ? window.FE_global_vars.slice() : [];
+  var hubVars     = Array.isArray(window.FE_hubvars) ? window.FE_hubvars.slice() : [];
   var allFlowVars = (window.FE_flowvars && typeof window.FE_flowvars === "object") ? JSON.parse(JSON.stringify(window.FE_flowvars)) : {};
   var currentFlow = ""; // bare flow name
   var saveInFlight = false;
@@ -96,13 +97,21 @@
   root.getVars = function (scope) {
     if (scope === "global") return globalVars.slice();
     if (scope === "flow")   return (allFlowVars[currentFlow] || []).slice();
-    return globalVars.slice().concat((allFlowVars[currentFlow] || []).slice());
+    if (scope === "hub")    return hubVars.slice();
+    return globalVars.slice().concat((allFlowVars[currentFlow] || []).slice()).concat(hubVars.slice());
   };
 
   root.setGlobalVars = function (arr) {
     globalVars = Array.isArray(arr) ? arr.slice() : [];
     window.FE_global_vars = globalVars.slice();
   };
+
+  root.setHubVars = function (arr) {
+    hubVars = Array.isArray(arr) ? arr.slice() : [];
+    window.FE_hubvars = hubVars.slice();
+    try { if (typeof updateEditVarDropdown === 'function') updateEditVarDropdown(); } catch(_e) {}
+  };
+
 
   root.setAllFlowVarsMap = function (map) {
     var out = {};
@@ -526,6 +535,14 @@ var flowFile = (root.getCurrentFlowFile && root.getCurrentFlowFile()) || current
         });
       } catch(_){}
 
+      
+      try {
+        var hubs = Array.isArray(window.FE_hubvars) ? window.FE_hubvars.slice() : [];
+        hubs.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+        hubs.forEach(function(h){
+          if (h && h.name) opts.push("<option data-scope='hub' value='"+String(h.name).replace(/'/g,"&#39;")+"'>"+h.name+" (hub)</option>");
+        });
+      } catch(_){}
       sel.innerHTML = opts.join("");
     }
 
