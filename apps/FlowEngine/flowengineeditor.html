@@ -58,13 +58,13 @@ document.addEventListener('click', function(e){
 });
 </script>
 
+
   <link rel="stylesheet" href="FE_drawflow-css.min.css">
   <link rel="stylesheet" href="FE_drawflow-extra.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
   <script src="FE_flowvars.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
-
 <style>
 /* Keep scheduler popup within viewport */
 #fe-cron-overlay{ position:fixed; inset:0; background:#0009; z-index:10000; display:none; }
@@ -74,6 +74,13 @@ document.addEventListener('click', function(e){
 @media (max-width: 720px){
   #fe-cron-modal{ max-width: 96vw; width: 96vw; max-height: 86vh; }
 }
+</style>
+<style>
+body { background: #191919; color: #e6e6e6; }
+html { margin:0; padding:0; height:100%; font-family:sans-serif; }
+#headline { padding: 5px; background: #222; }
+#controls { padding: 5px; background: #222; }
+#nodeControls { padding: 5px; background: #222; }
 </style>
 <style>
 /* Preview limited to 3 lines with scrollbar */
@@ -93,19 +100,543 @@ document.addEventListener('click', function(e){
   #sendFlow.need-save { background:#d9534f !important; color:#fff !important; }
 </style>
 
+<style id="feHamburgerDirtyCSS">
+/* Hamburger color states */
+#feHamburger.fe-clean {
+  background: #204a24 !important;
+  color: #c9ffd1 !important;
+  border-color: #2e7d32 !important;
+  box-shadow: 0 0 0 1px #2e7d3255, 0 2px 8px #0006 !important;
+}
+#feHamburger.fe-dirty {
+  background: #4a1f1f !important;
+  color: #ffd0d0 !important;
+  border-color: #c62828 !important;
+  box-shadow: 0 0 0 1px #c6282855, 0 2px 8px #0006 !important;
+}
+</style>
+<style id="feHoverFixCSS">
+/* Force hover highlight over inline background/color */
+.fe-menu-item { transition: background .12s ease, color .12s ease; }
+#feMenu .fe-menu-item:hover,
+#feMenuDisplay .fe-menu-item:hover,
+#feMenuAlign .fe-menu-item:hover,
+#feMenuMainNodes .fe-menu-item:hover,
+#feMenuOtherNodes .fe-menu-item:hover,
+#feMenuSpecialNodes .fe-menu-item:hover {
+  background: #3a6ea5 !important;
+  color: #ffffff !important;
+}
+#feMenu .fe-menu-item:active,
+#feMenuDisplay .fe-menu-item:active,
+#feMenuAlign .fe-menu-item:active,
+#feMenuMainNodes .fe-menu-item:active,
+#feMenuOtherNodes .fe-menu-item:active,
+#feMenuSpecialNodes .fe-menu-item:active {
+  background: #2a517a !important;
+  color: #ffffff !important;
+}
+/* Optional: keyboard focus */
+.fe-menu-item:focus-visible {
+  outline: none;
+  background: #3a6ea5 !important;
+  color: #ffffff !important;
+}
+</style>
+<style id="feMenuNoScrollCSS">
+/* Never show scrollbars on the dropdown menu */
+#feMenu{ max-height:none !important; overflow:visible !important; }
+/* Make submenus appear when .fe-open is present (JS will toggle this) */
+#feMenu .fe-open{ display:block !important; }
+</style>
+
+<style id="feMenuOverlayFix">
+/* Disable DnD overlay while menu is open */
+body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
+  pointer-events: none !important;
+}
+</style>
+
+<script id="feUltimateBannerAndSizer">
+(function(){
+  function setHeadH(){
+    try{
+      var h = (document.getElementById('headline')?.offsetHeight) || 0;
+      document.documentElement.style.setProperty('--fe-head-h', h + 'px');
+    }catch(_){}
+  }
+  function moveWarnIntoHeader(){
+    var head = document.getElementById('headline') || document.body;
+    var warn = document.getElementById('hubitatWarnBanner');
+    if (warn && warn.parentElement !== head){
+      head.insertBefore(warn, head.firstChild);
+    }
+    setHeadH();
+  }
+  // Wrap any existing showHubitatWarning to ensure banner ends up in the header
+  var origShow = window.showHubitatWarning;
+  window.showHubitatWarning = function(show){
+    try { if (typeof origShow === 'function') origShow.apply(this, arguments); } catch(_){}
+    var warn = document.getElementById('hubitatWarnBanner');
+    if (!warn){
+      warn = document.createElement('div');
+      warn.id = 'hubitatWarnBanner';
+      warn.style.cssText = 'background:#ffc107;color:#111;padding:9px 22px;font-weight:bold;text-align:center;font-size:16px;border-bottom:2px solid #b8860b;';
+      warn.textContent = '⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.';
+      (document.getElementById('headline')||document.body).insertBefore(warn, (document.getElementById('headline')||document.body).firstChild);
+    }
+    warn.style.display = show ? 'block' : 'none';
+    moveWarnIntoHeader();
+  };
+  // Keep things in place even if other scripts tweak the DOM later
+  new MutationObserver(moveWarnIntoHeader).observe(document.documentElement, {childList:true, subtree:true});
+  window.addEventListener('load', function(){ setHeadH(); moveWarnIntoHeader(); setTimeout(moveWarnIntoHeader,50); setTimeout(moveWarnIntoHeader,250); });
+  window.addEventListener('resize', setHeadH);
+})();
+</script>
+
+<style id="feLayout_OneTrueBlock">
+  html,body{height:100%;margin:0;padding:0}
+  body{display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+
+  /* Two columns under header */
+  #main{
+    display:grid;grid-template-columns:min(420px,34vw) 1fr;
+    min-height:0;height:auto; /* no calc(), no fixed heights */
+  }
+
+  /* Left column scrolls; page never does */
+  #editor{height:100%;min-height:0;overflow:auto}
+
+  /* Right canvas fills; transparent so the image can show */
+  #drawflow{
+    position:relative;height:100%;min-height:0;
+    margin:0 !important;padding:0 !important;overflow:hidden !important;
+    background:transparent !important;
+  }
+
+  /* Make the canvas truly fill regardless of library internals */
+  #drawflow, #drawflow .drawflow, #drawflow .precanvas{
+    height:100% !important;min-height:100% !important;
+    margin:0 !important;padding:0 !important;border:0 !important;box-sizing:border-box !important;
+  }
+
+  /* Background image behind nodes (controlled by CSS vars) */
+  #drawflow .precanvas{position:relative}
+  #drawflow .precanvas::before{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+    background-image:var(--fe-bg-image, none);
+    background-repeat:no-repeat;background-position:center;background-size:contain;
+    filter:brightness(var(--fe-bg-brightness,1));
+  }
+</style>
+
+<style id="feSidebarNarrow">
+  :root{ --fe-sidebar: 310px; } /* adjust this if you want thinner/wider */
+  #main{ grid-template-columns: var(--fe-sidebar) 1fr !important; }
+  #editor{
+    min-width: var(--fe-sidebar) !important;
+    max-width: var(--fe-sidebar) !important;
+  }
+</style>
+
+<style id="feSidebarCollapseCSS">
+  body.fe-sidebar-collapsed #main { grid-template-columns: 0 1fr !important; }
+  body.fe-sidebar-collapsed #editor{
+    min-width: 0 !important;
+    max-width: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+  }
+</style>
+
+<script id="feSidebarCollapseJS">
+(function(){
+  const btn = document.getElementById('feCollapseInline');
+  if (!btn) return;
+
+  function setCollapsed(on){
+    document.body.classList.toggle('fe-sidebar-collapsed', !!on);
+    try { localStorage.setItem('fe_sidebar_collapsed', on ? '1' : '0'); } catch(_){}
+
+    // 🔄 Update the arrow icon
+    btn.textContent = on ? '▶' : '◀';
+    btn.setAttribute('aria-label', on ? 'Expand sidebar' : 'Collapse sidebar');
+    btn.title = on ? 'Expand sidebar' : 'Collapse sidebar';
+  }
+
+  btn.addEventListener('click', () => {
+    const collapsed = document.body.classList.contains('fe-sidebar-collapsed');
+    setCollapsed(!collapsed);
+    try { window.dispatchEvent(new Event('resize')); } catch(_){}
+    try { if (typeof window.refreshConnectionsSoon === 'function') window.refreshConnectionsSoon(); } catch(_){}
+  });
+
+  // restore saved state
+  const saved = localStorage.getItem('fe_sidebar_collapsed') === '1';
+  setCollapsed(saved);
+})();
+</script>
+
+<script id="feAutoPanToContent">
+(function(){
+  function autoPan(margin){
+    margin = Number(margin || 60);
+    try{
+      var ed = window.editor;
+      var canvas = ed && ed.precanvas;
+      if(!canvas) return;
+      var nodes = canvas.querySelectorAll('.drawflow-node');
+      if(!nodes || !nodes.length) return;
+
+      var minX = Infinity, minY = Infinity;
+      nodes.forEach(function(n){
+        var x = parseFloat(n.style.left) || 0;
+        var y = parseFloat(n.style.top) || 0;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+      });
+
+      var tx = margin - minX;
+      var ty = margin - minY;
+      if (isFinite(tx) && isFinite(ty)){
+        ed.canvas_x = tx;
+        ed.canvas_y = ty;
+        var z = (typeof ed.zoom === 'number') ? ed.zoom : 1;
+        ed.precanvas.style.transform = 'translate(' + tx + 'px, ' + ty + 'px) scale(' + z + ')';
+        try { if (typeof ed.updateConnectionNodesAll === 'function') ed.updateConnectionNodesAll(); } catch(_){}
+      }
+    }catch(_){}
+  }
+
+  function whenNodesReady(){
+    var canvas = document.querySelector('#drawflow .precanvas');
+    if(!canvas) return;
+    var obs = new MutationObserver(function(){
+      if (canvas.querySelector('.drawflow-node')) {
+        setTimeout(function(){ autoPan(60); }, 40);
+        obs.disconnect();
+      }
+    });
+    obs.observe(canvas, {childList:true, subtree:true});
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive'){
+    whenNodesReady();
+  } else {
+    document.addEventListener('DOMContentLoaded', whenNodesReady, {once:true});
+  }
+
+  // expose in case you want to call it manually from console
+  window.feAutoPanToContent = autoPan;
+})();
+</script>
+
+
+<style id="feBgImageCSS">
+  /* ensure canvas host is transparent and layered above the bg img */
+  #drawflow{ position:relative !important; background:transparent !important; }
+  #drawflow .precanvas{ position:relative !important; z-index:1 !important; }
+  /* kill any old ::before overlay that could block the img */
+  #drawflow .precanvas::before{ content:none !important; }
+
+  /* the actual background image element */
+  #drawflow-bg-image{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:contain; display:none; pointer-events:none;
+    z-index:0; filter:brightness(var(--fe-bg-brightness,1));
+  }
+</style>
+
+<script id="fe-bg-only-fix">
+(function(){
+  const pickBtn = document.getElementById('bgImageBtn');
+  const rmBtn   = document.getElementById('removeBgBtn');
+  const input   = document.getElementById('bgImageFile');
+  // ensure the img exists under #drawflow
+  (function ensureImg(){
+    try{
+      const host = document.getElementById('drawflow');
+      if (!host) return;
+      let img = document.getElementById('drawflow-bg-image');
+      if (!img){
+        img = document.createElement('img');
+        img.id = 'drawflow-bg-image';
+        host.insertBefore(img, host.firstChild);
+      }
+    }catch(_){}
+  })();
+  const img = document.getElementById('drawflow-bg-image');
+  if (!img) return;
+
+  // Guard against duplicate bindings
+  if (pickBtn && !pickBtn.__feBound){
+    pickBtn.__feBound = true;
+    pickBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      // allow choosing the same file twice
+      try{ input.value = ''; }catch(_){}
+      input && input.click();
+    });
+  }
+
+  if (input && !input.__feBound){
+    input.__feBound = true;
+    input.addEventListener('change', function(){
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      // primary path: dedicated <img>
+      img.src = url;
+      img.style.display = 'block';
+      img.onload = function(){ try{ URL.revokeObjectURL(url); }catch(_){}};
+      // fallback var for any css that uses it
+      document.documentElement.style.setProperty('--fe-bg-image', 'url(\"'+url+'\")');
+      // clear input so selecting same file fires next time
+      try{ input.value = ''; }catch(_){}
+    });
+  }
+
+  if (rmBtn && !rmBtn.__feBound){
+    rmBtn.__feBound = true;
+    rmBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      try{ img.removeAttribute('src'); }catch(_){}
+      img.style.display = 'none';
+      document.documentElement.style.setProperty('--fe-bg-image', 'none');
+    });
+  }
+
+  // brightness slider support (if present)
+  const br = document.getElementById('gridBrightnessSlider');
+  if (br && !br.__feBound){
+    br.__feBound = true;
+    const apply = ()=>document.documentElement.style
+      .setProperty('--fe-bg-brightness', br.value || '1');
+    br.addEventListener('input', apply); apply();
+  }
+})();
+</script>
+
+
+<style id="feMenuFitCSS">
+  /* Prevent internal scrollbars; we will fit the panels instead */
+  #feMenu, #feMenuDisplay, #feMenuAlign, #feMenuMainNodes, #feMenuOtherNodes, #feMenuSpecialNodes{
+    max-height: none !important;
+    overflow: visible !important;
+  }
+</style>
+
+<script id="feMenuFitToViewport">
+(function(){
+  const GAP = 10; // padding from top/bottom of viewport
+
+  // parent button id -> submenu id  (root menu NOT included)
+  const pairs = [
+    ['feMenu-display',     'feMenuDisplay'],
+    ['feMenu-align',       'feMenuAlign'],
+    ['feMenu-mainnodes',   'feMenuMainNodes'],
+    ['feMenu-othernodes',  'feMenuOtherNodes'],
+    ['feMenu-specialnodes','feMenuSpecialNodes'],
+  ];
+
+  // Read a pixel value safely (handles 'auto')
+  function px(el, prop, fallback=0){
+    const v = getComputedStyle(el)[prop];
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  // Clamp submenu by nudging its absolute 'top' so it fits the viewport.
+  // 1) start from the submenu's base top (inline/top from CSS, usually 2px)
+  // 2) if it would overflow the bottom, move it up
+  // 3) if that pushes it off the top, move it back down
+  function clampSubmenu(panel){
+    if (!panel || getComputedStyle(panel).display === 'none') return;
+
+    // Cache the original 'top' once, so every open starts from the same anchor
+    if (!panel.dataset.baseTopPx){
+      const base = px(panel, 'top', 0);
+      panel.dataset.baseTopPx = String(base);
+    }
+    const baseTop = parseFloat(panel.dataset.baseTopPx) || 0;
+
+    // Reset to base before measuring
+    panel.style.top = baseTop + 'px';
+
+    const vh   = window.innerHeight;
+    const rect = panel.getBoundingClientRect();
+
+    let dy = 0;
+    // Pull up if overflowing the bottom
+    if (rect.bottom + GAP > vh){
+      dy -= (rect.bottom + GAP - vh);
+    }
+    // Push down if now above the top
+    if (rect.top + dy < GAP){
+      dy += (GAP - (rect.top + dy));
+    }
+
+    // Apply the adjustment in the submenu's own coordinate system
+    const newTop = Math.round(baseTop + dy);
+    panel.style.top = newTop + 'px';
+  }
+
+  function hook(btnId, panelId){
+    const btn   = document.getElementById(btnId);
+    const panel = document.getElementById(panelId);
+    if (!btn || !panel || btn.__feClampHooked) return;
+    btn.__feClampHooked = true;
+
+    // Clamp right after YOUR code has opened the submenu
+    const run = () => setTimeout(() => clampSubmenu(panel), 0);
+
+    // Works for hover- and click-opened menus
+    btn.addEventListener('mouseenter', run, {capture:false});
+    btn.addEventListener('click', run, {capture:false});
+
+    // If the submenu becomes visible when you hover into it, clamp again
+    panel.addEventListener('mouseenter', () => clampSubmenu(panel), {capture:false});
+  }
+
+  function refitVisible(){
+    for (const [btnId, panelId] of pairs){
+      const panel = document.getElementById(panelId);
+      if (panel && getComputedStyle(panel).display !== 'none'){
+        clampSubmenu(panel);
+      }
+    }
+  }
+
+  function init(){
+    pairs.forEach(([b,p]) => hook(b,p));
+    window.addEventListener('resize', refitVisible);
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init, {once:true});
+})();
+</script>
+
+<style id="feLogPanelCSS">
+  #logBox { background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; }
+  #logHeader:hover { filter:brightness(1.08); }
+  #clearLogBtn { transition:opacity .12s ease; }
+  #clearLogBtn:hover { opacity:.9; }
+</style>
 </head>
 <body>
-  <div id="headline">
+<div id="headline">
     <div>
-      <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.064</small></div>
-      <input id="hubitatToken" placeholder="Token" style="font-size:14px; padding:6px 12px; border-radius:4px; width:75px; margin-left:6px; vertical-align:top;">
-      <input id="hubitatAppId" placeholder="App ID" style="font-size:14px; padding:6px 12px; border-radius:4px; width:50px; vertical-align:top;">
-      <select id="hubitatFileDropdown"
-        style="width:400px; display:inline-block;"
-        title="Pick a flow to load…">
-        <option value="">Loading…</option>
-      </select>
+      <span id="feMenuWrap" style="position:relative; display:inline-block; margin-right:10px;">
+        <button id="feHamburger" aria-haspopup="true" aria-expanded="false" title="Menu" style="font-size:18px; line-height:1; padding:6px 10px; border-radius:8px; box-shadow:0 2px 8px #0004; cursor:pointer; background:#232a2d; color:#eaeaea; border:1px solid #444;" aria-controls="feMenu">&#9776;</button>
+        <div id="feMenu" role="menu" style="display:none; position:absolute; top:36px; left:0; background:#232a2d; border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px; z-index:5000; min-width:180px;">  
+            <button id="sendFlow"        class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 💾 Save</button>  
+            <button id="saveAsFlow"      class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📝 Save As</button>  
+            <button id="exportAnonFlow"      class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📤 Export</button>  
+            <button id="renameFlow"      class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ✏️ Rename</button>  
+            <button id="deleteFlowAppBtn"      class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🗑️ Delete</button>  
+            <button id="newFlow"         class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ➕ New</button>  
+            <div class="fe-menu-divider" style="height:1px;background:#394148;margin:6px 4px;"></div>  
+            <div style="position:relative;">    
+                <button id="feMenu-display" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;
+                    padding:8px 10px;border-radius:8px;cursor:pointer;"> 🖥️ 
+                    Display Options ▶
+                </button>    
+                <div id="feMenuDisplay" role="menu" style="display:none; position:absolute; top:2px; left:calc(100% + 6px); background:#232a2d;border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px;z-index:6000; min-width:200px;">      
+                    <button id="bgImageBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🖼️ Image</button>
+                    <button id="removeBgBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ❌ Remove Image</button>
+                    <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
+                    <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:100px;">
+                    <button id="toggleScrollbarsBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📜 Scroll Bars</button>
+                    <button id="statusButton" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📊 Tile Status</button>
+                    <button id="minimapToggleButton" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🗺️ Mini-map</button>
+                </div>
+            </div>
+            <div class="fe-menu-divider" style="height:1px;background:#394148;margin:6px 4px;"></div>
+            <div style="position:relative;">
+                <button id="feMenu-align" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📐 Alignment ▶</button>
+                <div id="feMenuAlign" role="menu" style="display:none; position:absolute; top:2px; left:calc(100% + 6px); background:#232a2d;border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px;z-index:6000; min-width:200px;">
+                    <button id="alignLeftBtn"   class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⬅️ Left</button>
+                    <button id="alignRightBtn"  class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ➡️ Right</button>
+                    <button id="alignTopBtn"    class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⬆️ Top</button>
+                    <button id="alignBottomBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⬇️ Bottom</button>
+                    <button id="alignCenterBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📍 Center</button>
+                    <button id="alignMiddleBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ➖ Middle</button>    
+                    <button id="snapToGridToggle" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🔲 Snap to Grid</button>
+                    <button id="fitViewBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🪟 Fit & Dock</button>
+                    <button id="dockBtn" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📌 Dock</button></div>
+                </div>
+            <div class="fe-menu-divider" style="height:1px;background:#394148;margin:6px 4px;"></div>
+            <div style="position:relative;">
+                <button id="feMenu-mainnodes" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;
+                    padding:8px 10px;border-radius:8px;cursor:pointer;"> 🌳 
+                    Main Nodes ▶
+                </button>
+                <div id="feMenuMainNodes" role="menu"
+                    style="display:none; position:absolute; top:2px; left:calc(100% + 6px); background:#232a2d;
+                            border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px;
+                            z-index:6000; min-width:220px;">
+                    <button id="addDevice"    class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⚡ Action</button>
+                    <button id="addCondition" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ❓ Condition</button>
+                    <button id="addTrigger"     class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⏰ Event Trigger</button>
+                    <button id="addSchedule"  class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 📅 Schedule Trigger</button>
+                </div>
+            </div>
+            <div style="position:relative;">
+                <button id="feMenu-othernodes" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;
+                    padding:8px 10px;border-radius:8px;cursor:pointer;"> 🔧 
+                    Other Nodes ▶
+                </button>
+                <div id="feMenuOtherNodes" role="menu" style="display:none; position:absolute; top:2px; left:calc(100% + 6px); background:#232a2d;
+                    border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px;z-index:6000; min-width:260px;">
+                <button id="addComment"    class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 💬 Comment</button>
+                <button id="addDelayMin"   class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⏱️ Delay Minutes</button>
+                <button id="addDelay"      class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⌛ Delay MS</button>
+                <button id="addDoNothing"  class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🙈 Do Nothing</button>
+                <button id="addNotify"     class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🔔 Notification</button>
+                <button id="addRepeat"     class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🔁 Repeat</button>
+                <button id="addRestoreDeviceState"    class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ♻️ Restore Device State</button>
+                <button id="addSaveDeviceState"       class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 💽 Save Device State</button>
+                <button id="addSetVariable"           class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🔣 Set Variable</button>
+                </div>
+            </div>
+            <div style="position:relative;">
+                <button id="feMenu-specialnodes" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee; 
+                    border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⭐ 
+                    Special Nodes ▶
+                </button>
+                <div id="feMenuSpecialNodes" role="menu"
+                    style="display:none; position:absolute; top:2px; left:calc(100% + 6px); background:#232a2d;
+                            border:1px solid #444; box-shadow:0 8px 18px #0009; border-radius:10px; padding:6px;
+                            z-index:6000; min-width:220px;">
+                <button id="addCountdown" class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> ⏳ Countdown</button>
+                <button id="addMotionDirection"    class="fe-menu-item" style="display:block;width:100%;text-align:left;background:none;color:#eee;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;"> 🏃‍♂️ Motion Direction</button>
+                </div>
+            </div>
+        <div class="fe-menu-divider" style="height:1px;background:#394148;margin:6px 4px;"></div>
+        <div style="padding:6px 8px; color:#ccc; font-size:13px;">
+          <div style="margin-bottom:6px; font-weight:bold;">🔑 Hubitat Connection</div>
+          <input id="hubitatAppId" placeholder="App ID"
+                style="font-size:13px; padding:6px 10px; border-radius:4px;
+                        width:100px; background:#1c1f20; color:#eee; border:1px solid #555;">
+          <br>
+          <input id="hubitatToken" placeholder="Token"
+                style="font-size:13px; padding:6px 10px; border-radius:4px;
+                        width:140px; margin-bottom:6px; background:#1c1f20; color:#eee; border:1px solid #555;" type="password">
+        </div>
+      </div>
+      </span>
+        <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.065</small></div>
+        <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
+<select id="hubitatFileDropdown"
+              style="width:400px; display:inline-block; margin-left:20px;"
+              title="Pick a flow to load…">
+              <option value="">Loading…</option>
+        </select>
       <span id="flowName" style="display:inline-block; width:400px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
 
       <div class="inline-div">
@@ -118,175 +649,98 @@ document.addEventListener('click', function(e){
           Log Disabled
         </button>
       </div>
-      <button id="toggleToolbarBtn"
-      style="position:absolute;top:8px;right:190px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
-    ▲ Hide Toolbar
-      </button>
-      <button id="toggleToolbar2Btn"
-      style="position:absolute;top:8px;right:15px;z-index:2000;font-size:14px;padding:3px 12px 3px 8px;border-radius:7px;box-shadow:0 2px 8px #0004;cursor:pointer;">
-    ▲ Hide Node Controls
-      </button>
-    </div>
+    </div></div>
+    <div id="main">
+        <div id="editor"><div id="flowStatusBar" style="margin:0 0 10px 0; padding:6px 10px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; font-size:14px;">
+          <div id="flowStatusName" style="font-weight:bold; font-size:24px; margin-bottom:4px;white-space:nowrap; overflow:hidden;white-space:nowrap; overflow:hidden;"></div>
+          <div id="flowStatusFlags" style="font-size:11px; color:#ddd;"></div><div id="lastRunLine" style="font-size:11px; color:#e7e7e7; margin-top:3px;"></div>
+        </div>
+        <div id="nodeEditorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:10px 10px 6px 10px; margin-bottom:12px;">
+
+        <div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
+          <b>Node Editor</b>
+        </div>
+          <div id="nodeEditor">Right Click a node to edit</div>
+          <div>
+            <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
+            <small id="multiSelectTip-win" style="display:none;">Use 'ctrl-click' to select multiple Devices</small>
+          </div>
+          <div><hr></div>
+          </div>
+          <!-- Flow Tester (collapsible) -->
+          <div id="flowTesterPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+            <div id="flowTesterHeader"
+                style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
+              <span id="flowTesterArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+              Flow Tester
+            </div>
+            <div id="flowTesterContent" style="display:none; font-size:13px; padding:0 10px 12px 10px;">
+              <!-- content is injected by checkIfFlowIsInUse(...) -->
+            </div>
+          </div>
+          <div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+            <div id="variableInspectorHeader"
+                style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
+              <span id="variableInspectorArrow"
+                    style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+              Variable Inspector
+            </div>
+            <div id="variableInspectorContent"
+                style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
+            </div>
+          </div>
+          <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+            <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+              <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+              Add Variables
+            </div>
+            <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
+          </div>
+
+          <div id="variableDeletePanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+            <div id="variableDeleteHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+              <span id="variableDeleteArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+              Delete Variable
+            </div>
+            <div id="variableDeleteContent" style="display:none; padding:0 10px 8px 16px;"></div>
+          </div>
+          
+          <div id="variableEditPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
+            <div id="variableEditHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
+              <span id="variableEditArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+              Edit Variable
+            </div>
+            <div id="variableEditContent" style="display:none; padding:0 10px 8px 16px;"></div>
+          </div>
+
+          <!-- Logs Panel (collapsible like other panels) -->
+<div id="logPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
+  <div id="logHeader"
+       style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px;
+              padding:12px 10px 8px 10px; user-select:none;">
+    <span id="logArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
+    Logs
+    <span style="flex:1 1 auto;"></span>
+    <label for="logAutoscroll" style="font-size:11px; color:#bbb; display:flex; align-items:center; gap:6px;">
+      <input id="logAutoscroll" type="checkbox" style="transform:scale(1.1);" checked>
+      Autoscroll
+    </label>
+    <button id="clearLogBtn"
+            style="margin-left:10px;font-size:11px;padding:5px 8px;border-radius:8px;cursor:pointer;
+                   background:#808080;color:#fff;border:none;">
+      Clear
+    </button>
   </div>
-  <div id="controls">
-    <div style="margin-bottom:5px;"></div>
-      <div class="inline-div">
-        <small>Flow Options</small><br>
-        <button id="sendFlow" title="Save current flow to Hubitat">Save</button>
-        <button id="saveAsFlow" title="Save current flow under a new name">Save As</button>
-        <button id="exportAnonFlow" title="Export a clean flow for sharing">Export</button>
-        <button id="renameFlow" title="Rename current flow and file">Rename</button>
-        <button id="deleteFlowAppBtn" title="Delete current Flow from Hubitat">Delete</button>
-        <button id="newFlow" title="Start a new flow from scratch">New</button>
-      </div>
-      <b> |</b>
-      <div class="inline-div">
-        <small><label for="gridBrightnessSlider">Background Image/Brightness - Other</label></small><br>
-        <button id="bgImageBtn" type="button">Image</button>
-        <input type="file" id="bgImageFile" accept="image/*" style="display:none;">
-        <input type="range" id="gridBrightnessSlider" min="0" max="1" step="0.01" value="1" style="vertical-align:middle; width:100px;">
-        <button id="toggleScrollbarsBtn" title="Toggle canvas scrollbars on/off"
-          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
-          Scroll Bars
-        </button>
-        <button id="statusButton" title="Toggle node status badges"
-          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
-          Status
-        </button>
-        <button id="minimapToggleButton" title="Toggle mini-map"
-          style="font-size:14px; padding:6px 12px; border-radius:7px; box-shadow:0 2px 8px #0004; cursor:pointer; background-color:#808080;">
-          Mini-map
-        </button>
-      </div>
-      <b>|</b>
-      <div class="inline-div">
-        <small>Align selected Nodes and/or </small>
-        <label style="user-select:none;">
-          <input type="checkbox" id="snapToGridToggle" checked style="vertical-align:middle;"/>
-          <small></small>Snap to grid</small>
-        </label>
-        <br>
-        <button id="alignLeftBtn" title="Align Left">Left</button>
-        <button id="alignRightBtn"title="Align Right">Right</button>
-        <button id="alignTopBtn" title="Align Top">Top</button>
-        <button id="alignBottomBtn" title="Align Bottom">Bottom</button>
-        <button id="alignCenterBtn" title="Align Center">Center</button>
-        <button id="alignMiddleBtn" title="Align Middle">Middle</button>
-      </div>
-    </div>
+  <div id="logContent"
+       style="display:none; font-size:12px; padding:0 10px 10px 10px; max-height:240px;
+              overflow:auto; font-family:ui-monospace,Consolas,monospace;">
+    <div id="logLines"></div>
   </div>
-  <div id="nodeControls">
-    <div style="margin-bottom:5px;">
-      <small style="display:block; text-align:center;">
-        ------- Add Nodes -------
-      </small>
-      <button id="addSchedule" title="Add a Schedule node">Schedule Trigger</button>
-      <button id="addTrigger" title="Add an Event Trigger node">Event Trigger</button>
-      <button id="addCondition" title="Add a Condition node">Condition</button>
-      <button id="addDevice" title="Action (Device)">Action</button>
-      <b>|</b>
-      <button id="addComment" title="Comment/Note">Comment</button>
-      <button id="addDelayMin" title="Add a Delay (minutes) node">Delay min</button>
-      <button id="addDelay" title="Add a Delay (milliseconds) node">Delay ms</button>
-      <button id="addDoNothing" title="Add a Do Nothing node">Do Nothing</button>
-      <button id="addNotification" title="Add a Notification node">Notification</button>
-      <button id="addRepeat" title="Add a Repeat node">Repeat</button>
-      <button id="addRestoreDeviceState" title="Add Restore Device State node">Restore Device State</button>
-      <button id="addSaveDeviceState" title="Add Save Device State node">Save Device State</button>
-      <button id="addSetVariable" title="Add a Set Variable node">Set Variable</button>
-      <b>|</b>
-      <select id="specialTilesDropdown" title="Special Tiles" style="vertical-align:middle;">
-        <option value="">-- Special Nodes --</option>
-        <option value="addCountdown">Countdown Tile</option>
-        <option value="addMotionDirection">Motion Direction</option>
-      </select>
-      <button id="addCountdown" title="Add a Countdown" style="display:none;">Countdown</button>
-      <button id="addDeviceToVar" title="Add a Devices to a Variable node" style="display:none;">Devices to Variable</button>
-      <button id="addMotionDirection" title="Add a Motion Direction node" style="display:none;">Motion Direction</button>
-      <b>|</b>
-      <button id="fitViewBtn" title="Fit & Dock (Top-Left)">Fit & Dock</button> <button id="dockBtn" title="Dock to top-left (no zoom)">Dock</button>
-    </div>
-  </div>
-  <div id="main">
-    <div id="drawflow">
+</div>
+</div>
+          
+          <div id="drawflow">
       <img id="drawflow-bg-image" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; pointer-events:none;">
-    </div>
-    <div id="editor"><div id="flowStatusBar" style="margin:0 0 10px 0; padding:6px 10px; background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; font-size:14px;">
-      <div id="flowStatusName" style="font-weight:bold; font-size:24px; margin-bottom:4px;white-space:nowrap; overflow:hidden;white-space:nowrap; overflow:hidden;"></div>
-      <div id="flowStatusFlags" style="font-size:11px; color:#ddd;"></div><div id="lastRunLine" style="font-size:11px; color:#e7e7e7; margin-top:3px;"></div>
-    </div>
-    <div id="nodeEditorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; padding:10px 10px 6px 10px; margin-bottom:12px;">
-
-    <div id="header" style="font-size:20px; display:flex; align-items:center; gap:12px;" title="Node Editor">
-      <b>Node Editor</b>
-    </div>
-      <div id="nodeEditor">Right Click a node to edit</div>
-      <div>
-        <small id="multiSelectTip-mac" style="display:none;">Use 'cmd-click' to select multiple Devices</small>
-        <small id="multiSelectTip-win" style="display:none;">Use 'ctrl-click' to select multiple Devices</small>
-      </div>
-      <div><hr></div>
-      </div>
-      <!-- Flow Tester (collapsible) -->
-      <div id="flowTesterPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
-        <div id="flowTesterHeader"
-            style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
-          <span id="flowTesterArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Flow Tester
-        </div>
-        <div id="flowTesterContent" style="display:none; font-size:13px; padding:0 10px 12px 10px;">
-          <!-- content is injected by checkIfFlowIsInUse(...) -->
-        </div>
-      </div>
-      <div id="variableInspectorPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px; padding:0;">
-        <div id="variableInspectorHeader"
-            style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:12px 10px 8px 10px; user-select:none;">
-          <span id="variableInspectorArrow"
-                style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Variable Inspector
-        </div>
-        <div id="variableInspectorContent"
-            style="display:block; font-size:13px; padding:0 10px 8px 10px; max-height:260px; overflow:auto;">
-        </div>
-      </div>
-      <div id="variableManagerPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
-        <div id="variableManagerHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
-          <span id="variableManagerArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Add Variables
-        </div>
-        <div id="variableManager" style="display:none; padding:0 10px 8px 16px;"></div>
-      </div>
-
-      <div id="variableDeletePanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
-        <div id="variableDeleteHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
-          <span id="variableDeleteArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Delete Variable
-        </div>
-        <div id="variableDeleteContent" style="display:none; padding:0 10px 8px 16px;"></div>
-      </div>
-      
-      <div id="variableEditPanel" style="background:#232a2d; border-radius:14px; box-shadow:0 2px 10px #0005; margin-bottom:12px;">
-        <div id="variableEditHeader" style="font-size:15px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 8px 8px 8px; user-select:none;">
-          <span id="variableEditArrow" style="transition:transform 0.2s; font-size:16px; color:#90cdf4;">▼</span>
-          Edit Variable
-        </div>
-        <div id="variableEditContent" style="display:none; padding:0 10px 8px 16px;"></div>
-      </div>
-      <div id="logBox"
-          style="width:100%; margin:0 0 20px; max-height:200px; overflow:auto;
-                  border-top:1px solid #333; padding-top:10px; font-family:monospace;
-                  font-size:12px;">
-          <div id="logHeader" style="position:sticky;top:0;z-index:2;background:#232a2d;padding-bottom:4px;">
-          <span style="display:inline-block;">Logs:</span>
-          <button id="clearLogBtn"
-                  style="margin-left:20px;font-size:10px;padding:3px 5px;border-radius:7px;cursor:pointer;
-                        background:#808080;color:#fff;border:none;display:inline-block;">
-            Clear Log
-          </button>
-        </div>
-        <div id="logLines"></div>
-
-      </div>
     </div>
   </div>
   <div id="minimap-container"
@@ -295,7 +749,57 @@ document.addEventListener('click', function(e){
     <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
   <script src="FE_drawflow-js.min.js"></script>
+  <script>
+  // Force willReadFrequently on 2D contexts to silence getImageData warning (Canvas & OffscreenCanvas)
+  (function(){
+    try {
+      const _orig = HTMLCanvasElement.prototype.getContext;
+      if (_orig && !_orig.__fe_patched2) {
+        const wrapped = function(type, opts){
+          if (type === "2d") {
+            const o = Object.assign({ willReadFrequently: true }, opts || {});
+            return _orig.call(this, type, o);
+          }
+          return _orig.apply(this, arguments);
+        };
+        wrapped.__fe_patched2 = true;
+        HTMLCanvasElement.prototype.getContext = wrapped;
+      }
+    } catch(_) {}
+    try {
+      if (typeof OffscreenCanvas !== "undefined") {
+        const _o = OffscreenCanvas.prototype.getContext;
+        if (_o && !_o.__fe_patched2) {
+          const w2 = function(type, opts){
+            if (type === "2d") {
+              const o = Object.assign({ willReadFrequently: true }, opts || {});
+              return _o.call(this, type, o);
+            }
+            return _o.apply(this, arguments);
+          };
+          w2.__fe_patched2 = true;
+          OffscreenCanvas.prototype.getContext = w2;
+        }
+      }
+    } catch(_) {}
+  })();
+  </script>
   <script src="FE_html2canvas.min.js"></script>
+  <script>
+(function(){
+  function applyHeadHeight(){
+    var h = (document.getElementById('headline')?.offsetHeight) || 0;
+    document.documentElement.style.setProperty('--fe-head-h', h + 'px');
+  }
+  // initial + responsive updates
+  window.addEventListener('load', applyHeadHeight, {once:true});
+  window.addEventListener('resize', applyHeadHeight);
+  // some UI toggles can change header height; update on DOM changes too
+  const mo = new MutationObserver(applyHeadHeight);
+  mo.observe(document.getElementById('headline') || document.body, {subtree:true, childList:true, attributes:true});
+})();
+</script>
+
   <script>
     (function(){
       const sel = document.getElementById('specialTilesDropdown');
@@ -634,7 +1138,7 @@ document.addEventListener('click', function(e){
             logging: false,
             scale: 0.18
           });
-          const ctx = cvs.getContext('2d');
+          const ctx = cvs.getContext('2d', { willReadFrequently: true });
           ctx.clearRect(0,0,cvs.width,cvs.height);
           ctx.drawImage(shot, 0, 0, cvs.width, cvs.height);
         } catch(_){}
@@ -938,21 +1442,29 @@ document.addEventListener('click', function(e){
     }
     function __fe_extractViewport(flowObj) {
       try {
-        return (flowObj && flowObj.drawflow && flowObj.drawflow.Home && flowObj.drawflow.Home.viewport)
-          || (flowObj && flowObj.drawflow && flowObj.drawflow.drawflow && flowObj.drawgetHomeFrom(flow) && flowObj.drawgetHomeFrom(flow).viewport)
-          || (flowObj && flowObj.meta && flowObj.meta.viewport)
-          || flowObj.viewport
-          || null;
+        const df = flowObj && flowObj.drawflow;
+        return (df && df.Home && df.Home.viewport)
+            || (df && df.drawflow && df.drawflow.Home && df.drawflow.Home.viewport)
+            || (flowObj && flowObj.meta && flowObj.meta.viewport)
+            || flowObj?.viewport
+            || null;
       } catch(_){ return null; }
     }
 
     function markFlowNeedsSave(needed = true) {
       const btn = document.getElementById('sendFlow');
-      if (!btn) return;
-      if (needed) {
-        btn.classList.add('need-save');
-      } else {
-        btn.classList.remove('need-save');
+      if (btn) {
+        if (needed) btn.classList.add('need-save');
+        else btn.classList.remove('need-save');
+      }
+
+      const burger = document.getElementById('feHamburger');
+      if (burger) {
+        // toggle hamburger color
+        burger.classList.toggle('fe-dirty', !!needed);
+        burger.classList.toggle('fe-clean', !needed);
+        burger.setAttribute('aria-label', needed ? 'Unsaved changes' : 'All changes saved');
+        burger.title = needed ? 'Menu — Unsaved changes' : 'Menu';
       }
     }
 
@@ -4045,7 +4557,7 @@ document.addEventListener('click', function(e){
       });
 
       document.getElementById("addRepeat").onclick = function() {
-        logAction("addDeviceToVar button clicked.");
+        logAction("addRepeat button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("repeat", 1, 0, x, y, "repeat",
           {}, nodeTileHtml("repeat", {}),
@@ -4055,27 +4567,6 @@ document.addEventListener('click', function(e){
         window.newNodeOffsetX += window.newNodeOffsetStep;
         window.newNodeOffsetY += window.newNodeOffsetStep;
         window.newNodeCounter++;
-      };
-    
-      document.getElementById("addDeviceToVar").onclick = () => {
-        logAction("addDeviceToVar button clicked.");
-        const { x, y } = getTopLeftOnScreenCoords();
-        editor.addNode("notMatchingVar", 1, 2, x, y, "notMatchingVar", {
-            deviceIds: [], attribute: "", value: "", varScope: "flow"}
-        ), nodeTileHtml("notMatchingVar", { deviceIds: "", attribute: "", value: "" }, )
-        markFlowNeedsSave(true);
-        // Increment offset for next node
-        window.newNodeOffsetX += window.newNodeOffsetStep;
-        window.newNodeOffsetY += window.newNodeOffsetStep;
-        window.newNodeCounter++;
-
-        // --- RESET after 10 nodes ---
-        if (window.newNodeCounter >= window.newNodeOffsetLimit) {
-          window.newNodeOffsetX = 0;
-          window.newNodeOffsetY = 0;
-          window.newNodeCounter = 0;
-        }
-        logAction("addDeviceToVar finished.");
       };
 
       // --- Motion Direction ---
@@ -4349,7 +4840,7 @@ document.addEventListener('click', function(e){
         logAction("addCountdown finished.");
       };
 
-      document.getElementById("addNotification").onclick = () => {
+      document.getElementById("addNotify").onclick = () => {
         logAction("addNotification button clicked.");
         const { x, y } = getTopLeftOnScreenCoords();
         editor.addNode("notification", 1, 1, x, y, "notification", {
@@ -5435,7 +5926,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
 
         document.addEventListener("DOMContentLoaded", function () {
           const drawflow = document.getElementById("drawflow");
-          const img = document.getElementById("drawflow-bg-image");
+          const img = document.querySelector("#drawflow > #drawflow-bg-image");
           const fileInput = document.getElementById("bgImageFile");
           const slider = document.getElementById('gridBrightnessSlider');
           const bgImageBtn = document.getElementById('bgImageBtn');
@@ -5618,7 +6109,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
         if (file) {
           const reader = new FileReader();
           reader.onload = function(evt) {
-            const img = document.getElementById('drawflow-bg-image');
+            const img = document.querySelector("#drawflow > #drawflow-bg-image");
             img.src = evt.target.result;
             img.style.display = '';
           };
@@ -5627,7 +6118,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
       };
 
       document.getElementById('gridBrightnessSlider').addEventListener('input', function(e) {
-        document.getElementById('drawflow-bg-image').style.opacity = e.target.value;
+        document.querySelector("#drawflow > #drawflow-bg-image").style.opacity = e.target.value;
       });
 
       //*****************************************************
@@ -6020,7 +6511,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
 
           const container = document.getElementById('drawflow');
           const precanvas = document.querySelector('.drawflow');
-          const bg        = document.getElementById('drawflow-bg-image');
+          const bg        = document.querySelector("#drawflow > #drawflow-bg-image");
           if (!container || !precanvas) return;
 
           // Scrollbar toggle (default ON unless storage '0')
@@ -6229,28 +6720,6 @@ updateMultiSelectUI();
         });
       }
 
-      document.addEventListener("DOMContentLoaded", function() {
-        const toolbar = document.getElementById("controls");
-        const toggleBtn = document.getElementById("toggleToolbarBtn");
-        let toolbarVisible = true;
-        toggleBtn.onclick = function() {
-          toolbarVisible = !toolbarVisible;
-          toolbar.style.display = toolbarVisible ? "" : "none";
-          toggleBtn.innerHTML = toolbarVisible ? "▲ Hide Toolbar" : "▼ Show Toolbar";
-        };
-      });
-
-      document.addEventListener("DOMContentLoaded", function() {
-        const toolbar2 = document.getElementById("nodeControls");
-        const toggleBtn2 = document.getElementById("toggleToolbar2Btn");
-        let toolbarVisible2 = true;
-        toggleBtn2.onclick = function() {
-          toolbarVisible2 = !toolbarVisible2;
-          toolbar2.style.display = toolbarVisible2 ? "" : "none";
-          toggleBtn2.innerHTML = toolbarVisible2 ? "▲ Hide Node Controls" : "▼ Show Node Controls";
-        };
-      });
-
       // Align Left: Use the left X of the first selected node
       document.getElementById("alignLeftBtn").onclick = function() {
         const sel = Array.from(window._multiSelectedNodes || []);
@@ -6409,55 +6878,59 @@ updateMultiSelectUI();
       });
 
       // ── Logging Button Click Handler ─────────────────────────────────────────────
-      document.getElementById("loggingButton").addEventListener("click", async () => {
-        const btn      = document.getElementById("loggingButton");
-        const flowName = document.getElementById("hubitatFileDropdown").value.trim();
-        const token    = document.getElementById("hubitatToken").value.trim();
-        const appId    = document.getElementById("hubitatAppId").value.trim();
+      (function(){
+        const el = document.getElementById("loggingButton");
+        if (!el) return;
+        el.addEventListener("click", async () => {
+          const btn      = el;
+          const flowName = (document.getElementById("hubitatFileDropdown")?.value || "").trim();
+          const token    = (document.getElementById("hubitatToken")?.value || "").trim();
+          const appId    = (document.getElementById("hubitatAppId")?.value || "").trim();
 
-        // 1) Validate credentials & selection
-        if (!hubitatCredentialsAreValid(true)) return;
-        if (!flowName) {
-          logAction("No Flow selected to change logging", "error");
-          return;
-        }
-
-        // 2) Determine desired action
-        const isEnabled = btn.textContent.trim() === "Logging Enabled";
-        const action    = isEnabled ? "deselectFlowLog" : "selectFlowLog";
-        const url       = `/apps/api/${appId}/${action}?access_token=${token}`;
-
-        // 3) Disable button to prevent double‑clicks
-        btn.disabled = true;
-        try {
-          // 4) Call Hubitat API with JSON body
-          const response = await fetch(url, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ flow: flowName })
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          // 1) Validate credentials & selection
+          if (!hubitatCredentialsAreValid(true)) return;
+          if (!flowName) {
+            logAction("No Flow selected to change logging", "error");
+            return;
           }
-          const result = await response.json();
 
-          // 5) Log success
-          logAction(
-            isEnabled
-              ? `❎ Logging disabled: ${result.result || "OK"}`
-              : `✅ Logging enabled:   ${result.result || "OK"}`,
-            "info"
-          );
+          // 2) Determine desired action
+          const isEnabled = btn.textContent.trim() === "Logging Enabled";
+          const action    = isEnabled ? "deselectFlowLog" : "selectFlowLog";
+          const url       = `/apps/api/${appId}/${action}?access_token=${token}`;
 
-          // 6) Re‑sync both buttons’ state
-          await checkIfFlowIsInUse(flowName, appId, token);
-        } catch (err) {
-          logAction(`❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`, "error");
-        } finally {
-          // 7) Re‑enable button
-          btn.disabled = false;
-        }
-      });
+          // 3) Disable button to prevent double-clicks
+          btn.disabled = true;
+          try {
+            // 4) Call Hubitat API with JSON body
+            const response = await fetch(url, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({ flow: flowName })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            const result = await response.json();
+
+            // 5) Log success
+            logAction(
+              isEnabled
+                ? `❎ Logging disabled: ${result.result || "OK"}`
+                : `✅ Logging enabled:   ${result.result || "OK"}`,
+              "info"
+            );
+
+            // 6) Re-sync both buttons’ state
+            await checkIfFlowIsInUse(flowName, appId, token);
+          } catch (err) {
+            logAction(`❌ Failed to ${isEnabled ? "disable" : "enable"} logging: ${err}`, "error");
+          } finally {
+            // 7) Re-enable button
+            btn.disabled = false;
+          }
+        });
+      })();
 
       document.getElementById("saveAsFlow").onclick = async function() {
         // 1) Sanity check
@@ -10957,8 +11430,402 @@ window.__fe_handleLastTraceFile = async function(){
 })();
 </script>
 
-</body>
-</html>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+    const hamburger = document.getElementById("feHamburger");
+    const menu = document.getElementById("feMenu");
+
+    // Toggle main menu
+    hamburger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = menu.style.display === "block";
+        menu.style.display = isOpen ? "none" : "block";
+        hamburger.setAttribute("aria-expanded", !isOpen);
+    });
+
+    // Close menu if clicking outside
+    document.addEventListener("click", (e) => {
+        if (!menu.contains(e.target) && e.target !== hamburger) {
+        menu.style.display = "none";
+        hamburger.setAttribute("aria-expanded", "false");
+        }
+    });
+
+    // Submenu toggles
+    const submenus = [
+        { trigger: "feMenu-display", submenu: "feMenuDisplay" },
+        { trigger: "feMenu-align", submenu: "feMenuAlign" },
+        { trigger: "feMenu-mainnodes", submenu: "feMenuMainNodes" },
+        { trigger: "feMenu-othernodes", submenu: "feMenuOtherNodes" },
+        { trigger: "feMenu-specialnodes", submenu: "feMenuSpecialNodes" }
+    ];
+
+    submenus.forEach(({ trigger, submenu }) => {
+        const btn = document.getElementById(trigger);
+        const panel = document.getElementById(submenu);
+
+        btn.addEventListener("mouseenter", () => {
+        panel.style.display = "block";
+        panel.classList.add("fe-open");
+        });
+
+        btn.addEventListener("mouseleave", () => {
+        setTimeout(() => {
+            if (!panel.matches(":hover")) {
+            panel.style.display = "none";
+            panel.classList.remove("fe-open");
+            }
+        }, 150);
+        });
+
+        panel.addEventListener("mouseleave", () => {
+        panel.style.display = "none";
+        panel.classList.remove("fe-open");
+        });
+    });
+    });
+    
+// Sync header inputs and menu inputs
+const tokenHeader = document.getElementById("hubitatToken");
+const appIdHeader = document.getElementById("hubitatAppId");
+const tokenMenu = document.getElementById("hubitatTokenMenu");
+const appIdMenu = document.getElementById("hubitatAppIdMenu");
+
+function syncInputs(src, dest) {
+  if (dest && src) dest.value = src.value;
+}
+
+if (tokenHeader && tokenMenu) {
+  tokenHeader.addEventListener("input", () => syncInputs(tokenHeader, tokenMenu));
+  tokenMenu.addEventListener("input", () => syncInputs(tokenMenu, tokenHeader));
+}
+if (appIdHeader && appIdMenu) {
+  appIdHeader.addEventListener("input", () => syncInputs(appIdHeader, appIdMenu));
+  appIdMenu.addEventListener("input", () => syncInputs(appIdMenu, appIdHeader));
+}
+
+</script>
+
+<!-- FE Hamburger: single, conflict-free controller -->
+<script>
+(function () {
+  if (window.__feHamburgerInstalled) return;
+  window.__feHamburgerInstalled = true;
+
+  function byId(id){ return document.getElementById(id); }
+
+  // Wait until DOM is really ready
+  const boot = () => {
+    const hamburger = byId("feHamburger");
+    const menu = byId("feMenu");
+    if (!hamburger || !menu) return;
+
+    const map = [
+      ["feMenu-display","feMenuDisplay"],
+      ["feMenu-align","feMenuAlign"],
+      ["feMenu-mainnodes","feMenuMainNodes"],
+      ["feMenu-othernodes","feMenuOtherNodes"],
+      ["feMenu-specialnodes","feMenuSpecialNodes"],
+    ].map(([t,p]) => ({ t: byId(t), p: byId(p), id:p && p.id }))
+     .filter(x => x.t && x.p);
+
+    function openMenu(){
+      menu.style.display = "block";
+      hamburger.setAttribute("aria-expanded","true");
+    }
+    function closeMenu(){
+      menu.style.display = "none";
+      hamburger.setAttribute("aria-expanded","false");
+      map.forEach(x => { x.p.style.display="none"; x.p.classList.remove("fe-open"); });
+    }
+
+    // Main toggle
+    hamburger.addEventListener("click", function(ev){
+      try{ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); }catch(_){}
+      const isOpen = menu.style.display === "block";
+      isOpen ? closeMenu() : openMenu();
+    }, { capture:true });
+
+    // Outside click (capture to beat other handlers)
+    document.addEventListener("click", function(ev){
+      if (menu.style.display !== "block") return;
+      const t = ev.target;
+      if (t === hamburger) return;
+      if (!menu.contains(t)) closeMenu();
+    }, { capture:true });
+
+    // ESC closes
+    document.addEventListener("keydown", function(ev){
+      if (ev.key === "Escape" && menu.style.display === "block") {
+        try{ ev.preventDefault(); }catch(_){}
+        closeMenu();
+        try{ hamburger.focus({ preventScroll:true }); }catch(_){}
+      }
+    });
+
+    // Submenus (hover bridge + click toggle)
+    map.forEach(({t,p,id}) => {
+      function openPanel(){
+        map.forEach(x => { if (x.id !== id) { x.p.style.display="none"; x.p.classList.remove("fe-open"); }});
+        p.style.display = "block";
+        p.classList.add("fe-open");
+      }
+      function armClose(){
+        clearTimeout(p.__to);
+        p.__to = setTimeout(() => {
+          if (!p.matches(":hover") && !t.matches(":hover")) {
+            p.style.display = "none";
+            p.classList.remove("fe-open");
+          }
+        }, 220);
+      }
+      function disarm(){ clearTimeout(p.__to); }
+
+      t.addEventListener("mouseenter", () => { disarm(); openPanel(); });
+      t.addEventListener("mouseleave", armClose);
+      p.addEventListener("mouseenter", disarm);
+      p.addEventListener("mouseleave", armClose);
+
+      // Touch/click support
+      t.addEventListener("click", function(ev){
+        try{ ev.stopPropagation(); ev.preventDefault(); }catch(_){}
+        const on = p.style.display === "block";
+        if (on) { p.style.display="none"; p.classList.remove("fe-open"); }
+        else { openPanel(); }
+      });
+    });
+  };
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(boot, 0);
+  } else {
+    document.addEventListener("DOMContentLoaded", boot, { once:true });
+  }
+})();
+</script>
+
+<script>
+// Snap-to-Grid toggle (from scratch). Matches Status/Scrollbars styling, persists to localStorage.
+(function setupSnapToGrid(){
+  const btn = document.getElementById('snapToGridToggle');
+  const GRID_KEY = 'fe_snap_to_grid';
+  const SIZE_KEY = 'fe_snap_grid_size';
+  const GRID_SIZE = Number(localStorage.getItem(SIZE_KEY) || 20);
+
+  function isOn(){ return localStorage.getItem(GRID_KEY) === '1'; }
+  function setOn(v){ localStorage.setItem(GRID_KEY, v ? '1' : '0'); }
+
+  function updateBtn(){
+    if (!btn) return;
+    btn.style.backgroundColor = isOn() ? '#4CAF50' : '#808080';
+    btn.textContent = 'Snap to Grid';
+    btn.title = 'Toggle snapping nodes to ' + GRID_SIZE + 'px grid';
+  }
+
+  function nearest(n, g){ return Math.round(Number(n||0)/g)*g; }
+
+  function snapNodeById(id){
+    try{
+      if (!window.editor || !id) return;
+      const node = editor.getNodeFromId(String(id));
+      if (!node) return;
+      const x = nearest(node.pos_x, GRID_SIZE);
+      const y = nearest(node.pos_y, GRID_SIZE);
+
+      // Update node model
+      node.pos_x = x;
+      node.pos_y = y;
+
+      // Update DOM
+      const el = document.getElementById('node-' + id);
+      if (el){
+        el.style.left = x + 'px';
+        el.style.top  = y + 'px';
+      }
+
+      // Refresh connections
+      try {
+        if (typeof editor.updateConnectionNodes === 'function') {
+          editor.updateConnectionNodes(String(id));
+        } else if (typeof editor.updateConnectionNodesAll === 'function') {
+          editor.updateConnectionNodesAll();
+        }
+      } catch(_){}
+    }catch(_){}
+  }
+
+  // Track when a node is being dragged (mousedown on a node header/body)
+  let draggingId = null;
+  document.addEventListener('mousedown', function(e){
+    const nodeEl = e.target && (e.target.closest && e.target.closest('.drawflow-node'));
+    if (!nodeEl) return;
+    const id = nodeEl.id && nodeEl.id.startsWith('node-') ? nodeEl.id.replace('node-','') : null;
+    if (!id) return;
+    draggingId = id;
+  }, true);
+
+  // On mouseup, if snapping enabled and we had a drag target, snap it
+  document.addEventListener('mouseup', function(){
+    if (!isOn() || !draggingId) { draggingId = null; return; }
+    // defer a tick so Drawflow finishes its own placement first
+    const id = draggingId;
+    draggingId = null;
+    setTimeout(function(){ snapNodeById(id); }, 0);
+  }, true);
+
+  // Also snap any programmatic moves (align/center actions) by hooking refresh
+  (function hookRefresh(){
+    const fn = window.refreshConnectionsSoon;
+    if (fn && !fn.__snapHooked){
+      window.refreshConnectionsSoon = function(){
+        try { fn.apply(this, arguments); } catch(_){}
+        if (!isOn() || !window.editor) return;
+        try{
+          const data = (window.editor.drawflow && (window.editor.drawflow.Home?.data || window.editor.drawflow.drawflow?.Home?.data)) || {};
+          Object.keys(data || {}).forEach(snapNodeById);
+        }catch(_){}
+      };
+      window.refreshConnectionsSoon.__snapHooked = true;
+    }
+  })();
+
+  if (btn){
+    btn.addEventListener('click', function(){
+      setOn(!(isOn()));
+      updateBtn();
+      try { markFlowNeedsSave(true); } catch(_){}
+    }, {capture:true});
+  }
+
+  updateBtn();
+})();
+</script>
+
+
+
+
+
+
+<script id="feHeadMeasure">
+(function(){
+  function setHeadVar(){
+    try{
+      var h = document.getElementById('headline');
+      var px = (h ? Math.round(h.getBoundingClientRect().height) : 0) + 'px';
+      document.documentElement.style.setProperty('--fe-head-h', px);
+    }catch(_){}
+  }
+  window.addEventListener('load', setHeadVar, {once:true});
+  window.addEventListener('resize', setHeadVar);
+  // also update after UI mutations (menus open/close, etc.)
+  new MutationObserver(setHeadVar).observe(document.body, {childList:true, subtree:true, attributes:true});
+  setTimeout(setHeadVar, 50);
+  setTimeout(setHeadVar, 250);
+})();
+</script>
+
+
+<script id="feInlineCollapseJS">
+(function(){
+  function setCollapsed(on){
+    document.body.classList.toggle('fe-sidebar-collapsed', !!on);
+    try{ localStorage.setItem('fe_sidebar_collapsed', on ? '1' : '0'); }catch(_){}
+  }
+  function init(){
+    var btn = document.getElementById('feCollapseInline');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      var on = !document.body.classList.contains('fe-sidebar-collapsed');
+      setCollapsed(on);
+    });
+    // Restore saved state
+    try{
+      var saved = localStorage.getItem('fe_sidebar_collapsed') === '1';
+      if(saved){ setCollapsed(true); }
+    }catch(_){}
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    const burger = document.getElementById('feHamburger');
+    if (burger && !burger.classList.contains('fe-dirty') && !burger.classList.contains('fe-clean')) {
+      burger.classList.add('fe-clean');
+    }
+  } catch (e) {}
+});
+</script>
+
+<!-- ===== Sync hamburger + Save dirty state (added by assistant) ===== -->
+<script>
+(function(){
+  function _syncDirtyFromSave(){
+    try{
+      var btn = document.getElementById('sendFlow');
+      var burger = document.getElementById('feHamburger');
+      if(!btn || !burger) return;
+      var dirty = btn.classList.contains('need-save');
+      burger.classList.toggle('fe-dirty', dirty);
+      burger.classList.toggle('fe-clean', !dirty);
+      // tooltips
+      burger.setAttribute('aria-label', dirty ? 'Unsaved changes' : 'All changes saved');
+      burger.title = dirty ? 'Menu — Unsaved changes' : 'Menu';
+    }catch(e){}
+  }
+
+  // Override/unify the public API used around the app
+  window.markFlowNeedsSave = function(needed){
+    try{
+      var btn = document.getElementById('sendFlow');
+      if(btn){ btn.classList.toggle('need-save', !!needed); }
+      _syncDirtyFromSave();
+    }catch(e){}
+  };
+
+  // On load, and whenever legacy code toggles the Save class directly,
+  // mirror that state to the hamburger so both always match.
+  document.addEventListener('DOMContentLoaded', function(){
+    _syncDirtyFromSave();
+    var btn = document.getElementById('sendFlow');
+    if(!btn) return;
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){
+        if(muts[i].type === 'attributes' && muts[i].attributeName === 'class'){
+          _syncDirtyFromSave();
+          break;
+        }
+      }
+    });
+    mo.observe(btn, { attributes:true, attributeFilter:['class'] });
+  });
+})();
+</script>
+<script>
+(function(){
+  function setHeadH(){
+    const head = document.getElementById('headline');
+    const h = head ? Math.round(head.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--fe-head-h', h + 'px');
+  }
+  // Recalculate on load/resize and whenever the header’s size changes
+  window.addEventListener('load', setHeadH, { passive: true });
+  window.addEventListener('resize', setHeadH, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(setHeadH);
+  const head = document.getElementById('headline');
+  if (window.ResizeObserver && head) new ResizeObserver(setHeadH).observe(head);
+  setHeadH();
+})();
+</script>
+
+
+
 <!-- appended by fixer: restore ctrl-click + robust updateTileHtml WITHOUT removing any original code -->
 <script>
   // Only install once
@@ -11252,3 +12119,114 @@ window.__fe_handleLastTraceFile = async function(){
     });
   });
 </script>
+<script>
+(function(){
+  function zeroPan(){
+    try{
+      var ed = window.editor;
+      if (ed && ed.precanvas){
+        var z = (typeof ed.zoom === 'number') ? ed.zoom : 1;
+        ed.canvas_x = 0; ed.canvas_y = 0;
+        ed.precanvas.style.transform = 'translate(0px, 0px) scale(' + z + ')';
+        return true;
+      }
+    }catch(_){}
+    return false;
+  }
+  var tries = 0;
+  var iv = setInterval(function(){
+    tries++;
+    if (zeroPan() || tries > 60) clearInterval(iv);
+  }, 100);
+  window.addEventListener('resize', zeroPan);
+})();
+</script>
+
+<script id="feSidebarArrowSync">
+(function(){
+  function init(){
+    var btn = document.getElementById('feCollapseInline');
+    if (!btn || btn.__feArrowBound) return;
+    btn.__feArrowBound = true;
+
+    function sync(){
+      var collapsed = document.body.classList.contains('fe-sidebar-collapsed');
+      // ▶ when collapsed (points right to "expand"), ◀ when expanded
+      btn.textContent = collapsed ? '▶' : '◀';
+      btn.setAttribute('aria-expanded', (!collapsed).toString());
+      var label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+    }
+
+    // 1) Initial sync on load
+    sync();
+
+    // 2) If your existing code toggles the class, reflect it here
+    try{
+      var mo = new MutationObserver(sync);
+      mo.observe(document.body, {attributes:true, attributeFilter:['class']});
+    }catch(_){}
+
+    // 3) Also sync on click (after your existing toggle runs)
+    btn.addEventListener('click', function(){ setTimeout(sync, 0); }, {capture:false});
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, {once:true});
+  } else {
+    init();
+  }
+})();
+</script>
+<script id="feLogPanelJS">
+(function(){
+  const header  = document.getElementById('logHeader');
+  const arrow   = document.getElementById('logArrow');
+  const content = document.getElementById('logContent');
+  const clear   = document.getElementById('clearLogBtn');
+  const lines   = document.getElementById('logLines');
+  const autoCb  = document.getElementById('logAutoscroll');
+  if (!header||!arrow||!content||!clear||!lines||!autoCb) return;
+
+  const OPEN_KEY = 'fe_log_open';
+  const AUTO_KEY = 'fe_log_autoscroll';
+
+  function setOpen(on){
+    content.style.display = on ? 'block' : 'none';
+    arrow.style.transform = on ? 'rotate(0deg)' : 'rotate(-90deg)';
+    try{ localStorage.setItem(OPEN_KEY, on?'1':'0'); }catch(_){}
+  }
+  function getOpenSaved(){
+    const v = localStorage.getItem(OPEN_KEY);
+    return v==='1'?true:(v==='0'?false:null);
+  }
+
+  function setAuto(v){ try{ localStorage.setItem(AUTO_KEY,v?'1':'0'); }catch(_){}}  
+  function getAutoSaved(){ const v=localStorage.getItem(AUTO_KEY); return v===null?true:v==='1'; }
+
+  header.addEventListener('click',(e)=>{
+    if (e.target===clear || e.target===autoCb || e.target.closest('label')) return;
+    setOpen(content.style.display==='none');
+  });
+  clear.addEventListener('click',()=>{ lines.innerHTML=''; });
+  autoCb.checked=getAutoSaved();
+  autoCb.addEventListener('change',()=>setAuto(autoCb.checked));
+
+  new MutationObserver(()=>{ if(autoCb.checked) content.scrollTop=content.scrollHeight; })
+    .observe(lines,{childList:true});
+
+  const savedOpen=getOpenSaved();
+  setOpen(savedOpen===null?false:savedOpen);
+})();
+</script>
+<style id="feSidebarTransitions">
+  #main{ transition: grid-template-columns .18s ease }
+  #editor{ transition: min-width .18s ease, max-width .18s ease, width .18s ease, padding .18s ease }
+</style>
+<style id="feMenuA11y">
+  .fe-menu-item:focus-visible{ outline:2px solid #4e9cff; outline-offset:2px }
+</style>
+
+</body>
+</html>
