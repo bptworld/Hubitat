@@ -63,17 +63,6 @@ def mainPage() {
                 paragraph "<hr>"
                             }
 
-            section(getFormat("header-green", " Select Flow Files to Enable")) {
-                getFileList()
-                input "flowFiles", "enum", title: "Choose one or more Flow JSON files to Enable (to pause a Flow, simply remove from this list)", required: false, multiple: true, options: state.jsonList, submitOnChange: true
-                if (flowFiles) {
-					input "showFiles", "bool", title: "Show List of Selected Flows", description: "Selected Flow List", defaultValue:false, submitOnChange:true
-                    if(showFiles) {
-                    	paragraph "<small><b>Flows are enabled for:</b><br>${flowFiles.join('<br>')}</small>"
-					}
-                }
-            }
-
             section(getFormat("header-green", " Variables (State)")) {
 				input "showVars", "bool", title: "Show List of Variables", description: "Show Variables", defaultValue:false, submitOnChange:true
 				if(showVars) {
@@ -121,21 +110,6 @@ def mainPage() {
 				}
             }
 
-            section(getFormat("header-green", " Per-Flow Logging")) {
-                if (settings?.flowFiles) {
-                    input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
-                    if(logEnable) {
-                        def opts = settings.flowFiles.collectEntries { fname -> [(fname): fname] }
-                        input "perFlowLogEnabled", "enum", title: "Enable logging for these flows", multiple: true, required: false, options: opts, submitOnChange: true
-                        if (perFlowLogEnabled) {
-                            paragraph "<small><b>Logging is enabled for:</b><br>${perFlowLogEnabled.join('<br>')}</small>"
-                        }
-                    }
-                } else {
-                    paragraph "Select at least one Flow JSON file to enable per-flow logging."
-                }
-            }
-
             section() {
                 paragraph getFormat("line")
                 paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
@@ -168,9 +142,9 @@ private void initialize() {
     unsubscribe()
     unschedule()
 
-	// State-first initialization (no file reads)
-	atomicState.globalVars  = (atomicState.globalVars  instanceof List) ? atomicState.globalVars  : []
-	atomicState.flowVarsMap = (atomicState.flowVarsMap instanceof Map ) ? atomicState.flowVarsMap : [:]
+    // State-first initialization (no file reads)
+    atomicState.globalVars  = (atomicState.globalVars  instanceof List) ? atomicState.globalVars  : []
+    atomicState.flowVarsMap = (atomicState.flowVarsMap instanceof Map ) ? atomicState.flowVarsMap : [:]
 
     // ── INITIALIZE our per‐flow time‐job registry ───────────────────────────────
     state.timeJobs = state.timeJobs ?: [:]
@@ -188,6 +162,18 @@ private void initialize() {
     settings.flowFiles?.each { fname ->
         loadAndStartFlow(fname)
     }
+
+    // --- wipe any stale *live* trace so polling can't repaint yellow ---
+    try {
+        state.flowTraces = []
+        saveFlow("FE_flowtrace.json", state.flowTraces)  // live trace file (cleared on boot)
+        // DO NOT clear FE_lasttrace.json here — preserve “Last Trace” across reboots
+    } catch (e) {
+        log.warn "Failed to clear FE_flowtrace.json: ${e}"
+    }
+
+    // Optional safety: watchdog to ensure FE_flowtrace.json is empty if no runs are active
+    runEvery1Minute("traceWatchdog")
 }
 
 // ─── clearFlowTimeTriggers() ───────────────────────────────────────────────────
@@ -262,14 +248,13 @@ private Map _pruneEmptyFlowKeys(Map fmapIn) {
 }
 
 def notifyVarsUpdated(String scope, String flowName=null) {
-	log.debug "In notifyVarsUpdated - scope: ${scope} - flowName: ${flowName}"
     try {
         String flowFile = (scope == 'global') ? null : (_bareFlow(flowName ?: scope) + '.json')
         sendLocationEvent(
-            name: "feTrace",
+            name: "feVars",                     // separate channel from feTrace
             value: "varsUpdated",
             descriptionText: "Vars updated for " + (flowFile ?: "GLOBAL"),
-            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now()]),
+            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now(), sourceAppId: app?.id, sourceAppName: app?.name]),
             isStateChange: true
         )
     } catch (e) {
@@ -699,9 +684,10 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
     if (!node) return null
 	
 	try {
-		// Trace most nodes immediately on entry,
-		// but NOT gate-style nodes that shouldn't glow unless they actually pass.
-		if (!(node?.name in ["eventTrigger", "motionDirection"])) {
+		// Only trace non-gate nodes if a run is actually active.
+		def fo = state.activeFlows[fname]
+		def liveRun = fo?._live?.runId ?: fo?.runId
+		if (liveRun && !(node?.name in ["eventTrigger", "motionDirection"])) {
 			notifyFlowTrace(fname, nodeId, node?.name)
 		}
 	} catch (e) {
@@ -783,6 +769,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
                 if (!pass) {
                     String snap = checks.collect { "${it.devId}:${it.cur}" }.join(", ")
                     flowLog(fname, "eventTrigger: gate not passed (logic=${logic}, attr=${attr}, comparator=${comp}, expected=${expected}) snapshot=[${snap}]", "info")
+// gate failed → return immediately, no UI paint
                     return null
                 }
             }
@@ -801,7 +788,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
                 flowObj2.isRunning = true
                 state.activeFlows[fname] = flowObj2
 
-                try { notifyFlowTrace(fname, null, "start") } catch (e) {}
+                try { notifyFlowTrace(fname, null, "startOfFlow") } catch (e) {}
             } catch (ignore) {}
 
             // 7) Trace the trigger node (light it) and fan out
@@ -985,13 +972,15 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 				// track a pending continuation
 				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
 
-				// Per-delay token to keep resume valid even if runId changes
-state.activeFlows[fname].pendingTokens = (state.activeFlows[fname].pendingTokens ?: []) + []
-def uuidToken = java.util.UUID.randomUUID().toString()
-state.activeFlows[fname].pendingTokens << uuidToken
-runInMillis(ms,
+				runInMillis(
+					ms,
 					"resumeAfterDelay",
-					[ data: [ fname: fname, nextId: conn.node, evt: _packEvt(evt), runId: (state.activeFlows[fname]?.runId ?: 0L), token: uuidToken ], overwrite: false ]
+					[ data: [
+						fname: fname,
+						nextId: conn.node,
+						evt: _packEvt(evt),
+						runId: (state.activeFlows[fname]?.runId ?: 0L)
+					], overwrite: false ]
 				)
 			}
 			break
@@ -1003,13 +992,15 @@ runInMillis(ms,
 			node.outputs?.output_1?.connections?.each { conn ->
 				state.activeFlows[fname].pending = (state.activeFlows[fname].pending ?: 0) + 1
 
-				// Per-delay token to keep resume valid even if runId changes
-state.activeFlows[fname].pendingTokens = (state.activeFlows[fname].pendingTokens ?: []) + []
-def uuidToken = java.util.UUID.randomUUID().toString()
-state.activeFlows[fname].pendingTokens << uuidToken
-runInMillis(ms as Long,
+				runInMillis(
+					ms as Long,
 					"resumeAfterDelay",
-					[ data: [ fname: fname, nextId: conn.node, evt: _packEvt(evt), runId: (state.activeFlows[fname]?.runId ?: 0L), token: uuidToken ], overwrite: false ]
+					[ data: [
+						fname: fname,
+						nextId: conn.node,
+						evt: _packEvt(evt),
+						runId: (state.activeFlows[fname]?.runId ?: 0L)
+					], overwrite: false ]
 				)
 			}
 			break
@@ -1066,7 +1057,6 @@ runInMillis(ms as Long,
                         flowLog(fname, "Dry Run: save state for ${device} → ${devState}", "debug")
                     } else {
                         flowObj.savedDeviceStates[devId] = devState
-						flowLog(fname, "Saved state for ${device}: ${devState}", "info")
                     }
                 }
             }
@@ -1075,8 +1065,8 @@ runInMillis(ms as Long,
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
-		
-		case "restoreDeviceState":
+                case "restoreDeviceState":
+
 			flowLog(fname, "In evaluateNode - restoreDeviceState (dryRun=${testDryRun})", "debug")
             // Support multi-device selection: deviceIds[] or legacy deviceId
             List devIds = []
@@ -1102,7 +1092,6 @@ runInMillis(ms as Long,
                     if (testDryRun) {
                         flowLog(fname, "Dry Run: restore state for ${device} ← ${devState}", "info")
                     } else {
-						flowLog(fname, "Restoring state for ${device}: ${devState}", "info")
                         // 1) Switch first if present
                         def sw = devState['switch']
                         if (sw && device.hasCommand(sw)) {
@@ -1132,7 +1121,6 @@ runInMillis(ms as Long,
                 evaluateNode(fname, conn.node, evt, null, visited)
             }
             break
-		
         case "notMatchingVar":
 			flowLog(fname, "In evaluateNode - saveDevicesToVar (append=${node.data.append})", "debug")
 			// 1) Resolve variable name
@@ -1641,7 +1629,6 @@ def apiListVariables() {
     try {
         List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
         Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
-        //log.debug "FE(app) /variables sizes g=${gvars?.size()} flows="+(fmap?.size()))
         def out = [globals: gvars, flows: fmap]
         render contentType: "application/json", data: groovy.json.JsonOutput.toJson(out)
     } catch (e) {
@@ -1774,7 +1761,6 @@ private void _refreshVarCaches(Object targetBare = null) {
             // Only refresh real flows that have a .flow (skip FE_flowtrace.json etc.)
             if (!(fobj instanceof Map) || !fobj.containsKey('flow')) continue
             String bare  = _bareFlow(fname)
-            //log.debug "In _refreshVarCaches - fname: ${fname} - bare: ${bare} - tBare: ${tBare} - targetBare: ${targetBare}"
             if (tBare == null || tBare == bare) {
                 try { loadVariables(fname) } catch (Throwable ex) { log.warn "loadVariables(${fname}) failed: ${ex}" }
             }
@@ -2305,39 +2291,71 @@ private void notifyFlowTrace(String flowFile, String nodeId, String nodeType) {
     def live = (state._live[flowFile] ?: [runId: null, finished: true])
     state._live[flowFile] = live
 
-    boolean startingRun = (!live.runId || nodeType == "eventTrigger" || (live.finished == true))
-    if (startingRun) {
-        live.runId   = nowMs          // was: System.currentTimeMillis()
+    boolean isStart = (nodeType == "startOfFlow")
+    boolean isEnd   = (nodeType in ["endOfFlow", "cancelled"])
+    boolean hasRun  = !!live.runId
+
+    if (isStart) {
+        live.runId   = nowMs
         live.started = nowMs
         live.finished = false
 
         state.flowTraces = (state.flowTraces ?: [])
+        // replace existing entry for this flowFile
         state.flowTraces.removeAll { it.flowFile == flowFile }
         state.flowTraces << [flowFile: flowFile, started: nowMs, steps: [], finished: false]
 
         try {
-            sendLocationEvent(name: "feTrace", value: "start",
-                data: [flowFile: flowFile, started: nowMs])
+            sendLocationEvent(
+                name: "feTrace",
+                value: "start",
+                data: [flowFile: flowFile, started: nowMs, sourceAppId: app?.id, sourceAppName: app?.name]
+            )
         } catch (ignored) {}
     }
+    else if (!hasRun) {
+        // No active run: ignore stray steps to prevent random “all yellow”
+        return
+    }
 
-    def step = [ts: nowMs, nodeType: nodeType, nodeId: nodeId]  // ensure we use nowMs consistently
+    // Record the step only if a run is active
+    def step = [ts: nowMs, nodeType: nodeType, nodeId: nodeId]
     def thisFlow = state.flowTraces?.find { it.flowFile == flowFile }
     if (thisFlow) {
         thisFlow.steps << step
-        if (nodeType in ["endOfFlow", "cancelled"]) {
+        if (isEnd) {
             thisFlow.finished = true
             live.finished = true
-        }
-        try { saveFlow("FE_flowtrace.json", state.flowTraces) } catch (e) {
-            log.warn "[${flowFile}] Failed to write FE_flowtrace.json: ${e}"
+            try {
+                // 1) Save the completed run to Last Trace
+                saveFlow("FE_lasttrace.json", state.flowTraces)
+            } catch (e) {
+                log.warn "[${flowFile}] Failed to write FE_lasttrace.json: ${e}"
+            }
+            try {
+                // 2) Immediately clear the on-disk *live* trace so polling can't repaint
+                saveFlow("FE_flowtrace.json", [])
+            } catch (e) {
+                log.warn "[${flowFile}] Failed to clear FE_flowtrace.json: ${e}"
+            }
+        } else {
+            // Live step: persist to the live trace file so the editor can update in real time
+            try {
+                saveFlow("FE_flowtrace.json", state.flowTraces)
+            } catch (e) {
+                log.warn "[${flowFile}] Failed to write FE_flowtrace.json: ${e}"
+            }
         }
     }
 
+    // Emit location event for UI
     try {
-        def val = (nodeType in ["endOfFlow","cancelled"]) ? "end" : "step"
-        sendLocationEvent(name: "feTrace", value: val,
-            data: [flowFile: flowFile, step: step, finished: (val == "end")])
+        def val = isEnd ? "end" : (isStart ? "start" : "step")
+        sendLocationEvent(
+            name: "feTrace",
+            value: val,
+            data: [flowFile: flowFile, step: step, finished: isEnd, sourceAppId: app?.id, sourceAppName: app?.name]
+        )
     } catch (ignored) {}
 }
 
@@ -2799,78 +2817,151 @@ private Map _unpackEvt(Map m) {
 }
 
 def resumeAfterDelay(Map data) {
-    // Robust, token-tolerant resume with null-safe guards
-    try {
-        // Ensure containers exist
-        state.activeFlows = state.activeFlows ?: [:]
-        String fname = (data?.fname ?: '').toString()
-        if (!fname) { log.warn "resumeAfterDelay: missing fname in data"; return }
+    String fname = data.fname
+    def flowObj = state.activeFlows[fname]
+    if (!flowObj) return
 
-        def flowObj = state.activeFlows[fname]
-        if (!(flowObj instanceof Map)) {
-            flowLog(fname, "resumeAfterDelay: flowObj missing; reconstructing minimal container", "warn")
-            flowObj = [ pending: 0, pendingTokens: [] ]
-            state.activeFlows[fname] = flowObj
-        }
-        if (!(flowObj.pendingTokens instanceof List)) {
-            flowObj.pendingTokens = []
-            state.activeFlows[fname] = flowObj
-        }
+    if (flowObj.runId && flowObj.runId != (data.runId ?: "")) {
+		flowLog(fname, "Stale delay resume ignored (runId=${data.runId}, current=${flowObj.runId})", "debug")
+		return
+	}
 
-        def token   = data?.token
-        def nextId  = (data?.nextId ?: '').toString()
-        def runId   = data?.runId
-        def evtPack = data?.evt
+    def evt  = _unpackEvt(data.evt as Map)
+    def next = (data.nextId ?: "").toString()
 
-        boolean accepts = false
-        List pend = (flowObj.pendingTokens as List)
+    def freshVisited = new HashSet()
+    evaluateNode(fname, next, evt, null, freshVisited)
 
-        // Prefer token authorization
-        if (token && pend.contains(token)) accepts = true
+    // this resume finished; update counter
+    flowObj.pending = Math.max((flowObj.pending ?: 0) - 1, 0)
 
-        // Fallback: accept if there's no active runId, or runId matches
-        if (!accepts) {
-            def cur = flowObj.runId
-            if (!cur || cur == (runId ?: "")) accepts = true
-        }
+    // if nothing pending, finalize the trace/run now
+    if (flowObj.pending == 0) {
+        try { notifyFlowTrace(fname, null, "endOfFlow") } catch (_){}
+        flowObj.isRunning = false
+    }
+}
 
-        if (!accepts) {
-            flowLog(fname, "Stale delay resume ignored (runId=${runId}, current=${flowObj.runId}, token=${token})", "debug")
-            return
-        }
+private void _saveVariableInternal(String fname, String scope, String name, String type, def value) {
+    if (!name) return
+    scope = (scope ?: "flow").toLowerCase()
+    type  = (type  ?: "String").toString()
 
-        // Consume token (if present)
-        if (token && pend.contains(token)) {
-            flowObj.pendingTokens = pend.findAll { it != token }
-            state.activeFlows[fname] = flowObj
-        }
-
-        // Decrement pending counter safely
+    if (scope in ["global","globals"]) {
+        // Update GLOBAL list
+        List gvars = _ensureGlobalVarsList()
+        def existing = gvars.find { (it?.name?.toString() ?: "") == name }
+        if (existing) { existing.type = type; existing.value = value }
+        else          { gvars << _mkVar(name, type, value) }
+        // assign fresh list to ensure persistence
+        atomicState.globalVars = gvars.collect { it }
         try {
-            int p = (flowObj.pending ?: 0) as int
-            flowObj.pending = (p > 0) ? (p - 1) : 0
-            state.activeFlows[fname] = flowObj
-        } catch (Exception ignored) { }
+            _refreshVarCaches(null)
+            notifyVarsUpdated("global", null)
+        } catch (Throwable ignore) {}
+        return
+    }
 
-        // Unpack event if helper exists
-        def evt = null
-        try { evt = _unpackEvt(evtPack as Map) } catch (Exception e) { evt = evtPack }
+    // FLOW scope (default)
+    String bare = _bareFlow(fname)  // runtime flow name
+    Map fmap    = _ensureFlowVarsMap()
+    List list   = (fmap[bare] instanceof List) ? (fmap[bare] as List) : []
 
-        if (!nextId) { flowLog(fname, "resumeAfterDelay: missing nextId; nothing to resume", "warn"); return }
+    def existing = list.find { (it?.name?.toString() ?: "") == name }
+    if (existing) { existing.type = type; existing.value = value }
+    else          { list << _mkVar(name, type, value) }
 
-        // Use a fresh visited set when resuming
-        def freshVisited = new java.util.HashSet()
-        evaluateNode(fname, nextId.toString(), evt, null, freshVisited)
+    fmap[bare] = list
+    // assign fresh map to ensure persistence
+    atomicState.flowVars = fmap.collectEntries { k, v -> [(k): v] }
 
-        // Finalize if nothing else is pending
-        if ((flowObj.pending ?: 0) == 0) {
-            try {
-                notifyFlowTrace(fname, null, "endOfFlow")
-            } catch (Exception e) { }
-            flowObj.isRunning = false
-            state.activeFlows[fname] = flowObj
-        }
-    } catch (Exception e) {
-        log.error getExceptionMessageWithLine(e)
+    try {
+        _refreshVarCaches(bare)
+        notifyVarsUpdated("flow", bare)
+    } catch (Throwable ignore) {}
+}
+
+// Decide where to write a variable (flow vs global) based on the node's data and existing vars.
+private Map _resolveVarScopeAndKey(String fname, Map nodeData, String varName) {
+    // 1) Explicit scope from the editor wins
+    String explicit = ((nodeData?.varScope ?: nodeData?.scope) ?: "").toString().toLowerCase()
+    if (explicit in ["flow", "global", "globals"]) {
+        return [
+            scope: explicit.startsWith("global") ? "global" : "flow",
+            key  : explicit.startsWith("flow")   ? _bareFlow(fname) : null
+        ]
+    }
+    // Back-compat flags the editor might send
+    if (nodeData?.isGlobal == true || nodeData?.useGlobal == true) {
+        return [scope: "global", key: null]
+    }
+
+    // 2) No explicit scope: look at what exists
+    String bare = _bareFlow(fname)
+    List flowList   = (_ensureFlowVarsMap()[bare] instanceof List) ? (_ensureFlowVarsMap()[bare] as List) : []
+    List globalList = _ensureGlobalVarsList()
+
+    boolean flowHas   = flowList?.any   { (it?.name?.toString() ?: "") == varName }
+    boolean globalHas = globalList?.any { (it?.name?.toString() ?: "") == varName }
+
+    // Prefer Global when both exist to match “I picked Global in the editor”
+    if (globalHas && !flowHas) return [scope: "global", key: null]
+    if (flowHas   && !globalHas) return [scope: "flow",   key: bare]
+    if (globalHas &&  flowHas)   return [scope: "global", key: null]
+
+    // Default for new names (no collision): Flow
+    return [scope: "flow", key: bare]
+}
+
+// Get current value of a variable by name (prefers typed/ resolved varCtx)
+private def _getVarActual(String fname, String varName) {
+    def flowObj = state.activeFlows[fname]
+    def fromCtx    = flowObj?.varCtx?.get(varName)
+    if (fromCtx != null) return fromCtx
+
+    def fromFlow   = flowObj?.flowVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
+    if (fromFlow != null) return fromFlow
+
+    def fromGlobal = flowObj?.globalVars?.find { it?.name == varName }?.with { resolveVarValue(fname, it) }
+    if (fromGlobal != null) return fromGlobal
+
+    try { return getGlobalVar(varName)?.value } catch (ignored) { return null }
+}
+
+private String getDeviceIdByLabel(String label) {
+    if (!label) return null
+    def dev = settings?.masterDeviceList?.find { d ->
+        def dn = (d?.displayName ?: d?.label ?: d?.name)?.toString()
+        dn?.equalsIgnoreCase(label?.toString())
+    }
+    return dev?.id?.toString()
+}
+
+// Return a "current" value for time pseudo-device, used by snapshot fallback
+private String currentTimePseudoValue(String attr) {
+    TimeZone tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+    Date now = new Date()
+    switch ((attr ?: "").toString().toLowerCase()) {
+        case "currenttime": return now.format("HH:mm", tz)
+        case "dayofweek":   return now.format("EEEE", tz)
+        case "timeofday":   return null   // only true at actual sunrise/sunset events
+        default:            return null
+    }
+}
+
+
+def traceWatchdog() {
+    boolean anyRunning = (state.activeFlows ?: [:]).values().any { fo ->
+        fo?.isRunning && fo?._live?.runId
+    }
+    if (!anyRunning) {
+        try {
+            // Keep last trace file intact; only ensure live file is empty
+            if ((state?.flowTraces instanceof List) && state.flowTraces) {
+                state.flowTraces = []
+                saveFlow("FE_flowtrace.json", state.flowTraces)
+                log.debug "Watchdog cleared FE_flowtrace.json (no active runs)"
+            }
+        } catch (e) { log.warn "Watchdog clear failed: ${e}" }
     }
 }
