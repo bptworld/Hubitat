@@ -630,7 +630,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.065</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.066</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
 <select id="hubitatFileDropdown"
               style="width:400px; display:inline-block; margin-left:20px;"
@@ -744,7 +744,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     </div>
   </div>
   <div id="minimap-container"
-    style="position:fixed; bottom:24px; right:28px; width:240px; height:140px; background:#181d20cc; border-radius:12px; z-index:9999; box-shadow:0 2px 10px #0008; border:2px solid #444; overflow:hidden; cursor:pointer; display:none;">
+    style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; cursor: grab; display: none; touch-action: none; user-select: none;">
     <canvas id="minimap-canvas" width="240" height="140"></canvas>
     <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
@@ -7106,17 +7106,46 @@ updateMultiSelectUI();
       (function enableMinimapDrag() {
         const mm = document.getElementById('minimap-container');
         if (!mm) return;
+
         let dragging = false,
             start   = { x: 0, y: 0 },
-            origin  = { x: 0, y: 0 };
+            origin  = { x: 0, y: 0 },
+            handTimer = 0;
+
+        // Helper to manage the cursor and keep "hand" visible for 2s after drag
+        function setCursor(state){
+          // clear any old linger
+          if (handTimer) { clearTimeout(handTimer); handTimer = 0; }
+
+          if (state === 'grabbing') {
+            mm.style.cursor = 'grabbing';
+            return;
+          }
+          if (state === 'grab') {
+            mm.style.cursor = 'grab';
+            // keep the hand for another 2 seconds
+            handTimer = setTimeout(() => {
+              // fall back to hover look after linger
+              mm.style.cursor = 'pointer';
+            }, 2000);
+            return;
+          }
+          // default / hover
+          mm.style.cursor = 'pointer';
+        }
+
+        // Default hover look = hand
+        setCursor('grab');
 
         mm.addEventListener('mousedown', e => {
+          // Only drag if clicking the container or canvas, not the inner label
+          if (e.target.id !== 'minimap-container' && e.target.id !== 'minimap-canvas') return;
           dragging      = true;
           start.x       = e.clientX;
           start.y       = e.clientY;
           origin.x      = mm.offsetLeft;
           origin.y      = mm.offsetTop;
-          mm.style.cursor = 'move';
+          setCursor('grabbing');           // <- was 'move'
           e.preventDefault();
         });
 
@@ -7131,13 +7160,10 @@ updateMultiSelectUI();
         document.addEventListener('mouseup', () => {
           if (!dragging) return;
           dragging = false;
-          mm.style.cursor = 'pointer';
+          setCursor('grab');               // <- was 'pointer' (now lingers 2s)
           // save new position
           localStorage.setItem('fe_minimap_pos',
-            JSON.stringify({
-              left: mm.offsetLeft,
-              top:  mm.offsetTop
-            })
+            JSON.stringify({ left: mm.offsetLeft, top: mm.offsetTop })
           );
         });
       })();
@@ -8423,45 +8449,22 @@ function nodeIdFromEl(el) {
       if (flowTracePollInterval) clearInterval(flowTracePollInterval);
 
       flowTracePollInterval = setInterval(async () => {
-        
-    try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
-    try {
-          const traces = (await (async ()=>{  const u=`/local/FE_lasttrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
-          const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
-          const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
-          if (!runs.length) return;
-
-          // Choose most recent
-          runs.sort((a,b) => {
-            const aLast = (a.steps && a.steps.length) ? (a.steps[a.steps.length-1].timestamp || 0) : 0;
-            const bLast = (b.steps && b.steps.length) ? (b.steps[b.steps.length-1].timestamp || 0) : 0;
-            if (bLast !== aLast) return bLast - aLast;
-            const ta = (a.timestamp ?? (a.runId && /^\d{13}/.test(a.runId) ? parseInt(a.runId,10) : 0)) | 0;
-            const tb = (b.timestamp ?? (b.runId && /^\d{13}/.test(b.runId) ? parseInt(b.runId,10) : 0)) | 0;
-            return tb - ta;
-          });
-          const run = runs[0];
-
-          // Paint LIVE
-          highlightFlowPath(run, true);
-
-          // Stop on EndOfFlow
-          const last = (run.steps && run.steps[run.steps.length - 1]) || {};
-          const done = String(last.nodeType || last.step || '').toLowerCase() === 'endofflow' || run.finished;
-          if (done) {
-            clearInterval(flowTracePollInterval);
-            flowTracePollInterval = null;
-            window.flowTracePollingActive = false;
-            if (typeof refreshVarsAndInspector === 'function') { try { await refreshVarsAndInspector(); } catch(e){} }
-          }
-        } catch (e) {
-          console.error('Live Trace poll error', e);
-          clearInterval(flowTracePollInterval);
-          flowTracePollInterval = null;
-        }
-      
-    try{ window.__autoRefresh = false; }catch(_){}
-    }, 500);
+  try {
+    const resp = await __fe_fetchLastTraceFlexible(); // tries both names + sanity checks
+    const flows = Array.isArray(resp) ? resp
+                 : (resp && Array.isArray(resp.flows) ? resp.flows : []);
+    if (typeof __fe_handleLastTrace === "function") {
+      __fe_handleLastTrace(flows);
+    }
+  } catch (e) {
+    // Debounce warnings to once per 60s
+    window.__flowTraceLastWarn = window.__flowTraceLastWarn || 0;
+    if (Date.now() - window.__flowTraceLastWarn > 60_000) {
+      (window.logAction || console.warn)("FlowTrace missing/invalid: " + (e && e.message ? e.message : "parse/fetch"));
+      window.__flowTraceLastWarn = Date.now();
+    }
+  }
+}, 2500); // keep the same cadence you had (adjust if needed)
     }
   </script>
   <script>
@@ -12227,6 +12230,186 @@ document.addEventListener('DOMContentLoaded', function(){
 <style id="feMenuA11y">
   .fe-menu-item:focus-visible{ outline:2px solid #4e9cff; outline-offset:2px }
 </style>
+
+
+
+
+
+
+
+
+<script id="feMinimapDrag">
+(function setupMinimapDrag(){
+  const mm = document.getElementById('minimap-container');
+  const cvs = document.getElementById('minimap-canvas');
+  if (!mm || !cvs) return;
+
+  let dragging = false;
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  let activePointerId = null;
+  let prevUserSelect = '';
+
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function bounds(){
+    return { vw: window.innerWidth, vh: window.innerHeight, mw: mm.offsetWidth, mh: mm.offsetHeight };
+  }
+  function rect(){ return mm.getBoundingClientRect(); }
+
+  function begin(e){
+    dragging = true;
+    activePointerId = (e && 'pointerId' in e) ? e.pointerId : null;
+    try { if (activePointerId != null) mm.setPointerCapture(activePointerId); } catch(_) {}
+    // Cursor is optional; drag should work regardless
+    startX = e ? e.clientX : startX;
+    startY = e ? e.clientY : startY;
+    startLeft = mm.offsetLeft; startTop = mm.offsetTop;
+    try { prevUserSelect = document.body.style.userSelect; document.body.style.userSelect = 'none'; } catch(_){}
+    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(_){ } }
+  }
+
+  function move(e){
+    if (!dragging) return;
+    if (activePointerId != null && e && e.pointerId !== activePointerId) return;
+    const { vw, vh, mw, mh } = bounds();
+    let left = startLeft + (e.clientX - startX);
+    let top  = startTop  + (e.clientY - startY);
+    left = clamp(left, 0, Math.max(0, vw - mw));
+    top  = clamp(top,  0, Math.max(0, vh - mh));
+    mm.style.left = left + 'px';
+    mm.style.top  = top  + 'px';
+    mm.style.right = 'auto';
+    mm.style.bottom = 'auto';
+  }
+
+  function end(e){
+    if (!dragging) return;
+    if (activePointerId != null && e && e.pointerId === activePointerId) {
+      try { mm.releasePointerCapture(activePointerId); } catch(_) {}
+    }
+    dragging = false;
+    activePointerId = null;
+    try { document.body.style.userSelect = prevUserSelect || ''; } catch(_){}
+    const r = rect();
+    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) })); } catch(_){}
+  }
+
+  // Forgiving hitbox (click inside OR within 24px around the mini-map)
+  const HIT = 10;
+  function inOrNearMinimap(x, y){
+    const r = rect();
+    return (x >= r.left - HIT && x <= r.right + HIT && y >= r.top - HIT && y <= r.bottom + HIT);
+  }
+
+  // Start drag on any pointerdown inside/near the minimap (capture-phase so kids can't swallow it)
+  window.addEventListener('pointerdown', (e) => {
+    // Skip if minimap is hidden (computed style)
+    const disp = window.getComputedStyle(mm).display;
+    if (disp === 'none') return;
+    if (!e || e.isPrimary === false) return;
+    const x = e.clientX, y = e.clientY;
+    if (inOrNearMinimap(x, y)) begin(e);
+  }, { capture: true });
+
+  // Global move/end for robustness
+  window.addEventListener('pointermove', move, { passive: true });
+  window.addEventListener('pointerup', end, { passive: true });
+  window.addEventListener('pointercancel', end, { passive: true });
+  window.addEventListener('blur', end);
+
+  // Keep inside viewport on resize + save
+  window.addEventListener('resize', () => {
+    const r = rect();
+    const { vw, vh, mw, mh } = bounds();
+    const left = Math.min(Math.max(r.left, 0), Math.max(0, vw - mw));
+    const top  = Math.min(Math.max(r.top,  0), Math.max(0, vh - mh));
+    mm.style.left = left + 'px';
+    mm.style.top  = top  + 'px';
+    mm.style.right = 'auto';
+    mm.style.bottom = 'auto';
+    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left, top })); } catch(_){}
+  });
+
+  // Restore saved pos (if any)
+  try {
+    const raw = localStorage.getItem('fe_minimap_pos');
+    if (raw) {
+      const pos = JSON.parse(raw);
+      if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+        mm.style.left = pos.left + 'px';
+        mm.style.top  = pos.top  + 'px';
+        mm.style.right = 'auto';
+        mm.style.bottom = 'auto';
+      }
+    }
+  } catch(_){}
+})();
+</script>
+
+<!-- Mini-map refresh on New Flow | injected -->
+<script>
+(function() {
+  function clearMinimapCanvas() {
+    try {
+      var cvs = document.getElementById('minimap-canvas');
+      if (!cvs) return;
+      var ctx = cvs.getContext('2d', { willReadFrequently: true });
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+    } catch (e) {}
+  }
+
+  function feForceMinimapOnce() {
+    try {
+      var box = document.getElementById('minimap-container');
+      var cvs = document.getElementById('minimap-canvas');
+      var target = document.getElementById('drawflow');
+      if (!box || box.style.display === 'none' || !cvs || !target || !window.html2canvas) return;
+      window.html2canvas(target, {
+        backgroundColor: null,
+        logging: false,
+        scale: 0.18
+      }).then(function(shot){
+        try {
+          var ctx = cvs.getContext('2d', { willReadFrequently: true });
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.drawImage(shot, 0, 0, cvs.width, cvs.height);
+        } catch(e) {}
+      }).catch(function(){ clearMinimapCanvas(); });
+    } catch (e) { /* noop */ }
+  }
+
+  function afterNewFlowRefresh() {
+    // clear immediately, then try a forced snapshot after the editor clears
+    clearMinimapCanvas();
+    setTimeout(function(){ feForceMinimapOnce(); }, 60);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Hook the "New" menu button so the minimap refreshes after a new flow
+    var btn = document.getElementById('newFlow');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        // Run after the existing handler has cleared the editor
+        setTimeout(afterNewFlowRefresh, 30);
+      });
+    }
+
+    // Also watch the drawflow DOM; if it becomes empty, clear the minimap.
+    var draw = document.getElementById('drawflow');
+    if (draw && 'MutationObserver' in window) {
+      try {
+        var obs = new MutationObserver(function() {
+          // When there are no nodes left, make sure minimap is blank too.
+          var hasNodes = draw.querySelector('.drawflow-node');
+          if (!hasNodes) {
+            afterNewFlowRefresh();
+          }
+        });
+        obs.observe(draw, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
