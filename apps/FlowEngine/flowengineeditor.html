@@ -212,7 +212,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #drawflow{
     position:relative;height:100%;min-height:0;
     margin:0 !important;padding:0 !important;overflow:hidden !important;
-    background:transparent !important;
+    background:transparent !important; background-image: var(--fe-bg-image, none) !important; background-repeat: repeat !important; background-size: auto !important; background-position: top left !important;
   }
 
   /* Make the canvas truly fill regardless of library internals */
@@ -223,10 +223,10 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 
   /* Background image behind nodes (controlled by CSS vars) */
   #drawflow .precanvas{position:relative}
-  #drawflow .precanvas::before{
+  #drawflow .precanvas::before, #drawflow::before{
     content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
     background-image:var(--fe-bg-image, none);
-    background-repeat:no-repeat;background-position:center;background-size:contain;
+    background-repeat:repeat;
     filter:brightness(var(--fe-bg-brightness,1));
   }
 </style>
@@ -335,90 +335,9 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 </script>
 
 
-<style id="feBgImageCSS">
-  /* ensure canvas host is transparent and layered above the bg img */
-  #drawflow{ position:relative !important; background:transparent !important; }
-  #drawflow .precanvas{ position:relative !important; z-index:1 !important; }
-  /* kill any old ::before overlay that could block the img */
-  #drawflow .precanvas::before{ content:none !important; }
 
-  /* the actual background image element */
-  #drawflow-bg-image{
-    position:absolute; inset:0; width:100%; height:100%;
-    object-fit:contain; display:none; pointer-events:none;
-    z-index:0; filter:brightness(var(--fe-bg-brightness,1));
-  }
-</style>
 
-<script id="fe-bg-only-fix">
-(function(){
-  const pickBtn = document.getElementById('bgImageBtn');
-  const rmBtn   = document.getElementById('removeBgBtn');
-  const input   = document.getElementById('bgImageFile');
-  // ensure the img exists under #drawflow
-  (function ensureImg(){
-    try{
-      const host = document.getElementById('drawflow');
-      if (!host) return;
-      let img = document.getElementById('drawflow-bg-image');
-      if (!img){
-        img = document.createElement('img');
-        img.id = 'drawflow-bg-image';
-        host.insertBefore(img, host.firstChild);
-      }
-    }catch(_){}
-  })();
-  const img = document.getElementById('drawflow-bg-image');
-  if (!img) return;
 
-  // Guard against duplicate bindings
-  if (pickBtn && !pickBtn.__feBound){
-    pickBtn.__feBound = true;
-    pickBtn.addEventListener('click', function(e){
-      e.preventDefault();
-      // allow choosing the same file twice
-      try{ input.value = ''; }catch(_){}
-      input && input.click();
-    });
-  }
-
-  if (input && !input.__feBound){
-    input.__feBound = true;
-    input.addEventListener('change', function(){
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const url = URL.createObjectURL(f);
-      // primary path: dedicated <img>
-      img.src = url;
-      img.style.display = 'block';
-      img.onload = function(){ try{ URL.revokeObjectURL(url); }catch(_){}};
-      // fallback var for any css that uses it
-      document.documentElement.style.setProperty('--fe-bg-image', 'url(\"'+url+'\")');
-      // clear input so selecting same file fires next time
-      try{ input.value = ''; }catch(_){}
-    });
-  }
-
-  if (rmBtn && !rmBtn.__feBound){
-    rmBtn.__feBound = true;
-    rmBtn.addEventListener('click', function(e){
-      e.preventDefault();
-      try{ img.removeAttribute('src'); }catch(_){}
-      img.style.display = 'none';
-      document.documentElement.style.setProperty('--fe-bg-image', 'none');
-    });
-  }
-
-  // brightness slider support (if present)
-  const br = document.getElementById('gridBrightnessSlider');
-  if (br && !br.__feBound){
-    br.__feBound = true;
-    const apply = ()=>document.documentElement.style
-      .setProperty('--fe-bg-brightness', br.value || '1');
-    br.addEventListener('input', apply); apply();
-  }
-})();
-</script>
 
 
 <style id="feMenuFitCSS">
@@ -526,6 +445,27 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #clearLogBtn { transition:opacity .12s ease; }
   #clearLogBtn:hover { opacity:.9; }
 </style>
+
+<style id="feOverlayKillSwitch">
+/* Ensure any drag overlay never eats release events */
+#__feDndOverlay { pointer-events: none !important; }
+</style>
+
+<style id="feCanvasBackground">
+/* Single source of truth for canvas background */
+#drawflow{ background:transparent !important; background-image: var(--fe-bg-image, none) !important; background-repeat: repeat !important; background-size: auto !important; background-position: top left !important; position:relative !important; }
+#drawflow .precanvas{ position:relative !important; z-index:1 !important; }
+/* Tiled background behind nodes using CSS variables */
+#drawflow .precanvas::before, #drawflow::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image: var(--fe-bg-image, none);
+  background-repeat: repeat;
+  background-size: auto;
+  background-position: top left;
+  filter: brightness(var(--fe-bg-brightness, 1));
+}
+</style>
+
 </head>
 <body>
 <div id="headline">
@@ -630,7 +570,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.066</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.065</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
 <select id="hubitatFileDropdown"
               style="width:400px; display:inline-block; margin-left:20px;"
@@ -740,11 +680,10 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 </div>
           
           <div id="drawflow">
-      <img id="drawflow-bg-image" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; pointer-events:none;">
-    </div>
+      </div>
   </div>
   <div id="minimap-container"
-    style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; cursor: grab; display: none; touch-action: none; user-select: none;">
+    style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; cursor: grab; display: none; touch-action: none;">
     <canvas id="minimap-canvas" width="240" height="140"></canvas>
     <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
@@ -834,7 +773,8 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     }
 
     // 2) Globally-available: repopulate the dropdown
-    async function reloadFlowDropdown(selected) {
+    async function reloadFlowDropdown(selected){
+      selected = (selected == null ? '' : String(selected));
       const dropdown = document.getElementById("hubitatFileDropdown");
       if (!dropdown) return;
 
@@ -973,7 +913,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
         const cleaned = String(txt)
           .replace(/^\uFEFF/, '')
           .replace(/\/\/.*$/gm, '')
-          .replace(/\/*[\s\S]*?\*\//g, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
           .replace(/,\s*([}\]])/g, '$1');
         txt = cleaned;
       }
@@ -1003,15 +943,11 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
               }
               document.getElementById('flowName').textContent = fileBaseName.replace(/\.json$/i, '');
               try { markFlowNeedsSave(false); } catch (_) {}
-              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');
-              try { await onFlowSelected(fileBaseName); } catch (_) {}
-              return;
+              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');return;
             } else {
               try { await restoreFlowFromJson(data); } catch (e) { throw e; }
               document.getElementById('flowName').textContent = fileBaseName.replace(/\.json$/i, '');
-              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');
-              try { await onFlowSelected(fileBaseName); } catch (_) {}
-              return;
+              logAction(`Loaded “${fileBaseName}” from Hubitat.`, 'success');return;
             }
           }
         } catch (e) {
@@ -1031,8 +967,8 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await new Promise(r => setTimeout(r, 120));
-        const last = (localStorage.getItem('lastFlow') || '').replace(/\.json$/i, '');
-        await reloadFlowDropdown(last);
+        const last = (localStorage.getItem('lastFlow') || '');
+        await reloadFlowDropdown(String(last));
         if (last) {
           await loadLastFlowWithRetry(last);
         }
@@ -1107,85 +1043,82 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       }
     })();
 
-    (function setupMinimapToggle(){
-      const btn = document.getElementById('minimapToggleButton');
-      const box = document.getElementById('minimap-container');
-      const cvs = document.getElementById('minimap-canvas');
-      let intervalId = null;
+    
+(function setupMinimapToggle(){
+  const btn = document.getElementById('minimapToggleButton');
+  const box = document.getElementById('minimap-container');
+  const cvs = document.getElementById('minimap-canvas');
 
-      // Persisted state
-      const KEY = 'fe_minimap_visible';
-      function isOn(){ return localStorage.getItem(KEY) === '1'; }
-      function setOn(v){ localStorage.setItem(KEY, v ? '1' : '0'); }
+  const KEY = 'fe_minimap_visible';
+  const isOn  = () => localStorage.getItem(KEY) === '1';
+  const setOn = v => localStorage.setItem(KEY, v ? '1' : '0');
 
-      function updateBtn(){
-        if (!btn) return;
-        btn.style.backgroundColor = isOn() ? '#4CAF50' : '#808080';
-        btn.textContent = 'Mini-map';
+  let inFlight = false;
+  let pending  = false;
+  let lastAt   = 0;
+  const MIN_MS = 800;
+  const MAX_MS = 3000;
+  let timerId = 0;
+
+  function updateBtn(){
+    if (!btn) return;
+    btn.style.backgroundColor = isOn() ? '#4CAF50' : '#808080';
+    btn.textContent = 'Mini-map';
+  }
+
+  function queueRender(){
+    if (!isOn()) return;
+    const now = performance.now();
+    const since = now - lastAt;
+    if (inFlight) { pending = true; return; }
+    if (since < MIN_MS) {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(run, MIN_MS - since);
+    } else {
+      run();
+    }
+  }
+
+  async function run(){
+    if (inFlight || !isOn()) return;
+    inFlight = true;
+    try { await renderMinimapOnce(); }
+    finally {
+      inFlight = false;
+      lastAt = performance.now();
+      if (pending) { pending = false; queueRender(); }
+      else {
+        if (timerId) clearTimeout(timerId);
+        timerId = setTimeout(() => queueRender(), MAX_MS);
       }
+    }
+  }
 
-      async function renderMinimapOnce(){
-        if (!box || box.style.display === 'none') return;
-        if (!window.html2canvas || !cvs) return;
+  function applyVisibility(){
+    if (!box) return;
+    const on = isOn();
+    box.style.display = on ? 'block' : 'none';
+    updateBtn();
+    if (on) queueRender();
+  }
 
-        const target = document.getElementById('drawflow');
-        if (!target) return;
+  if (btn) {
+    btn.addEventListener('click', () => { setOn(!isOn()); applyVisibility(); try{ markFlowNeedsSave(true);}catch(_){}; });
+  }
 
-        try {
-          // Snapshot the drawflow area at a small scale and draw into our canvas
-          const shot = await html2canvas(target, {
-            backgroundColor: null,
-            logging: false,
-            scale: 0.18
-          });
-          const ctx = cvs.getContext('2d', { willReadFrequently: true });
-          ctx.clearRect(0,0,cvs.width,cvs.height);
-          ctx.drawImage(shot, 0, 0, cvs.width, cvs.height);
-        } catch(_){}
-      }
+  ['wheel','keydown','keyup','resize','pointerup','pointerdown','pointermove']
+    .forEach(ev => window.addEventListener(ev, () => queueRender(), {passive:true}));
 
-      function startLoop(){
-        if (intervalId) return;
-        intervalId = setInterval(renderMinimapOnce, 600);
-      }
-      function stopLoop(){
-        if (!intervalId) return;
-        clearInterval(intervalId);
-        intervalId = null;
-      }
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.hidden) { if (timerId) { clearTimeout(timerId); timerId = 0; } }
+    else { queueRender(); }
+  });
+  window.addEventListener('blur', ()=>{ if (timerId) { clearTimeout(timerId); timerId = 0; } });
+  window.addEventListener('focus', ()=>{ queueRender(); });
 
-      function applyVisibility(){
-        if (!box) return;
-        const on = isOn();
-        box.style.display = on ? 'block' : 'none';
-        updateBtn();
-        if (on) { renderMinimapOnce(); startLoop(); } else { stopLoop(); }
-      }
+  applyVisibility();
+})();
 
-      if (btn) {
-        btn.addEventListener('click', () => {
-          setOn(!isOn());
-          applyVisibility();
-          try { markFlowNeedsSave(true); } catch(_){}
-        });
-      }
-
-      // Also refresh the mini-map when viewport likely changes
-      const hookViewportRefresh = () => {
-        if (!window.refreshConnectionsSoon) return;
-        const orig = window.refreshConnectionsSoon;
-        if (orig.__minimapHooked) return;
-        window.refreshConnectionsSoon = function(){
-          try { orig.apply(this, arguments); } catch(_){}
-          renderMinimapOnce();
-        };
-        window.refreshConnectionsSoon.__minimapHooked = true;
-      };
-      hookViewportRefresh();
-
-      // Initialize from persisted state
-      applyVisibility();
-    })();
 
     function renderVariableInspector() {
       const container = document.getElementById("variableInspectorContent");
@@ -5926,7 +5859,6 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
 
         document.addEventListener("DOMContentLoaded", function () {
           const drawflow = document.getElementById("drawflow");
-          const img = document.querySelector("#drawflow > #drawflow-bg-image");
           const fileInput = document.getElementById("bgImageFile");
           const slider = document.getElementById('gridBrightnessSlider');
           const bgImageBtn = document.getElementById('bgImageBtn');
@@ -5950,13 +5882,12 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
           // --- Restore settings from storage
           let prefs = loadPrefs();
           if (prefs.bgImage && prefs.bgImageType === "file") {
-            img.src = prefs.bgImage;
-            drawflow.classList.add('image-bg');
-            img.style.display = "";
+            try { document.documentElement.style.setProperty('--fe-bg-image', 'url("' + prefs.bgImage + '")'); } catch(_) {}
+            drawflow && drawflow.classList.add('image-bg');
           }
           if (prefs.imageBrightness) {
-            img.style.opacity = prefs.imageBrightness;
-            slider.value = prefs.imageBrightness;
+            try { document.documentElement.style.setProperty('--fe-bg-brightness', String(prefs.imageBrightness)); } catch(_) {}
+            if (slider) slider.value = String(prefs.imageBrightness);
           }
           if (prefs.snapToGrid !== undefined) {
             snapToGridToggle.checked = !!prefs.snapToGrid;
@@ -5968,7 +5899,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
             if (file) {
               const reader = new FileReader();
               reader.onload = function (e) {
-                img.src = e.target.result;
+                // removed: img.src assignment; using CSS var now;
                 drawflow.classList.add('image-bg');
                 img.style.display = "";
                 let p = loadPrefs();
@@ -6109,8 +6040,7 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
         if (file) {
           const reader = new FileReader();
           reader.onload = function(evt) {
-            const img = document.querySelector("#drawflow > #drawflow-bg-image");
-            img.src = evt.target.result;
+            // removed: img.src assignment; using CSS var now;
             img.style.display = '';
           };
           reader.readAsDataURL(file);
@@ -8449,22 +8379,45 @@ function nodeIdFromEl(el) {
       if (flowTracePollInterval) clearInterval(flowTracePollInterval);
 
       flowTracePollInterval = setInterval(async () => {
-  try {
-    const resp = await __fe_fetchLastTraceFlexible(); // tries both names + sanity checks
-    const flows = Array.isArray(resp) ? resp
-                 : (resp && Array.isArray(resp.flows) ? resp.flows : []);
-    if (typeof __fe_handleLastTrace === "function") {
-      __fe_handleLastTrace(flows);
-    }
-  } catch (e) {
-    // Debounce warnings to once per 60s
-    window.__flowTraceLastWarn = window.__flowTraceLastWarn || 0;
-    if (Date.now() - window.__flowTraceLastWarn > 60_000) {
-      (window.logAction || console.warn)("FlowTrace missing/invalid: " + (e && e.message ? e.message : "parse/fetch"));
-      window.__flowTraceLastWarn = Date.now();
-    }
-  }
-}, 2500); // keep the same cadence you had (adjust if needed)
+        
+    try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
+    try {
+          const traces = (await (async ()=>{  const u=`/local/FE_lasttrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
+          const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
+          const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
+          if (!runs.length) return;
+
+          // Choose most recent
+          runs.sort((a,b) => {
+            const aLast = (a.steps && a.steps.length) ? (a.steps[a.steps.length-1].timestamp || 0) : 0;
+            const bLast = (b.steps && b.steps.length) ? (b.steps[b.steps.length-1].timestamp || 0) : 0;
+            if (bLast !== aLast) return bLast - aLast;
+            const ta = (a.timestamp ?? (a.runId && /^\d{13}/.test(a.runId) ? parseInt(a.runId,10) : 0)) | 0;
+            const tb = (b.timestamp ?? (b.runId && /^\d{13}/.test(b.runId) ? parseInt(b.runId,10) : 0)) | 0;
+            return tb - ta;
+          });
+          const run = runs[0];
+
+          // Paint LIVE
+          highlightFlowPath(run, true);
+
+          // Stop on EndOfFlow
+          const last = (run.steps && run.steps[run.steps.length - 1]) || {};
+          const done = String(last.nodeType || last.step || '').toLowerCase() === 'endofflow' || run.finished;
+          if (done) {
+            clearInterval(flowTracePollInterval);
+            flowTracePollInterval = null;
+            window.flowTracePollingActive = false;
+            if (typeof refreshVarsAndInspector === 'function') { try { await refreshVarsAndInspector(); } catch(e){} }
+          }
+        } catch (e) {
+          console.error('Live Trace poll error', e);
+          clearInterval(flowTracePollInterval);
+          flowTracePollInterval = null;
+        }
+      
+    try{ window.__autoRefresh = false; }catch(_){}
+    }, 500);
     }
   </script>
   <script>
@@ -12232,104 +12185,92 @@ document.addEventListener('DOMContentLoaded', function(){
 </style>
 
 
-
-
-
-
-
-
 <script id="feMinimapDrag">
 (function setupMinimapDrag(){
   const mm = document.getElementById('minimap-container');
-  const cvs = document.getElementById('minimap-canvas');
-  if (!mm || !cvs) return;
+  const canvas = document.getElementById('minimap-canvas');
+  if (!mm || !canvas) return;
 
+  // Keep cursor as a hand while hovering; closed hand while dragging
   let dragging = false;
   let startX = 0, startY = 0, startLeft = 0, startTop = 0;
   let activePointerId = null;
-  let prevUserSelect = '';
 
   function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
   function bounds(){
     return { vw: window.innerWidth, vh: window.innerHeight, mw: mm.offsetWidth, mh: mm.offsetHeight };
   }
-  function rect(){ return mm.getBoundingClientRect(); }
-
-  function begin(e){
-    dragging = true;
-    activePointerId = (e && 'pointerId' in e) ? e.pointerId : null;
-    try { if (activePointerId != null) mm.setPointerCapture(activePointerId); } catch(_) {}
-    // Cursor is optional; drag should work regardless
-    startX = e ? e.clientX : startX;
-    startY = e ? e.clientY : startY;
-    startLeft = mm.offsetLeft; startTop = mm.offsetTop;
-    try { prevUserSelect = document.body.style.userSelect; document.body.style.userSelect = 'none'; } catch(_){}
-    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(_){ } }
+  function wantsDragTarget(t){
+    // allow drag on container or canvas; ignore inner label
+    return t && (t.id === 'minimap-container' || t.id === 'minimap-canvas');
   }
 
-  function move(e){
-    if (!dragging) return;
-    if (activePointerId != null && e && e.pointerId !== activePointerId) return;
+  // Hover hand
+  mm.addEventListener('pointerenter', () => { if (!dragging) mm.style.cursor = 'grab'; });
+  mm.addEventListener('pointerleave', () => { if (!dragging) mm.style.cursor = 'grab'; });
+
+  // Begin drag
+  mm.addEventListener('pointerdown', (e) => {
+    if (!wantsDragTarget(e.target) || e.button !== 0) return; // left button only
+    dragging = true;
+    activePointerId = e.pointerId;
+    try { mm.setPointerCapture(activePointerId); } catch(_) {}
+    mm.style.cursor = 'grabbing';
+    startX = e.clientX; startY = e.clientY;
+    // When positioned via bottom/right, offsetLeft/Top are still usable; we will switch to left/top.
+    startLeft = mm.offsetLeft; startTop = mm.offsetTop;
+    e.preventDefault();
+  });
+
+  // Drag move
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging || e.pointerId !== activePointerId) return;
     const { vw, vh, mw, mh } = bounds();
     let left = startLeft + (e.clientX - startX);
     let top  = startTop  + (e.clientY - startY);
+    // Clamp inside viewport
     left = clamp(left, 0, Math.max(0, vw - mw));
     top  = clamp(top,  0, Math.max(0, vh - mh));
+    // Switch to left/top positioning and release bottom/right
     mm.style.left = left + 'px';
     mm.style.top  = top  + 'px';
     mm.style.right = 'auto';
     mm.style.bottom = 'auto';
-  }
-
-  function end(e){
-    if (!dragging) return;
-    if (activePointerId != null && e && e.pointerId === activePointerId) {
-      try { mm.releasePointerCapture(activePointerId); } catch(_) {}
-    }
-    dragging = false;
-    activePointerId = null;
-    try { document.body.style.userSelect = prevUserSelect || ''; } catch(_){}
-    const r = rect();
-    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) })); } catch(_){}
-  }
-
-  // Forgiving hitbox (click inside OR within 24px around the mini-map)
-  const HIT = 10;
-  function inOrNearMinimap(x, y){
-    const r = rect();
-    return (x >= r.left - HIT && x <= r.right + HIT && y >= r.top - HIT && y <= r.bottom + HIT);
-  }
-
-  // Start drag on any pointerdown inside/near the minimap (capture-phase so kids can't swallow it)
-  window.addEventListener('pointerdown', (e) => {
-    // Skip if minimap is hidden (computed style)
-    const disp = window.getComputedStyle(mm).display;
-    if (disp === 'none') return;
-    if (!e || e.isPrimary === false) return;
-    const x = e.clientX, y = e.clientY;
-    if (inOrNearMinimap(x, y)) begin(e);
-  }, { capture: true });
-
-  // Global move/end for robustness
-  window.addEventListener('pointermove', move, { passive: true });
-  window.addEventListener('pointerup', end, { passive: true });
-  window.addEventListener('pointercancel', end, { passive: true });
-  window.addEventListener('blur', end);
-
-  // Keep inside viewport on resize + save
-  window.addEventListener('resize', () => {
-    const r = rect();
-    const { vw, vh, mw, mh } = bounds();
-    const left = Math.min(Math.max(r.left, 0), Math.max(0, vw - mw));
-    const top  = Math.min(Math.max(r.top,  0), Math.max(0, vh - mh));
-    mm.style.left = left + 'px';
-    mm.style.top  = top  + 'px';
-    mm.style.right = 'auto';
-    mm.style.bottom = 'auto';
-    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left, top })); } catch(_){}
   });
 
-  // Restore saved pos (if any)
+  function stopDrag(e){
+    if (!dragging) return;
+    dragging = false;
+    if (e && e.pointerId === activePointerId) {
+      try { mm.releasePointerCapture(activePointerId); } catch(_) {}
+    }
+    activePointerId = null;
+    // remain a hand while hovering
+    mm.style.cursor = 'grab';
+    const rect = mm.getBoundingClientRect();
+    try {
+      localStorage.setItem('fe_minimap_pos', JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }));
+    } catch(_) {}
+  }
+
+  window.addEventListener('pointerup', stopDrag);
+  window.addEventListener('pointercancel', stopDrag);
+  window.addEventListener('blur', stopDrag);
+
+  // Keep inside viewport after resize and persist new clamped pos
+  window.addEventListener('resize', () => {
+    const { vw, vh, mw, mh } = bounds();
+    const rect = mm.getBoundingClientRect();
+    const left = clamp(rect.left, 0, Math.max(0, vw - mw));
+    const top  = clamp(rect.top,  0, Math.max(0, vh - mh));
+    mm.style.left = left + 'px';
+    mm.style.top  = top  + 'px';
+    mm.style.right = 'auto';
+    mm.style.bottom = 'auto';
+    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left, top })); } catch(_) {}
+  });
+
+  // Restore saved position (if present)
   try {
     const raw = localStorage.getItem('fe_minimap_pos');
     if (raw) {
@@ -12341,73 +12282,743 @@ document.addEventListener('DOMContentLoaded', function(){
         mm.style.bottom = 'auto';
       }
     }
-  } catch(_){}
+  } catch(_) {}
 })();
 </script>
 
-<!-- Mini-map refresh on New Flow | injected -->
+<style id="feQuickNodeMenuCSS">
+#quickNodeMenu {
+  position: fixed;
+  z-index: 999999;
+  min-width: 240px;
+  max-width: 360px;
+  max-height: 60vh;
+  overflow: auto;
+  background: #1e1f24;
+  color: #eee;
+  border: 1px solid #3b3f4c;
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(0,0,0,.45);
+  padding: 6px;
+  display: none;
+  font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+#quickNodeMenu .qnm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #252833;
+  margin: 4px 0;
+  color:#eee;
+}
+#quickNodeMenu .qnm-item:hover { background: #2d3140; }
+#quickNodeMenu .qnm-label { flex: 1; color:#eee; }
+</style>
+
+<script id="feQuickNodeMenuJS">
+(function(){
+  if (window.__feQuickNodeMenuInstalled) return; window.__feQuickNodeMenuInstalled = true;
+
+  const DRAW_ID = "drawflow";
+  const items = [
+  {id:"addDevice",label:"Action"},
+  {id:"addComment",label:"Comment"},
+  {id:"addCondition",label:"Condition"},
+  {id:"addCountdown",label:"Countdown"},
+  {id:"addDelay",label:"Delay (ms)"},
+  {id:"addDelayMin",label:"Delay (minutes)"},
+  {id:"addDoNothing",label:"Do Nothing"},
+  {id:"addMotionDirection",label:"Motion Direction"},
+  {id:"addNotify",label:"Notification"},
+  {id:"addRepeat",label:"Repeat"},
+  {id:"addRestoreDeviceState",label:"Restore Device State"},
+  {id:"addSaveDeviceState",label:"Save Device State"},
+  {id:"addSchedule",label:"Schedule Trigger"},
+  {id:"addSetVariable",label:"Set Variable"},
+  {id:"addTrigger",label:"Event Trigger"}
+];
+
+  const menu = document.createElement('div');
+  menu.id = 'quickNodeMenu';
+  menu.setAttribute('role','menu');
+  const list = document.createElement('div');
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'qnm-item';
+    row.dataset.btnId = it.id;
+    // ✅ FIX: correct HTML string for label
+    row.innerHTML = '<span class="qnm-label">' + (it.label || it.id) + '</span>';
+    row.addEventListener('click', (ev) => {
+      hideMenu();
+      if (typeof window.newNodeOffsetX === 'number') window.newNodeOffsetX = (window.__qnmLastX||40);
+      if (typeof window.newNodeOffsetY === 'number') window.newNodeOffsetY = (window.__qnmLastY||40);
+      const btn = document.getElementById(it.id);
+      if (btn && typeof btn.click === 'function') { btn.click(); return; }
+      const fn = window[it.id];
+      if (typeof fn === 'function') try { fn(); } catch(_) {}
+    });
+    list.appendChild(row);
+  });
+  menu.appendChild(list);
+  document.body.appendChild(menu);
+
+  function isOnGraphElement(t){
+    if (!t) return false;
+    const sel = '.drawflow-node, .connection, .main-path, .selectbox';
+    return !!(t.closest && t.closest(sel));
+  }
+
+  function showMenu(x,y){
+    menu.style.display = 'block';
+    menu.style.visibility = 'hidden';
+    menu.style.left = '-9999px';
+    menu.style.top = '-9999px';
+    void menu.offsetWidth;
+    const pad = 6;
+    const maxX = window.innerWidth - menu.offsetWidth - pad;
+    const maxY = window.innerHeight - menu.offsetHeight - pad;
+    const left = Math.min(Math.max(pad, x), Math.max(pad, maxX));
+    const top  = Math.min(Math.max(pad, y), Math.max(pad, maxY));
+    menu.style.left = left + 'px';
+    menu.style.top  = top  + 'px';
+    menu.style.visibility = 'visible';
+  }
+  function hideMenu(){ menu.style.display = 'none'; }
+
+  const canvas = document.getElementById(DRAW_ID);
+  if (!canvas) return;
+
+  canvas.addEventListener('contextmenu', (e) => {
+    if (isOnGraphElement(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    window.__qnmLastX = e.clientX;
+    window.__qnmLastY = e.clientY;
+    showMenu(e.clientX, e.clientY);
+  }, true);
+
+  document.addEventListener('click', () => { if (menu.style.display!=='none') hideMenu(); }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideMenu(); }, true);
+  window.addEventListener('blur', hideMenu);
+  window.addEventListener('resize', hideMenu);
+})();
+</script>
+
 <script>
-(function() {
-  function clearMinimapCanvas() {
+(function guardImportLoops(){
+  if (window.__feImportGuarded) return; window.__feImportGuarded = true;
+  function wrapImportOnce(){
+    try{
+      if (!window.editor || !editor.import || editor.import.__feWrapped) return;
+      const orig = editor.import;
+      editor.import = async function __fe_import_wrapped(json){
+        if (editor.__feImporting) return;
+        editor.__feImporting = true;
+        try { return await orig.call(this, json); }
+        finally { editor.__feImporting = false; }
+      };
+      editor.import.__feWrapped = true;
+    }catch(e){}
+  }
+  // Try now and also after load, just in case editor comes later
+  wrapImportOnce();
+  window.addEventListener('load', wrapImportOnce);
+  document.addEventListener('DOMContentLoaded', wrapImportOnce);
+})();
+</script>
+
+
+
+<script>
+(function hardenCanvasContextMenu(){
+  if (hardenCanvasContextMenu.__done) return; hardenCanvasContextMenu.__done = true;
+  const menu = document.getElementById('fe-canvas-context');
+  const canvas = document.getElementById('drawflow');
+  if (!menu || !canvas) return;
+
+  let tracking = false, raf = 0, lastX = 0, lastY = 0;
+  function place(){
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const rect = menu.getBoundingClientRect();
+    let x = lastX, y = lastY;
+    if (x + rect.width  > vw) x = vw - rect.width  - 8;
+    if (y + rect.height > vh) y = vh - rect.height - 8;
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+  }
+  function onMove(e){
+    lastX = e.clientX; lastY = e.clientY;
+    if (raf) return;
+    raf = requestAnimationFrame(()=>{ raf = 0; place(); });
+  }
+  function openAt(x,y){
+    lastX = x; lastY = y;
+    menu.style.display = 'block';
+    place();
+    if (!tracking){
+      tracking = true;
+      window.addEventListener('pointermove', onMove, {passive:true});
+      window.addEventListener('resize', onMove, {passive:true});
+    }
+  }
+  function close(){
+    menu.style.display = 'none';
+    if (tracking){
+      tracking = false;
+      window.removeEventListener('pointermove', onMove, {passive:true});
+      window.removeEventListener('resize', onMove, {passive:true});
+    }
+  }
+  canvas.addEventListener('contextmenu', (e)=>{
+    if (e.target.closest('.drawflow-node')) return;
+    e.preventDefault();
+    openAt(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointerdown', (e)=>{ if (!menu.contains(e.target)) close(); }, {passive:true});
+  window.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') close(); });
+})();
+</script>
+
+
+
+
+
+<script id="feCanvasPanLite">
+(function(){
+  var precanvas = document.querySelector('#drawflow .precanvas');
+  if (!precanvas || window.__fePanLite) return; window.__fePanLite = true;
+
+  var isPanning = false, sx = 0, sy = 0, lastX = 0, lastY = 0, pending = false;
+
+  function onDown(e){
+    if (e.button !== 0) return;
+    // Only if clicking the raw precanvas background
+    if (e.target !== precanvas) return;
+    // Do not start if user actually pressed on a node or connection
+    if (e.target.closest && (e.target.closest('.drawflow-node') || e.target.closest('.connection'))) return;
+    isPanning = true;
+    sx = e.clientX; sy = e.clientY;
+    document.body.style.cursor = 'grabbing';
+    // Prevent drawflow from also starting a drag
+    try { e.stopPropagation(); e.stopImmediatePropagation(); } catch(_){}
+    try { e.preventDefault(); } catch(_){}
+  }
+  function onMove(e){
+    if (!isPanning) return;
+    if ((e.buttons & 1) === 0) { onUp(); return; }
+    lastX = e.clientX; lastY = e.clientY;
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function(){
+      pending = false;
+      var dx = lastX - sx, dy = lastY - sy;
+      sx = lastX; sy = lastY;
+      try {
+        if (window.editor && typeof editor.translate === 'function') {
+          editor.translate(dx, dy);
+          if (typeof editor.updateConnectionNodesAll === 'function') editor.updateConnectionNodesAll();
+        } else {
+          var root = document.querySelector('#drawflow .drawflow');
+          if (root){
+            var m = getComputedStyle(root).transform;
+            var tx = 0, ty = 0;
+            if (m && m !== 'none'){
+              var v = m.match(/matrix\(([^)]+)\)/);
+              if (v){ var a = v[1].split(',').map(Number); tx = a[4]||0; ty = a[5]||0; }
+            }
+            root.style.transform = 'translate('+(tx+dx)+'px,'+(ty+dy)+'px)';
+          }
+        }
+      } catch(_){}
+    });
+  }
+  function onUp(){
+    if (!isPanning) return;
+    isPanning = false;
+    try { document.body.style.cursor = ''; } catch(_){}
+  }
+  precanvas.addEventListener('pointerdown', onDown, {passive:false});
+  window.addEventListener('pointermove', onMove, {passive:true});
+  window.addEventListener('pointerup', onUp, {passive:true});
+  window.addEventListener('pointercancel', onUp, {passive:true});
+  window.addEventListener('blur', onUp, {passive:true});
+})();
+</script>
+
+<script id="feUltimateDragRelease">
+(function(){
+  // Track when a node/connection drag is plausibly happening
+  let dragging = false;
+  let lastReleaseAt = 0;
+
+  function markDragStart(e){
     try {
-      var cvs = document.getElementById('minimap-canvas');
-      if (!cvs) return;
-      var ctx = cvs.getContext('2d', { willReadFrequently: true });
-      ctx.clearRect(0, 0, cvs.width, cvs.height);
-    } catch (e) {}
+      if (e && e.target && e.target.closest && e.target.closest('.drawflow-node, .connection')) {
+        dragging = true;
+      } else if (window.editor && (editor.drag || editor.dragging || editor.drag_node || editor.drag_connection)) {
+        dragging = true;
+      }
+    } catch(_){}
   }
 
-  function feForceMinimapOnce() {
+  function markDragEnd(){
+    dragging = false;
+  }
+
+  function releaseDragNow(){
+    const now = performance.now();
+    // Debounce hard: don't spam releases more than once per 200ms, and only if we thought a drag was active
+    if (!dragging && (now - lastReleaseAt) < 200) return;
+    lastReleaseAt = now;
+
     try {
-      var box = document.getElementById('minimap-container');
-      var cvs = document.getElementById('minimap-canvas');
-      var target = document.getElementById('drawflow');
-      if (!box || box.style.display === 'none' || !cvs || !target || !window.html2canvas) return;
-      window.html2canvas(target, {
-        backgroundColor: null,
-        logging: false,
-        scale: 0.18
-      }).then(function(shot){
-        try {
-          var ctx = cvs.getContext('2d', { willReadFrequently: true });
-          ctx.clearRect(0, 0, cvs.width, cvs.height);
-          ctx.drawImage(shot, 0, 0, cvs.width, cvs.height);
-        } catch(e) {}
-      }).catch(function(){ clearMinimapCanvas(); });
-    } catch (e) { /* noop */ }
+      const ed = window.editor || {};
+      // Only do heavy cleanup if we believed a drag was occurring
+      if (dragging) {
+        const keys = [
+          'drag','drag_point','drag_node','dragging','dragging_node',
+          'drag_items','drag_connection','reroute_drag','editor_selected','canvas_drag'
+        ];
+        for (const k of keys){ try { if (k in ed) ed[k] = (typeof ed[k] === 'boolean' ? false : ed[k]); } catch(_){ } }
+        // Drop dragging-related classes that can keep move handlers hot
+        document.querySelectorAll('.drawflow .dragging, .drawflow .node_draggable, .connection .point_drag')
+          .forEach(el => { try { el.classList.remove('dragging','node_draggable','point_drag'); } catch(_){} });
+        try { if (typeof ed.updateConnectionNodesAll === 'function') ed.updateConnectionNodesAll(); } catch(_){}
+      }
+      // Always clear cursor
+      try { document.body.style.cursor = ''; } catch(_){}
+    } finally {
+      markDragEnd();
+    }
   }
 
-  function afterNewFlowRefresh() {
-    // clear immediately, then try a forced snapshot after the editor clears
-    clearMinimapCanvas();
-    setTimeout(function(){ feForceMinimapOnce(); }, 60);
+  // Mark potential drags on pointerdown (capture to run before library)
+  window.addEventListener('pointerdown', markDragStart, true);
+  // Normal end-of-gesture signals
+  ['pointerup','mouseup','pointercancel','touchend','touchcancel','blur','contextmenu']
+    .forEach(ev => window.addEventListener(ev, releaseDragNow, true));
+
+  // If pointer moves with no buttons down AND we thought a drag was active, release once.
+  function onMove(e){
+    if (!dragging) return;
+    const noButtons = (typeof e.buttons === 'number') ? (e.buttons === 0) : false;
+    if (noButtons) releaseDragNow();
+  }
+  window.addEventListener('pointermove', onMove, true);
+  window.addEventListener('mousemove', onMove, true);
+
+  document.addEventListener('visibilitychange', ()=>{ if (document.hidden) releaseDragNow(); }, true);
+})();
+</script>
+
+
+
+<script id="feMultiDragMirror">
+(function(){
+  function getLT(el){
+    const l = parseFloat(el.style.left) || 0;
+    const t = parseFloat(el.style.top) || 0;
+    return {l, t};
+  }
+  function getIdFromEl(el){
+    const idStr = (el.id || '').replace('node-','');
+    const id = parseInt(idStr, 10);
+    return Number.isFinite(id) ? id : null;
+  }
+  function getSelectedNodes(){
+    return Array.from(document.querySelectorAll(
+      '.drawflow-node.selected, .drawflow-node.node_selected, .drawflow-node.fe-multi'
+    ));
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    // Hook the "New" menu button so the minimap refreshes after a new flow
-    var btn = document.getElementById('newFlow');
-    if (btn) {
-      btn.addEventListener('click', function() {
-        // Run after the existing handler has cleared the editor
-        setTimeout(afterNewFlowRefresh, 30);
+  function enableCtrlClickToggle(){
+    if (enableCtrlClickToggle.__done) return; enableCtrlClickToggle.__done = true;
+    document.addEventListener('pointerdown', function(e){
+      const node = e.target && e.target.closest && e.target.closest('.drawflow-node');
+      if (!node) return;
+      if (e.ctrlKey || e.metaKey){
+        node.classList.toggle('fe-multi');
+      } else {
+        document.querySelectorAll('.drawflow-node.fe-multi').forEach(n=>{
+          if (n !== node) { n.classList.remove('fe-multi'); n.style.outline=''; }
+        });
+      }
+    }, true);
+  }
+
+  function enableMirrorDrag(){
+    if (enableMirrorDrag.__done) return; enableMirrorDrag.__done = true;
+
+    let dragging = false;
+    let anchorX = 0, anchorY = 0;
+    let primNode = null;
+    let stash = new Map(); // element -> {l,t,id}
+
+    function onDown(e){
+      const node = e.target && e.target.closest && e.target.closest('.drawflow-node');
+      if (!node) return;
+      if (e.button !== 0) return;
+
+      const selected = getSelectedNodes();
+      const multi = selected.length > 1;
+
+      if (!multi || !selected.includes(node)) {
+        dragging = false; primNode = null; stash.clear(); return;
+      }
+
+      dragging = true;
+      primNode = node;
+      anchorX = e.clientX;
+      anchorY = e.clientY;
+      stash.clear();
+      selected.forEach(el=>{
+        if (el === primNode) return; // primary moved by the library
+        const id = getIdFromEl(el);
+        if (id == null) return;
+        const pos = getLT(el);
+        stash.set(el, {l: pos.l, t: pos.t, id});
       });
     }
 
-    // Also watch the drawflow DOM; if it becomes empty, clear the minimap.
-    var draw = document.getElementById('drawflow');
-    if (draw && 'MutationObserver' in window) {
-      try {
-        var obs = new MutationObserver(function() {
-          // When there are no nodes left, make sure minimap is blank too.
-          var hasNodes = draw.querySelector('.drawflow-node');
-          if (!hasNodes) {
-            afterNewFlowRefresh();
-          }
+    let pending = false;
+    function onMove(e){
+      if (!dragging) return;
+      if ((e.buttons & 1) === 0){ onUp(); return; }
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function(){
+        pending = false;
+        const dx = e.clientX - anchorX;
+        const dy = e.clientY - anchorY;
+        anchorX = e.clientX;
+        anchorY = e.clientY;
+
+        stash.forEach((pos, el)=>{
+          const nx = pos.l + dx;
+          const ny = pos.t + dy;
+          // Update internal model + DOM + connectors using our patched helper
+          try {
+            const id = pos.id;
+            if (window.editor && typeof window.editor.moveNodeTo === 'function') {
+              window.editor.moveNodeTo(id, nx, ny);
+            } else {
+              // fallback DOM only
+              el.style.left = Math.round(nx) + 'px';
+              el.style.top  = Math.round(ny) + 'px';
+            }
+          } catch(_){}
+          // Store for next frame
+          pos.l = nx; pos.t = ny;
+          stash.set(el, pos);
         });
-        obs.observe(draw, { childList: true, subtree: true });
-      } catch (e) {}
+
+        try {
+          if (window.editor && typeof editor.updateConnectionNodesAll === 'function') {
+            editor.updateConnectionNodesAll();
+          }
+        } catch(_){}
+      });
     }
+
+    function onUp(){
+      if (!dragging) return;
+      dragging = false;
+      primNode = null;
+      stash.clear();
+      try {
+        if (window.editor && typeof editor.updateConnectionNodesAll === 'function') {
+          editor.updateConnectionNodesAll();
+        }
+      } catch(_){}
+      try { if (typeof markFlowNeedsSave === 'function') markFlowNeedsSave(true); } catch(_){}
+    }
+
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', onUp, true);
+    window.addEventListener('blur', onUp, true);
+  }
+
+  enableCtrlClickToggle();
+  enableMirrorDrag();
+})();
+</script>
+
+
+<script id="feUnifiedBgController">
+(function(){
+  function setVar(name, value){ try{ document.documentElement.style.setProperty(name, value); }catch(_){} }
+  function applySaved(){
+    try{
+      const url = localStorage.getItem('fe_bg_image_dataurl') || 'none';
+      const br  = localStorage.getItem('fe_bg_brightness') || '1';
+      setVar('--fe-bg-image', url);
+      setVar('--fe-bg-brightness', br);
+      const slider = document.getElementById('gridBrightnessSlider');
+      if (slider) slider.value = String(parseFloat(br) || 1);
+    }catch(_){}
+  }
+  function resetNode(id){
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    return clone;
+  }
+  function toDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const fr = new FileReader();
+      fr.onerror = reject;
+      fr.onload = () => resolve(fr.result);
+      fr.readAsDataURL(file);
+    });
+  }
+  async function init(){
+    const pickBtn = resetNode('bgImageBtn');
+    const rmBtn   = resetNode('removeBgBtn');
+    const input   = resetNode('bgImageFile');
+    const slider  = resetNode('gridBrightnessSlider');
+
+    applySaved();
+
+    if (pickBtn){
+      pickBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        if (input){ try{ input.value=''; }catch(_){ } input.click(); }
+      });
+    }
+    if (input){
+      input.addEventListener('change', async function(){
+        const f = input.files && input.files[0];
+        if (!f) return;
+        try{
+          const dataUrl = await toDataURL(f);
+          const cssUrl  = 'url(\"' + dataUrl + '\")';
+          localStorage.setItem('fe_bg_image_dataurl', cssUrl);
+          setVar('--fe-bg-image', cssUrl);
+        }catch(_){}
+        try{ input.value = ''; }catch(_){}
+      });
+    }
+    if (rmBtn){
+      rmBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        localStorage.removeItem('fe_bg_image_dataurl');
+        setVar('--fe-bg-image', 'none');
+      });
+    }
+    if (slider){
+      const apply = ()=>{
+        const v = String(slider.value || '1');
+        localStorage.setItem('fe_bg_brightness', v);
+        setVar('--fe-bg-brightness', v);
+      };
+      slider.addEventListener('input', apply);
+      apply();
+    }
+  }
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init, {once:true});
+})();
+</script>
+
+
+<script id="feEnsurePrecanvas">
+(function(){
+  function ensurePrecanvas(){
+    try{
+      var drawflow = document.getElementById('drawflow');
+      if (!drawflow) return;
+      if (!drawflow.querySelector('.precanvas')){
+        var pc = document.createElement('div');
+        pc.className = 'precanvas';
+        // give it basic layout so editor can adopt it later
+        pc.style.cssText = 'position:relative; width:100%; height:100%;';
+        drawflow.appendChild(pc);
+      }
+    }catch(_){}
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', ensurePrecanvas, {once:true});
+  } else {
+    ensurePrecanvas();
+  }
+  // expose a quick debug helper
+  window.feDbgBg = function(){
+    try{
+      var el = document.querySelector('#drawflow .precanvas') || document.getElementById('drawflow');
+      var cs = getComputedStyle(el, '::before');
+      console.log('bgImage=', cs.backgroundImage, ' brightness=', cs.filter);
+      return cs.backgroundImage;
+    }catch(e){ console.warn(e); return null; }
+  };
+})();
+</script>
+
+
+<script id="feMinimapMagic">
+(function(){
+  const box  = document.getElementById('minimap-container');
+  const cvs  = document.getElementById('minimap-canvas');
+  if (!box || !cvs) return;
+  const ctx = cvs.getContext('2d', { willReadFrequently: true });
+
+  // --- keep box within viewport ---
+  (function clampDrag(){
+    let dragging=false, sx=0, sy=0, sl=0, st=0;
+    function clamp(left, top){
+      const vpW = window.innerWidth, vpH = window.innerHeight;
+      const r = box.getBoundingClientRect();
+      const w = r.width, h = r.height;
+      return {
+        left: Math.min(Math.max(left, 0), Math.max(0, vpW - w)),
+        top:  Math.min(Math.max(top,  0), Math.max(0, vpH - h))
+      };
+    }
+    box.addEventListener('pointerdown', e=>{
+      if (e.button!==0) return;
+      dragging=true; sx=e.clientX; sy=e.clientY;
+      const r=box.getBoundingClientRect(); sl=r.left; st=r.top;
+      try{ box.setPointerCapture(e.pointerId); }catch(_){}
+      box.style.cursor='grabbing';
+    });
+    box.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      const p=clamp(sl+dx, st+dy);
+      box.style.left=p.left+'px'; box.style.top=p.top+'px';
+      box.style.right='auto'; box.style.bottom='auto';
+    });
+    box.addEventListener('pointerup', e=>{
+      if(!dragging) return; dragging=false;
+      try{ box.releasePointerCapture(e.pointerId); }catch(_){}
+      box.style.cursor='grab';
+    });
+    window.addEventListener('resize', ()=>{
+      const r=box.getBoundingClientRect();
+      const p=clamp(r.left, r.top);
+      box.style.left=p.left+'px'; box.style.top=p.top+'px';
+    });
+  })();
+
+  // --- helpers ---
+  const getEd = ()=> window.editor || null;
+  const getPC = ()=> (getEd() && getEd().precanvas) || document.querySelector('#drawflow .precanvas');
+  const vpSize = ()=>{
+    const host=document.getElementById('drawflow');
+    const r=host?host.getBoundingClientRect():{width:0,height:0};
+    return {w:r.width,h:r.height};
+  };
+  const panZoom = ()=>{
+    const ed=getEd(); const z = (ed && typeof ed.zoom==='number')?ed.zoom:1;
+    const x = (ed && typeof ed.canvas_x!=='undefined')?Number(ed.canvas_x||0):0;
+    const y = (ed && typeof ed.canvas_y!=='undefined')?Number(ed.canvas_y||0):0;
+    return {x,y,z};
+  };
+  function contentBounds(){
+    const pc=getPC(); if(!pc) return {minX:0,minY:0,maxX:1200,maxY:800};
+    const nodes=pc.querySelectorAll('.drawflow-node');
+    if(!nodes.length) return {minX:0,minY:0,maxX:1200,maxY:800};
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    nodes.forEach(n=>{
+      const x=parseFloat(n.style.left)||0;
+      const y=parseFloat(n.style.top)||0;
+      const w=n.offsetWidth||160, h=n.offsetHeight||60;
+      if(x<minX)minX=x; if(y<minY)minY=y;
+      if(x+w>maxX)maxX=x+w; if(y+h>maxY)maxY=y+h;
+    });
+    const P=40; return {minX:minX-P,minY:minY-P,maxX:maxX+P,maxY:maxY+P};
+  }
+  function mapFns(){
+    const W=cvs.width, H=cvs.height;
+    const B=contentBounds();
+    const worldW=Math.max(1,B.maxX-B.minX);
+    const worldH=Math.max(1,B.maxY-B.minY);
+    const s=Math.min(W/worldW, H/worldH);
+    const offX=(W-worldW*s)*0.5, offY=(H-worldH*s)*0.5;
+    const w2m=(wx,wy)=>({x:offX+(wx-B.minX)*s, y:offY+(wy-B.minY)*s});
+    const m2w=(mx,my)=>({x:B.minX+(mx-offX)/s, y:B.minY+(my-offY)/s});
+    return {w2m,m2w,s,B,offX,offY};
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+  }
+
+  function render(){
+    if (box.style.display==='none') return;
+    const W=cvs.width, H=cvs.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#111a1e'; ctx.fillRect(0,0,W,H);
+
+    const pc=getPC(); if(!pc) return;
+    const map=mapFns();
+
+    pc.querySelectorAll('.drawflow-node').forEach(n=>{
+      const x=parseFloat(n.style.left)||0;
+      const y=parseFloat(n.style.top)||0;
+      const w=n.offsetWidth||160, h=n.offsetHeight||60;
+      const p1=map.w2m(x,y), p2=map.w2m(x+w,y+h);
+      const mw=Math.max(2,p2.x-p1.x), mh=Math.max(2,p2.y-p1.y);
+      const t=(n.getAttribute('data-node-type')||'').toLowerCase();
+      let c='#5fa8f0';
+      if(t.includes('trigger')) c='#f0a25f';
+      else if(t.includes('condition')) c='#6fe08b';
+      else if(t.includes('device')||t.includes('action')) c='#c889f2';
+      else if(t.includes('comment')) c='#a0a0a0';
+      ctx.fillStyle=c; roundRect(ctx,p1.x,p1.y,mw,mh,Math.min(4,Math.min(mw,mh)/4)); ctx.fill();
+    });
+
+    const {x,y,z}=panZoom(); const vp=vpSize();
+    const wx1=(-x)/z, wy1=(-y)/z, wx2=(-x+vp.w)/z, wy2=(-y+vp.h)/z;
+    const m1=map.w2m(wx1,wy1), m2=map.w2m(wx2,wy2);
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.strokeRect(m1.x,m1.y,m2.x-m1.x,m2.y-m1.y); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(m1.x,m1.y,m2.x-m1.x,m2.y-m1.y);
+  }
+
+  // click/drag to pan
+  let mmDrag=false;
+  function panTo(mx,my){
+    const ed=getEd(), pc=getPC(); if(!ed||!pc) return;
+    const map=mapFns(), vp=vpSize(), {z}=panZoom();
+    const w=map.m2w(mx,my);
+    const wx = w.x - (vp.w/2)/z, wy = w.y - (vp.h/2)/z;
+    ed.canvas_x = -wx * z; ed.canvas_y = -wy * z;
+    pc.style.transform = 'translate(' + ed.canvas_x + 'px, ' + ed.canvas_y + 'px) scale(' + z + ')';
+    if (typeof ed.updateConnectionNodesAll==='function') ed.updateConnectionNodesAll();
+  }
+  cvs.addEventListener('pointerdown', e=>{
+    if (box.style.display==='none') return;
+    mmDrag=true; try{ cvs.setPointerCapture(e.pointerId);}catch(_){}
+    const r=cvs.getBoundingClientRect(); panTo(e.clientX-r.left, e.clientY-r.top); requestAnimationFrame(render);
   });
+  cvs.addEventListener('pointermove', e=>{
+    if (!mmDrag) return;
+    const r=cvs.getBoundingClientRect(); panTo(e.clientX-r.left, e.clientY-r.top); requestAnimationFrame(render);
+  });
+  cvs.addEventListener('pointerup', e=>{ mmDrag=false; try{ cvs.releasePointerCapture(e.pointerId);}catch(_){}; requestAnimationFrame(render); });
+
+  ['wheel','keydown','keyup','resize','pointerup','pointerdown','pointermove']
+    .forEach(ev=>window.addEventListener(ev, ()=>requestAnimationFrame(render), {passive:true}));
+  setInterval(()=>requestAnimationFrame(render), 1500);
+
+  // first paint
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=>requestAnimationFrame(render), {once:true});
+  else requestAnimationFrame(render);
+
+  window.feMinimapRender = render;
 })();
 </script>
 
