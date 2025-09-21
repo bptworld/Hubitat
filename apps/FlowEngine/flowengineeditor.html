@@ -466,6 +466,46 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 }
 </style>
 
+
+<style id="feMinimapPointerEvents">
+  /* Only the handle and canvas should receive pointer events */
+  #minimap-container { pointer-events: none !important; cursor: default !important; }
+  #minimap-canvas { pointer-events: auto !important; cursor: crosshair; }
+  #minimap-drag-handle { pointer-events: auto !important; cursor: grab; }
+</style>
+
+
+<style id="feMinimapCursorTweak">
+  #minimap-container{ cursor: default !important; }
+  #minimap-drag-handle{ cursor: grab !important; }
+</style>
+
+
+<style id="feMinimapHandleCSS">
+  #minimap-container { cursor: crosshair; }
+  #minimap-drag-handle {
+    position:absolute; right:6px; top:6px; width:14px; height:14px;
+    border-radius:4px; background:rgba(0,0,0,.35); backdrop-filter: blur(2px);
+    box-shadow:0 1px 3px rgba(0,0,0,.35);
+    cursor: grab; z-index: 2;
+  }
+  #minimap-drag-handle:active { cursor: grabbing; }
+</style>
+
+
+<style id="feMinimapStrictPE">
+  #minimap-container { pointer-events: none !important; cursor: default !important; }
+  #minimap-canvas { pointer-events: auto !important; cursor: crosshair !important; }
+  #minimap-drag-handle { pointer-events: auto !important; cursor: grab !important; }
+</style>
+
+
+<style id="feMinimapFinalPE">
+  #minimap-container { pointer-events: none !important; cursor: default !important; }
+  #minimap-canvas { pointer-events: auto !important; cursor: crosshair !important; }
+  #minimap-drag-handle { pointer-events: auto !important; cursor: grab !important; }
+</style>
+
 </head>
 <body>
 <div id="headline">
@@ -570,7 +610,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.067</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.068</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
 <select id="hubitatFileDropdown"
               style="width:400px; display:inline-block; margin-left:20px;"
@@ -683,8 +723,10 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
   </div>
   <div id="minimap-container"
-    style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; cursor: grab; display: none; touch-action: none;">
+    style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; display: none; touch-action: none;">
     <canvas id="minimap-canvas" width="240" height="140"></canvas>
+    <div id="minimap-drag-handle" title="Drag minimap"
+         style="position:absolute;top:6px;right:6px;width:18px;height:18px;                border-radius:6px; background:#0008; color:#ddd;                display:flex;align-items:center;justify-content:center;                font-size:14px; line-height:1; cursor:grab; user-select:none;">≡</div>
     <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
   <script src="FE_drawflow-js.min.js"></script>
@@ -1043,6 +1085,31 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       }
     })();
 
+(function () {
+  // If already present, don't redefine
+  if (typeof window.renderMinimapOnce === "function") return;
+
+  // Alias single-shot renderer to existing renderers
+  window.renderMinimapOnce = async function () {
+    try {
+      if (typeof window.feMinimapRender === "function") {
+        window.feMinimapRender();
+      } else if (typeof window.renderMinimap === "function") {
+        window.renderMinimap();
+      } else {
+        // nothing to do (minimap not initialized yet)
+      }
+    } catch (e) {
+      console.warn("renderMinimapOnce shim error:", e);
+    }
+  };
+
+  // Also expose a plain render alias if toggle code references it
+  if (typeof window.renderMinimap !== "function" &&
+      typeof window.feMinimapRender === "function") {
+    window.renderMinimap = window.feMinimapRender;
+  }
+})();
     
 (function setupMinimapToggle(){
   const btn = document.getElementById('minimapToggleButton');
@@ -3405,7 +3472,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
             }
           }
 
-          // 5) Render the Device(s) picker
+          // 5) Render the picker
           renderDevicePickerSection(
             el,
             node,
@@ -3453,7 +3520,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
           const allDevices    = Array.isArray(window.devices) ? window.devices : [];
           const pickerDevices = getPickerDevices(allDevices);
 
-          // ── DEVICE(S) PICKER ──
+          // ── PICKER ──
           renderDevicePickerSection(
             el,
             node,
@@ -3525,7 +3592,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
           const allDevices    = Array.isArray(window.devices) ? window.devices : [];
           const pickerDevices = getPickerDevices(allDevices);
 
-          // ── DEVICE(S) PICKER ──
+          // ── DEVICE PICKER ──
           renderDevicePickerSection(
             el,
             node,
@@ -3701,11 +3768,11 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
           function renderUntil() {
             modeDiv.innerHTML = "";
 
-            // Device(s) picker
+            // Device picker
             const allDevices    = Array.isArray(window.devices) ? window.devices : [];
             const pickerDevices = getPickerDevices(allDevices);
 
-            // ── DEVICE(S) PICKER ──
+            // ── DEVICE PICKER ──
             renderDevicePickerSection(
               el,
               node,
@@ -4156,7 +4223,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
           return;
         }
 
-        
         if (node.name === "saveDeviceState") {
           el.innerHTML = `Save Device State<br><br>`;
 
@@ -4187,8 +4253,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 
           return;
         }
-
-
         
         if (node.name === "restoreDeviceState") {
           el.innerHTML = `Restore Device State<br><br>`;
@@ -5671,18 +5735,53 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
                       }
                     }
 
-                    // --- DEVICE TRIGGERS W/KNOWN VALUES ---
-                    if (nd.data.attribute && window.ATTRIBUTE_KNOWN_VALUES && ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]) {
-                      return ATTRIBUTE_KNOWN_VALUES[nd.data.attribute]
-                        .map(v => v.toLowerCase())
-                        .includes(val);
-                    }
+// --- DEVICE TRIGGERS (devices, numbers, ranges, known values, wildcard attr) ---
+if (nd.data) {
+  const attr = (nd.data.attribute || "").toLowerCase();
+  const cmp  = (nd.data.comparator || "==").toLowerCase();
+  const exp  = nd.data.value;
 
-                    // --- FALLBACK: EXACT MATCH (lowercase both sides) ---
-                    return String(nd.data.value).toLowerCase() === val;
-                  });
+  // 1) Numeric "between" e.g. Pico button 1..5
+  const vNum = Number(val);
+  if (cmp === "between" && Array.isArray(exp) && exp.length >= 2 &&
+      !Number.isNaN(vNum)) {
+    const a = Number(exp[0]); const b = Number(exp[1]);
+    if (!Number.isNaN(a) && !Number.isNaN(b)) {
+      const lo = Math.min(a, b), hi = Math.max(a, b);
+      return vNum >= lo && vNum <= hi;
+    }
+  }
 
-                  if (!triggers.length) {
+  // 2) Equality (string or number)
+  if (cmp === "==" || cmp === "=") {
+    // If expected is array, match any
+    if (Array.isArray(exp)) {
+      return exp.some(e => String(e).toLowerCase() === val);
+    }
+    return String(exp).toLowerCase() === val;
+  }
+
+  // 3) Known-values table (e.g. motion: active/inactive), if attribute provided
+  if (attr && window.ATTRIBUTE_KNOWN_VALUES && ATTRIBUTE_KNOWN_VALUES[attr]) {
+    return ATTRIBUTE_KNOWN_VALUES[attr].map(v => v.toLowerCase()).includes(val);
+  }
+
+  // 4) Wildcard attribute & no comparator: allow any value (treat as pass)
+  if (!attr && (cmp === "" || cmp === "any" || cmp === "between" || cmp === "==")) {
+    // If we got here, either 'between' couldn't be parsed as numbers or it's any—
+    // fall back to tolerant string compare vs exp when available.
+    if (typeof exp !== "undefined") {
+      if (Array.isArray(exp)) return exp.map(e => String(e).toLowerCase()).includes(val);
+      return String(exp).toLowerCase() === val;
+    }
+    return true;
+  }
+}
+
+// --- FALLBACK: EXACT MATCH (lowercase both sides) ---
+return String(nd.data.value).toLowerCase() === val;
+});
+if (!triggers.length) {
                     alert(`No Trigger node matching test value "${val}" found.`);
                     return;
                   }
@@ -5707,29 +5806,51 @@ try { setTimeout(function(){ markFlowNeedsSave(false); }, 1200); } catch(_){}
                       : (node.data.deviceId ? [node.data.deviceId] : []);
 
                     // 7) Build payload & invoke testFlow
-                    const payload = { flow, value: val, dryRun, deviceIds };
-                    logAction(
-                      `▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""}` +
-                      ` on ${deviceIds.length} device(s) with value "${val}"`,
-                      "info"
-                    );
+                    // 6a) Decide targeting like backend (OR => single device by default)
+const logic = (node?.data?.logic || 'or').toLowerCase();
+let whichDeviceId = '';
+let broadcast = false;
+if (logic === 'or' && deviceIds.length > 1) {
+  whichDeviceId = String(deviceIds[0]);
+  if (event && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+    whichDeviceId = '';
+    broadcast = true;
+  }
+}
 
-                    try {
-                      const res = await fetch(
-                        `/apps/api/${appId}/testFlow?access_token=${token}`, {
-                          method:  "POST",
-                          headers: { 'Content-Type':'application/json' },
-                          body:    JSON.stringify(payload)
-                        }
-                      );
-                      if (!res.ok) throw new Error(await res.text());
-                      const result = await res.json();
-                      logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
-                    }
-                    catch (err) {
-                      logAction(`❌ Test failed: ${err}`, "error");
-                    }
-                  };
+// 7) Build payload
+const payload = { fname: flow, flow, value: val, dryRun, deviceIds, whichDeviceId, broadcast };
+
+// Log actual targeted count
+const targetedCount = broadcast ? deviceIds.length : (whichDeviceId ? 1 : deviceIds.length);
+logAction(`▶️ Running flow "${flow}"${dryRun ? " (dry run)" : ""} on ${targetedCount} device(s) with value "${val}"`, "info");
+
+try {
+  const res = await fetch(`/apps/api/${appId}/testFlow?access_token=${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  // Robust parse: allow empty 200s without exploding
+  const txt = await res.text();
+  let result = {};
+  if (txt && txt.trim().length) {
+    try { result = JSON.parse(txt); } catch (e) {
+      throw new Error(`Non-JSON response (${res.status}): ${txt}`);
+    }
+  } else {
+    // Empty 200 => treat as ok; backend may have updated handlers without body
+    result = { ok: true, note: "Empty body" };
+  }
+
+  if (!res.ok || result?.ok === false) {
+    throw new Error(result?.error || `HTTP ${res.status}`);
+  }
+  logAction(`✅ Test successful: ${JSON.stringify(result)}`, "info");
+} catch (err) {
+  logAction(`❌ Test failed: ${err}`, "error");
+}};
                 })
                 .catch(err => {
                   console.error("Error fetching logging settings:", err);
@@ -7130,7 +7251,16 @@ updateMultiSelectUI();
           }
 
           if (evt.source === 'LOCATION' && evt.name === 'feTrace') {
-            const type = String(evt.value || '').toLowerCase();     // "start" | "step" | "end"
+            
+            // --- feVars/varsUpdated -> refresh variable inspector (editor won't rely on feTrace mirror) ---
+            if (String(evt.name || '').toLowerCase() === 'fevars' &&
+                String(evt.value || '').toLowerCase() === 'varsupdated') {
+              try { if (typeof refreshVarsAndInspector === 'function') refreshVarsAndInspector(); } catch(_) {}
+              // Soft-nudge minimap/tiles for any live status widgets
+              try { if (typeof window.renderMinimapOnce === 'function') window.renderMinimapOnce(); } catch(_) {}
+              return;
+            }
+const type = String(evt.value || '').toLowerCase();     // "start" | "step" | "end"
             const desc = String(evt.descriptionText || '');
             const m = desc.match(/\bfor\s+([^\s]+\.json)\b/i);       // may be absent (ok)
             const flowFromDesc = m ? m[1].toLowerCase() : '';
@@ -7262,7 +7392,7 @@ async function __fe_handleLastTraceFile(){
         // 3) Load and normalize FE_lasttrace.json to an array of runs
         let resp;
         try {
-          const u = `/local/FE_lasttrace.json?ts=${Date.now()}`;
+          const u = `/local/FE_flowtrace.json?ts=${Date.now()}`;
           const r = await fetch(u, { cache: 'no-store' });
           const t = await r.text();
           resp = JSON.parse(t);
@@ -7279,8 +7409,8 @@ async function __fe_handleLastTraceFile(){
 
         // Most recent by last-step timestamp
         runs.sort((a,b) => {
-          const ta = (a.steps && a.steps.length) ? (a.steps[a.steps.length - 1].timestamp || 0) : 0;
-          const tb = (b.steps && b.steps.length) ? (b.steps[b.steps.length - 1].timestamp || 0) : 0;
+          const ta = (a.steps && a.steps.length) ? (a.steps[a.steps.length - 1].ts || 0) : 0;
+          const tb = (b.steps && b.steps.length) ? (b.steps[b.steps.length - 1].ts || 0) : 0;
           return tb - ta;
         });
 
@@ -7318,7 +7448,7 @@ async function __fe_handleLastTraceFile(){
         }
 
         // Optional: update "Last Run" label if timestamp is present (your existing pattern)
-        const ts = completed.timestamp || (completed.runId && /^\d{13}/.test(completed.runId) ? parseInt(String(completed.runId).split('_')[0], 10) : null);
+        const ts = completed.ts || (completed.runId && /^\d{13}/.test(completed.runId) ? parseInt(String(completed.runId).split('_')[0], 10) : null);
         if (ts) {
           const d = new Date(ts);
           const el = document.getElementById('lastRunLine');
@@ -7482,7 +7612,7 @@ function hideTestUI() {
             }
             break;
 
-          // ── Device Action: need device(s) and a command ────────────────────────
+          // ── Device Action: need device and a command ────────────────────────
           case "device":
             const devs = Array.isArray(data.deviceIds)
               ? data.deviceIds
@@ -8382,21 +8512,27 @@ function nodeIdFromEl(el) {
         
     try{ window.__autoRefresh = true; if (typeof window.beginDirtySuppression==='function') window.beginDirtySuppression(1500, 'interval'); }catch(_){ }
     try {
-          const traces = (await (async ()=>{  const u=`/local/FE_lasttrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
+          const traces = (await (async ()=>{  const u=`/local/FE_flowtrace.json?ts=${Date.now()}`;  const r=await fetch(u,{cache:'no-store'});  const t=await r.text();  try{ return JSON.parse(t); }catch(_){ try{ logAction('FlowTrace parse error','warn'); }catch(e){}; return []; }})()) ;
           const list = Array.isArray(traces) ? traces : (traces && Array.isArray(traces.flows) ? traces.flows : []);
           const runs = list.filter(t => String(t.flowFile || '').toLowerCase() === flowFile);
           if (!runs.length) return;
 
           // Choose most recent
           runs.sort((a,b) => {
-            const aLast = (a.steps && a.steps.length) ? (a.steps[a.steps.length-1].timestamp || 0) : 0;
-            const bLast = (b.steps && b.steps.length) ? (b.steps[b.steps.length-1].timestamp || 0) : 0;
+            const aLast = (a.steps && a.steps.length) ? (a.steps[a.steps.length-1].ts || 0) : 0;
+            const bLast = (b.steps && b.steps.length) ? (b.steps[b.steps.length-1].ts || 0) : 0;
             if (bLast !== aLast) return bLast - aLast;
-            const ta = (a.timestamp ?? (a.runId && /^\d{13}/.test(a.runId) ? parseInt(a.runId,10) : 0)) | 0;
-            const tb = (b.timestamp ?? (b.runId && /^\d{13}/.test(b.runId) ? parseInt(b.runId,10) : 0)) | 0;
+            const ta = (a.ts ?? (a.runId && /^\d{13}/.test(a.runId) ? parseInt(a.runId,10) : 0)) | 0;
+            const tb = (b.ts ?? (b.runId && /^\d{13}/.test(b.runId) ? parseInt(b.runId,10) : 0)) | 0;
             return tb - ta;
           });
           const run = runs[0];
+          // If this run is marked finished, stop polling to avoid repainting
+          if (run && (run.finished === true)) {
+            try { clearInterval(flowTracePollInterval); } catch(_) {}
+            window.flowTracePollingActive = false;
+          }
+
 
           // Paint LIVE
           highlightFlowPath(run, true);
@@ -11192,7 +11328,7 @@ if (typeof window.beginDirtySuppression !== 'function') {
 async function __fe_fetchLastTraceFlexible() {
   const urls = [
     `/local/FE_lastTrace.json?ts=${Date.now()}`,
-    `/local/FE_lasttrace.json?ts=${Date.now()}`
+    `/local/FE_flowtrace.json?ts=${Date.now()}`
   ];
   let lastErr = null;
   for (const u of urls) {
@@ -11317,7 +11453,7 @@ window.__fe_handleLastTraceFile = async function(){
     // Always read FE_lasttrace.json
     let resp;
     try {
-      const r = await fetch(`/local/FE_lasttrace.json?ts=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`/local/FE_flowtrace.json?ts=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) { (window.logAction||console.error)(`HTTP ${r.status} loading FE_lasttrace.json`); return; }
       const txt = await r.text();
       resp = JSON.parse(txt);
@@ -12185,106 +12321,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </style>
 
 
-<script id="feMinimapDrag">
-(function setupMinimapDrag(){
-  const mm = document.getElementById('minimap-container');
-  const canvas = document.getElementById('minimap-canvas');
-  if (!mm || !canvas) return;
 
-  // Keep cursor as a hand while hovering; closed hand while dragging
-  let dragging = false;
-  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
-  let activePointerId = null;
-
-  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
-  function bounds(){
-    return { vw: window.innerWidth, vh: window.innerHeight, mw: mm.offsetWidth, mh: mm.offsetHeight };
-  }
-  function wantsDragTarget(t){
-    // allow drag on container or canvas; ignore inner label
-    return t && (t.id === 'minimap-container' || t.id === 'minimap-canvas');
-  }
-
-  // Hover hand
-  mm.addEventListener('pointerenter', () => { if (!dragging) mm.style.cursor = 'grab'; });
-  mm.addEventListener('pointerleave', () => { if (!dragging) mm.style.cursor = 'grab'; });
-
-  // Begin drag
-  mm.addEventListener('pointerdown', (e) => {
-    if (!wantsDragTarget(e.target) || e.button !== 0) return; // left button only
-    dragging = true;
-    activePointerId = e.pointerId;
-    try { mm.setPointerCapture(activePointerId); } catch(_) {}
-    mm.style.cursor = 'grabbing';
-    startX = e.clientX; startY = e.clientY;
-    // When positioned via bottom/right, offsetLeft/Top are still usable; we will switch to left/top.
-    startLeft = mm.offsetLeft; startTop = mm.offsetTop;
-    e.preventDefault();
-  });
-
-  // Drag move
-  window.addEventListener('pointermove', (e) => {
-    if (!dragging || e.pointerId !== activePointerId) return;
-    const { vw, vh, mw, mh } = bounds();
-    let left = startLeft + (e.clientX - startX);
-    let top  = startTop  + (e.clientY - startY);
-    // Clamp inside viewport
-    left = clamp(left, 0, Math.max(0, vw - mw));
-    top  = clamp(top,  0, Math.max(0, vh - mh));
-    // Switch to left/top positioning and release bottom/right
-    mm.style.left = left + 'px';
-    mm.style.top  = top  + 'px';
-    mm.style.right = 'auto';
-    mm.style.bottom = 'auto';
-  });
-
-  function stopDrag(e){
-    if (!dragging) return;
-    dragging = false;
-    if (e && e.pointerId === activePointerId) {
-      try { mm.releasePointerCapture(activePointerId); } catch(_) {}
-    }
-    activePointerId = null;
-    // remain a hand while hovering
-    mm.style.cursor = 'grab';
-    const rect = mm.getBoundingClientRect();
-    try {
-      localStorage.setItem('fe_minimap_pos', JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }));
-    } catch(_) {}
-  }
-
-  window.addEventListener('pointerup', stopDrag);
-  window.addEventListener('pointercancel', stopDrag);
-  window.addEventListener('blur', stopDrag);
-
-  // Keep inside viewport after resize and persist new clamped pos
-  window.addEventListener('resize', () => {
-    const { vw, vh, mw, mh } = bounds();
-    const rect = mm.getBoundingClientRect();
-    const left = clamp(rect.left, 0, Math.max(0, vw - mw));
-    const top  = clamp(rect.top,  0, Math.max(0, vh - mh));
-    mm.style.left = left + 'px';
-    mm.style.top  = top  + 'px';
-    mm.style.right = 'auto';
-    mm.style.bottom = 'auto';
-    try { localStorage.setItem('fe_minimap_pos', JSON.stringify({ left, top })); } catch(_) {}
-  });
-
-  // Restore saved position (if present)
-  try {
-    const raw = localStorage.getItem('fe_minimap_pos');
-    if (raw) {
-      const pos = JSON.parse(raw);
-      if (typeof pos.left === 'number' && typeof pos.top === 'number') {
-        mm.style.left = pos.left + 'px';
-        mm.style.top  = pos.top  + 'px';
-        mm.style.right = 'auto';
-        mm.style.bottom = 'auto';
-      }
-    }
-  } catch(_) {}
-})();
-</script>
 
 <style id="feQuickNodeMenuCSS">
 #quickNodeMenu {
@@ -12868,41 +12905,47 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // --- keep box within viewport ---
   (function clampDrag(){
-    let dragging=false, sx=0, sy=0, sl=0, st=0;
-    function clamp(left, top){
-      const vpW = window.innerWidth, vpH = window.innerHeight;
-      const r = box.getBoundingClientRect();
-      const w = r.width, h = r.height;
-      return {
-        left: Math.min(Math.max(left, 0), Math.max(0, vpW - w)),
-        top:  Math.min(Math.max(top,  0), Math.max(0, vpH - h))
-      };
-    }
-    box.addEventListener('pointerdown', e=>{
-      if (e.button!==0) return;
-      dragging=true; sx=e.clientX; sy=e.clientY;
-      const r=box.getBoundingClientRect(); sl=r.left; st=r.top;
-      try{ box.setPointerCapture(e.pointerId); }catch(_){}
-      box.style.cursor='grabbing';
-    });
-    box.addEventListener('pointermove', e=>{
-      if(!dragging) return;
-      const dx=e.clientX-sx, dy=e.clientY-sy;
-      const p=clamp(sl+dx, st+dy);
-      box.style.left=p.left+'px'; box.style.top=p.top+'px';
-      box.style.right='auto'; box.style.bottom='auto';
-    });
-    box.addEventListener('pointerup', e=>{
-      if(!dragging) return; dragging=false;
-      try{ box.releasePointerCapture(e.pointerId); }catch(_){}
-      box.style.cursor='grab';
-    });
-    window.addEventListener('resize', ()=>{
-      const r=box.getBoundingClientRect();
-      const p=clamp(r.left, r.top);
-      box.style.left=p.left+'px'; box.style.top=p.top+'px';
-    });
-  })();
+  const box = document.getElementById('minimap-container');
+  const handle = document.getElementById('minimap-drag-handle');
+  if (!box || !handle) return;
+  let dragging=false, sx=0, sy=0, sl=0, st=0;
+
+  function clamp(left, top){
+    const vpW = window.innerWidth, vpH = window.innerHeight;
+    const r = box.getBoundingClientRect();
+    const w = r.width, h = r.height;
+    return {
+      left: Math.min(Math.max(left, 0), Math.max(0, vpW - w)),
+      top:  Math.min(Math.max(top,  0), Math.max(0, vpH - h))
+    };
+  }
+
+  handle.addEventListener('pointerdown', e=>{
+    if (e.button!==0) return;
+    dragging=true; sx=e.clientX; sy=e.clientY;
+    const r=box.getBoundingClientRect(); sl=r.left; st=r.top;
+    try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+    handle.style.cursor='grabbing';
+    e.stopPropagation(); e.preventDefault();
+  });
+  window.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    const p=clamp(sl+dx, st+dy);
+    box.style.left=p.left+'px'; box.style.top=p.top+'px';
+    box.style.right='auto'; box.style.bottom='auto';
+  });
+  window.addEventListener('pointerup', e=>{
+    if(!dragging) return; dragging=false;
+    try{ handle.releasePointerCapture(e.pointerId); }catch(_){}
+    handle.style.cursor='grab';
+  });
+  window.addEventListener('resize', ()=>{
+    const r=box.getBoundingClientRect();
+    const p=clamp(r.left, r.top);
+    box.style.left=p.left+'px'; box.style.top=p.top+'px';
+  });
+})();
 
   // --- helpers ---
   const getEd = ()=> window.editor || null;
@@ -13022,6 +13065,128 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+
+
+
+
+<script id="feMinimapDrag">
+(function setupMinimapDrag(){
+  const mm = document.getElementById('minimap-container');
+  const handle = document.getElementById('minimap-drag-handle');
+  if (!mm || !handle) return;
+
+  let dragging=false, sx=0, sy=0, sl=0, st=0, pid=null;
+  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+  function bounds(){ return { vw: window.innerWidth, vh: window.innerHeight, mw: mm.offsetWidth, mh: mm.offsetHeight }; }
+
+  handle.addEventListener('pointerdown', e=>{
+    if (e.button!==0) return;
+    dragging=true; sx=e.clientX; sy=e.clientY; sl=mm.offsetLeft; st=mm.offsetTop; pid=e.pointerId;
+    try{ handle.setPointerCapture(pid); }catch(_){}
+    handle.style.cursor='grabbing';
+    e.stopPropagation(); e.preventDefault();
+  });
+
+  window.addEventListener('pointermove', e=>{
+    if (!dragging || e.pointerId!==pid) return;
+    const {vw,vh,mw,mh}=bounds();
+    let left=sl+(e.clientX-sx), top=st+(e.clientY-sy);
+    left=clamp(left,0,Math.max(0,vw-mw)); top=clamp(top,0,Math.max(0,vh-mh));
+    mm.style.left=left+'px'; mm.style.top=top+'px';
+    mm.style.right='auto'; mm.style.bottom='auto';
+  }, {passive:false});
+
+  function stop(e){
+    if(!dragging) return; dragging=false;
+    if(e && e.pointerId===pid){ try{ handle.releasePointerCapture(pid);}catch(_){} }
+    handle.style.cursor='grab'; pid=null;
+  }
+  window.addEventListener('pointerup', stop);
+  window.addEventListener('pointercancel', stop);
+  window.addEventListener('blur', stop);
+})();
+</script>
+
+
+
+<script id="feMinimapGuard">
+(function(){
+  const mm = document.getElementById('minimap-container');
+  const handle = document.getElementById('minimap-drag-handle');
+  if (!mm) return;
+  mm.addEventListener('pointerdown', function(e){
+    if (!handle) return;
+    const inHandle = e.target === handle || (handle.contains && handle.contains(e.target));
+    if (!inHandle) {
+      // Let the event reach the canvas for pan, but NEVER start container dragging
+      // Prevent any legacy handler on mm itself from seeing it.
+      e.stopImmediatePropagation && e.stopImmediatePropagation();
+    }
+  }, {capture:true});
+})();
+</script>
+
+
+<script id="feMinimapHardGuard">
+(function(){
+  const DOC = document;
+  function within(el, parent){
+    try { return !!(parent && el && (el===parent || parent.contains(el))); } catch(_) { return false; }
+  }
+  function get(id){ return document.getElementById(id); }
+
+  function onPointerDownCapture(e){
+    const mm = get('minimap-container');
+    if (!mm) return;
+    const handle = get('minimap-drag-handle');
+    const canvas = get('minimap-canvas');
+    const tgt = e.target;
+
+    if (!within(tgt, mm)) return; // not inside minimap
+
+    const inHandle = !!(handle && within(tgt, handle));
+    const inCanvas = !!(canvas && within(tgt, canvas));
+
+    // Allow: handle (for dragging the box) or canvas (for magic-pan)
+    if (inHandle || inCanvas) return;
+
+    // Block everything else inside the minimap from starting container drags.
+    try {
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      e.preventDefault();
+    } catch(_) {}
+  }
+
+  // Install once
+  if (!DOC.__feMinimapHardGuardInstalled){
+    DOC.__feMinimapHardGuardInstalled = true;
+    DOC.addEventListener('pointerdown', onPointerDownCapture, {capture:true});
+  }
+})();
+</script>
+
+
+<script id="feLastTraceHandlerFix">
+(function(){
+  function fetchLastTrace(){
+    try{
+      return fetch('/local/FE_flowtrace.json?ts=' + Date.now(), {cache:'no-store'})
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(json => { window.__feHandleLastTrace && window.__feHandleLastTrace(json); })
+        .catch(e => console.warn('[FE] Last Trace fetch failed:', e && e.message || e));
+    }catch(e){ console.warn('[FE] Last Trace fetch error:', e); }
+  }
+  const btn = document.getElementById('lastTraceBtn');
+  if (btn && !btn.__feBound){
+    btn.__feBound = true;
+    btn.addEventListener('click', function(e){ e.preventDefault(); fetchLastTrace(); });
+  }
+  // expose for other code paths
+  window.__fe_fetchLastTraceFlexible = fetchLastTrace;
+})();
+</script>
+
 </body>
 </html>
-
