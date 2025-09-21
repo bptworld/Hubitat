@@ -251,12 +251,14 @@ def notifyVarsUpdated(String scope, String flowName=null) {
     try {
         String flowFile = (scope == 'global') ? null : (_bareFlow(flowName ?: scope) + '.json')
         sendLocationEvent(
-            name: "feVars",                     // separate channel from feTrace
+            name: "feVars",
             value: "varsUpdated",
             descriptionText: "Vars updated for " + (flowFile ?: "GLOBAL"),
             data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now(), sourceAppId: app?.id, sourceAppName: app?.name]),
             isStateChange: true
         )
+        // NEW: wake up any editor still listening on feTrace
+        _broadcastVarsPingCompat(flowFile)
     } catch (e) {
         log.warn "notifyVarsUpdated failed: $e"
     }
@@ -501,32 +503,83 @@ def apiTestFlow() {
 
         devIds.each { devId ->
             if (devId == "__time__") {
-                // (existing time test code)
-                Date testDate = new Date()
-                def parts = value.tokenize(':')
-                if (parts.size() == 2) {
-                    testDate.hours   = parts[0].toInteger()
-                    testDate.minutes = parts[1].toInteger()
-                }
-                // Build a realistic time event:
-// If testing sunrise/sunset on a timeOfDay trigger, emit evt.name as 'sunrise'/'sunset'
-String attr = (node.data.attribute ?: "").toString()
-String vstr = (value ?: "").toString()
-String ename = attr
-if (attr.equalsIgnoreCase("timeOfDay")) {
-    String low = vstr.toLowerCase()
-    if (low in ["sunrise","sunset"]) {
-        ename = low   // route only to matching flows
-    }
-}
-def evt = [
-    name:           ename,
-    value:          vstr,
-    date:           testDate,
-    descriptionText:"Simulated time trigger at ${value}"
-]
-handleEvent(evt, fname)
-            }
+				// (existing time test code)
+				Date testDate = new Date()
+				def parts = value?.toString()?.tokenize(':') ?: []
+				if (parts.size() == 2) {
+					testDate.hours   = parts[0].toInteger()
+					testDate.minutes = parts[1].toInteger()
+				}
+
+				// Build a realistic time event name for sunrise/sunset testing
+				String attr = (node.data.attribute ?: "").toString()
+				String vstr = (value ?: "").toString()
+				String ename = attr
+				if (attr.equalsIgnoreCase("timeOfDay")) {
+					String low = vstr.toLowerCase()
+					if (low in ["sunrise","sunset"]) {
+						ename = low   // route only to matching flows
+					}
+				}
+
+				// Resolve attribute: prefer configured, else infer 'pushed' for numeric button devices
+				attr = (node.data.attribute?.toString() ?: "").trim()
+				if (!attr) {
+					// We’ll infer button-style only if the node’s devices support it later
+					attr = 'switch'
+				}
+
+				// === NEW: pick target devices to "really press" AND to send simulated events for tracing ===
+				// Priority: testDeviceIds (explicit for testing) -> deviceIds except "__time__"
+				List<String> targetIds = []
+				if (node?.data?.testDeviceIds instanceof List && node.data.testDeviceIds) {
+					targetIds = node.data.testDeviceIds.collect { it?.toString() }
+				} else if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
+					targetIds = node.data.deviceIds.collect { it?.toString() }.findAll { it && it != "__time__" }
+				}
+
+				// If this looks like a button action and we have targets, press each and feed a matching event
+				boolean isButtonAttr = (attr in ['pushed','held','released']) || _isNumeric(value)
+				if (isButtonAttr && targetIds) {
+					// If attr was still 'switch' but value looks numeric and device supports pushed, flip to 'pushed'
+					targetIds.each { tid ->
+						def device = getDeviceById(tid)
+						if (!device) return
+
+						String effectiveAttr = attr
+						if (!(effectiveAttr in ['pushed','held','released'])) {
+							if (_isNumeric(value) && (device?.supportedAttributes?.any { it?.name in ['pushed','button'] })) {
+								effectiveAttr = 'pushed'
+							}
+						}
+
+						// 1) Really press/hold/release (no-op in dryRun)
+						if (effectiveAttr in ['pushed','held','released']) {
+							_fireRealButtonIfSupported(device, effectiveAttr, value, dryRun, fname)
+						}
+
+						// 2) Feed a per-device simulated event so Flow Trace follows the *button device*
+						def devEvt = [
+							device      : device,
+							deviceId    : tid,
+							name        : effectiveAttr,
+							value       : value,
+							descriptionText: "Simulated ${effectiveAttr} → ${value}"
+						]
+						handleEvent(devEvt, fname)
+					}
+					// Done: we used device-targeted events so the trace will match by deviceId and light the path.
+					return
+				}
+
+				// Fallback: no button targets → keep your original time test path (trace still works for timeOfDay)
+				def timeEvt = [
+					name           : ename,
+					value          : vstr,
+					descriptionText: "Simulated ${ename} → ${vstr}"
+				]
+				handleEvent(timeEvt, fname)
+			}
             else if (devId == "__variable__") {
                 // New: Simulate a variable event for testing
                 def evt = [
@@ -537,18 +590,32 @@ handleEvent(evt, fname)
                 handleEvent(evt, fname)
             }
             else {
-                // (existing device test logic)
-                def device = getDeviceById(devId)
-                if (!device) return
+				// DEVICE TEST (make it a real press and trace it)
+				def device = getDeviceById(devId)
+				if (!device) return
 
-                def evt = [
-                    device:         device,
-                    name:           node.data.attribute,
-                    value:          value,
-                    descriptionText:"Simulated ${node.data.attribute} → ${value}"
-                ]
-                handleEvent(evt, fname)
-            }
+				// Resolve attribute: prefer configured, else infer 'pushed' for numeric button devices
+				String attr = (node.data.attribute?.toString() ?: "").trim()
+				if (!attr) {
+					if (_isNumeric(value) && (device?.supportedAttributes?.any { it?.name in ['pushed','button'] })) attr = 'pushed'
+					else attr = 'switch'
+				}
+
+				// Really press/hold/release if supported (no-op in dryRun)
+				if (attr in ['pushed','held','released']) {
+					_fireRealButtonIfSupported(device, attr, value, dryRun, fname)
+				}
+
+				// IMPORTANT: include deviceId so Flow Trace follows this device path
+				def evt = [
+					device         : device,
+					deviceId       : devId,
+					name           : attr,
+					value          : value,
+					descriptionText: "Simulated ${attr} → ${value}"
+				]
+				handleEvent(evt, fname)
+			}
         }
     }
 
@@ -699,25 +766,19 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
             flowLog(fname, "In evaluateNode - eventTrigger", "debug")
 
             // 1) Read config
-            def expected = resolveVars(fname, node?.data?.value)
-            String logic = (node?.data?.logic?.toString() ?: "or").toLowerCase()
-            String comp  = (node?.data?.comparator ?: "==").toString()
+			def expected = resolveVars(fname, node?.data?.value)
+			String logic = (node?.data?.logic?.toString() ?: "or").toLowerCase()
+			String comp  = (node?.data?.comparator ?: "==").toString()
 
-            // 2) Device IDs (supports single deviceId or multi deviceIds)
-            List<String> devIds = []
-            if (node?.data?.deviceIds instanceof List && node.data.deviceIds) {
-                devIds = node.data.deviceIds.collect { it?.toString() }
-            } else if (node?.data?.deviceId) {
-                devIds = [ node.data.deviceId?.toString() ]
-            }
-            if (!devIds) {
-                flowLog(fname, "eventTrigger: no deviceIds configured", "warn")
-                return null
-            }
+			// 2) Device IDs
+			List<String> devIds = []
+			if (node?.data?.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds.collect { it?.toString() }
+			else if (node?.data?.deviceId)                                     devIds = [ node.data.deviceId?.toString() ]
+			if (!devIds) { flowLog(fname, "eventTrigger: no deviceIds configured", "warn"); return null }
 
-            // 3) Attribute: configured -> event name -> "switch"
-            String attr = (node?.data?.attribute?.toString()?.trim())
-            if (!attr) attr = evt?.name?.toString() ?: "switch"
+			// 3) Attribute (auto-resolve for button devices)
+			String attrCfg = (node?.data?.attribute?.toString()?.trim())
+			String attr    = _resolveAttrForButtons(devIds, attrCfg, expected, evt)
 
             // 4) Fast path: evaluate against the INCOMING EVENT first
             boolean pass = false
@@ -858,7 +919,7 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 							(getGlobalVar(varName)?.value)
 
 						passes = evaluateComparator(actual, expected, comparator ?: '==')
-						flowLog(fname, "Condition(variable): ${varName}=${actual} ${comparator ?: '=='} ${expected} ⇒ ${passes}", "debug")
+						flowLog(fname, "In evaluateNode - Condition(variable): ${varName}=${actual} ${comparator ?: '=='} expected: ${expected} ⇒ ${passes}", "debug")
 					}
 					// ── DEVICE branch: same logic you had before
 					else if (logic in ["and","all"]) {
@@ -1020,7 +1081,9 @@ def evaluateNode(fname, nodeId, evt, incomingValue = null, Set visited = null) {
 			if (testDryRun) {
 				flowLog(fname, "Dry Run: scope=${scope} name=${varName} value=${varValue}", "debug")
 			} else {
+				flowLog(fname, "In evaluateNode - setVariable - varType=${varType} varName=${varName} NEW varValue=${varValue}", "debug")
 				_saveVariableInternal(fname, scope, varName, varType, varValue)
+				notifyVarsUpdated(scope, scope == "flow" ? _bareFlow(fname) : null)
 			}
 
 			// continue downstream
@@ -1620,15 +1683,6 @@ def apiListVariables() {
     try {
         List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
         Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
-
-        def out = [globals: gvars, flows: fmap]
-        render contentType: "application/json", data: groovy.json.JsonOutput.toJson(out)
-    } catch (e) {
-        render status: 500, contentType: "application/json", data: '{"error":"vars list failed"}'
-    }
-    try {
-        List gvars = (atomicState.globalVars instanceof List) ? atomicState.globalVars : []
-        Map  fmap  = (atomicState.flowVars   instanceof Map ) ? atomicState.flowVars   : [:]
         def out = [globals: gvars, flows: fmap]
         render contentType: "application/json", data: groovy.json.JsonOutput.toJson(out)
     } catch (e) {
@@ -2208,7 +2262,7 @@ def getTriggerNodes(String fname, evt) {
     def flowObj   = state.activeFlows[fname]
     def dataNodes = flowObj.flow.drawflow?.Home?.data ?: [:]
 
-    // Mode triggers stay the same
+    // Mode triggers
     if (evt.name == "mode") {
         return dataNodes.findAll { id, node ->
             node.name == "eventTrigger" &&
@@ -2217,7 +2271,7 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-    // Schedule cron (Schedule node): route directly by matching cron text
+    // Schedule cron (Schedule node)
     if (evt?.name == "schedule") {
         return dataNodes.findAll { id, node ->
             try {
@@ -2229,25 +2283,21 @@ def getTriggerNodes(String fname, evt) {
         }
     }
 
-    // Everything else: device, time, and variable triggers
+    // Device, time, and variable triggers
     return dataNodes.findAll { id, node ->
         if (node.name != "eventTrigger") return false
 
-        // Gather device IDs (could be a single or many)
-        def devIds = []
-        if (node.data.deviceIds instanceof List && node.data.deviceIds) {
-            devIds = node.data.deviceIds
-        } else if (node.data.deviceId) {
-            devIds = [ node.data.deviceId ]
-        }
+        // Gather device IDs (single or many)
+        List<String> devIds = []
+        if (node.data.deviceIds instanceof List && node.data.deviceIds) devIds = node.data.deviceIds.collect { it?.toString() }
+        else if (node.data.deviceId)                                     devIds = [ node.data.deviceId?.toString() ]
 
-        // 1) Time-based: "__time__" triggers
+        // 1) Time-based: "__time__"
         if (devIds.contains("__time__")) {
             String attr   = (node.data.attribute ?: "").toString()
             def expected  = node.data.value
             String evName = (evt?.name ?: "").toString().toLowerCase()
 
-            // Only treat as time event if the incoming event is actually a time signal
             if (evName in ["sunrise","sunset"]) {
                 boolean attrOk = attr.equalsIgnoreCase("timeOfDay") || attr.equalsIgnoreCase(evName)
                 boolean valOk
@@ -2256,29 +2306,41 @@ def getTriggerNodes(String fname, evt) {
                 } else {
                     valOk = (expected?.toString()?.toLowerCase() == evName)
                 }
-                if (attrOk && valOk) {
-                    return true
-                }
+                if (attrOk && valOk) return true
             } else if (attr == evt.name) {
-                // For other time attrs like currentTime/dayOfWeek we only match exact attr name
+                // currentTime/dayOfWeek exact attr match
                 return true
             }
-            // Otherwise, do not route this non-time event to a time trigger
+            return false
         }
-        // 2) Variable-based: "__variable__" triggers
+
+        // 2) Variable-based: "__variable__"
         if (devIds.contains("__variable__")) {
             def varName = node.data.variableName ?: node.data.varName ?: node.data.attribute
-            if (varName == evt.name) {
-                return true
-            }
+            return (varName == evt.name)
         }
 
-        // 3) Real device: must have evt.device and attribute match
-        if (evt.device && devIds.contains(evt.device.id.toString()) && node.data.attribute == evt.name) {
-            return true
+        // 3) DEVICE-based (NEW): match by deviceId + attribute (incl. buttons)
+        String evtDevId = (evt?.deviceId?.toString() ?: "")
+        if (!evtDevId && evt?.device) {
+            String resolved = getDeviceIdByLabel(evt.device?.toString())
+            if (resolved) evtDevId = resolved
         }
+        if (!evtDevId) return false
+        if (!devIds?.contains(evtDevId)) return false
 
-        return false
+        // Resolve attribute (auto-resolve for button devices if needed)
+        String attrCfg = (node?.data?.attribute?.toString()?.trim())
+        def expected   = node?.data?.value
+        String attr    = _resolveAttrForButtons(devIds, attrCfg, expected, evt)
+
+        // Require name match (pushed/held/released/etc). Keep timeOfDay compat if set oddly.
+        boolean nameMatch =
+            attr?.equalsIgnoreCase(evt?.name?.toString() ?: "") ||
+            (attr?.equalsIgnoreCase("timeOfDay") &&
+             ["sunrise","sunset"].contains((evt?.name ?: "").toString().toLowerCase()))
+
+        return nameMatch
     }
 }
 
@@ -2451,6 +2513,7 @@ def getVarValue(fname, vname) {
 }
 
 def setVariable(String fname, String varName, def varValue) {
+	flowLog(fname, "In setVariable: varName: ${varName} - varValue: ${varValue}", "debug")
     String name = (varName ?: "").toString().trim()
     if (!name) {
         log.warn "setVariable: blank name; ignoring"
@@ -2949,7 +3012,6 @@ private String currentTimePseudoValue(String attr) {
     }
 }
 
-
 def traceWatchdog() {
     boolean anyRunning = (state.activeFlows ?: [:]).values().any { fo ->
         fo?.isRunning && fo?._live?.runId
@@ -2963,5 +3025,69 @@ def traceWatchdog() {
                 log.debug "Watchdog cleared FE_flowtrace.json (no active runs)"
             }
         } catch (e) { log.warn "Watchdog clear failed: ${e}" }
+    }
+}
+
+private void _broadcastVarsPingCompat(String flowFile) {
+    try {
+        // Back-compat ping on feTrace so older editors refresh their side-panels
+        sendLocationEvent(
+            name: "feTrace",
+            value: "varsUpdated",
+            descriptionText: "Vars updated (compat) for " + (flowFile ?: "GLOBAL"),
+            data: groovy.json.JsonOutput.toJson([type:"varsUpdated", flowFile:flowFile, ts:now(), source:"compat"])
+        )
+    } catch (e) {
+        log.warn "_broadcastVarsPingCompat failed: $e"
+    }
+}
+
+private boolean _isNumeric(val) {
+    try { "${val}".toBigDecimal(); return true } catch(e) { return false }
+}
+private boolean _looksLikeButtonExpected(def expected) {
+    if (expected instanceof List) return expected.every { _isNumeric(it) }
+    return _isNumeric(expected)
+}
+private String _resolveAttrForButtons(List devIds, String attrCfg, def expected, def evt) {
+    String base = (attrCfg ?: evt?.name?.toString() ?: "").trim()
+    if (!base || base.equalsIgnoreCase("switch")) {
+        boolean looksButton = _looksLikeButtonExpected(expected) || _isNumeric(evt?.value)
+        if (looksButton) {
+            boolean supports = devIds?.any { id ->
+                try { getDeviceById(id)?.supportedAttributes?.any { it?.name in ['pushed','button'] } } catch(e){ false }
+            }
+            if (supports) return 'pushed'
+        }
+    }
+    return base ?: "switch"
+}
+
+private void _fireRealButtonIfSupported(def device, String attr, def rawVal, boolean dryRun, String fnameLog) {
+    if (!device || dryRun) return
+    Integer btn = null
+    try {
+        btn = (rawVal != null && rawVal.toString().isInteger()) ? rawVal.toString().toInteger() : null
+    } catch (ignored) {}
+    if (!btn) return
+
+    try {
+        if (attr?.equalsIgnoreCase('pushed') && device.hasCommand('push')) {
+            device.push(btn)
+            flowLog(fnameLog, "Test pressed: ${device} push(${btn})", "debug")
+        } else if (attr?.equalsIgnoreCase('held') && device.hasCommand('hold')) {
+            device.hold(btn)
+            flowLog(fnameLog, "Test held: ${device} hold(${btn})", "debug")
+        } else if (attr?.equalsIgnoreCase('released')) {
+            if (device.hasCommand('release')) {
+                device.release(btn)
+                flowLog(fnameLog, "Test released: ${device} release(${btn})", "debug")
+            } else if (device.hasCommand('buttonRelease')) {
+                device.buttonRelease(btn)
+                flowLog(fnameLog, "Test released: ${device} buttonRelease(${btn})", "debug")
+            }
+        }
+    } catch (e) {
+        flowLog(fnameLog, "Test button command failed: ${e}", "warn")
     }
 }
