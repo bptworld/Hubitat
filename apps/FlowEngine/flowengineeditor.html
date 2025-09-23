@@ -506,6 +506,32 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #minimap-drag-handle { pointer-events: auto !important; cursor: grab !important; }
 </style>
 
+<style id="feMinimapHandleOnlyPE_v2">
+  /* Hard guarantee: container never receives pointer events directly.
+     Only the drag handle and canvas are interactive. */
+  #minimap-container { pointer-events: none !important; }
+  #minimap-drag-handle, #minimap-canvas { pointer-events: auto !important; }
+</style>
+<style id="feMinimapTooltipCSS">
+  #minimap-container #minimap-tooltip{
+    position:absolute; left:0; top:0;
+    transform: translate(8px, 8px);
+    background: rgba(20,20,20,0.92);
+    color: #eee;
+    border: 1px solid #444;
+    padding: 4px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 5;
+    max-width: 210px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+</style>
 </head>
 <body>
 <div id="headline">
@@ -1123,7 +1149,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   let inFlight = false;
   let pending  = false;
   let lastAt   = 0;
-  const MIN_MS = 800;
+  const MIN_MS = 0;
   const MAX_MS = 3000;
   let timerId = 0;
 
@@ -13188,5 +13214,237 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+<script id="feMinimapHandleOnlyGuard_v2">
+(function(){ 
+  var mm = document.getElementById('minimap-container');
+  var handle = document.getElementById('minimap-drag-handle');
+  var canvas = document.getElementById('minimap-canvas');
+  if (!mm || !handle) return;
+
+  function within(el, parent){ try { return !!(parent && el && (el===parent || parent.contains(el))); } catch(_){
+    return false; } }
+
+  // Capture-phase guard on the container:
+  //  - Allow events if they begin on the HANDLE (for dragging the mini-map box)
+  //  - Allow events if they begin on the CANVAS (for navigating the main view)
+  //  - Block everything else inside the mini-map from bubbling to legacy listeners
+  ['pointerdown','mousedown','touchstart'].forEach(function(type){
+    mm.addEventListener(type, function(e){
+      var t = e.target;
+      var isHandle = within(t, handle);
+      var isCanvas = within(t, canvas);
+      if (isHandle) return;                 // allow handle drags
+      if (isCanvas) {                       // allow canvas interactions, but stop bubbling to container/document
+        try { e.stopPropagation(); } catch(_){}
+        return;
+      }
+      try { e.stopImmediatePropagation(); e.stopPropagation(); e.preventDefault(); } catch(_){}
+    }, true); // capture
+  });
+
+  // Also null out any inline container drag hooks if present
+  try { mm.onpointerdown = mm.onmousedown = mm.ontouchstart = null; } catch(_){}
+
+  // Cosmetic: cursors (handle only shows grab)
+  try { 
+    handle.style.cursor = 'grab';
+    if (canvas) canvas.style.cursor = canvas.style.cursor || 'crosshair';
+  } catch(_){}
+})();
+</script>
+<script id="feMinimapSyncTransform">
+(function(){
+  // Keep minimap rectangle (yellow box) perfectly in sync with main canvas transform.
+  function now(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  function renderSoon(){
+    try {
+      // render as soon as possible without throttling
+      if (typeof window.renderMinimapOnce === 'function') {
+        window.requestAnimationFrame(window.renderMinimapOnce);
+      } else if (typeof window.feMinimapRender === 'function') {
+        window.requestAnimationFrame(window.feMinimapRender);
+      } else if (typeof window.renderMinimap === 'function') {
+        window.requestAnimationFrame(window.renderMinimap);
+      }
+    } catch(_) {}
+  }
+
+  function hook(){
+    var pc = document.querySelector('#drawflow .precanvas');
+    if (!pc) return false;
+    if (pc.__feSyncMMO) return true;
+
+    // Observe style changes (especially transform) caused by pan/zoom
+    var mo = new MutationObserver(function(muts){
+      for (var i=0;i<muts.length;i++){
+        var m = muts[i];
+        if (m.type === 'attributes' && m.attributeName === 'style'){
+          // Any change to style (notably transform) should update the minimap rectangle
+          renderSoon();
+          break;
+        }
+      }
+    });
+    mo.observe(pc, { attributes:true, attributeFilter:['style'] });
+    pc.__feSyncMMO = mo;
+
+    // Also listen to custom/app-level pan events if present
+    ['wheel','pointermove','pointerdown','pointerup','keydown','keyup'].forEach(function(ev){
+      window.addEventListener(ev, renderSoon, {passive:true});
+    });
+
+    return true;
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', hook, {once:true});
+  } else {
+    hook();
+  }
+})();
+</script>
+<script id="feMinimapHoverTips">
+(function(){
+  var box  = document.getElementById('minimap-container');
+  var cvs  = document.getElementById('minimap-canvas');
+  if (!box || !cvs) return;
+
+  var tip = null;
+  function getTip(){
+    if (!tip){
+      tip = document.getElementById('minimap-tooltip');
+      if (!tip){
+        tip = document.createElement('div');
+        tip.id = 'minimap-tooltip';
+        tip.style.display = 'none';
+        box.appendChild(tip);
+      }
+    }
+    return tip;
+  }
+
+  cvs.__mmNodeBoxes = cvs.__mmNodeBoxes || [];
+
+  function safeLabel(s){
+    try { s = String(s==null?'':s); } catch(_){ s=''; }
+    s = s.replace(/\s+/g, ' ').trim();
+    return s || 'Node';
+  }
+
+  function computeBoxes(){
+    try {
+      var map = (typeof mapFns === 'function') ? mapFns() : null;
+      var pc  = (typeof getPC  === 'function') ? getPC()  : null;
+      if (!map || !pc) return;
+      var list = [];
+      var nodes = pc.querySelectorAll('.drawflow-node');
+      nodes.forEach(function(el){
+        var idAttr = (el.id || '').replace(/^node-/, '');
+        var x = parseFloat(el.style.left) || 0;
+        var y = parseFloat(el.style.top)  || 0;
+        var w = el.offsetWidth  || 180;
+        var h = el.offsetHeight || 60;
+        var p1 = map.w2m(x, y);
+        var p2 = map.w2m(x + w, y + h);
+        var mmx = Math.min(p1.x, p2.x);
+        var mmy = Math.min(p1.y, p2.y);
+        var mmw = Math.abs(p2.x - p1.x);
+        var mmh = Math.abs(p2.y - p1.y);
+
+        var label = idAttr;
+        try {
+          if (window.editor && typeof window.editor.getNodeFromId === 'function'){
+            var nd = editor.getNodeFromId(idAttr);
+            label = (nd && (nd.data && (nd.data.title || nd.data.label || nd.data.deviceLabel))) || (nd && nd.name) || idAttr;
+          }
+        } catch(_){}
+
+        list.push({ id:idAttr, x:mmx, y:mmy, w:mmw, h:mmh, label: safeLabel(label) });
+      });
+      cvs.__mmNodeBoxes = list;
+    } catch(e){}
+  }
+
+  (function(){
+    var origOnce = window.renderMinimapOnce;
+    window.renderMinimapOnce = function(){
+      try { if (typeof origOnce === 'function') origOnce.apply(this, arguments); } catch(_){}
+      computeBoxes();
+    };
+    var origRender = window.feMinimapRender || window.renderMinimap;
+    if (typeof origRender === 'function' && !origOnce){
+      var wrapped = function(){
+        try { origRender.apply(this, arguments); } finally { computeBoxes(); }
+      };
+      if (window.feMinimapRender) window.feMinimapRender = wrapped;
+      else window.renderMinimap = wrapped;
+    }
+  })();
+
+  (function(){
+    var pc = document.querySelector('#drawflow .precanvas');
+    if (!pc || pc.__mmHoverMo) return;
+    var mo = new MutationObserver(function(muts){
+      for (var i=0;i<muts.length;i++){
+        var m = muts[i];
+        if (m.type === 'attributes' && m.attributeName === 'style'){
+          computeBoxes();
+          break;
+        }
+      }
+    });
+    mo.observe(pc, { attributes:true, attributeFilter:['style'] });
+    pc.__mmHoverMo = mo;
+  })();
+
+  function hit(mx, my){
+    var arr = cvs.__mmNodeBoxes || [];
+    for (var i=arr.length-1; i>=0; i--){
+      var b = arr[i];
+      if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) return b;
+    }
+    return null;
+  }
+
+  function showTip(b, clientX, clientY){
+    var t = getTip();
+    if (!t || !b) { hideTip(); return; }
+    t.textContent = b.label;
+
+    var rect = box.getBoundingClientRect();
+    var x = clientX - rect.left + 10;
+    var y = clientY - rect.top  + 10;
+
+    var tw = t.offsetWidth  || 160;
+    var th = t.offsetHeight || 22;
+    var maxX = rect.width  - tw - 6;
+    var maxY = rect.height - th - 6;
+    if (x > maxX) x = maxX;
+    if (y > maxY) y = maxY;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+
+    t.style.left = x + 'px';
+    t.style.top  = y + 'px';
+    t.style.display = 'block';
+  }
+
+  function hideTip(){
+    if (tip) tip.style.display = 'none';
+  }
+
+  cvs.addEventListener('mousemove', function(e){
+    if (box.style.display === 'none') { hideTip(); return; }
+    var r = cvs.getBoundingClientRect();
+    var mx = e.clientX - r.left, my = e.clientY - r.top;
+    var b = hit(mx, my);
+    if (b) showTip(b, e.clientX, e.clientY);
+    else hideTip();
+  }, {passive:true});
+
+  cvs.addEventListener('mouseleave', hideTip, {passive:true});
+  try { computeBoxes(); } catch(_){}
+})();
+</script>
 </body>
 </html>
