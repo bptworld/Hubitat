@@ -182,7 +182,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       warn = document.createElement('div');
       warn.id = 'hubitatWarnBanner';
       warn.style.cssText = 'background:#ffc107;color:#111;padding:9px 22px;font-weight:bold;text-align:center;font-size:16px;border-bottom:2px solid #b8860b;';
-      warn.textContent = '⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.';
+      warn.innerHTML = '⚠️ Please enter both Hubitat App ID and Token to use the Flow Engine Editor. ⚠️<br>Go to the top left Hamburger menu - then enter your credentials at the bottom.';
       (document.getElementById('headline')||document.body).insertBefore(warn, (document.getElementById('headline')||document.body).firstChild);
     }
     warn.style.display = show ? 'block' : 'none';
@@ -333,12 +333,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   window.feAutoPanToContent = autoPan;
 })();
 </script>
-
-
-
-
-
-
 
 <style id="feMenuFitCSS">
   /* Prevent internal scrollbars; we will fit the panels instead */
@@ -532,6 +526,24 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
   }
 </style>
+<style id="feMinimapDockPinCSS">
+  /* Clickable corner mark in the mini-map's top-left */
+  #minimap-dock-pin{
+    position:absolute; left:6px; top:6px;
+    width:14px; height:14px; border-radius:4px;
+    background:rgba(0,0,0,.35); backdrop-filter: blur(2px);
+    box-shadow:0 1px 3px rgba(0,0,0,.35);
+    cursor:pointer; pointer-events:auto; z-index:2;
+  }
+  /* Draw a tiny "L" corner mark inside the square */
+  #minimap-dock-pin::after{
+    content:""; position:absolute; left:3px; top:3px;
+    width:7px; height:7px; border-left:2px solid #ffd54f; border-top:2px solid #ffd54f;
+    border-radius:1px;
+  }
+  #minimap-dock-pin:active{ transform:scale(0.96); }
+</style>
+
 </head>
 <body>
 <div id="headline">
@@ -636,7 +648,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.069</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.070</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
 <select id="hubitatFileDropdown"
               style="width:400px; display:inline-block; margin-left:20px;"
@@ -752,9 +764,68 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     style="position: fixed; bottom: 24px; right: 28px; width: 240px; height: 140px; background: #181d20cc; border-radius: 12px; z-index: 9999; box-shadow: 0 2px 10px #0008; border: 2px solid #444; overflow: hidden; display: none; touch-action: none;">
     <canvas id="minimap-canvas" width="240" height="140"></canvas>
     <div id="minimap-drag-handle" title="Drag minimap"
-         style="position:absolute;top:6px;right:6px;width:18px;height:18px;                border-radius:6px; background:#0008; color:#ddd;                display:flex;align-items:center;justify-content:center;                font-size:14px; line-height:1; cursor:grab; user-select:none;">≡</div>
+         style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:6px; background:#0008; color:#ddd;display:flex;align-items:center;justify-content:center;font-size:14px; line-height:1; cursor:grab; user-select:none;">≡</div>
+    <div id="minimap-dock-pin" title="Dock flow"></div>
     <div style="position:absolute;bottom:5px;right:10px;font-size:11px;color:#aaa;">Mini-map</div>
   </div>
+
+<script id="feMinimapPersist">
+(function(){
+  const KEY = 'fe_minimap_pos';
+  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+  function restore(){
+    try {
+      var mm = document.getElementById('minimap-container');
+      if (!mm) return;
+      var s = localStorage.getItem(KEY);
+      if (!s) return;
+      var pos = null;
+      try { pos = JSON.parse(s); } catch(_){ pos = null; }
+      if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return;
+      // clamp into current viewport
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var mw = mm.offsetWidth || 240, mh = mm.offsetHeight || 140;
+      var L = clamp(pos.left, 0, Math.max(0, vw - mw));
+      var T = clamp(pos.top,  0, Math.max(0, vh - mh));
+      mm.style.left = L + 'px';
+      mm.style.top  = T + 'px';
+      mm.style.right = 'auto';
+      mm.style.bottom = 'auto';
+    } catch(_){}
+  }
+  function saveOnResize(){
+    try{
+      var mm = document.getElementById('minimap-container');
+      if (!mm) return;
+      var left = parseFloat(mm.style.left)||mm.offsetLeft||0;
+      var top  = parseFloat(mm.style.top)||mm.offsetTop||0;
+      localStorage.setItem(KEY, JSON.stringify({left, top}));
+    }catch(_){}
+  }
+  window.addEventListener('load', function(){ setTimeout(restore, 0); }, {once:true});
+  window.addEventListener('resize', function(){ restore(); saveOnResize(); });
+  // expose in case other code wants to trigger it
+  window.__feRestoreMinimapPosition = restore;
+})();
+</script>
+  <style id="feMinimapDockPinCSS">
+  /* Clickable corner mark in the mini-map's top-left */
+  #minimap-dock-pin{
+    position:absolute; left:6px; top:6px;
+    width:14px; height:14px; border-radius:4px;
+    background:rgba(0,0,0,.35); backdrop-filter: blur(2px);
+    box-shadow:0 1px 3px rgba(0,0,0,.35);
+    cursor:pointer; pointer-events:auto; z-index:2;
+  }
+  /* Draw a tiny "L" corner mark inside the square */
+  #minimap-dock-pin::after{
+    content:""; position:absolute; left:3px; top:3px;
+    width:7px; height:7px; border-left:2px solid #ffd54f; border-top:2px solid #ffd54f;
+    border-radius:1px;
+  }
+  #minimap-dock-pin:active{ transform:scale(0.96); }
+</style>
+
   <script src="FE_drawflow-js.min.js"></script>
   <script>
   // Force willReadFrequently on 2D contexts to silence getImageData warning (Canvas & OffscreenCanvas)
@@ -842,34 +913,123 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 
     // 2) Globally-available: repopulate the dropdown
     async function reloadFlowDropdown(selected){
-      selected = (selected == null ? '' : String(selected));
+      // ── helpers ──────────────────────────────────────────────────────────────
       const dropdown = document.getElementById("hubitatFileDropdown");
       if (!dropdown) return;
 
+      function iconFor(active){ return active ? "✅ " : "❌ "; }
+      function labelFor(file, active){ return iconFor(active) + file; }
+
+      function setOptionLabel(opt, file, active){
+        // keep value = raw file name so nothing else breaks
+        opt.textContent = labelFor(file, !!active);
+        opt.dataset.basename = file;
+      }
+
+      async function fetchJsonSafe(url, fallback){
+        try{
+          const r = await fetch(url, {cache:"no-store"});
+          if(!r.ok) return fallback;
+          return await r.json();
+        }catch(_){
+          return fallback;
+        }
+      }
+
+      async function bulkStatuses(appId, token, files){
+        // Try a bulk endpoint if your app provides one (optional).
+        // Expected shape: { activeMap: { "FlowA": true, "FlowB": false, ... } }
+        const url = `/apps/api/${encodeURIComponent(appId)}/flowStatus?access_token=${encodeURIComponent(token)}`;
+        const data = await fetchJsonSafe(url, null);
+        const m = (data && (data.activeMap || data.map || data.status || null)) || null;
+        if (m && typeof m === "object") return files.reduce((acc,f) => (acc[f]=!!m[f.replace(/\.json$/i,"")], acc), {});
+        return null;
+      }
+
+      async function perFileStatuses(appId, token, files){
+        // Fallback: query per-file (endpoint names vary; adjust if yours differs)
+        // Expected shape: { active: true/false } or { enabled: true/false }
+        const out = {};
+        await Promise.all(files.map(async (f)=>{
+          const url1 = `/apps/api/${encodeURIComponent(appId)}/isFlowActive/${encodeURIComponent(f)}?access_token=${encodeURIComponent(token)}`;
+          const url2 = `/apps/api/${encodeURIComponent(appId)}/flow/${encodeURIComponent(f)}/active?access_token=${encodeURIComponent(token)}`;
+          const data = await fetchJsonSafe(url1, await fetchJsonSafe(url2, null));
+          out[f] = !!(data && (data.active === true || data.enabled === true || data.isActive === true));
+        }));
+        return out;
+      }
+
+      async function decorateOptions(files){
+        const appId = (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
+        const token = (document.getElementById("hubitatToken")?.value || localStorage.getItem('hubitatToken') || '').trim();
+        if (!appId || !token || !files.length) return;
+
+        // Fetch active flows once (same endpoint used by the “Activate/Deactivate” button)
+        const url = `/apps/api/${encodeURIComponent(appId)}/activeFlows?access_token=${encodeURIComponent(token)}`;
+        let activeList = [];
+        try {
+          const r = await fetch(url, {cache:"no-store"});
+          if (r.ok) activeList = await r.json();
+        } catch (_) {}
+
+        // Build a fast lookup set of basenames: “FlowA” for “FlowA.json”
+        const activeSet = new Set();
+        if (Array.isArray(activeList)) {
+          activeList.forEach(entry => {
+            if (!entry) return;
+            // supports "Flow.json" or {flowName:"Flow.json"}
+            const name = (typeof entry === "string" ? entry : entry.flowName || entry.name || "").toString();
+            if (!name) return;
+            const base = name.replace(/\.json$/i, "");
+            activeSet.add(base);
+          });
+        }
+
+        // Apply ✅/❌ to existing <option>s (value stays the raw filename, no suffix)
+        const opts = [...dropdown.options];
+        opts.forEach(opt => {
+          const file = String(opt.value || "");
+          if (!file) return;
+          const isActive = activeSet.has(file.replace(/\.json$/i, ""));
+          // keep .value clean; decorate the visible label only
+          opt.textContent = (isActive ? "✅ " : "❌ ") + file;
+          opt.dataset.basename = file;
+        });
+      }
+
+
+      // ── original behavior: fetch list and populate quickly ───────────────────
+      selected = (selected == null ? '' : String(selected));
       dropdown.style.display = "inline-block";
       dropdown.innerHTML = "<option value=''>Pick a Flow…</option>";
+
       let files = [];
       try {
-        files = await fetchHubitatFiles();
+        files = await fetchHubitatFiles();       // your existing listFiles fetch
       } catch (err) {
         console.error("Error fetching flow list:", err);
         return;
       }
+
       files.forEach(f => {
         const opt = document.createElement("option");
-        opt.value       = f;
-        opt.textContent = f;
+        opt.value       = f;                     // value stays clean for save/load
+        opt.textContent = f;                     // label will be decorated later
         dropdown.appendChild(opt);
       });
 
+      // Set current selection (keeps raw value; labels are cosmetic only)
       const focus = selected.replace(/\.json$/i, "");
       dropdown.value = focus;
 
+      // Kick off async decoration with ✅/❌ (won’t block UI or saving)
+      decorateOptions(files).catch(()=>{});
+
+      // If a flow is selected, keep your existing side-panel status behavior
       const token = document.getElementById("hubitatToken")?.value?.trim() || localStorage.getItem('hubitatToken') || "";
       const appId = document.getElementById("hubitatAppId")?.value?.trim() || localStorage.getItem('hubitatAppId') || "";
-
       if (focus) {
-        checkIfFlowIsInUse(focus, appId, token);
+        try { checkIfFlowIsInUse(focus, appId, token); } catch(_) {}
       }
     }
 
@@ -1510,7 +1670,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
         warn = document.createElement("div");
         warn.id = "hubitatWarnBanner";
         warn.style = "background: #ffc107; color: #111; padding: 9px 22px; font-weight: bold; text-align:center; font-size:16px; border-bottom: 2px solid #b8860b;";
-        warn.innerHTML = "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+        warn.innerHTML = "⚠️ Please enter both Hubitat App ID and Token to use the Flow Engine Editor. ⚠️<br>Go to the top left Hamburger menu - then enter your credentials at the bottom.";
         document.body.insertBefore(warn, document.body.firstChild);
       }
       warn.style.display = show ? "block" : "none";
@@ -1549,8 +1709,8 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
         document.getElementById("hubitatWarnBanner").innerText = "⚠️ Invalid Token format.";
       } else {
         showHubitatWarning(!hubitatCredentialsAreValid());
-        if (hubitatCredentialsAreValid()) document.getElementById("hubitatWarnBanner").innerText =
-          "⚠️ Please enter both Hubitat App ID and Token to use Flow Engine Editor features.";
+        if (hubitatCredentialsAreValid()) document.getElementById("hubitatWarnBanner").innerHTML =
+          "⚠️ Please enter both Hubitat App ID and Token to use the Flow Engine Editor. ⚠️<br>Go to the top left Hamburger menu - then enter your credentials at the bottom.";
       }
     }
     document.getElementById("hubitatAppId").addEventListener("input", validateHubitatInputFormat);
@@ -13125,9 +13285,14 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function stop(e){
     if(!dragging) return; dragging=false;
-    if(e && e.pointerId===pid){ try{ handle.releasePointerCapture(pid);}catch(_){} }
+    if(e && e.pointerId===pid){ try{ handle.releasePointerCapture(pid);}catch(_){}}
     handle.style.cursor='grab'; pid=null;
-  }
+    try {
+      const left = parseFloat(mm.style.left)||mm.offsetLeft||0;
+      const top  = parseFloat(mm.style.top)||mm.offsetTop||0;
+      localStorage.setItem('fe_minimap_pos', JSON.stringify({left, top}));
+    } catch(_){ }
+}
   window.addEventListener('pointerup', stop);
   window.addEventListener('pointercancel', stop);
   window.addEventListener('blur', stop);
@@ -13446,6 +13611,545 @@ document.addEventListener('DOMContentLoaded', function(){
   try { computeBoxes(); } catch(_){}
 })();
 </script>
+
+
+<!-- Mini-map tooltips only (no overrides, no side effects) -->
+
+
+
+<!-- Canonical Mini-map Tooltips (mirror renderMinimap math) -->
+<script id="feMinimapTooltips_v2_canonical">
+(function(){
+  try{
+    var box = document.getElementById('minimap-container');
+    var cvs = document.getElementById('minimap-canvas');
+    if (!box || !cvs) return;
+
+    // Ensure tooltip element exists (CSS already in file: #minimap-tooltip)
+    var tip = document.getElementById('minimap-tooltip');
+    if (!tip){
+      tip = document.createElement('div');
+      tip.id = 'minimap-tooltip';
+      tip.style.display = 'none';
+      box.appendChild(tip);
+    }
+
+    function dfData(){
+      try{
+        var df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+        if (!df || !df.Home) return null;
+        var data = (typeof getHomeDataFrom === 'function') ? getHomeDataFrom(df) : (df.Home.data || {});
+        if (!data || typeof data !== 'object') return null;
+        return data;
+      }catch(_){ return null; }
+    }
+
+    function computeBounds(data){
+      // This mirrors renderMinimap: bounds use pos_x/pos_y and add +170/+80 for max edges
+      var entries = Object.entries(data);
+      if (!entries.length) return null;
+      var minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+      entries.forEach(function(pair){
+        var n = pair[1] || {};
+        var x = +n.pos_x || 0, y = +n.pos_y || 0;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + 170);
+        maxY = Math.max(maxY, y + 80);
+      });
+      return {minX:minX, minY:minY, maxX:maxX, maxY:maxY};
+    }
+
+    function labelFor(id, node){
+      try{
+        if (window.editor && typeof window.editor.getNodeFromId === 'function'){
+          var nd = editor.getNodeFromId(id);
+          if (nd){
+            var d = nd.data || {};
+            var lbl = d.title || d.label || d.deviceLabel || nd.name || id;
+            lbl = String(lbl==null?'':lbl).trim();
+            if (lbl) return lbl;
+          }
+        }
+      }catch(_){}
+      if (node){
+        var d2 = node.data || {};
+        var s = d2.title || d2.label || d2.deviceLabel || node.name || id;
+        s = String(s==null?'':s).trim();
+        if (s) return s;
+      }
+      return String(id || '').trim();
+    }
+
+    // build hitboxes using SAME scale & sizes as renderMinimap
+    var mmBoxes = [];
+    var lastCalc = 0;
+    function computeBoxes(){
+      var now = performance.now();
+      if (now - lastCalc < 80) return; // throttle
+      lastCalc = now;
+
+      var data = dfData();
+      if (!data){ mmBoxes = []; return; }
+
+      var entries = Object.entries(data);
+      if (!entries.length){ mmBoxes = []; return; }
+
+      var W = cvs.width, H = cvs.height;
+      var b = computeBounds(data);
+      if (!b){ mmBoxes = []; return; }
+
+      var scaleX = W / Math.max(1, b.maxX - b.minX);
+      var scaleY = H / Math.max(1, b.maxY - b.minY);
+      var scale  = Math.min(scaleX, scaleY);
+
+      var list = [];
+      entries.forEach(function(pair){
+        var id   = pair[0];
+        var node = pair[1] || {};
+        var x = Math.round(((+node.pos_x||0) - b.minX) * scale);
+        var y = Math.round(((+node.pos_y||0) - b.minY) * scale);
+        var w = Math.max(30, Math.round(120 * scale));
+        var h = Math.max(18, Math.round(48  * scale));
+        list.push({ id:id, x:x, y:y, w:w, h:h, label: labelFor(id, node) });
+      });
+      mmBoxes = list;
+    }
+
+    function hit(mx, my){
+      for (var i = mmBoxes.length - 1; i >= 0; i--){
+        var b = mmBoxes[i];
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return b;
+      }
+      return null;
+    }
+
+    function showTip(text, clientX, clientY){
+      if (!text){ tip.style.display='none'; return; }
+      tip.textContent = text;
+      var rect = box.getBoundingClientRect();
+      var x = clientX - rect.left + 8;
+      var y = clientY - rect.top  + 8;
+      var tw = tip.offsetWidth  || 160;
+      var th = tip.offsetHeight || 22;
+      var maxX = rect.width  - tw - 6;
+      var maxY = rect.height - th - 6;
+      if (x > maxX) x = maxX;
+      if (y > maxY) y = maxY;
+      if (x < 4) x = 4;
+      if (y < 4) y = 4;
+      tip.style.left = x + 'px';
+      tip.style.top  = y + 'px';
+      tip.style.display = 'block';
+    }
+    function hideTip(){ tip.style.display='none'; }
+
+    // wire events on canvas only (container has pointer-events:none)
+    cvs.addEventListener('mousemove', function(e){
+      if (box.style.display === 'none'){ hideTip(); return; }
+      computeBoxes();
+      var r = cvs.getBoundingClientRect();
+      var mx = e.clientX - r.left, my = e.clientY - r.top;
+      var b = hit(mx, my);
+      if (b) showTip(b.label, e.clientX, e.clientY);
+      else hideTip();
+    }, {passive:true});
+    cvs.addEventListener('mouseleave', hideTip, {passive:true});
+
+    // refresh boxes when nodes change
+    (function(){
+      var pc = document.querySelector('#drawflow .precanvas');
+      if (!pc) return;
+      var mo = new MutationObserver(function(){ lastCalc = 0; });
+      mo.observe(pc, {attributes:true, attributeFilter:['style'], childList:true, subtree:true});
+    })();
+
+  }catch(e){ /* keep editor safe */ }
+})();
+</script>
+
+
+<!-- === Mini-map Tooltips: FINAL, isolated, CSS-px aware (no side effects) === -->
+<style id="feMinimapTooltipCSS_final">
+  #minimap-container #minimap-tooltip{
+    position:absolute; left:0; top:0;
+    transform: translate(8px, 8px);
+    background: rgba(20,20,20,0.92);
+    color: #eee;
+    border: 1px solid #444;
+    padding: 4px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 999999; /* ensure on top of handle/canvas */
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+</style>
+<script id="feMinimapTooltips_FINAL">
+(function(){
+  try{
+    if (window.__feMinimapTooltips_FINAL) return;
+    window.__feMinimapTooltips_FINAL = true;
+
+    var box = document.getElementById('minimap-container');
+    var cvs = document.getElementById('minimap-canvas');
+    if (!box || !cvs) return;
+
+    // create or reuse tooltip element
+    var tip = document.getElementById('minimap-tooltip');
+    if (!tip){
+      tip = document.createElement('div');
+      tip.id = 'minimap-tooltip';
+      tip.style.display = 'none';
+      box.appendChild(tip);
+    }
+
+    function precanvas(){
+      var df = document.getElementById('drawflow');
+      return df ? df.querySelector('.precanvas') : null;
+    }
+
+    function contentBounds(pc){
+      if (!pc) return {minX:0,minY:0,maxX:1200,maxY:800};
+      var nodes = pc.querySelectorAll('.drawflow-node');
+      if (!nodes.length) return {minX:0,minY:0,maxX:1200,maxY:800};
+      var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+      nodes.forEach(function(n){
+        var x = parseFloat(n.style.left)||0;
+        var y = parseFloat(n.style.top)||0;
+        var w = n.offsetWidth||160, h = n.offsetHeight||60;
+        if (x<minX) minX=x; if (y<minY) minY=y;
+        if (x+w>maxX) maxX=x+w; if (y+h>maxY) maxY=y+h;
+      });
+      var P=40;
+      return {minX:minX-P,minY:minY-P,maxX:maxX+P,maxY:maxY+P};
+    }
+
+    // map using the CANVAS' CSS size (not bitmap size) to avoid DPR mismatch
+    function makeMap(){
+      var rect = cvs.getBoundingClientRect();
+      var W = rect.width, H = rect.height;
+      var B = contentBounds(precanvas());
+      var worldW = Math.max(1, B.maxX - B.minX);
+      var worldH = Math.max(1, B.maxY - B.minY);
+      var s = Math.min(W/worldW, H/worldH);
+      var offX = (W - worldW*s)*0.5, offY = (H - worldH*s)*0.5;
+      function w2m(wx,wy){ return {x:offX+(wx-B.minX)*s, y:offY+(wy-B.minY)*s}; }
+      return {w2m:w2m};
+    }
+
+    function safeLabelFromId(idStr, node){
+      try{
+        if (window.editor && typeof window.editor.getNodeFromId==='function'){
+          var nd = editor.getNodeFromId(String(idStr));
+          if (nd){
+            var d = nd.data||{};
+            var lbl = d.title || d.label || d.deviceLabel || nd.name || idStr;
+            lbl = String(lbl==null?'':lbl).trim();
+            if (lbl) return lbl;
+          }
+        }
+      }catch(_){}
+      if (node){
+        var d2 = node.data||{};
+        var s = d2.title || d2.label || d2.deviceLabel || node.name || idStr;
+        s = String(s==null?'':s).trim();
+        if (s) return s;
+      }
+      return String(idStr||'').trim() || 'Node';
+    }
+
+    var lastCalc = 0;
+    var boxes = [];
+    function computeBoxes(){
+      var now = performance.now();
+      if (now - lastCalc < 60) return; // throttle
+      lastCalc = now;
+
+      var pc = precanvas();
+      if (!pc){ boxes = []; return; }
+      var map = makeMap();
+      var W2 = 34, H2 = 22; // mini node size used in minimap renderer
+      var next = [];
+      // Prefer editor.drawflow data if available (faster)
+      try{
+        var df = window.editor && window.editor.drawflow && window.editor.drawflow.drawflow;
+        var data = df && df.Home && (df.Home.data || {});
+        if (data && Object.keys(data).length){
+          Object.entries(data).forEach(function(pair){
+            var id = pair[0], node = pair[1]||{};
+            var p = map.w2m(+node.pos_x||0, +node.pos_y||0);
+            next.push({x:p.x, y:p.y, w:W2, h:H2, label: safeLabelFromId(id, node)});
+          });
+          boxes = next; 
+          return;
+        }
+      }catch(_){}
+
+      // Fallback: read DOM
+      pc.querySelectorAll('.drawflow-node').forEach(function(n){
+        var x = parseFloat(n.style.left)||0;
+        var y = parseFloat(n.style.top)||0;
+        var p = map.w2m(x, y);
+        next.push({x:p.x, y:p.y, w:W2, h:H2, label: safeLabelFromId(n.dataset?.id || '', null)});
+      });
+      boxes = next;
+    }
+
+    function hit(mx,my){
+      for (var i=boxes.length-1; i>=0; i--){
+        var b = boxes[i];
+        if (mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h) return b;
+      }
+      return null;
+    }
+
+    function showTip(text, clientX, clientY){
+      if (!text){ tip.style.display='none'; return; }
+      tip.textContent = text;
+      var rect = box.getBoundingClientRect();
+      var x = clientX - rect.left + 10;
+      var y = clientY - rect.top  + 10;
+      var tw = tip.offsetWidth  || 160;
+      var th = tip.offsetHeight || 22;
+      var maxX = rect.width - tw - 6;
+      var maxY = rect.height - th - 6;
+      if (x > maxX) x = maxX; if (y > maxY) y = maxY;
+      if (x < 4) x = 4; if (y < 4) y = 4;
+      tip.style.left = x + 'px';
+      tip.style.top  = y + 'px';
+      tip.style.display = 'block';
+    }
+
+    function hideTip(){ tip.style.display='none'; }
+
+    // Listen on the CANVAS only (container has pointer-events:none)
+    cvs.addEventListener('mousemove', function(e){
+      computeBoxes();
+      var r = cvs.getBoundingClientRect();
+      var mx = e.clientX - r.left, my = e.clientY - r.top;
+      var b = hit(mx, my);
+      if (b) showTip(b.label, e.clientX, e.clientY); else hideTip();
+    }, {passive:true});
+
+    cvs.addEventListener('mouseleave', hideTip, {passive:true});
+
+    // Try an initial compute shortly after load to catch the first render.
+    setTimeout(computeBoxes, 120);
+  }catch(e){
+    /* never break the editor */
+    console && console.warn && console.warn('Minimap tooltips final failed:', e);
+  }
+})();
+</script>
+
+<script>
+(function installFlowBadgeRefresher(){
+  const DROPDOWN_ID = "hubitatFileDropdown";
+  const ACTIVATE_BTN_ID = "activateFlowButton";
+  const APP_ID = () => (document.getElementById("hubitatAppId")?.value || localStorage.getItem('hubitatAppId') || '').trim();
+  const TOKEN  = () => (document.getElementById("hubitatToken")?.value  || localStorage.getItem('hubitatToken')  || '').trim();
+
+  let lastRun = 0;
+  let inFlight = false;
+
+  async function fetchActiveSet(){
+    const appId = APP_ID(), token = TOKEN();
+    if (!appId || !token) return null;
+    try{
+      const r = await fetch(`/apps/api/${encodeURIComponent(appId)}/activeFlows?access_token=${encodeURIComponent(token)}`, {cache:'no-store'});
+      if (!r.ok) return null;
+      const list = await r.json();
+      const set = new Set();
+      if (Array.isArray(list)) {
+        list.forEach(entry => {
+          const name = (typeof entry === 'string' ? entry : (entry.flowName || entry.name || '')).toString();
+          if (name) set.add(name.replace(/\.json$/i,''));
+        });
+      }
+      return set;
+    }catch(_){ return null; }
+  }
+
+  async function refreshDropdownBadges(){
+    // throttle a bit so rapid triggers coalesce
+    const now = performance.now();
+    if (now - lastRun < 250) return;
+    lastRun = now;
+    if (inFlight) return; inFlight = true;
+    try{
+      const dropdown = document.getElementById(DROPDOWN_ID);
+      if (!dropdown) return;
+      const activeSet = await fetchActiveSet();
+      if (!activeSet) return;
+
+      // Update only labels; keep option.value as raw filename
+      const opts = Array.from(dropdown.options);
+      for (const opt of opts){
+        const file = String(opt.value || '');
+        if (!file) continue;
+        const base = file.replace(/\.json$/i, '');
+        const isActive = activeSet.has(base);
+        const wanted = (isActive ? '✅ ' : '❌ ') + file;
+        if (opt.textContent !== wanted){
+          opt.textContent = wanted;
+          opt.dataset.basename = file;
+        }
+      }
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  // Expose in case other code wants to force a refresh
+  window.refreshDropdownBadges = refreshDropdownBadges;
+
+  // 1) Refresh when Activate/Deactivate button changes text/style
+  const btn = document.getElementById(ACTIVATE_BTN_ID);
+  if (btn) {
+    // After clicks (gives your toggle API a moment to finish)
+    btn.addEventListener('click', () => setTimeout(refreshDropdownBadges, 350));
+
+    // Also watch for content/style changes driven by checkIfFlowIsInUse(...)
+    new MutationObserver(() => refreshDropdownBadges()).observe(btn, {
+      characterData: true, subtree: true, childList: true, attributes: true
+    });
+  }
+
+  // 2) Refresh when tab regains focus (covers changes made elsewhere)
+  window.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshDropdownBadges();
+  });
+  window.addEventListener('focus', refreshDropdownBadges);
+
+  // 3) Gentle poll as a safety net
+  setInterval(refreshDropdownBadges, 7000);
+
+  // 4) Run once after load
+  window.addEventListener('load', () => setTimeout(refreshDropdownBadges, 400));
+})();
+</script>
+
+<script>
+(function setupAutoReloadOnCredentialChange(){
+  const appEl = document.getElementById('hubitatAppId');
+  const tokEl = document.getElementById('hubitatToken');
+  if (!appEl || !tokEl) return;
+
+  let last = { app: (appEl.value||'').trim(), tok: (tokEl.value||'').trim() };
+
+  const debounce = (fn, ms=500) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+
+  function saveCreds() {
+    try {
+      localStorage.setItem('hubitatAppId', (appEl.value||'').trim());
+      localStorage.setItem('hubitatToken', (tokEl.value||'').trim());
+    } catch(_) {}
+  }
+
+  const reloadAll = debounce(async () => {
+    const appId = (appEl.value||'').trim();
+    const token = (tokEl.value||'').trim();
+
+    if (!appId || !token) { 
+      try { showHubitatWarning(true); } catch(_) {}
+      return;
+    }
+
+    // 1) persist + clear warning
+    saveCreds();
+    try { showHubitatWarning(false); } catch(_) {}
+
+    // 2) (optional) refresh modes (used to set the mode device label)
+    try { if (typeof fetchModesFromAppFile === 'function') await fetchModesFromAppFile(); } catch(_) {}
+
+    // 3) reload devices (uses your existing helper)
+    try {
+      let devices = await fetchDevicesFromApp(); // existing function
+      if (Array.isArray(devices)) {
+        devices.forEach(dev => {
+          if (Array.isArray(dev.attributes)) {
+            const m = {};
+            dev.attributes.forEach(a => { if (a && a.name !== undefined) m[a.name] = a.currentValue; });
+            dev.attributes = m;
+          }
+        });
+      } else {
+        devices = [];
+      }
+      // add specials (same as elsewhere)
+      devices.push(TIME_DEVICE, MODE_DEVICE, VARIABLE_DEVICE);
+      window.devices = devices;
+
+      // set current mode on the Home Location device
+      const currentModeObj = (window.hubitatModes || []).find(m => m.id === 'current');
+      const modeDev = window.devices.find(d => d.id === '__mode__');
+      if (modeDev) modeDev.attributes.mode = currentModeObj ? currentModeObj.name : '';
+    } catch(e) {
+      console.warn('Device reload failed:', e);
+    }
+
+    // 4) rebuild the flows list (keeps lastFlow if present)
+    try {
+      const lastFlow = localStorage.getItem('lastFlow') || '';
+      await reloadFlowDropdown(lastFlow);
+    } catch(_) {}
+
+    // 5) refresh variables + panels
+    try {
+      await fetchVarsFromApp();
+      if (typeof renderVariableInspector === 'function') renderVariableInspector();
+      if (window.flowVars && typeof flowVars.renderManager === 'function') {
+        flowVars.renderManager(document.getElementById('variableManager'), { globalVars: true });
+      }
+    } catch(_) {}
+
+    // 6) refresh badges + status for the selected flow
+    try { if (typeof window.refreshDropdownBadges === 'function') window.refreshDropdownBadges(); } catch(_) {}
+    const chosen = document.getElementById('hubitatFileDropdown')?.value || '';
+    if (chosen) { try { checkIfFlowIsInUse(chosen, appId, token); } catch(_) {} }
+
+    last = { app: appId, tok: token };
+    try { logAction('🔄 Hubitat credentials updated. Devices and flows reloaded.', 'success'); } catch(_){}
+  });
+
+  function maybeReload() {
+    const now = { app: (appEl.value||'').trim(), tok: (tokEl.value||'').trim() };
+    if (now.app !== last.app || now.tok !== last.tok) reloadAll();
+  }
+
+  // fire on input, change, blur, and Enter
+  ['input','change','blur'].forEach(ev => {
+    appEl.addEventListener(ev, maybeReload);
+    tokEl.addEventListener(ev,  maybeReload);
+  });
+  [appEl, tokEl].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') maybeReload(); }));
+})();
+</script>
+
+<script id="feMinimapDockPinJS">
+  (function(){
+    const pin = document.getElementById('minimap-dock-pin');
+    if (!pin) return;
+    pin.addEventListener('click', (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      try {
+        // Use your existing auto-dock/pan helper
+        if (typeof window.feAutoPanToContent === 'function') {
+          window.feAutoPanToContent(60);      // margin
+        } else if (window.editor && typeof editor.zoom_to_fit === 'function') {
+          editor.zoom_to_fit();
+        }
+      } catch(_) {}
+      // refresh the mini-map after docking
+      try { if (typeof window.renderMinimapOnce === 'function') window.renderMinimapOnce(); } catch(_){}
+    });
+  })();
+</script>
 </body>
 </html>
-
