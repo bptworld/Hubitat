@@ -460,7 +460,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
 }
 </style>
 
-
 <style id="feMinimapPointerEvents">
   /* Only the handle and canvas should receive pointer events */
   #minimap-container { pointer-events: none !important; cursor: default !important; }
@@ -468,12 +467,10 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #minimap-drag-handle { pointer-events: auto !important; cursor: grab; }
 </style>
 
-
 <style id="feMinimapCursorTweak">
   #minimap-container{ cursor: default !important; }
   #minimap-drag-handle{ cursor: grab !important; }
 </style>
-
 
 <style id="feMinimapHandleCSS">
   #minimap-container { cursor: crosshair; }
@@ -486,13 +483,11 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #minimap-drag-handle:active { cursor: grabbing; }
 </style>
 
-
 <style id="feMinimapStrictPE">
   #minimap-container { pointer-events: none !important; cursor: default !important; }
   #minimap-canvas { pointer-events: auto !important; cursor: crosshair !important; }
   #minimap-drag-handle { pointer-events: auto !important; cursor: grab !important; }
 </style>
-
 
 <style id="feMinimapFinalPE">
   #minimap-container { pointer-events: none !important; cursor: default !important; }
@@ -506,6 +501,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   #minimap-container { pointer-events: none !important; }
   #minimap-drag-handle, #minimap-canvas { pointer-events: auto !important; }
 </style>
+
 <style id="feMinimapTooltipCSS">
   #minimap-container #minimap-tooltip{
     position:absolute; left:0; top:0;
@@ -526,6 +522,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
   }
 </style>
+
 <style id="feMinimapDockPinCSS">
   /* Clickable corner mark in the mini-map's top-left */
   #minimap-dock-pin{
@@ -543,7 +540,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   }
   #minimap-dock-pin:active{ transform:scale(0.96); }
 </style>
-
 </head>
 <body>
 <div id="headline">
@@ -648,14 +644,14 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.070</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.071</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
-<select id="hubitatFileDropdown"
-              style="width:400px; display:inline-block; margin-left:20px;"
+        <select id="hubitatFileDropdown"
+              style="width:450px; display:inline-block; margin-left:20px;"
               title="Pick a flow to load…">
               <option value="">Loading…</option>
         </select>
-      <span id="flowName" style="display:inline-block; width:400px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;"></span>
+      <span id="flowName" style="width:450px; font-weight:bold; font-size:14px; margin-left:6px; vertical-align:middle;; display:none;"></span>
 
       <div class="inline-div">
         <button id="activateFlowButton"
@@ -2114,7 +2110,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       sel.innerHTML =
         `<option value="" ${!node.data.attribute ? "selected" : ""}>(select)</option>` +
         Object.keys(dev.attributes)
-          .map(attr =>
+          .sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"})).map(attr =>
             `<option value="${attr}" ${node.data.attribute === attr ? "selected" : ""}>${attr}</option>`
           )
           .join("");
@@ -3094,7 +3090,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
               ? Object.keys(dev.attributes)
               : [];
           })
-        )).sort();
+        )).sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"}));
 
         // ── ATTRIBUTE LABEL ────────────────────────────────────────────
         const attrLabel = document.createElement("label");
@@ -6381,7 +6377,7 @@ try {
         const blob = new Blob([JSON.stringify(flow, null, 2)], { type: "application/json" });
         const url  = URL.createObjectURL(blob);
 
-        // 4) Determine filename from your <span id="flowName">…</span>
+        // 4) Determine filename from your <span id="flowName" style="display:none;">…</span>
         const rawName = document.getElementById("flowName").textContent.trim();
         // If it ends in “.json”, drop that
         const base    = rawName.toLowerCase().endsWith(".json")
@@ -14151,5 +14147,193 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   })();
 </script>
+
+<!-- Flow Dropdown Search -->
+<script id="feFlowComboJS">
+(function(){
+  if (window.__feFlowComboInit) return; window.__feFlowComboInit = true;
+
+  function qs(id){ return document.getElementById(id); }
+  const nativeSel = qs('hubitatFileDropdown');
+  if (!nativeSel) return;
+
+  // Build wrapper UI right after the native select
+  function ensureUI(){
+    if (qs('feComboWrap')) return qs('feComboWrap');
+    const wrap = document.createElement('span');
+    wrap.id = 'feComboWrap';
+    wrap.className = 'fe-combo-wrap';
+    const btn  = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'feComboButton';
+    btn.className = 'fe-combo-button';
+    btn.textContent = nativeSel.value ? nativeSel.value : 'Pick a Flow…';
+
+    const panel = document.createElement('div');
+    panel.id = 'feComboPanel';
+    panel.className = 'fe-combo-panel';
+
+    // Search row (FIRST line)
+    const searchBox = document.createElement('div');
+    searchBox.className = 'fe-combo-search';
+    searchBox.innerHTML = '<input id="feComboSearch" type="text" placeholder="Search flows… (type to filter)" autocomplete="off">';
+    panel.appendChild(searchBox);
+
+    wrap.appendChild(btn);
+    wrap.appendChild(panel);
+    nativeSel.classList.add('fe-hidden-native');
+    nativeSel.parentNode.insertBefore(wrap, nativeSel.nextSibling);
+    return wrap;
+  }
+
+  function currentLabel(opt){
+    // If your app decorates with ✅/❌ in reloadFlowDropdown, use option.textContent as-is
+    return (opt && (opt.textContent || opt.innerText || '')).trim();
+  }
+
+  function buildRows(){
+    const panel = qs('feComboPanel'); if (!panel) return;
+    // Remove old rows (keep the first child = search container)
+    while (panel.children.length > 1){ panel.removeChild(panel.lastChild); }
+
+    const q = (qs('feComboSearch')?.value || '').toLowerCase().trim();
+    const opts = Array.from(nativeSel.options);
+    let any = false;
+    for (const opt of opts){
+      const label = currentLabel(opt);
+      const value = opt.value;
+      if (!value) continue; // skip placeholder
+      const base  = (opt.dataset && opt.dataset.basename) ? String(opt.dataset.basename) : value;
+      const hit = !q || label.toLowerCase().includes(q) || value.toLowerCase().includes(q) || base.toLowerCase().includes(q);
+      if (!hit) continue;
+      any = true;
+
+      const row = document.createElement('div');
+      row.className = 'fe-combo-row' + (nativeSel.value === value ? ' fe-active' : '');
+      row.textContent = label;
+      row.dataset.value = value;
+      row.addEventListener('click', function(){
+        // Sync to native select and fire 'change'
+        nativeSel.value = this.dataset.value;
+        try {
+          const ev = new Event('change', {bubbles:true});
+          nativeSel.dispatchEvent(ev);
+        } catch(_){}
+        // Update button label and close
+        qs('feComboButton').textContent = currentLabel(nativeSel.selectedOptions[0]) || nativeSel.value || 'Pick a Flow…';
+        hide();
+      });
+      panel.appendChild(row);
+    }
+
+    if (!any){
+      const empty = document.createElement('div');
+      empty.className = 'fe-combo-row';
+      empty.textContent = '(No matches)';
+      empty.style.opacity = '0.65';
+      empty.style.cursor = 'default';
+      panel.appendChild(empty);
+    }
+  }
+
+  function show(){
+    const panel = qs('feComboPanel');
+    if (!panel) return;
+    buildRows();
+    panel.style.display = 'block';
+    const ip = qs('feComboSearch');
+    if (ip){ ip.value = ''; ip.focus({preventScroll:true}); }
+    document.addEventListener('click', onDoc, {capture:true});
+  }
+  function hide(){
+    const panel = qs('feComboPanel');
+    if (!panel) return;
+    panel.style.display = 'none';
+    document.removeEventListener('click', onDoc, {capture:true});
+  }
+  function onDoc(e){
+    const wrap = qs('feComboWrap');
+    if (!wrap) return;
+    if (!wrap.contains(e.target)){ hide(); }
+  }
+
+  function wire(){
+    const wrap = ensureUI();
+    const btn  = qs('feComboButton');
+    const panel= qs('feComboPanel');
+    const ip   = qs('feComboSearch');
+
+    btn.addEventListener('click', function(){
+      const open = panel.style.display === 'block';
+      if (open) hide(); else show();
+    });
+
+    ip.addEventListener('input', function(){ buildRows(); });
+
+    // Keep button label in sync if native select changes programmatically
+    nativeSel.addEventListener('change', function(){
+      const opt = nativeSel.selectedOptions[0];
+      qs('feComboButton').textContent = currentLabel(opt) || nativeSel.value || 'Pick a Flow…';
+    });
+
+    // If your code re-populates options, rebuild rows on next open.
+    // Mutation observer: when childList changes, update button label too.
+    const mo = new MutationObserver(function(){
+      const opt = nativeSel.selectedOptions[0];
+      qs('feComboButton').textContent = currentLabel(opt) || nativeSel.value || 'Pick a Flow…';
+      // If panel is open, rebuild
+      if (panel.style.display === 'block') buildRows();
+    });
+    mo.observe(nativeSel, {childList:true, subtree:true});
+
+    // Keyboard: ArrowDown opens, Escape closes
+    btn.addEventListener('keydown', function(e){
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' '){
+        e.preventDefault(); show();
+      }
+    });
+    panel.addEventListener('keydown', function(e){
+      if (e.key === 'Escape'){ e.preventDefault(); hide(); qs('feComboButton').focus(); }
+    });
+  }
+
+  function init(){
+    // Ensure styles inserted once
+    if (!document.getElementById('feFlowComboCSS')){
+      var s = document.createElement('style'); s.id='feFlowComboCSS';
+      s.textContent = `.fe-combo-wrap{ position:relative; display:inline-block; width:400px; margin-left:20px; vertical-align:middle; }
+  .fe-combo-button{
+    width:100%; padding:8px 12px; border-radius:10px; border:1px solid #444;
+    background:#2f3639; color:#e7e7e7; box-shadow:0 2px 8px #0007; text-align:left;
+    cursor:pointer; font-size:14px; line-height:1.15;
+  }
+  .fe-combo-button:after{ content:"▾"; float:right; opacity:.8; }
+  .fe-combo-panel{
+    position:absolute; top:100%; left:0; right:0; z-index:6000;
+    background:#232a2d; border:1px solid #444; border-radius:10px; box-shadow:0 8px 18px #0009;
+    margin-top:6px; display:none; max-height:60vh; overflow:auto;
+  }
+  .fe-combo-row{ padding:8px 10px; cursor:pointer; }
+  .fe-combo-row:hover{ background:#2a517a; color:#fff; }
+  .fe-combo-row.fe-active{ background:#3a6ea5; color:#fff; }
+  .fe-combo-search{
+    position:sticky; top:0; background:#1f2426; padding:8px; border-bottom:1px solid #394148;
+  }
+  .fe-combo-search input{
+    width:100%; padding:8px 10px; border-radius:8px; border:1px solid #555; background:#1b1f21; color:#eee; outline:none;
+  }
+  #hubitatFileDropdown.fe-hidden-native{
+    position:absolute !important; left:-9999px !important; width:1px !important; height:1px !important; opacity:0 !important; pointer-events:none !important;
+  }`;
+      document.head.appendChild(s);
+    }
+    wire();
+  }
+
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+</script>
+
 </body>
 </html>
