@@ -540,6 +540,38 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
   }
   #minimap-dock-pin:active{ transform:scale(0.96); }
 </style>
+
+<!-- ★ FE Group Align Bar (styles) -->
+<style id="feGroupAlignBarCSS">
+  #feGroupAlignBar{
+    position:absolute;
+    top:8px; left:50%;
+    transform:translateX(-50%);
+    display:none;
+    z-index:4100;
+    background:rgba(28,32,34,0.9);
+    border:1px solid #444;
+    border-radius:12px;
+    box-shadow:0 4px 16px rgba(0,0,0,.45);
+    padding:6px;
+    backdrop-filter: blur(2px);
+    user-select:none;
+    white-space:nowrap;
+  }
+  #feGroupAlignBar .fe-btn{
+    font-size:12px;
+    padding:6px 10px;
+    margin:0 4px;
+    border-radius:8px;
+    border:1px solid #555;
+    background:#2f3639;
+    color:#e7e7e7;
+    cursor:pointer;
+    box-shadow:0 1px 4px rgba(0,0,0,.35);
+  }
+  #feGroupAlignBar .fe-btn:hover{ filter:brightness(1.08); }
+  #feGroupAlignBar .fe-btn:active{ transform:translateY(1px); }
+</style>
 </head>
 <body>
 <div id="headline">
@@ -644,7 +676,7 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
       </div>
       </span>
         <div style="display:inline-block; font-weight:bold; font-size:14px; vertical-align:top;">
-        <b>Flow Engine Editor</b><br><small>Ver. 1.0.071</small></div>
+        <b>Flow Engine Editor</b><br><small>Ver. 1.0.072</small></div>
         <button id="feCollapseInline" title="Collapse/Expand sidebar" style="margin-left:10px; border:1px solid #444; background:#2f3639; color:#e7e7e7; padding:6px 10px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px #0007;">◀</button>
         <select id="hubitatFileDropdown"
               style="width:450px; display:inline-block; margin-left:20px;"
@@ -3524,10 +3556,6 @@ body:has(#feHamburger[aria-expanded="true"]) #__feDndOverlay {
         }
 
         function renderDevicePickerSection(el, node, devices, onChange, multiSelect=true) {
-          const devLabel = document.createElement("label");
-          devLabel.textContent = "Device(s)";
-          devLabel.style.display = "block";
-          el.appendChild(devLabel);
           renderDevicePicker(
             el,
             devices,
@@ -14332,6 +14360,361 @@ document.addEventListener('DOMContentLoaded', function(){
 
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init, {once:true});
   else init();
+})();
+</script>
+
+
+<!-- ★ FE Multi-Select Drag Fix (keeps group selection intact on click & drag) -->
+<script>
+(() => {
+  // Find an overlay if one exists; otherwise attach to body (capturing) to intercept first.
+  const overlay = document.getElementById('__feDndOverlay') || document.body;
+  function elAt(e){ return document.elementFromPoint(e.clientX, e.clientY); }
+  function nodeEl(el){ return el && el.closest ? el.closest('.drawflow-node') : null; }
+  function isPort(el){ return !!(el && el.closest && el.closest('.port')); } // don't interfere with port drags
+  function nodeIdFromEl(el){
+    const id = parseInt(String((el.id||'').replace('node-','')), 10);
+    return Number.isFinite(id) ? id : null;
+  }
+  function getPos(id){
+    const el = document.getElementById('node-'+id);
+    const x = parseFloat(el?.style.left)||0, y = parseFloat(el?.style.top)||0;
+    return {x,y};
+  }
+  function moveTo(id,x,y){
+    const el = document.getElementById('node-'+id);
+    if (el){ el.style.left = x+'px'; el.style.top = y+'px'; }
+  }
+  function paintSel(){
+    const set = window._multiSelectedNodes || new Set();
+    document.querySelectorAll('.drawflow-node').forEach(n=>{
+      const nid = nodeIdFromEl(n);
+      if (nid!=null && set.has(nid)){
+        n.classList.add('fe-multi','selected','node_selected');
+        n.style.outline = '2px solid #3a6ea5';
+      } else {
+        n.classList.remove('fe-multi','selected','node_selected');
+        n.style.outline = '';
+      }
+    });
+  }
+
+  window._multiSelectedNodes = window._multiSelectedNodes || new Set();
+
+  let drag = null;
+  const CLICK_TOL = 2;
+  let bgDown = null, bgDragging = false;
+
+  overlay.addEventListener('mousedown', function(e){
+    const under = elAt(e);
+    if (!under) return;
+
+    const nEl = nodeEl(under);
+    const meta = e.ctrlKey || e.metaKey;
+
+    if (nEl && !isPort(under)){
+      const id = nodeIdFromEl(nEl);
+      const sel = window._multiSelectedNodes;
+
+      // Selection logic:
+      if (meta){
+        // toggle with Ctrl/Cmd
+        if (sel.has(id)) sel.delete(id); else sel.add(id);
+      } else if (!sel.has(id)) {
+        // clicked a non-selected node → collapse to that one
+        sel.clear(); sel.add(id);
+      } else {
+        // clicked an already-selected node → keep group intact
+      }
+
+      paintSel();
+
+      // Sync side editor (best-effort / optional)
+      try {
+        window.__feSelectedId = id;
+        if (window.editor) {
+          window.editor.selected_id = String(id);
+          if (typeof window.renderEditor === 'function' && typeof window.editor.getNodeFromId === 'function') {
+            const nd = window.editor.getNodeFromId(id);
+            if (nd) window.renderEditor(nd);
+          }
+        }
+      } catch(_){}
+
+      // Start group drag
+      const ids = new Set(); sel.forEach(v => ids.add(String(v)));
+      const origins = new Map();
+      ids.forEach(nid => { const p = getPos(nid); origins.set(nid, p); });
+
+      drag = { ids, origins, sx:e.clientX, sy:e.clientY, moved:false };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // background press → potential canvas drag
+    if (under.id === 'drawflow' || under.classList?.contains('precanvas')){
+      bgDown = {x:e.clientX, y:e.clientY};
+      bgDragging = false;
+      return;
+    }
+  }, true);
+
+  overlay.addEventListener('mousemove', function(e){
+    if (!drag){
+      if (bgDown){
+        if (Math.abs(e.clientX - bgDown.x)>CLICK_TOL || Math.abs(e.clientY - bgDown.y)>CLICK_TOL) bgDragging = true;
+      }
+      return;
+    }
+    const dx = e.clientX - drag.sx;
+    const dy = e.clientY - drag.sy;
+    if (dx || dy) drag.moved = true;
+
+    drag.ids.forEach(function(nid){
+      const orig = drag.origins.get(nid) || {x:0,y:0};
+      moveTo(nid, orig.x + dx, orig.y + dy);
+    });
+
+    try { window.editor?.updateConnectionNodesAll?.(); } catch(_){}
+
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+
+  overlay.addEventListener('mouseup', function(e){
+    if (drag){
+      if (drag.moved){ try{ window.markFlowNeedsSave?.(true); }catch(_){ } }
+      drag = null;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+  }, true);
+
+  overlay.addEventListener('click', function(e){
+    const under = elAt(e);
+    if (!under) return;
+    if (nodeEl(under) && !isPort(under)){
+      // selection already handled on mousedown
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    // true background click with no drag → clear selection
+    if ((under.id === 'drawflow' || under.classList?.contains('precanvas')) && bgDown && !bgDragging){
+      window._multiSelectedNodes.clear();
+      paintSel();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+  }, true);
+
+  // Keep outlines in sync with DOM churn
+  new MutationObserver(paintSel).observe(document.getElementById('drawflow')||document.body, {childList:true, subtree:true});
+  // Defer initial paint to ensure nodes exist
+  (window.requestAnimationFrame||setTimeout)(paintSel, 0);
+})();
+</script>
+
+<!-- ★ FE Group Align Bar (logic) -->
+<script id="feGroupAlignBarJS">
+(function(){
+  const ready = (fn)=> (document.readyState !== 'loading') ? fn() : document.addEventListener('DOMContentLoaded', fn, {once:true});
+  ready(() => {
+    const drawflow = document.getElementById('drawflow');
+    if (!drawflow) return;
+
+    // Create bar
+    const bar = document.createElement('div');
+    bar.id = 'feGroupAlignBar';
+    bar.innerHTML = `
+      <button id="feAlignLeft"   class="fe-btn" title="Align Left">Left</button>
+      <button id="feAlignRight"  class="fe-btn" title="Align Right">Right</button>
+      <span style="display:inline-block;width:8px;"></span>
+      <button id="feAlignTop"    class="fe-btn" title="Align Top">Top</button>
+      <button id="feAlignBottom" class="fe-btn" title="Align Bottom">Bottom</button>
+      <span style="display:inline-block;width:8px;"></span>
+      <button id="feAlignCenter" class="fe-btn" title="Align Center X">Center</button>
+      <button id="feAlignMiddle" class="fe-btn" title="Align Center Y">Middle</button>
+    `;
+    // Attach within the canvas container so it moves with it visually
+    drawflow.style.position = drawflow.style.position || 'relative';
+    drawflow.appendChild(bar);
+
+    // Helpers
+    function getSelectionSet(){
+      // prefer our global set if present
+      if (window._multiSelectedNodes instanceof Set && window._multiSelectedNodes.size){
+        return new Set([...window._multiSelectedNodes].map(String));
+      }
+      // fallback: find nodes with selection classes
+      const set = new Set();
+      document.querySelectorAll('#drawflow .drawflow-node.fe-multi, #drawflow .drawflow-node.node_selected, #drawflow .drawflow-node.selected').forEach(el=>{
+        const m = (el.id||'').match(/^node-(\d+)/);
+        if (m) set.add(m[1]);
+      });
+      return set;
+    }
+    function elForId(id){ return document.getElementById('node-'+id); }
+    function posOf(el){
+      const x = parseFloat(el?.style.left)||0;
+      const y = parseFloat(el?.style.top)||0;
+      const w = el?.offsetWidth || 0;
+      const h = el?.offsetHeight || 0;
+      return {x,y,w,h};
+    }
+    function updateVisibility(){
+      const set = getSelectionSet();
+      const count = set.size;
+      bar.style.display = count >= 2 ? 'block' : 'none';
+    }
+    function applyPositions(changes){
+      // changes: Map(id -> {x?, y?})
+      changes.forEach((p, id) => {
+        const el = elForId(id);
+        if (!el) return;
+        if (typeof p.x === 'number') el.style.left = p.x + 'px';
+        if (typeof p.y === 'number') el.style.top  = p.y + 'px';
+      });
+      try { window.editor?.updateConnectionNodesAll?.(); } catch (_){}
+      try { window.markFlowNeedsSave?.(true); } catch (_){}
+    
+      // Use Drawflow API so connectors + internal state stay in sync
+      try {
+        const ed = window.editor;
+        changes.forEach((p, id) => {
+          const n = ed && typeof ed.getNodeFromId === 'function' ? ed.getNodeFromId(id) : null;
+          if (!n) return;
+          const nx = (typeof p.x === 'number') ? Number(p.x) : Number(n.pos_x||0);
+          const ny = (typeof p.y === 'number') ? Number(p.y) : Number(n.pos_y||0);
+          // keep model in sync
+          n.pos_x = nx;
+          n.pos_y = ny;
+          if (ed && typeof ed.moveNodeTo === 'function') {
+            ed.moveNodeTo(id, nx, ny);
+          } else {
+            // Fallback DOM sync (shouldn't be needed with our polyfill)
+            const el = document.getElementById('node-'+id);
+            if (el){ el.style.left = nx+'px'; el.style.top = ny+'px'; }
+          }
+        });
+        // refresh all connections once
+        try { ed && ed.updateConnectionNodesAll && ed.updateConnectionNodesAll(); } catch (_){}
+      } catch (_){}
+      try { window.markFlowNeedsSave && window.markFlowNeedsSave(true); } catch (_){}
+    }
+    function align(which){
+      const ids = [...getSelectionSet()];
+      if (ids.length < 2) return;
+      const rects = ids.map(id => ({ id, el: elForId(id) })).filter(o=>o.el).map(o => ({ id:o.id, ...posOf(o.el) }));
+      if (!rects.length) return;
+      const minX = Math.min(...rects.map(r=>r.x));
+      const minY = Math.min(...rects.map(r=>r.y));
+      const maxX = Math.max(...rects.map(r=>r.x + r.w));
+      const maxY = Math.max(...rects.map(r=>r.y + r.h));
+      const midX = (minX + maxX) / 2;
+      const midY = (minY + maxY) / 2;
+
+      const out = new Map();
+      for (const r of rects){
+        if (which === 'left')   out.set(r.id, { x: minX, y: undefined });
+        if (which === 'right')  out.set(r.id, { x: maxX - r.w, y: undefined });
+        if (which === 'top')    out.set(r.id, { x: undefined, y: minY });
+        if (which === 'bottom') out.set(r.id, { x: undefined, y: maxY - r.h });
+        if (which === 'center') out.set(r.id, { x: Math.round(midX - r.w/2), y: undefined });
+        if (which === 'middle') out.set(r.id, { x: undefined, y: Math.round(midY - r.h/2) });
+      }
+      applyPositions(out);
+    }
+
+    // Hook up buttons
+    bar.addEventListener('click', (e)=>{
+      const id = e.target && e.target.id;
+      if (!id) return;
+      if (id === 'feAlignLeft')   return align('left');
+      if (id === 'feAlignRight')  return align('right');
+      if (id === 'feAlignTop')    return align('top');
+      if (id === 'feAlignBottom') return align('bottom');
+      if (id === 'feAlignCenter') return align('center');
+      if (id === 'feAlignMiddle') return align('middle');
+    });
+
+    // Keep bar visibility in sync with selection changes
+    const precanvas = document.querySelector('#drawflow .precanvas') || drawflow;
+    const obs = new MutationObserver(() => updateVisibility());
+    obs.observe(precanvas, {subtree:true, childList:true, attributes:true, attributeFilter:['class','style']});
+    document.addEventListener('mouseup', updateVisibility, true);
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape'){ setTimeout(updateVisibility, 0); }
+    }, true);
+    // Initial
+    setTimeout(updateVisibility, 0);
+  });
+})();
+</script>
+<style id="feEditorGateCSS">
+  /* Gate the panel: closed by default; only opens when we explicitly allow it */
+  body:not(.fe-editor-open) #nodeEditorPanel { display: none !important; }
+</style>
+
+<script id="feBlockLeftClickNodeEditor">
+(function(){
+  if (window.__feBlockLeftClickNodeEditor_v2) return;
+  window.__feBlockLeftClickNodeEditor_v2 = true;
+
+  // Only open the editor when explicitly requested (e.g. via context-menu "Edit Node")
+  let allowOpen = false;
+
+  // 1) Patch renderEditor so left-click selection won't open the editor
+  function patchRender(){
+    const f = window.renderEditor;
+    if (typeof f !== 'function' || f.__fe_blocked) { setTimeout(patchRender, 40); return; }
+    const orig = f;
+    const wrapped = function(node){
+      if (allowOpen) {
+        allowOpen = false;                         // consume one shot
+        document.body.classList.add('fe-editor-open'); // unlock & show panel
+        return orig.apply(this, arguments);
+      }
+      // Block auto-open (e.g., left-click selection)
+      document.body.classList.remove('fe-editor-open');
+      const el = document.getElementById('nodeEditor');
+      if (el) el.innerHTML = 'Right Click a node to edit';
+      return undefined;
+    };
+    wrapped.__fe_blocked = true;
+    window.renderEditor = wrapped;
+  }
+  patchRender();
+
+  // 2) Mark explicit intent when user clicks "Edit Node" in the context menu
+  document.addEventListener('click', function(e){
+    const menu = document.getElementById('df-ctx-menu');
+    const btn  = menu && menu.contains(e.target) ? e.target.closest('div') : null;
+    if (btn && /edit node/i.test(btn.textContent || '')) {
+      allowOpen = true; // next renderEditor call is allowed
+    }
+  }, true);
+
+  // 3) Left-clicking any node should not open the editor
+  document.addEventListener('mousedown', function(e){
+    if (e.button === 0 && e.target.closest('.drawflow-node')) {
+      allowOpen = false;
+      document.body.classList.remove('fe-editor-open'); // keep it closed
+    }
+  }, true);
+
+  // 4) Optional niceties: Escape or clicking empty canvas closes the editor
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') document.body.classList.remove('fe-editor-open');
+  }, true);
+  document.getElementById('drawflow')?.addEventListener('click', function(e){
+    if (!e.target.closest('.drawflow-node')) {
+      document.body.classList.remove('fe-editor-open');
+    }
+  }, true);
 })();
 </script>
 
