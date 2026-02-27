@@ -40,7 +40,7 @@
 
 def setVersion(){
     state.name = "Sensor Event Logger-Viewer"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 import groovy.json.JsonOutput
@@ -191,20 +191,38 @@ def initialize() {
   }
 
   if (logDevices) {
-    // Subscribe only to selected attributes (union of attributes across chosen devices)
-    List attrs = []
+    // Subscribe only to attributes that EACH device actually supports.
+    // (Attribute picker is the union across selected devices, but we filter per-device here.)
+    List<String> attrs = []
     if (settings?.logAttributes instanceof List) {
-      attrs = settings.logAttributes
+      attrs = settings.logAttributes.collect { it?.toString() }
     } else if (settings?.logAttributes) {
-      attrs = [settings.logAttributes]
+      attrs = [settings.logAttributes?.toString()]
     }
-    attrs = (attrs ?: []).collect { it?.toString()?.trim() }.findAll { it }
+    attrs = (attrs ?: []).collect { it?.trim() }.findAll { it }
 
     if (!attrs) {
-      // Failsafe: if nothing selected, subscribe to all attributes
-      logDevices.each { subscribe(it, "all", eventHandler) }
+      // Failsafe: if nothing selected, subscribe to all attributes for each device
+      logDevices.each { d -> subscribe(d, "all", eventHandler) }
     } else {
-      logDevices.each { d -> attrs.each { a -> subscribe(d, a, eventHandler) } }
+      logDevices.each { d ->
+        Set<String> supported = [] as Set
+        try {
+          supported = (d?.supportedAttributes ?: [])
+            .collect { it?.name?.toString()?.trim() }
+            .findAll { it }
+            .toSet()
+        } catch (e) {
+          supported = [] as Set
+        }
+
+        attrs.each { a ->
+          // Only subscribe if THIS device actually exposes the attribute.
+          if (supported.contains(a)) {
+            subscribe(d, a, eventHandler)
+          }
+        }
+      }
     }
   }
 
