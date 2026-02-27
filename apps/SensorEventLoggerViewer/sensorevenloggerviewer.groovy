@@ -40,7 +40,7 @@
 
 def setVersion(){
     state.name = "Sensor Event Logger-Viewer"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 import groovy.json.JsonOutput
@@ -73,70 +73,101 @@ mappings {
    =========================== */
 
 def mainPage() {
-  dynamicPage(name: "mainPage", title: "Sensor Event Logger/Viewer", install: true, uninstall: true) {
-      section() {
-          if(state?.accessToken){
-            paragraph """<a href="/apps/api/${app.id}/viewer?access_token=${state.accessToken}" target="_blank" rel="noopener" class="btn btn-default"><b>Open Log Viewer</b></a>"""
-          }
+	dynamicPage(name: "mainPage", title: "Sensor Event Logger/Viewer", install: true, uninstall: true) {
+      	if(state?.accessToken){
+			section() {
+            	paragraph """<a href="/apps/api/${app.id}/viewer?access_token=${state.accessToken}" target="_blank" rel="noopener" class="btn btn-default"><b>Open Log Viewer</b></a>"""
+      		}
+
+			section("Devices to Log") {
+				input "logDevices", "capability.*", title: "Devices to Log", required:false, multiple:true, submitOnChange:true
+
+              	def attrOpts = getSelectedDeviceAttributeOptions()
+              	if (!attrOpts) {
+                	paragraph "<b>Choose Attributes to Log:</b> Select one or more devices above to populate the attribute list."
+              	} else {
+                	input "logAttributes", "enum",
+                      title: "Choose Attributes to Log",
+                      multiple: true,
+                      required: false,
+                      options: attrOpts,
+                      submitOnChange: true
+              	}
+            }
+
+            section("Buffer / Flush") {
+                input "maxBufferEntries", "number",
+                title: "Max buffer entries before auto-flush (0 = never auto-flush)",
+                defaultValue: 1000, range: "0..20000", required: true
+            }
+
+            section("File Settings") {
+                input "baseFileName", "text",
+                title: "Base filename (letters/numbers/_/- only, no spaces)",
+                defaultValue: "sensor_event_log",
+                required: true
+                input "keepDays", "number", title: "Days to keep log files", defaultValue: 7, range: "1..365"
+            }
+
+            section("Log Options") {
+                paragraph """<a href="/apps/api/${app.id}/viewer?access_token=${state.accessToken}" target="_blank" rel="noopener" class="btn btn-default"><b>Open Log Viewer</b></a>"""
+                input "btnFlush", "button", title: "Flush Buffer Now (send to file)"
+                input "btnPrune", "button", title: "Prune Old Files Now"
+                input "btnClear", "button", title: "Delete ALL Log Files Now"
+            }
+
+            section("Status") {
+                int buf = (state?.buffer instanceof List) ? state.buffer.size() : 0
+                paragraph "Buffered (not yet written): <b>${buf}</b>"
+                paragraph "Today's file: <b>${todayFileName()}</b>"
+                paragraph "Log files found: <b>${listLogFiles().size()}</b>"
+
+                if (state?.accessToken) {
+                    def token = state.accessToken
+                    paragraph "<b>Standalone viewer</b>:<br/>" +
+                          "<small>Remember to not share your access token!</small><br/>" +
+                          "/apps/api/${app.id}/viewer?access_token=${token}<br/><br/>" +
+                          "<b>CSV export</b>:<br/>" +
+                          "/apps/api/${app.id}/export.csv?days=7&limit=5000&access_token=${token}"
+                } else {
+                    paragraph "<b>API</b>: Access token not created yet. It will be created after install/update."
+                }
+        	}
+            section("") {
+                paragraph "<hr style='border: none; height: 4px; background-color: blue; border-radius: 2px;'>"
+                paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
+            }
+		} else {
+            paragraph "<b>Access token not created yet. Tap Done/Update, then reopen this app.<br>* Be sure to enable oAuth in Apps Code first.</b>"
+      	}	
+	}
+}
+
+
+/* ===========================
+   Helpers (UI)
+   =========================== */
+
+private List<String> getSelectedDeviceAttributeOptions() {
+  def devs = settings?.logDevices
+  if (!devs) return []
+
+  List<String> names = []
+  devs.each { d ->
+    try {
+      d?.supportedAttributes?.each { a ->
+        def n = a?.name?.toString()
+        if (n) names << n
       }
-			
-    section("Devices to Log") {
-      input "logDevices", "capability.sensor", title: "Select sensors/devices", multiple: true, required: true
-      input "logAllAttributes", "bool", title: "Log ALL attributes", defaultValue: true
-      input "onlyTheseAttributes", "text",
-        title: "If not all, comma-separated attributes (e.g. temperature,humidity,motion)",
-        required: false
+    } catch (e) {
+      // ignore device that doesn't expose supportedAttributes cleanly
     }
-
-    section("Buffer / Flush") {
-      input "maxBufferEntries", "number",
-        title: "Max buffer entries before auto-flush (0 = never auto-flush)",
-        defaultValue: 1000, range: "0..20000", required: true
-    }
-
-    section("File Settings") {
-      input "baseFileName", "text",
-        title: "Base filename (letters/numbers/_/- only, no spaces)",
-        defaultValue: "sensor_event_log",
-        required: true
-      input "keepDays", "number", title: "Days to keep log files", defaultValue: 7, range: "1..365"
-    }
-
-    section("Log Options") {
-      if(state?.accessToken){
-        paragraph """<a href="/apps/api/${app.id}/viewer?access_token=${state.accessToken}" target="_blank" rel="noopener" class="btn btn-default"><b>Open Log Viewer</b></a>"""
-      } else {
-        paragraph "<b>Viewer:</b> Access token not created yet. Tap Done/Update, then reopen.<br>* Be sure to enable oAuth in Apps Code"
-      }
-
-      input "btnFlush", "button", title: "Flush Buffer Now (send to file)"
-      input "btnPrune", "button", title: "Prune Old Files Now"
-      input "btnClear", "button", title: "Delete ALL Log Files Now"
-    }
-
-    section("Status") {
-      int buf = (state?.buffer instanceof List) ? state.buffer.size() : 0
-      paragraph "Buffered (not yet written): <b>${buf}</b>"
-      paragraph "Today's file: <b>${todayFileName()}</b>"
-      paragraph "Log files found: <b>${listLogFiles().size()}</b>"
-
-      if (state?.accessToken) {
-        def token = state.accessToken
-        paragraph "<b>Standalone viewer</b>:<br/>" +
-            	  "<small>Remember to not share your access token!</small><br/>" +
-                  "/apps/api/${app.id}/viewer?access_token=${token}<br/><br/>" +
-                  "<b>CSV export</b>:<br/>" +
-                  "/apps/api/${app.id}/export.csv?days=7&limit=5000&access_token=${token}"
-      } else {
-        paragraph "<b>API</b>: Access token not created yet. It will be created after install/update."
-      }
-    }
-      
-      section("") {
-          paragraph "<hr style='border: none; height: 4px; background-color: blue; border-radius: 2px;'>"
-          paragraph "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a></div>"
-      }
   }
+
+  names = names.collect { it?.trim() }.findAll { it }
+  names = names.unique()
+  names.sort { it.toLowerCase() }
+  return names
 }
 
 /* ===========================
@@ -160,15 +191,20 @@ def initialize() {
   }
 
   if (logDevices) {
-    if (settings?.logAllAttributes) {
+    // Subscribe only to selected attributes (union of attributes across chosen devices)
+    List attrs = []
+    if (settings?.logAttributes instanceof List) {
+      attrs = settings.logAttributes
+    } else if (settings?.logAttributes) {
+      attrs = [settings.logAttributes]
+    }
+    attrs = (attrs ?: []).collect { it?.toString()?.trim() }.findAll { it }
+
+    if (!attrs) {
+      // Failsafe: if nothing selected, subscribe to all attributes
       logDevices.each { subscribe(it, "all", eventHandler) }
     } else {
-      def attrs = parseAttrList(settings?.onlyTheseAttributes)
-      if (!attrs) {
-        logDevices.each { subscribe(it, "all", eventHandler) }
-      } else {
-        logDevices.each { d -> attrs.each { a -> subscribe(d, a, eventHandler) } }
-      }
+      logDevices.each { d -> attrs.each { a -> subscribe(d, a, eventHandler) } }
     }
   }
 
@@ -504,6 +540,7 @@ String buildViewerHtml(String apiBase, String token) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer" />
   <title>Sensor Event Logger</title>
   <style>
     :root{color-scheme:dark;}
@@ -532,6 +569,20 @@ String buildViewerHtml(String apiBase, String token) {
 
     .dt{font-weight:900;white-space:nowrap}
     .dev{opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* device icon + name */
+    .devwrap{display:flex;align-items:center;gap:10px;min-width:0}
+    .ico{width:16px;height:16px;flex:0 0 16px;opacity:.92;display:inline-block}
+    .ico svg{width:16px;height:16px;display:block}
+    .ico i{font-size:16px;line-height:16px;display:block}
+    .ico path,.ico circle,.ico rect,.ico line,.ico polyline{stroke:rgba(232,236,241,.95);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+
+    /* icon font fallback */
+    .faico{display:none}
+    .svgico{display:block}
+    body.fa-ok .faico{display:block}
+    body.fa-ok .svgico{display:none}
+
     .attr{opacity:.75;white-space:nowrap}
     .val{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .val .d{font-weight:500;opacity:.65;margin-left:10px}
@@ -615,6 +666,20 @@ String buildViewerHtml(String apiBase, String token) {
   let cursorBeforeTs = 0;  // load older than this
   let autoTimer = null;
 
+  // Font Awesome detection + fallback swap (no blank icons)
+  // If FA loads, body gets class "fa-ok" and we show FA icons; otherwise SVG stays visible.
+  function initFontAwesomeWatcher(){
+    const link = document.querySelector('link[href*="font-awesome"]');
+    if(link){
+      link.addEventListener("load", () => { setFaOkClass(); render(true); });
+      link.addEventListener("error", () => { document.body.classList.remove("fa-ok"); render(true); });
+    }
+    // Check now and again shortly after (covers cached/slow loads)
+    setFaOkClass();
+    setTimeout(() => { setFaOkClass(); render(true); }, 600);
+    setTimeout(() => { setFaOkClass(); render(true); }, 1500);
+  }
+
   function esc(s){
     return (s ?? "").toString()
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -624,6 +689,213 @@ String buildViewerHtml(String apiBase, String token) {
   function fmt(n){ return new Intl.NumberFormat().format(n); }
 
   function setStatus(t){ el("status").textContent = t; }
+
+  function iconKeyForEntry(e){
+    // prefer attribute, fallback to parsing description text
+    const a = (e?.attr ?? "").toString().toLowerCase();
+    const d = (e?.desc ?? "").toString().toLowerCase();
+
+    // attribute-based mapping
+    if(a.includes("motion")) return "motion";
+    if(a.includes("contact")) return "contact";
+    if(a.includes("temperature") || a === "temp") return "temp";
+    if(a.includes("humidity")) return "humidity";
+    if(a.includes("illuminance") || a.includes("lux")) return "light";
+    if(a.includes("water") || a.includes("leak")) return "water";
+    if(a.includes("smoke")) return "smoke";
+    if(a.includes("carbonmonoxide") || a.includes("co")) return "co";
+    if(a.includes("presence") || a.includes("occup")) return "presence";
+    if(a.includes("acceleration") || a.includes("vibration")) return "vibration";
+    if(a.includes("battery")) return "battery";
+    if(a.includes("power") || a.includes("energy") || a.includes("watt")) return "power";
+    if(a.includes("switch")) return "switch";
+    if(a.includes("lock")) return "lock";
+    if(a.includes("tamper")) return "tamper";
+
+    // description heuristics
+    if(d.includes("motion")) return "motion";
+    if(d.includes("contact")) return "contact";
+    if(d.includes("open") || d.includes("closed")) return "contact";
+    if(d.includes("temperature")) return "temp";
+    if(d.includes("humidity")) return "humidity";
+    if(d.includes("leak") || d.includes("wet") || d.includes("dry")) return "water";
+    if(d.includes("smoke")) return "smoke";
+    if(d.includes("carbon monoxide") || d.includes(" co ")) return "co";
+    if(d.includes("battery")) return "battery";
+
+    return "sensor";
+  }
+
+  function iconEmojiForKey(k){
+    switch(k){
+      case "motion": return "🏃";
+      case "contact": return "🚪";
+      case "temp": return "🌡️";
+      case "humidity": return "💧";
+      case "light": return "💡";
+      case "water": return "🚰";
+      case "smoke": return "🔥";
+      case "co": return "☠️";
+      case "presence": return "👤";
+      case "vibration": return "📳";
+      case "battery": return "🔋";
+      case "power": return "⚡";
+      case "switch": return "⏻";
+      case "lock": return "🔒";
+      case "tamper": return "🛡️";
+      default: return "📟";
+    }
+  }
+
+  function iconHtmlForKey(k){
+    // Font Awesome Free (via CDN). Using Solid icons only.
+    // NOTE: If your tablet/PC has no internet, these will not render (fallback still works for dropdown).
+    switch(k){
+      case "motion":     return `<i class="fa-solid fa-person-running" aria-hidden="true"></i>`;
+      case "contact":    return `<i class="fa-solid fa-door-closed" aria-hidden="true"></i>`;
+      case "temp":       return `<i class="fa-solid fa-temperature-half" aria-hidden="true"></i>`;
+      case "humidity":   return `<i class="fa-solid fa-droplet" aria-hidden="true"></i>`;
+      case "light":      return `<i class="fa-solid fa-lightbulb" aria-hidden="true"></i>`;
+      case "water":      return `<i class="fa-solid fa-faucet-drip" aria-hidden="true"></i>`;
+      case "smoke":      return `<i class="fa-solid fa-fire" aria-hidden="true"></i>`;
+      case "co":         return `<i class="fa-solid fa-skull-crossbones" aria-hidden="true"></i>`;
+      case "presence":   return `<i class="fa-solid fa-user" aria-hidden="true"></i>`;
+      case "vibration":  return `<i class="fa-solid fa-mobile-screen" aria-hidden="true"></i>`;
+      case "battery":    return `<i class="fa-solid fa-battery-three-quarters" aria-hidden="true"></i>`;
+      case "power":      return `<i class="fa-solid fa-bolt" aria-hidden="true"></i>`;
+      case "switch":     return `<i class="fa-solid fa-power-off" aria-hidden="true"></i>`;
+      case "lock":       return `<i class="fa-solid fa-lock" aria-hidden="true"></i>`;
+      case "tamper":     return `<i class="fa-solid fa-shield-halved" aria-hidden="true"></i>`;
+      default:           return `<i class="fa-solid fa-microchip" aria-hidden="true"></i>`;
+    }
+  }
+
+  function iconSvgForKey(k){
+    // Inline SVG fallback (no external deps)
+    switch(k){
+      case "motion":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="16" cy="5" r="2"></circle>
+          <path d="M6 22l3-6 3 2 2 6"></path>
+          <path d="M10 11l3-3 4 2"></path>
+          <path d="M7 13l3-2"></path>
+        </svg>`;
+      case "contact":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="4" width="8" height="16" rx="2"></rect>
+          <rect x="14" y="7" width="6" height="10" rx="2"></rect>
+          <line x1="12" y1="12" x2="14" y2="12"></line>
+        </svg>`;
+      case "temp":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"></path>
+          <line x1="12" y1="6" x2="12" y2="14"></line>
+        </svg>`;
+      case "humidity":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"></path>
+        </svg>`;
+      case "light":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 18h6"></path>
+          <path d="M10 22h4"></path>
+          <path d="M12 2a7 7 0 0 0-4 12c.6.6 1 1.3 1 2h6c0-.7.4-1.4 1-2a7 7 0 0 0-4-12z"></path>
+        </svg>`;
+      case "water":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"></path>
+          <line x1="8" y1="20" x2="16" y2="20"></line>
+        </svg>`;
+      case "smoke":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2c1 2 2 3 2 5a2 2 0 0 1-4 0c0-2 1-3 2-5z"></path>
+          <path d="M7 22h10"></path>
+          <path d="M8 18c0-2 2-3 4-3s4 1 4 3"></path>
+        </svg>`;
+      case "co":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M9 10c.5-1 1.5-1.5 3-1.5S14.5 9 15 10"></path>
+          <path d="M9 15h6"></path>
+        </svg>`;
+      case "presence":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="3"></circle>
+          <path d="M5 22c1-4 4-6 7-6s6 2 7 6"></path>
+        </svg>`;
+      case "vibration":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="8" y="2" width="8" height="20" rx="2"></rect>
+          <line x1="6" y1="7" x2="4" y2="9"></line>
+          <line x1="6" y1="17" x2="4" y2="15"></line>
+          <line x1="18" y1="7" x2="20" y2="9"></line>
+          <line x1="18" y1="17" x2="20" y2="15"></line>
+        </svg>`;
+      case "battery":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="8" width="16" height="8" rx="2"></rect>
+          <line x1="21" y1="10" x2="21" y2="14"></line>
+          <line x1="6" y1="12" x2="16" y2="12"></line>
+        </svg>`;
+      case "power":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M13 2L3 14h7l-1 8 12-14h-7l-1-6z"></path>
+        </svg>`;
+      case "switch":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <line x1="12" y1="2" x2="12" y2="10"></line>
+          <path d="M7.5 6.5a7 7 0 1 0 9 0"></path>
+        </svg>`;
+      case "lock":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="11" rx="2"></rect>
+          <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+        </svg>`;
+      case "tamper":
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2l8 4v6c0 6-4 10-8 10S4 18 4 12V6l8-4z"></path>
+          <line x1="12" y1="7" x2="12" y2="13"></line>
+          <circle cx="12" cy="16.5" r="0.6"></circle>
+        </svg>`;
+      default:
+        return `<svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="4" width="16" height="16" rx="3"></rect>
+          <line x1="8" y1="9" x2="16" y2="9"></line>
+          <line x1="8" y1="13" x2="16" y2="13"></line>
+          <line x1="8" y1="17" x2="13" y2="17"></line>
+        </svg>`;
+    }
+  }
+
+  function iconDualForKey(k){
+    // Always render SVG; swap to Font Awesome only if it successfully loads.
+    return `<span class="faico">\${iconHtmlForKey(k)}</span><span class="svgico">\${iconSvgForKey(k)}</span>`;
+  }
+
+  function checkFontAwesomeLoaded(){
+    // Font Awesome renders icons via ::before content. If loaded, content will be a glyph, not "none".
+    const t = document.createElement("i");
+    t.className = "fa-solid fa-bolt";
+    t.style.position = "absolute";
+    t.style.left = "-9999px";
+    t.style.top = "-9999px";
+    document.body.appendChild(t);
+    const c = getComputedStyle(t, "::before").getPropertyValue("content");
+    document.body.removeChild(t);
+    return (c && c !== "none" && c !== "normal" && c !== '""');
+  }
+
+  function setFaOkClass(){
+    try{
+      if(checkFontAwesomeLoaded()){
+        document.body.classList.add("fa-ok");
+      }else{
+        document.body.classList.remove("fa-ok");
+      }
+    }catch(_){
+      document.body.classList.remove("fa-ok");
+    }
+  }
 
   async function getJson(url){
     const r = await fetch(url, {cache:"no-store"});
@@ -700,7 +972,12 @@ String buildViewerHtml(String apiBase, String token) {
       out.push(`
         <div class="item" style="background: \${di.bgRow}">
           <div class="dt">\${esc(e.dt || "")}</div>
-          <div class="dev">\${esc(e.dev || "")}</div>
+          <div class="dev">
+            <div class="devwrap">
+              <span class="ico">\${iconDualForKey(iconKeyForEntry(e))}</span>
+              <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(e.dev || "")}</span>
+            </div>
+          </div>
           <div class="attr">\${esc(e.attr || "")}</div>
           <div class="val">\${esc(e.val || "")}\${unit}\${dHtml}</div>
         </div>
@@ -724,15 +1001,24 @@ String buildViewerHtml(String apiBase, String token) {
   function rebuildDeviceDropdownFromItems(){
     const sel = el("dev");
     const current = sel.value || "";
-    const set = new Set();
-    for(const e of items){
-      if(e && e.dev) set.add(e.dev);
-    }
-    const devices = Array.from(set).sort((a,b)=>a.localeCompare(b));
+    const map = new Map(); // devName -> iconKey
 
-    sel.innerHTML = '<option value="">All</option>' + devices.map(d =>
-      `<option value="\${esc(d)}">\${esc(d)}</option>`
-    ).join("");
+    for(const e of items){
+      const dev = (e?.dev ?? "").toString();
+      if(!dev) continue;
+      if(!map.has(dev)){
+        map.set(dev, iconKeyForEntry(e));
+      }
+    }
+
+    const devices = Array.from(map.keys()).sort((a,b)=>a.localeCompare(b));
+
+    sel.innerHTML = '<option value="">All</option>' + devices.map(d => {
+      const k = map.get(d) || "sensor";
+      const emo = iconEmojiForKey(k);
+      // NOTE: <option> can't render HTML/SVG reliably; emoji is safe.
+      return `<option value="\${esc(d)}">\${emo} \${esc(d)}</option>`;
+    }).join("");
 
     // restore selection if still present
     if(current && devices.includes(current)) sel.value = current;
@@ -845,6 +1131,7 @@ String buildViewerHtml(String apiBase, String token) {
   el("auto").addEventListener("change", (ev)=>setAuto(!!ev.target.checked));
 
   // initial
+  initFontAwesomeWatcher();
   loadFresh();
 })();
 </script>
