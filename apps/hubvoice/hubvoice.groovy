@@ -1,17 +1,6 @@
 /**
  * HubVoice
- * - Accepts free-form text (q or text)
- * - Matches device by name from selected devices
- * - Tracks last event timestamps per device+attribute+value (open/closed/on/off/active/etc.)
- * - Returns JSON { ok, answer, device, attribute, value, when }
- * - Optional: speak answer via a Speech Synthesis device (Chromecast Integration) or push
- *
- * Usage:
- *   /ask?q=when%20was%20the%20front%20door%20last%20opened
- *   /ask?q=is%20bedroom%20ceiling%20light%20on
- *
- * Security:
- *   - Uses Hubitat access_token for local/cloud API calls.
+ * Local Voice Control for Hubitat
  */
 import groovy.json.JsonOutput
 
@@ -19,7 +8,7 @@ definition(
   name: "HubVoice",
   namespace: "bptworld",
   author: "Bryan Turcotte",
-  description: "Single /ask endpoint that answers device state + last-change questions from free-form text or voice.",
+  description: "Local Voice Control for Hubitat",
   category: "Convenience",
   iconUrl: "",
   iconX2Url: "",
