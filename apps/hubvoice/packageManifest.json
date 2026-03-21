@@ -16,8 +16,8 @@
             "id": "d0cc367b-e754-4c7f-beb4-dbc94ce97a53",
             "name": "HubVoice",
             "namespace": "BPTWorld",
-            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/HubVoice/HubVoice.groovy",
-            "description": "Local Voice Control for Hubitat! Requires a standalone always on win PC",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/HubVoice.groovy",
+            "description": "Local Voice Control for Hubitat! Requires a standalone always on win PC.",
             "oauth": true,
             "required": true
         }
