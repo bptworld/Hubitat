@@ -20,7 +20,7 @@
       {
    		"name": "HubVoice",
    		"category": "Utilities",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/HubVoice/packageManifest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/packageManifest.json",
    		"description": "Local Voice Control for Hubitat!  Requires an always on win PC.",
          "tags": [ "Tools & Utilities" ]
    	},
