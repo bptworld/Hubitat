@@ -1,0 +1,25 @@
+{
+    "packageName": "HubVoice",
+    "version": "beta-003",
+    "releaseNotes": "Beta Release",
+    "minimumHEVersion": "2.3.8.117",
+    "author": "Bryan Turcotte (@bptworld)",
+    "dateReleased": "2026-03-21",
+    "documentationLink": "https://github.com/bptworld/Hubitat",
+    "communityLink": "https://community.hubitat.com/t/beta-hubvoice-a-local-voice-control-assistant/162246",
+    "licenseFile": "",
+    "payPalUrl": "https://paypal.me/bptworld",
+    "category": "Utility",
+    "tags": ["Voice", "Tools & Utilities"],
+    "apps": [
+        {
+            "id": "d0cc367b-e754-4c7f-beb4-dbc94ce97a53",
+            "name": "HubVoice",
+            "namespace": "BPTWorld",
+            "location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/HubVoice/HubVoice.groovy",
+            "description": "Local Voice Control for Hubitat! Requires a standalone always on win PC.",
+            "oauth": true,
+            "required": true
+        }
+    ]
+}
