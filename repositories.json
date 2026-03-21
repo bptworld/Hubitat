@@ -18,6 +18,13 @@
          "tags": [ "Tools & Utilities" ]
    	},
       {
+   		"name": "HubVoice",
+   		"category": "Utilities",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/HubVoice/packageManifest.json",
+   		"description": "Local Voice Control for Hubitat!  Requires an always on win PC.",
+         "tags": [ "Tools & Utilities" ]
+   	},
+      {
    		"name": "The Flasher",
    		"category": "Utilities",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/packageManifest.json",
