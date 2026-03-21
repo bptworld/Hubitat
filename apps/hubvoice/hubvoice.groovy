@@ -31,6 +31,7 @@ preferences {
   page(name: "mainPage")
   page(name: "testPage")
   page(name: "diagPage")
+  page(name: "instructionPage")
 }
 
 private String appRev() {
@@ -71,6 +72,10 @@ private String safeName(def obj) {
 
 def mainPage() {
     dynamicPage(name: "mainPage", title: "Hubitat Voice - ${appRev()}", install: true, uninstall: true) {
+        section() {
+            href name: "goInstructions", title: "Open Install Instructions", description: "How to add satellites and more!", page: "instructionPage"
+        }
+        
         section() {
             paragraph "Be sure to fill out all sections before using this test feature."
             href name: "goTest", title: "Open Test Tool", description: "Type a question and see the answer", page: "testPage"
@@ -429,6 +434,48 @@ def diagPage() {
       paragraph "Tip: Disable clear toggles after using them."
     }
   }
+}
+
+def instructionPage() {
+	dynamicPage(name: "instructionPage", title: "Instructions", uninstall: false, install: false) {
+        section(){
+          paragraph "This is going to take a bit to finish.  Things are evolving fast!"
+        }
+        
+        section("<hr>") {}
+        section("<b>Testing</b>") {
+            test =  "- After filling out all fields and clicking 'Done'<br>"
+            test += "- Go back in to HubVoice and choose 'Open Test Tool'<br>"
+            test += "- Type in whatever you want and hit enter or click outside the box<br>"
+            test += "- Like magic, your answer appears below and/or the devices changed!<br>"
+            paragraph test
+        }
+        
+        section("<hr>") {}
+        section("<b>Tasker for Android</b>") {
+            tasker =  "- Requires Tasker and the plugin Autovoice installed on you Android device<br>"
+            tasker += "- I've uploaded my xml on <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>. You can import that in to Tasker<br>"
+            tasker += "- Once imported, the only thing you should have to change is the 'app URL' found within the Hubitat app<br>"
+            tasker += "- Once you have this working, you can make a widget for it, so you have quick access!<br>"
+            paragraph tasker
+        }
+        
+        section("<hr>") {}
+        section("<b>Requirements for Voice Control</b>") {
+            req =  "- An always on Win PC running HubVoiceSat<br>"
+            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoice firmware)<br>"
+            paragraph req
+        }
+        
+        section("<b>How to Install HubVoiceSat on Win PC</b>") {
+            winPC =  "- Download HubVoiceSat.exe from Dropbox on the always on Win PC<br>"
+            winPC += "- Dropbox link: <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>open link</a><br>"
+            winPC += "- Double click the HubVoiceSat.exe, first time might take a minute for it to setup.<br>"
+            paragraph winPC
+        }
+        
+        section("<hr>") {}
+  	}
 }
 
 /* ---------------- Helpers: Rate limiting + parsing ---------------- */
