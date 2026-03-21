@@ -159,35 +159,42 @@ def mainPage() {
         }
 
         section("<hr>") {}
-        section("<b>Endpoint Info</b>") {
-            ensureAccessToken()
-            def appId = app.id
-            def token = state.accessToken
+        section("<b>Endpoint Info</b> - Reminder: Do NOT share your token with anyone or they will be able to control your system.") {
+            input "showEndpoints", "bool", title: "Show the endpoints", required: false, defaultValue: false, submitOnChange: true
+            if(showEndpoints) {
+                ensureAccessToken()
+                def appId = app.id
+                def token = state.accessToken
 
-            def localBase = getFullLocalApiServerUrl() ?: "http://<hub-ip>"
-            def cloudBase = getFullApiServerUrl() ?: "https://cloud.hubitat.com"
+                def localBase = getFullLocalApiServerUrl() ?: "http://<hub-ip>"
+                def cloudBase = getFullApiServerUrl() ?: "https://cloud.hubitat.com"
 
-            def localAsk  = "${localBase}/ask?q=%avcomm&access_token=${token}"
-            def localPing = "${localBase}/ping?access_token=${token}"
-            def localHealth = "${localBase}/health?access_token=${token}"
-            def localMini = "${localBase}/ask?access_token=${token}&d=mini&q={query}"
+                def localAsk  = "${localBase}/ask?q=%avcomm&access_token=${token}"
+                def localPing = "${localBase}/ping?access_token=${token}"
+                def localHealth = "${localBase}/health?access_token=${token}"
+                def localTasker = "${localBase}/ask?access_token=${token}&d=tasker&q=%avcomm"
+                def localMini = "${localBase}/ask?access_token=${token}&d=mini&q={query}"
 
-            // Cloud base from getFullApiServerUrl() already includes /api/<cloudHubId>
-            // So DO NOT add /api/<id> again.
-            def cloudAsk  = "${cloudBase}/ask?q=%avcomm&access_token=${token}"
-            def cloudPing = "${cloudBase}/ping?access_token=${token}"
-            def cloudHealth = "${cloudBase}/health?access_token=${token}"
-            def cloudMini  = "${cloudBase}/ask?access_token=${token}&d=mini&q={query}"
+                // Cloud base from getFullApiServerUrl() already includes /api/<cloudHubId>
+                // So DO NOT add /api/<id> again.
+                def cloudAsk  = "${cloudBase}/ask?q=%avcomm&access_token=${token}"
+                def cloudPing = "${cloudBase}/ping?access_token=${token}"
+                def cloudHealth = "${cloudBase}/health?access_token=${token}"
+                def cloudTasker = "${cloudBase}/ask?access_token=${token}&d=tasker&q=%avcomm"
+                def cloudMini  = "${cloudBase}/ask?access_token=${token}&d=mini&q={query}"
 
-            paragraph "<b>Local Ask:</b> ${localAsk}"
-            paragraph "<b>Local Ping:</b> ${localPing}"
-            paragraph "<b>Local Health:</b> ${localHealth}"
-            paragraph "<b>Local HubVoiceMini app:</b> ${localMini}"
-            paragraph ""
-            paragraph "<b>Cloud Ask:</b> ${cloudAsk}"
-            paragraph "<b>Cloud Ping:</b> ${cloudPing}"
-            paragraph "<b>Cloud Health:</b> ${cloudHealth}"
-            paragraph "<b>Cloud HubVoiceMini app:</b> ${cloudMini}"
+                paragraph "<b>Local Ask:</b> ${localAsk}"
+                paragraph "<b>Local Ping:</b> ${localPing}"
+                paragraph "<b>Local Health:</b> ${localHealth}"
+                paragraph "<b>Local HubVoiceTasker:</b> ${localTasker}"
+                paragraph "<b>Local HubVoiceMini app:</b> ${localMini}"
+                paragraph ""
+                paragraph "<b>Cloud Ask:</b> ${cloudAsk}"
+                paragraph "<b>Cloud Ping:</b> ${cloudPing}"
+                paragraph "<b>Cloud Health:</b> ${cloudHealth}"
+                paragraph "<b>Cloud HubVoiceTasker:</b> ${cloudTasker}"
+                paragraph "<b>Cloud HubVoiceMini app:</b> ${cloudMini}"
+            }
         }
 
         section("<hr>") {}
