@@ -473,13 +473,12 @@ def instructionPage() {
         section("<hr>") { paragraph "Now for the fun stuff. Turn a HA Voice Assistant PE in to a Voice Controller for Hubitat!"}
         section("<b>Requirements for Voice Control</b>") {
             req =  "- An always on Win PC running HubVoiceSat<br>"
-            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoice firmware)"
+            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoiceSat firmware)"
             paragraph req
         }
         
         section("<b>How to Install HubVoiceSat on Win PC</b>") {
-            winPC =  "- Download HubVoiceSat.exe from Dropbox on the always on Win PC<br>"
-            winPC += "- Dropbox link: <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>open link</a><br>"
+            winPC =  "- Download HubVoiceSat.exe from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a> on the always on Win PC<br>"
             winPC += "- Double click the HubVoiceSat.exe, first time might take a minute for it to setup."
             paragraph winPC
         }
@@ -496,10 +495,10 @@ def instructionPage() {
             firstFlash += "- Wait for the flash to finish and let the device reboot.<br><br>"
             firstFlash += "After it reboots:<br>"
             firstFlash += "- Wait a minute or two for it to join Wi‑Fi.<br>"
-            firstFlash += "- Find the device on your network. Its hostname will be hubvoice-sat-xxxxxx.local with a unique MAC suffix, or you can check your router’s client list.<br>"
+            firstFlash += "- Find the device on your network by checking your router’s client list.<br>"
             firstFlash += "- Open the device web page in your browser.<br>"
             firstFlash += "- Find the Satellite Name field.<br>"
-            firstFlash += "- Enter a unique room name like Living Room, Kitchen, or Office.<br>"
+            firstFlash += "- Enter a unique room name like sat-LR, sat-Kitchen, or sat-Office.<br>"
             firstFlash += "- Confirm that Effective Satellite Name shows the name you want.<br><br>"
             firstFlash += "If it does not join Wi‑Fi:<br>"
             firstFlash += "- Look for a Wi‑Fi network named HubVoiceSat Setup.<br>"
@@ -510,6 +509,13 @@ def instructionPage() {
             paragraph firstFlash
         }
         
+        section("<b>Future Updates</b>") {
+            future =  "<b>Hubitat App Updates<<b> - Available through Hubitat Package Manager<br>"
+            future += "<b>All EXE Updates</b> -  Available through downloads on <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>.<br>"
+            future += "<b>Satellite Updates</b> - Available through the webserver satellite page.<br>"
+            future += "With, of course, a forum posting announcing the update availability!"
+            paragraph future
+        }
         section("<hr>") {}
   	}
 }
