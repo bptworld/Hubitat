@@ -12,7 +12,6 @@
  *
  * Security:
  *   - Uses Hubitat access_token for local/cloud API calls.
- *   - Optional extra apiKey query param.
  */
 import groovy.json.JsonOutput
 
@@ -35,7 +34,7 @@ preferences {
 }
 
 private String appRev() {
-  return "2026-03-06-rw4"
+  return "beta-003"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -71,72 +70,91 @@ private String safeName(def obj) {
 }
 
 def mainPage() {
-	dynamicPage(name: "mainPage", title: "Hubitat Voice", install: true, uninstall: true) {
-        section("Test (type a question/command)") {
+    dynamicPage(name: "mainPage", title: "Hubitat Voice - ${appRev()}", install: true, uninstall: true) {
+        section() {
             paragraph "Be sure to fill out all sections before using this test feature."
             href name: "goTest", title: "Open Test Tool", description: "Type a question and see the answer", page: "testPage"
             href name: "goDiag", title: "Open Diagnostics", description: "See parser stats, rate limits, and last request", page: "diagPage"
         }
         
-        section("Devices to include") {
-          	paragraph "Select the devices you want this app to understand. This app will subscribe to their events so it can answer 'last opened/last on' questions."
-          	input "qaDevices", "capability.*", title: "Choose Devices", multiple: true, required: true
+        section("<b>Devices to include</b>") {}
+        section("Master List", hideable: true, hidden: true) {
+          	input "qaDevices", "capability.*", title: "Choose Devices - Select the devices you want this app to understand.", multiple: true, required: true, submitOnChange: true
         }
 
-        section("Device Aliases (optional)") {
-            paragraph "Add nicknames for devices to improve matching. One per line in the form: Device Name = alias1, alias2, alias3"
-            input "deviceAliases", "textarea", title: "Aliases", required: false
+        section("<b>Device Aliases (optional)</b>") {
+            input "deviceAliases", "textarea", title: "Aliases - Add nicknames for devices to improve matching. One per line in the form: Device Name = alias1, alias2, alias3", required: false
         }
 
-        section("Optional: Extra API key") {
-          	paragraph "If set, callers must pass &key=YOURKEY in addition to access_token. (This is extra, not a replacement.)"
-          	input "apiKey", "text", title: "API Key", required: false
-        }
-      
-        section("Notify Options") {
-        	input "notificationDevice", "capability.notification", title: "Notification Device (for push messages)", required: false, multiple: true, submitOnChange: true
-        	input "speaker", "capability.speechSynthesis", title: "Speak on this chrome device (optional)", required: false, multiple: true, submitOnChange: true
+        section("<b>Satellite Rooms (optional)</b>") {
+            paragraph "Map each satellite name to its room so generic requests like 'turn on ceiling light' prefer devices in that room. One per line: satellite-name = room name"
+            input "satelliteRooms", "textarea", title: "Satellite to Room Map", required: false
         }
 
-        section("Storage Limits") {
+        section("<b>Notify Options</b> (used for Tasker)") {
+            input "useTasker", "bool", title: "Use Hubitat Notifications with Tasker", required: false, submitOnChange:true
+            if(useTasker) {
+        		input "notificationDevice", "capability.notification", title: "Notification Device (for push messages)", required: false, multiple: true, submitOnChange: true, width: 6
+        		input "speaker", "capability.speechSynthesis", title: "Speak on this chrome device (optional)", required: false, multiple: true, submitOnChange: true, width: 6
+            }
+        }
+
+        section("<hr>") {}
+        section("<b>Storage Limits</b>") {
             paragraph "To avoid excessive state growth when tracking many devices, the app caps the number of unique (device + attribute + value) keys kept in memory. Oldest keys are evicted first."
-            input "maxTrackedKeys", "number", title: "Max tracked keys in state (device+attr+value)", required: false, defaultValue: 5000
-        
-            input "dbMaxEvents", "number", title: "DB query max events to scan per question (counts)", required: false, defaultValue: 2000
+            input "maxTrackedKeys", "number", title: "Max tracked keys in state (device+attr+value)", required: false, defaultValue: 5000, width:6
+            input "dbMaxEvents", "number", title: "DB query max events to scan per question (counts)", required: false, defaultValue: 2000, width:6
         }
 
-        section("Behavior") {
+        section("<hr>") {}
+        section("<b>Behavior</b>") {
+            input "weatherLocation", "text", title: "Weather location for generic weather questions (zip or city, optional)", required: false
+            
             input "shortTts", "bool", title: "Short voice responses (TTS-friendly)", required: false, defaultValue: true
             input "maxRequestsPerMinute", "number", title: "Rate limit: max /ask requests per minute (0 = disable)", required: false, defaultValue: 30
+            
             input "securityCode", "text", title:"Security code for risky actions (optional)", required:false
-            input "useGenericDeny", "bool", title: "Security: Use generic denial message for risky actions", required: false, defaultValue: true
-            input "genericDenyMsg", "text", title: "Generic denial message", required: false, defaultValue: "Unable to complete request."
-            input "bfEnabled", "bool", title: "Security: Brute-force protection for risky actions", required: false, defaultValue: true
-            input "bfMaxFails", "number", title: "Brute-force: Max failed code attempts", required: false, defaultValue: 5
-            input "bfWindowMins", "number", title: "Brute-force: Failure window (minutes)", required: false, defaultValue: 10
-            input "bfLockoutMins", "number", title: "Brute-force: Lockout duration (minutes)", required: false, defaultValue: 10
+            
+            input "useGenericDeny", "bool", title: "Security: Use generic denial message for risky actions", required: false, defaultValue: true, submitOnChange:true
+            if(useGenericDeny) {
+            	input "genericDenyMsg", "text", title: "Generic denial message", required: false, defaultValue: "Unable to complete request."
+            }
+            
+            input "bfEnabled", "bool", title: "Security: Brute-force protection for risky actions", required: false, defaultValue: true, submitOnChange:true
+            if(bfEnabled) {
+            	input "bfMaxFails", "number", title: "Brute-force: Max failed code attempts", required: false, defaultValue: 5, width:4
+            	input "bfWindowMins", "number", title: "Brute-force: Failure window (minutes)", required: false, defaultValue: 10, width:4
+            	input "bfLockoutMins", "number", title: "Brute-force: Lockout duration (minutes)", required: false, defaultValue: 10, width:4
+            }
 
-            input "enforceRiskyLockAllowlist", "bool", title: "Security: Restrict risky lock actions to allowlist", required: false, defaultValue: false
-            input "riskyLockDevices", "capability.lock", title: "Risky lock allowlist", required: false, multiple: true
+            input "enforceRiskyLockAllowlist", "bool", title: "Security: Restrict risky lock actions to allowlist", required: false, defaultValue: false, submitOnChange:true
+            if(enforceRiskyLockAllowlist) {
+            	input "riskyLockDevices", "capability.lock", title: "Risky lock allowlist", required: false, multiple: true
+            }
 
             input "allowHsmControl", "bool", title: "Allow voice to arm/disarm HSM (requires security code)", required: false, defaultValue: false
-            input "allowHsmArmHomeVoice", "bool", title: "Allow voice HSM arm home/night", required: false, defaultValue: true
-            input "allowHsmArmAwayVoice", "bool", title: "Allow voice HSM arm away", required: false, defaultValue: true
+            input "allowHsmArmHomeVoice", "bool", title: "Allow voice HSM arm home/night", required: false, defaultValue: true, submitOnChange:true
+            if(allowHsmArmHomeVoice) {
+                input "hsmArmHomeValue", "enum", title: "HSM arm home value", required: false, options: ["armHome","armNight"], defaultValue: "armHome"
+            }
+            
+            input "allowHsmArmAwayVoice", "bool", title: "Allow voice HSM arm away", required: false, defaultValue: true, submitOnChange:true
+            if(allowHsmArmAwayVoice) {
+                input "hsmArmAwayValue", "enum", title: "HSM arm away value", required: false, options: ["armAway"], defaultValue: "armAway"
+            }
             input "allowHsmDisarmVoice", "bool", title: "Allow voice HSM disarm", required: false, defaultValue: true
-            input "hsmArmHomeValue", "enum", title: "HSM arm home value", required: false, options: ["armHome","armNight"], defaultValue: "armHome"
-            input "hsmArmAwayValue", "enum", title: "HSM arm away value", required: false, options: ["armAway"], defaultValue: "armAway"
 
             input "riskyAuditMax", "number", title: "Risky action audit entries to keep", required: false, defaultValue: 200
             input "replayProtectionEnabled", "bool", title: "Security: Replay protection for risky actions", required: false, defaultValue: false
             input "replayWindowSecs", "number", title: "Replay window (seconds)", required: false, defaultValue: 90
             input "replayNonceTtlMins", "number", title: "Replay nonce retention (minutes)", required: false, defaultValue: 10
-            input "selfTestEnabled", "bool", title: "Enable /selftest endpoint", required: false, defaultValue: false
-            input "selfTestKey", "text", title: "Self-test key (optional)", required: false
+            
             input "lowBatteryThreshold", "number", title: "Battery low threshold (%)", required: false, defaultValue: 25
             input "offlineWindowHours", "number", title: "Default offline/stale window (hours)", required: false, defaultValue: 24
         }
 
-        section("Endpoint Info") {
+        section("<hr>") {}
+        section("<b>Endpoint Info</b>") {
             ensureAccessToken()
             def appId = app.id
             def token = state.accessToken
@@ -147,165 +165,167 @@ def mainPage() {
             def localAsk  = "${localBase}/ask?q=%avcomm&access_token=${token}"
             def localPing = "${localBase}/ping?access_token=${token}"
             def localHealth = "${localBase}/health?access_token=${token}"
+            def localMini = "${localBase}/ask?access_token=${token}&d=mini&q={query}"
 
             // Cloud base from getFullApiServerUrl() already includes /api/<cloudHubId>
             // So DO NOT add /api/<id> again.
             def cloudAsk  = "${cloudBase}/ask?q=%avcomm&access_token=${token}"
             def cloudPing = "${cloudBase}/ping?access_token=${token}"
             def cloudHealth = "${cloudBase}/health?access_token=${token}"
+            def cloudMini  = "${cloudBase}/ask?access_token=${token}&d=mini&q={query}"
 
             paragraph "<b>Local Ask:</b> ${localAsk}"
             paragraph "<b>Local Ping:</b> ${localPing}"
             paragraph "<b>Local Health:</b> ${localHealth}"
+            paragraph "<b>Local HubVoiceMini app:</b> ${localMini}"
+            paragraph ""
             paragraph "<b>Cloud Ask:</b> ${cloudAsk}"
             paragraph "<b>Cloud Ping:</b> ${cloudPing}"
             paragraph "<b>Cloud Health:</b> ${cloudHealth}"
-            paragraph "<b>App Revision:</b> ${appRev()}"
-
-			paragraph "<b>Token preview:</b> ${token}"
+            paragraph "<b>Cloud HubVoiceMini app:</b> ${cloudMini}"
         }
 
-        section("Self-Test") {
+        section("<hr>") {}
+        section("<b>Self-Test</b>") {
             ensureAccessToken()
-            def token = state.accessToken
-            def localBase = getFullLocalApiServerUrl() ?: "http://<hub-ip>"
-            def cloudBase = getFullApiServerUrl() ?: "https://cloud.hubitat.com"
+            input "selfTestEnabled", "bool", title: "Enable /selftest endpoint", required: false, defaultValue: false, submitOnChange: true
+            if(selfTestEnabled) {
+                def token = state.accessToken
+                def localBase = getFullLocalApiServerUrl() ?: "http://<hub-ip>"
+                def cloudBase = getFullApiServerUrl() ?: "https://cloud.hubitat.com"
 
-            String qKey = ""
-            try {
-              String k = (apiKey ?: "").toString().trim()
-              if(k) qKey = "&key=${java.net.URLEncoder.encode(k, 'UTF-8')}"
-            } catch(e) {}
+                String qStk = ""
+                try {
+                  String stk = (settings?.selfTestKey ?: "").toString().trim()
+                  if(stk) qStk = "&stk=${java.net.URLEncoder.encode(stk, 'UTF-8')}"
+                } catch(e) {}
 
-            String qStk = ""
-            try {
-              String stk = (settings?.selfTestKey ?: "").toString().trim()
-              if(stk) qStk = "&stk=${java.net.URLEncoder.encode(stk, 'UTF-8')}"
-            } catch(e) {}
+                def localSelf = "${localBase}/selftest?view=html&access_token=${token}${qStk}"
+                def cloudSelf = "${cloudBase}/selftest?view=html&access_token=${token}${qStk}"
 
-            def localSelf = "${localBase}/selftest?view=html&access_token=${token}${qKey}${qStk}"
-            def cloudSelf = "${cloudBase}/selftest?view=html&access_token=${token}${qKey}${qStk}"
-
-            paragraph "<a target='_blank' rel='noopener' href='${localSelf}' style='display:inline-block;padding:8px 12px;border-radius:8px;background:#1f6feb;color:#fff !important;-webkit-text-fill-color:#fff;text-decoration:none;'>Run Local Self-Test</a>"
-            paragraph "<a target='_blank' rel='noopener' href='${cloudSelf}' style='display:inline-block;padding:8px 12px;border-radius:8px;background:#0a7f3f;color:#fff !important;-webkit-text-fill-color:#fff;text-decoration:none;'>Run Cloud Self-Test</a>"
-            paragraph "Opens a new tab with a readable report. Set 'Enable /selftest endpoint' first."
+                paragraph "<a target='_blank' rel='noopener' href='${localSelf}' style='display:inline-block;padding:8px 12px;border-radius:8px;background:#1f6feb;color:#fff !important;-webkit-text-fill-color:#fff;text-decoration:none;'>Run Local Self-Test</a> - <a target='_blank' rel='noopener' href='${cloudSelf}' style='display:inline-block;padding:8px 12px;border-radius:8px;background:#0a7f3f;color:#fff !important;-webkit-text-fill-color:#fff;text-decoration:none;'>Run Cloud Self-Test</a>"
+                paragraph "Opens in a new tab with a readable report."
+            }
+        }
+        
+        section("<hr>") {
+        	bMes =  "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>HubVoice - ${appRev()}"
+        	bMes += "<div style='color:#1A77C9;text-align:center'>BPTWorld<br>Donations are never necessary but always appreciated!<br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a> <img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/venmo.png' width='100'></div>"
+        	paragraph bMes
         }
 	}
 }
 
-
 def testPage() {
-
-// Diagnostics JSON for Test page
-String diagJson = ""
-try {
-  diagJson = JsonOutput.prettyPrint(JsonOutput.toJson(state?.lastDebug ?: [:]))
-} catch(e) {
-  try { diagJson = (state?.lastDebug ?: [:]).toString() } catch(ex) { diagJson = "" }
-}
-  dynamicPage(name: "testPage", title: "Test Voice Question", uninstall: false, install: false) {
-    section("") {
-      // reset paragraph margins so our custom HTML boxes have no gaps
-      paragraph "<style>p {margin:0 !important; padding:0 !important;}</style>"
+    String diagJson = ""
+    try {
+      diagJson = JsonOutput.prettyPrint(JsonOutput.toJson(state?.lastDebug ?: [:]))
+    } catch(e) {
+      try { diagJson = (state?.lastDebug ?: [:]).toString() } catch(ex) { diagJson = "" }
     }
-    section("Question") {
-      input "testQuestion", "text",
-        title: "Type a question (include the device name)",
-        required: false,
-        submitOnChange: true
-      paragraph "Canary examples: house status | run a security check | is front door open | turn all bathroom lights off"
-    }
+      dynamicPage(name: "testPage", title: "Test Voice Question", uninstall: false, install: false) {
+        section("") {
+          // reset paragraph margins so our custom HTML boxes have no gaps
+          paragraph "<style>p {margin:0 !important; padding:0 !important;}</style>"
+        }
+        section("Question") {
+          input "testQuestion", "text",
+            title: "Type a question (include the device name)",
+            required: false,
+            submitOnChange: true
+          paragraph "Canary examples: house status | run a security check | is front door open | turn all bathroom lights off"
+        }
 
-    def q = (settings?.testQuestion ?: "").toString().trim()
-    if(q) {
-      dbgInit(q, "testPage")  // Initialize debug state
-      String query = normalize(q)
-      String ansOut = null
-      def nluIntent = null
-      boolean testBulkHandled = false
+        def q = (settings?.testQuestion ?: "").toString().trim()
+        if(q) {
+          dbgInit(q, "testPage")  // Initialize debug state
+          String query = normalize(q)
+          String ansOut = null
+          def nluIntent = null
+          boolean testBulkHandled = false
 
-      def bulkCmd = parseBulkLightCommand(q)
-      if(bulkCmd) {
-        String action = (bulkCmd.action ?: "").toString().toLowerCase()
-        String scope = (bulkCmd.scope ?: "").toString().trim()
-        try {
-          state.lastDebug.mode = "control_bulk"
-          state.lastDebug.bulk = state.lastDebug.bulk ?: [:]
-          state.lastDebug.bulk.type = 'lights'
-          state.lastDebug.bulk.action = action
-          state.lastDebug.bulk.scope = scope
-          state.lastDebug.bulk.scopeTokens = bcTokens(scope)
-          state.lastDebug.bulk.nameMustContainAny = ['light','lamp']
-        } catch(e) {}
+          def bulkCmd = parseBulkLightCommand(q)
+          if(bulkCmd) {
+            String action = (bulkCmd.action ?: "").toString().toLowerCase()
+            String scope = (bulkCmd.scope ?: "").toString().trim()
+            try {
+              state.lastDebug.mode = "control_bulk"
+              state.lastDebug.bulk = state.lastDebug.bulk ?: [:]
+              state.lastDebug.bulk.type = 'lights'
+              state.lastDebug.bulk.action = action
+              state.lastDebug.bulk.scope = scope
+              state.lastDebug.bulk.scopeTokens = bcTokens(scope)
+              state.lastDebug.bulk.nameMustContainAny = ['light','lamp']
+            } catch(e) {}
 
-        def targets = bulkFindLightsByName(scope)
-        try {
-          state.lastDebug.bulk.targetsCount = targets?.size() ?: 0
-          state.lastDebug.bulk.targets = (targets ?: []).collect{ it?.displayName ?: it?.name ?: '?' }
-        } catch(e) {}
-        dbgRoute('test_bulk_lights_match')
-        ansOut = bulkDoLights(action, targets)
-        testBulkHandled = true
-      }
+            def targets = bulkFindLightsByName(scope)
+            try {
+              state.lastDebug.bulk.targetsCount = targets?.size() ?: 0
+              state.lastDebug.bulk.targets = (targets ?: []).collect{ it?.displayName ?: it?.name ?: '?' }
+            } catch(e) {}
+            dbgRoute('test_bulk_lights_match')
+            ansOut = bulkDoLights(action, targets)
+            testBulkHandled = true
+          }
 
-      if(!testBulkHandled) {
-        def constraint = inferDeviceConstraint(query, null)
-        def dev = matchDeviceFromQuery(query, constraint)
+          if(!testBulkHandled) {
+            def constraint = inferDeviceConstraint(query, null)
+            def dev = matchDeviceFromQuery(query, constraint)
 
-if(!dev) {
-  // Try group questions that don't name a specific device (e.g., "are any doors open")
-  def gIntent = detectGroupIntent(query)
-  if(gIntent) {
-    dbgRoute("detectGroupIntent")
-    boolean risky = (gIntent?.risky == true) || (gIntent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])
-    if(risky) {
-      // Risky group actions require security code (TEST PAGE only; do not early-return from the page)
-      if(bruteForceLockedOut(null)) {
-        ansOut = riskyDeny("Too many failed attempts. Try again later.")
-      } else {
-        String appCodeSet = (settings?.securityCode ?: "").toString().trim()
-        String codeProvided = extractSecurityCode(q)
-        if(!appCodeSet) {
-          ansOut = riskyDeny("Security code is not configured.")
-        } else if(!codeProvided) {
-          bruteForceRecordFail(null)
-          ansOut = riskyDeny("Please include the security code.")
-        } else if(codeProvided != appCodeSet) {
-          bruteForceRecordFail(null)
-          ansOut = riskyDeny("Security code incorrect.")
+    if(!dev) {
+      // Try group questions that don't name a specific device (e.g., "are any doors open")
+      def gIntent = detectGroupIntent(query)
+      if(gIntent) {
+        dbgRoute("detectGroupIntent")
+        boolean risky = (gIntent?.risky == true) || (gIntent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])
+        if(risky) {
+          // Risky group actions require security code (TEST PAGE only; do not early-return from the page)
+          if(bruteForceLockedOut(null)) {
+            ansOut = riskyDeny("Too many failed attempts. Try again later.")
+          } else {
+            String appCodeSet = (settings?.securityCode ?: "").toString().trim()
+            String codeProvided = extractSecurityCode(q)
+            if(!appCodeSet) {
+              ansOut = riskyDeny("Security code is not configured.")
+            } else if(!codeProvided) {
+              bruteForceRecordFail(null)
+              ansOut = riskyDeny("Please include the security code.")
+            } else if(codeProvided != appCodeSet) {
+              bruteForceRecordFail(null)
+              ansOut = riskyDeny("Security code incorrect.")
+            } else {
+              bruteForceReset(null)
+              def gRes = answerForGroup(query, gIntent)
+              ansOut = (gRes?.answer ?: "No answer.").toString()
+            }
+          }
         } else {
-          bruteForceReset(null)
           def gRes = answerForGroup(query, gIntent)
           ansOut = (gRes?.answer ?: "No answer.").toString()
         }
+      } else {
+        ansOut = "I couldn't find a matching device. Make sure the device name appears in the question and the device is selected in the app."
       }
     } else {
-      def gRes = answerForGroup(query, gIntent)
-      ansOut = (gRes?.answer ?: "No answer.").toString()
+      def intent
+      if(nluIntent?.mode in ["device_status","duration_query","why_did_action"]) {
+        intent = [mode:nluIntent.mode]
+      } else {
+        intent = detectIntent(query, dev)
+      }
+      dbgRoute("answerFor")
+      if(intent?.mode) {
+        state.lastDebug = state.lastDebug ?: [:]
+        state.lastDebug.mode = intent.mode
+        state.lastDebug.intent = intent.toString()
+      }
+      if(dev?.displayName) {
+        state.lastDebug = state.lastDebug ?: [:]
+        state.lastDebug.dev = dev.displayName
+      }
+      def result = answerFor(dev, query, intent)
+      ansOut = (result?.answer ?: "No answer.").toString()
     }
-  } else {
-    ansOut = "I couldn't find a matching device. Make sure the device name appears in the question and the device is selected in the app."
-  }
-} else {
-  def intent
-  if(nluIntent?.mode in ["device_status","duration_query","why_did_action"]) {
-    intent = [mode:nluIntent.mode]
-  } else {
-    intent = detectIntent(query, dev)
-  }
-  dbgRoute("answerFor")
-  if(intent?.mode) {
-    state.lastDebug = state.lastDebug ?: [:]
-    state.lastDebug.mode = intent.mode
-    state.lastDebug.intent = intent.toString()
-  }
-  if(dev?.displayName) {
-    state.lastDebug = state.lastDebug ?: [:]
-    state.lastDebug.dev = dev.displayName
-  }
-  def result = answerFor(dev, query, intent)
-  ansOut = (result?.answer ?: "No answer.").toString()
-}
       }
       // single line, UI-safe
       ansOut = ansOut
@@ -357,7 +377,6 @@ Error: ${htmlEscape((dbg.error ?: '') as String)}"""
     }
   }
 }
-
 
 def diagPage() {
   dynamicPage(name: "diagPage", title: "Diagnostics", uninstall: false, install: false) {
@@ -411,7 +430,6 @@ def diagPage() {
     }
   }
 }
-
 
 /* ---------------- Helpers: Rate limiting + parsing ---------------- */
 
@@ -507,7 +525,7 @@ mappings {
   path("/ping") 	{ action: [GET: "handlePing"] }
   path("/devices") 	{ action: [GET: "handleDevices"] }
   path("/selftest") { action: [GET: "handleSelfTest"] }
-  path("/health") { action: [GET: "handleHealth"] }
+  path("/health") 	{ action: [GET: "handleHealth"] }
 }
 
 /* ---------------- Lifecycle ---------------- */
@@ -519,12 +537,23 @@ def installed() {
 def updated() {
   unsubscribe()
   initialize()
+    List sats = []
+    Integer i = 1
+    while(settings["satName_${i}"]) {
+        sats << [
+            name: settings["satName_${i}"],
+            ip  : settings["satIP_${i}"]
+        ]
+        i++
+    }
+    state.satellites = sats
 }
 
 def initialize() {
   ensureAccessToken()
 
   state.devIndex = buildDeviceIndex()
+  state.satelliteRoomMap = buildSatelliteRoomMap()
   state.lastByDevAttrValue = state.lastByDevAttrValue ?: [:] // [devId:[attr:[valueStr:ts]]]
   state.keyOrder = state.keyOrder ?: []  // LRU-ish list of "devId|attr|value"
   state.keySet   = state.keySet   ?: [:] // map for fast contains
@@ -671,11 +700,6 @@ def handleDevices() {
 def handleSelfTest() {
   try {
     if(!isAuthorizedRequest()) return respondAsk("Unauthorized", 401, [error:"unauthorized"])
-
-    if(apiKey?.trim()) {
-      def k = (params.key ?: "").toString()
-      if(k != apiKey.toString()) return respondAsk("Unauthorized (missing or wrong key).", 401, [error:"unauthorized_key"])
-    }
 
     if(settings?.selfTestEnabled != true) {
       return respondAsk("Self-test endpoint is disabled.", 403, [ok:false, error:"selftest_disabled"])
@@ -1101,6 +1125,7 @@ private void dbgInit(String q, String mode=null) {
     state.lastDebug = state.lastDebug ?: [:]
     state.lastDebug.ts = now()
     state.lastDebug.q = (q ?: "").toString()
+    state.lastDebug.sDev = (d ?: "").toString().toLowerCase()
     state.lastDebug.qNorm = (q ?: "").toString().toLowerCase()
     if(mode != null) state.lastDebug.mode = (mode ?: "").toString()
     state.lastDebug.route = []
@@ -1133,22 +1158,11 @@ private void dbgPut(String k, v) {
 def handleAsk() {
   log.debug "--------------------  In handleAsk  --------------------"
 
-
   try {
     if(!isAuthorizedRequest()) {
       ans = "Unauthorized"
       sendMessage(ans)
       return respondAsk(ans, 401, [error: "unauthorized"])
-    }
-
-    // Optional extra key
-    if(apiKey?.trim()) {
-      def k = (params.key ?: "").toString()
-      if(k != apiKey.toString()) {
-        ans = "Unauthorized (missing or wrong key)."
-       	sendMessage(ans)
-        return respondAsk(ans, 401, [error: "unauthorized_key"])
-      }
     }
 
     if(!rateLimitOk()) {
@@ -1158,7 +1172,9 @@ def handleAsk() {
     }
 
     def q = (params.q ?: params.text ?: "").toString().trim()
-  String mode = hvModeForQuery(q)
+    state.sdev = (params.d ?: params.text ?: "").toString().trim()
+    state.callbackUrl = (params.callbackUrl ?: params.text ?: "").toString().trim()
+  	String mode = hvModeForQuery(q)
 
 // =========================================================
 // CONTROL: BULK lights by name tokens
@@ -1184,8 +1200,6 @@ if(bulkCmd) {
   sendMessage(ans)
   return respondText(ans)
 }
-
-
 
   log.debug "MODE: ${mode}"
   dbgInit(q, mode)
@@ -1296,7 +1310,7 @@ if(mLkScoped || mLkGlobal) {
 
     // High-priority whole-house intents (run before device matching)
     def hp = detectGroupIntent(query)
-    if(hp?.mode in ["house_summary","secure_check","battery_report","last_activity","device_group_status","any_open","any_state","hsm_arm_home","hsm_arm_away","hsm_disarm","hub_mode","hsm_status"]) {
+    if(hp?.mode in ["house_summary","secure_check","battery_report","last_activity","device_group_status","any_open","any_state","hsm_arm_home","hsm_arm_away","hsm_disarm","hub_mode","hsm_status","time_now","weather_today","weather_tomorrow"]) {
 
 // Risky group actions (HSM arm/disarm) require security code
 if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
@@ -1938,6 +1952,49 @@ private List aliasesForDeviceId(String devId) {
   return out
 }
 
+private Map buildSatelliteRoomMap() {
+  Map out = [:]
+  String raw = (settings?.satelliteRooms ?: "").toString()
+  if(!raw?.trim()) return out
+
+  raw.split(/\r?\n/).each { line ->
+    String ln = (line ?: "").toString().trim()
+    if(!ln || ln.startsWith("#")) return
+    def parts = ln.split("=", 2)
+    if(parts.size() < 2) return
+
+    String sat = normalize(parts[0])
+    String room = normalize(parts[1])
+    if(sat && room) out[sat] = room
+  }
+
+  return out
+}
+
+private String roomForSatellite(String satName) {
+  if(!satName) return null
+  Map m = (state?.satelliteRoomMap instanceof Map) ? (state.satelliteRoomMap as Map) : buildSatelliteRoomMap()
+  String key = normalize(satName)
+  String room = (m[key] ?: "").toString().trim()
+  return room ?: null
+}
+
+private boolean queryMentionsAnyKnownRoom(String queryNorm) {
+  if(!queryNorm) return false
+  Map m = (state?.satelliteRoomMap instanceof Map) ? (state.satelliteRoomMap as Map) : buildSatelliteRoomMap()
+  def rooms = (m?.values() ?: []).collect { normalize(it?.toString()) }.findAll { it }
+  return rooms.any { room -> queryNorm.contains(room) }
+}
+
+private boolean deviceMatchesRoom(def dev, String roomNorm) {
+  if(!dev || !roomNorm) return false
+  String dn = normalize(dev?.displayName ?: dev?.name ?: "")
+  if(!dn) return false
+  List toks = roomNorm.split(/\s+/).findAll { it }
+  if(!toks) return false
+  return toks.every { tok -> dn.contains(tok.toString()) }
+}
+
 
 
 def parseLockCodesFromDevice(dev) {
@@ -2111,12 +2168,31 @@ def clarifyIntent(String rawQuery, List candNames = null) {
 }
 
 def sendMessage(ans) {
-    // speak / notify if configured (existing behavior)
-    if(speaker) {
-      try { speaker*.speak(ans) } catch(e) { }
-    }
-    if(notificationDevice) {
-      try { notificationDevice*.deviceNotification(ans) } catch(e) { }
+    try {
+        String msg = (ans ?: "").toString()
+        String low = msg.toLowerCase()
+        if(low.contains("understand that request")) {
+            log.debug "In sendMessage - Something went wrong - didn't understand the question"
+            ans = "Sorry, I didn't understand"
+        }
+    } catch(e) { }
+    log.debug "In sendMessage - sdev: ${state.sdev}"
+    if(state.sdev.contains("sat")) {
+        log.debug "In sendMessage - sending to ${state.sdev} - ${ans}"
+        sendAnswerToPc(ans)
+    } else {
+        if(speaker) {
+            log.debug "In sendMessage - sending to Speaker - ${ans}"
+          try { speaker*.speak(ans) } catch(e) { }
+        }
+        if(notificationDevice) {
+            log.debug "In sendMessage - state.sdev: ${state.sdev} - ${ans}"
+            if(state.sdev=="mini") {
+                // do nothing
+            } else {
+                try { notificationDevice*.deviceNotification(ans) } catch(e) { }
+            }
+        }
     }
 }
 
@@ -2728,6 +2804,31 @@ private Map detectGroupIntent(String query) {
   boolean anyish =
     has("any ") || has("are there") || has("is there") || has("do we have") || has("do any") || has("does any") || has("are any") || has("is any")
 
+  if(has("what time is it") || has("whats the time") || has("what s the time") || has("current time") || has("tell me the time")) {
+    return [mode:"time_now"]
+  }
+
+  if(((has("weather") || has("forecast")) && (has("tomorrow") || has("tomorrows") || has("tomorrow s"))) ||
+     (has("outside") && (has("tomorrow") || has("tomorrows") || has("tomorrow s")))) {
+    return [mode:"weather_tomorrow"]
+  }
+
+  if(((has("weather") || has("forecast")) && (has("today") || has("todays") || has("today s") || has("current"))) ||
+     (has("outside") && (has("today") || has("todays") || has("today s"))) ||
+     has("how is it outside") || has("how s it outside") || has("hows it outside") ||
+     has("what is it like outside") || has("what s it like outside") || has("whats it like outside") ||
+     has("how is the weather outside") || has("how s the weather outside") || has("hows the weather outside")) {
+    return [mode:"weather_today"]
+  }
+
+  if(has("what s the weather") || has("whats the weather") || has("weather today") || has("today s weather") || has("todays weather") ||
+     has("how is the weather") || has("how s the weather") || has("hows the weather") ||
+     has("what s the forecast") || has("whats the forecast") ||
+     has("how is it outside") || has("how s it outside") || has("hows it outside") ||
+     has("what is it like outside") || has("what s it like outside") || has("whats it like outside")) {
+    return [mode:"weather_today"]
+  }
+
   // Whole-house summary / exception reporting
   if(has("status of the house") || has("house status") || has("home status") || has("house summary") ||
      (has("what") && (has("status") || has("summary")) && (has("house") || has("home"))) ||
@@ -3030,7 +3131,10 @@ def ROUTE_GROUP() {
     "device_group_status": "answerForGroup",
     "any_open": "answerForGroup",
     "any_state": "answerForGroup",
-    "last_activity": "answerForGroup"
+    "last_activity": "answerForGroup",
+    "time_now": "answerForGroup",
+    "weather_today": "answerForGroup",
+    "weather_tomorrow": "answerForGroup"
   ]
 }
 
@@ -3047,6 +3151,19 @@ private Map routeGroup(String query, Map intent) {
 
 private Map answerForGroup(String query, Map intent) {
   def devices = (qaDevices ?: [])
+
+if(intent?.mode == "time_now") {
+  def tz = location?.timeZone ?: TimeZone.getTimeZone("America/New_York")
+  String nowStr = new Date().format("h:mm a", tz)
+  return [ok:true, answer:"It is ${nowStr}."]
+}
+
+if(intent?.mode in ["weather_today","weather_tomorrow"]) {
+  Integer dayIndex = (intent?.mode == "weather_tomorrow") ? 1 : 0
+  def wx = getWeatherAnswer(dayIndex)
+  return wx ?: [ok:false, error:"weather_unavailable", answer:"I couldn't get the weather right now."]
+}
+
   if(!devices) {
     return [ok:false, error:"no_devices", answer:"No devices are selected in the app."]
   }
@@ -3247,7 +3364,6 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
   }
 
 
-
 // Hub mode
 if(intent?.mode == "hub_mode") {
   def mname = null
@@ -3379,7 +3495,6 @@ if(intent?.mode in ["battery_low","battery_report"]) {
   return [ok:true, count:0, matches:[], answer:(want == "closed" ? "No, all doors are open." : "No, all doors are closed.")]
 }
 
-
 private def matchDeviceFromQuery(String query, Map constraint=null) {
 // Mode separation: control vs status
 String __mode = (constraint?.mode ?: "").toString()
@@ -3388,9 +3503,25 @@ String __mode = (constraint?.mode ?: "").toString()
   log.debug "--------------------  In matchDeviceFromQuery  --------------------"
   def bestDev = null
   def bestLen = 0
+  String queryNorm = normalize(query)
+  String satRoom = roomForSatellite(state?.sdev)
+  boolean useRoomBias = !!satRoom && !queryMentionsAnyKnownRoom(queryNorm)
+  try {
+    dbgPut('satellite', (state?.sdev ?: ''))
+    dbgPut('satelliteRoom', (satRoom ?: ''))
+    dbgPut('roomBias', useRoomBias ? 'on' : 'off')
+    state.lastDebug = state.lastDebug ?: [:]
+    state.lastDebug.satellite = (state?.sdev ?: '')
+    state.lastDebug.satelliteRoom = (satRoom ?: '')
+    state.lastDebug.roomBias = useRoomBias
+  } catch(e) {}
 
 
   def candidates = (qaDevices ?: []).findAll { d -> deviceMatchesConstraint(d, constraint) }
+  def roomCandidates = useRoomBias ? candidates.findAll { d -> deviceMatchesRoom(d, satRoom) } : []
+  if(roomCandidates && roomCandidates.size() > 0) {
+    candidates = roomCandidates
+  }
   // 1) Alias contains match (strongest)
   def aliasIdx = aliasToDeviceIdIndex()
   if(aliasIdx && aliasIdx.size() > 0) {
@@ -3423,7 +3554,7 @@ String __mode = (constraint?.mode ?: "").toString()
 
   // 3) Token overlap fuzzy (device name + aliases)
   if(!bestDev) {
-    def qTokens = query.split(/\s+/).findAll { it }
+    def qTokens = queryNorm.split(/\s+/).findAll { it }
     def bestScore = 0.0
     candidates.each { d ->
       def dn = normalize(d.displayName)
@@ -3440,8 +3571,9 @@ String __mode = (constraint?.mode ?: "").toString()
       if(!dTokens) return
 
       def overlap = dTokens.count { t -> qTokens.contains(t) }
-      // Weighted score: overlap plus small bonus for longer names
+      // Weighted score: overlap plus small bonus for longer names and same-room devices.
       def score = (overlap as Double) + (Math.min(dTokens.size(), 10) * 0.05)
+      if(useRoomBias && deviceMatchesRoom(d, satRoom)) score += 1.5d
       if(score > bestScore) {
         bestScore = score
         // Require at least 2 overlaps, or 1 overlap if it's an alias-backed match
@@ -3458,13 +3590,10 @@ String __mode = (constraint?.mode ?: "").toString()
     dbgPut('bestDev', (bestDev?.displayName ?: bestDev?.name ?: ''))
     try { state.lastDebug.bestDev = (bestDev?.displayName ?: bestDev?.name ?: '') } catch(e) {}
 
-
   return bestDev
 }
 
 /* ---------------- State helpers ---------------- */
-
-
 private Long lastTimestampFor(String devId, String attr, String wantValue) {
   def byAttrVal = (state.lastByDevAttrValue ?: [:])[devId]
   if(!byAttrVal) return null
@@ -3815,6 +3944,18 @@ private void renderJson(Map m) {
   render status: 200, contentType: "application/json", data: body
 }
 
+def sendAnswerToPc(String answer) {
+    if (!sat || !state.callbackUrl) return
+
+    try {
+        httpGet(uri: state.callbackUrl, query: [r: answer, d: state.sat]) { resp ->
+            log.debug "Sent answer to PC for sat '${state.sat}', got ${resp.status}"
+        }
+    } catch (e) {
+        log.error "Failed to send answer to PC for sat '${d}': ${e}"
+    }
+}
+
 /* ---------------- Tokens / URLs ---------------- */
 
 private void ensureAccessToken() {
@@ -3843,6 +3984,70 @@ private String safeCloudBase() {
     return u ?: "https://cloud.hubitat.com"
   } catch(e) {
     return "https://cloud.hubitat.com"
+  }
+}
+
+private String weatherLocationQuery() {
+  String loc = (settings?.weatherLocation ?: "").toString().trim()
+  if(loc) return loc
+  try {
+    def zip = location?.zipCode?.toString()?.trim()
+    if(zip) return zip
+  } catch(e) {}
+  return null
+}
+
+private Map getWeatherAnswer(Integer dayIndex) {
+  Integer idx = (dayIndex == null || dayIndex < 0) ? 0 : dayIndex
+  String loc = weatherLocationQuery()
+  if(!loc) {
+    return [ok:false, error:"weather_location_missing", answer:"Set a weather location in the HubVoice app first."]
+  }
+
+  try {
+    String target = java.net.URLEncoder.encode(loc, "UTF-8")
+    Map result = null
+    httpGet(uri: "https://wttr.in/${target}?format=j1", contentType: "application/json") { resp ->
+      if(resp?.status != 200) return
+      def data = resp?.data
+      if(!(data instanceof Map)) return
+
+      def days = (data.weather instanceof List) ? (data.weather as List) : []
+      if(idx >= days.size()) return
+      def day = days[idx] instanceof Map ? (days[idx] as Map) : [:]
+      def cur = data.current_condition instanceof List && data.current_condition ? data.current_condition[0] : [:]
+
+      String label = (idx == 0) ? "Today" : "Tomorrow"
+      String cond = null
+      if(day?.hourly instanceof List && day.hourly) {
+        def mid = day.hourly.find { it instanceof Map && (it.time?.toString() in ["1200","900","1500"]) }
+        if(mid instanceof Map) {
+          try { cond = mid.weatherDesc?.getAt(0)?.value?.toString() } catch(e) {}
+        }
+      }
+      if(!cond) {
+        try { cond = cur?.weatherDesc?.getAt(0)?.value?.toString() } catch(e) {}
+      }
+      String hi = (day?.maxtempF ?: day?.maxtempC ?: "").toString()
+      String lo = (day?.mintempF ?: day?.mintempC ?: "").toString()
+      String current = (cur?.temp_F ?: cur?.temp_C ?: "").toString()
+
+      String ans
+      if(idx == 0 && current) {
+        ans = "${label}'s weather is ${cond ?: 'unavailable'} with a current temperature of ${current} degrees"
+        if(hi || lo) ans += ", and a high of ${hi} and low of ${lo}"
+        ans += "."
+      } else {
+        ans = "${label}'s weather looks ${cond ?: 'unavailable'}"
+        if(hi || lo) ans += " with a high of ${hi} and low of ${lo}"
+        ans += "."
+      }
+      result = [ok:true, answer:ans]
+    }
+    return result ?: [ok:false, error:"weather_unavailable", answer:"I couldn't get the weather right now."]
+  } catch(e) {
+    log.warn "Weather lookup failed: ${e}"
+    return [ok:false, error:"weather_error", answer:"I couldn't get the weather right now."]
   }
 }
 
