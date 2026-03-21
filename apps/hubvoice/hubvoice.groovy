@@ -444,34 +444,70 @@ def instructionPage() {
         
         section("<hr>") {}
         section("<b>Testing</b>") {
+            paragraph "Test, Test... Is this thing on?"
             test =  "- After filling out all fields and clicking 'Done'<br>"
             test += "- Go back in to HubVoice and choose 'Open Test Tool'<br>"
             test += "- Type in whatever you want and hit enter or click outside the box<br>"
-            test += "- Like magic, your answer appears below and/or the devices changed!<br>"
+            test += "- Like magic, your answer appears below and/or the devices changed!"
             paragraph test
         }
         
         section("<hr>") {}
         section("<b>Tasker for Android</b>") {
+            paragraph "With Tasker, you can get answers or control you home with voice from anywhere!"
             tasker =  "- Requires Tasker and the plugin Autovoice installed on you Android device<br>"
-            tasker += "- I've uploaded my xml on <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>. You can import that in to Tasker<br>"
+            tasker += "- I've uploaded my xml (ask_hubitat.xml) on <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>. You can import that in to Tasker<br>"
             tasker += "- Once imported, the only thing you should have to change is the 'app URL' found within the Hubitat app<br>"
-            tasker += "- Once you have this working, you can make a widget for it, so you have quick access!<br>"
+            tasker += "- Once you have this working, you can make a widget for it, so you have quick access!"
             paragraph tasker
         }
         
         section("<hr>") {}
+        section("<b>HubVoiceMini Text for Windows</b>") {
+            paragraph "HubVoiceMini is a small Windows desktop utility that lets you quickly send typed commands to your HubVoice / Hubitat voice endpoint. A fast keyboard alternative when voice control isn’t convenient."
+            mini =  "- Download the file (HubVoiceMini_Setup.exe) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>.<br>"
+            mini += "- Double click the file to install"
+            paragraph mini
+        }
+        
+        section("<hr>") { paragraph "Now for the fun stuff. Turn a HA Voice Assistant PE in to a Voice Controller for Hubitat!"}
         section("<b>Requirements for Voice Control</b>") {
             req =  "- An always on Win PC running HubVoiceSat<br>"
-            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoice firmware)<br>"
+            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoice firmware)"
             paragraph req
         }
         
         section("<b>How to Install HubVoiceSat on Win PC</b>") {
             winPC =  "- Download HubVoiceSat.exe from Dropbox on the always on Win PC<br>"
             winPC += "- Dropbox link: <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>open link</a><br>"
-            winPC += "- Double click the HubVoiceSat.exe, first time might take a minute for it to setup.<br>"
+            winPC += "- Double click the HubVoiceSat.exe, first time might take a minute for it to setup."
             paragraph winPC
+        }
+        
+        section("<b>Flashing the HA Voice Assistant PE for the First Time</b>") {
+            paragraph "Getting this all together now (final touches)... I'll let you know when the package is ready!"
+            firstFlash =  "- Plug the Home Assistant Voice Preview Edition into your Windows PC with a USB data cable.<br>"
+            firstFlash += "- Open releases/hubvoice-sat-xxxxx-release/open-usb-flash-page.bat, or go to https://web.esphome.io/.<br>"
+            firstFlash += "- Click Connect.<br>"
+            firstFlash += "- Pick the HA PE serial/USB device from the browser prompt.<br>"
+            firstFlash += "- If the page asks, allow USB access.<br>"
+            firstFlash += "- Choose Install.<br>"
+            firstFlash += "- When it asks for a file, select releases/hubvoice-sat-xxxxx-release/hubvoice-sat-xxxxx-factory.bin.<br>"
+            firstFlash += "- Wait for the flash to finish and let the device reboot.<br><br>"
+            firstFlash += "After it reboots:<br>"
+            firstFlash += "- Wait a minute or two for it to join Wi‑Fi.<br>"
+            firstFlash += "- Find the device on your network. Its hostname will be hubvoice-sat-xxxxxx.local with a unique MAC suffix, or you can check your router’s client list.<br>"
+            firstFlash += "- Open the device web page in your browser.<br>"
+            firstFlash += "- Find the Satellite Name field.<br>"
+            firstFlash += "- Enter a unique room name like Living Room, Kitchen, or Office.<br>"
+            firstFlash += "- Confirm that Effective Satellite Name shows the name you want.<br><br>"
+            firstFlash += "If it does not join Wi‑Fi:<br>"
+            firstFlash += "- Look for a Wi‑Fi network named HubVoiceSat Setup.<br>"
+            firstFlash += "- Connect to it with password hubvoicesat123.<br>"
+            firstFlash += "- Open the captive portal page and enter your Wi‑Fi details.<br>"
+            firstFlash += "- Let it reboot and reconnect.<br><br>"
+            firstFlash += "For later updates, do not use the factory file again. Use a hubvoice-sat-xxxx-ota.bin with the device’s web page OTA upload option."
+            paragraph firstFlash
         }
         
         section("<hr>") {}
