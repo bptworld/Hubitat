@@ -3,6 +3,7 @@
  * Local Voice Control for Hubitat
  */
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 
 definition(
   name: "HubVoice",
@@ -24,11 +25,367 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-004"
+  return "beta-006"
 }
 
 private Integer maxDebugRouteSteps() {
   return 60
+}
+
+/* =========================
+   ADVANCED CONFIGURATION CONSTANTS
+   ========================= */
+private Integer defaultMaxTrackedKeys() { return 5000 }
+private Integer defaultDbMaxEvents() { return 2000 }
+private Integer defaultMaxRequestsPerMinute() { return 30 }
+private Integer defaultBfMaxFails() { return 5 }
+private Integer defaultBfWindowMins() { return 10 }
+private Integer defaultBfLockoutMins() { return 10 }
+private Integer defaultRiskyAuditMax() { return 200 }
+private Integer defaultReplayWindowSecs() { return 90 }
+private Integer defaultReplayNonceTtlMins() { return 10 }
+private Integer defaultLowBatteryThreshold() { return 25 }
+private Integer defaultOfflineWindowHours() { return 24 }
+private Integer defaultSportsCacheSeconds() { return 45 }
+private String defaultGeminiModel() { return "gemini-2.5-flash" }
+private BigDecimal defaultGeminiFlashInputUsdPer1M() { return 0.30G }
+private BigDecimal defaultGeminiFlashOutputUsdPer1M() { return 2.50G }
+private BigDecimal defaultGeminiProInputUsdPer1M() { return 1.25G }
+private BigDecimal defaultGeminiProOutputUsdPer1M() { return 10.00G }
+private Integer defaultGeminiGroundedFreePerDay() { return 1500 }
+private BigDecimal defaultGeminiGroundedUsdPerPrompt() { return 0.035G }
+private String defaultGeminiLiveModel() {
+  String tier = (settings?.geminiAccountTier ?: defaultGeminiAccountTier()).toString().trim()
+  return (tier == "tier_1") ? "gemini-2.5-pro" : "gemini-2.5-flash"
+}
+private Integer defaultGemini429CooldownSecs() { return 75 }
+private String defaultGeminiAccountTier() { return "tier_1" }
+
+private Map geminiQuotaProfile() {
+  String tier = (settings?.geminiAccountTier ?: defaultGeminiAccountTier()).toString().trim()
+  boolean freeTier = (tier != "tier_1")
+  return [
+    tier: tier,
+    isFreeTier: freeTier,
+    cooldownSecs: freeTier ? 75 : 20,
+    // Paid tier mirrors practical limits while still leaving headroom to avoid hard API limits.
+    maxCallsPerMin: freeTier ? 4 : 120,
+    maxCallsPerDay: freeTier ? 18 : 900,
+    firstTokens: freeTier ? 180 : 220,
+    liveFirstTokens: freeTier ? 260 : 320,
+    retryTokens: freeTier ? 280 : 380,
+    allowGroundedRetry: !freeTier
+  ]
+}
+
+private boolean tryConsumeGeminiQuotaSlot(Integer perMinLimit, Integer perDayLimit) {
+  try {
+    long nowMs = now()
+    long cutoff = nowMs - 60000L
+    List times = (state.geminiCallTimes instanceof List) ? (List)state.geminiCallTimes : []
+    List<Long> pruned = times.collect { it instanceof Number ? (it as Long) : 0L }.findAll { it > cutoff }
+    if((perMinLimit ?: 0) > 0 && pruned.size() >= perMinLimit) {
+      state.geminiCallTimes = pruned
+      return false
+    }
+
+    String dayKey = new Date(nowMs).format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map daily = (state.geminiDailyQuota instanceof Map) ? (Map)state.geminiDailyQuota : [day: dayKey, count: 0]
+    if((daily.day ?: "") != dayKey) daily = [day: dayKey, count: 0]
+    Integer dayCount = (daily.count instanceof Number) ? (daily.count as Integer) : 0
+    if((perDayLimit ?: 0) > 0 && dayCount >= perDayLimit) {
+      state.geminiDailyQuota = daily
+      state.geminiCallTimes = pruned
+      return false
+    }
+
+    pruned << nowMs
+    daily.count = dayCount + 1
+    state.geminiCallTimes = pruned
+    state.geminiDailyQuota = daily
+    return true
+  } catch(e) {
+    return true
+  }
+}
+
+private String fmtUsd(BigDecimal amt) {
+  BigDecimal value = (amt ?: 0G) as BigDecimal
+  return String.format(java.util.Locale.US, "\$%.4f", value.doubleValue())
+}
+
+private Map geminiModelPricing(String modelName) {
+  String mk = (modelName ?: "").toString().toLowerCase()
+  if(mk.contains("pro")) {
+    return [inputUsdPer1M: defaultGeminiProInputUsdPer1M(), outputUsdPer1M: defaultGeminiProOutputUsdPer1M()]
+  }
+  return [inputUsdPer1M: defaultGeminiFlashInputUsdPer1M(), outputUsdPer1M: defaultGeminiFlashOutputUsdPer1M()]
+}
+
+private Map extractGeminiUsageMetadata(def data) {
+  try {
+    def usage = data?.usageMetadata
+    if(usage instanceof Map) {
+      return [
+        promptTokens: safeInt(usage.promptTokenCount, 0),
+        outputTokens: safeInt(usage.candidatesTokenCount, 0),
+        totalTokens: safeInt(usage.totalTokenCount, 0)
+      ]
+    }
+  } catch(e) {}
+  return [promptTokens: 0, outputTokens: 0, totalTokens: 0]
+}
+
+private void pruneGeminiCostHistory() {
+  try {
+    if(!(state.geminiCostHistory instanceof Map)) {
+      state.geminiCostHistory = [:]
+      return
+    }
+    String cutoff = new Date(now() - (90L * 24L * 60L * 60L * 1000L)).format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map cleaned = [:]
+    ((Map)state.geminiCostHistory).each { k, v ->
+      if((k ?: "").toString() >= cutoff) cleaned[k] = v
+    }
+    state.geminiCostHistory = cleaned
+  } catch(e) {}
+}
+
+private void trackGeminiCost(String modelName, Map usage, boolean grounded=false) {
+  try {
+    Map pricing = geminiModelPricing(modelName)
+    int promptTokens = safeInt(usage?.promptTokens, 0) ?: 0
+    int outputTokens = safeInt(usage?.outputTokens, 0) ?: 0
+    if(promptTokens <= 0 && outputTokens <= 0) return
+
+    pruneGeminiCostHistory()
+    state.geminiCostHistory = (state.geminiCostHistory instanceof Map) ? state.geminiCostHistory : [:]
+    String dayKey = new Date().fookayrmat("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map day = state.geminiCostHistory[dayKey] instanceof Map ? (Map)state.geminiCostHistory[dayKey] : [
+      inputTokens: 0, outputTokens: 0, groundedPrompts: 0,
+      tokenCostUsd: 0G, groundingCostUsd: 0G, totalCostUsd: 0G, byModel: [:]
+    ]
+    day.inputTokens = safeInt(day.inputTokens, 0) + promptTokens
+    day.outputTokens = safeInt(day.outputTokens, 0) + outputTokens
+
+    BigDecimal tokenCost = (((pricing.inputUsdPer1M as BigDecimal) * (promptTokens as BigDecimal)) + ((pricing.outputUsdPer1M as BigDecimal) * (outputTokens as BigDecimal))) / 1000000G
+    day.tokenCostUsd = ((day.tokenCostUsd ?: 0G) as BigDecimal) + tokenCost
+
+    if(grounded) {
+      int beforeGrounded = safeInt(day.groundedPrompts, 0) ?: 0
+      day.groundedPrompts = beforeGrounded + 1
+      if(day.groundedPrompts > defaultGeminiGroundedFreePerDay()) {
+        day.groundingCostUsd = ((day.groundingCostUsd ?: 0G) as BigDecimal) + defaultGeminiGroundedUsdPerPrompt()
+      }
+    }
+
+    day.totalCostUsd = ((day.tokenCostUsd ?: 0G) as BigDecimal) + ((day.groundingCostUsd ?: 0G) as BigDecimal)
+    if(!(day.byModel instanceof Map)) day.byModel = [:]
+    String modelKey = (modelName ?: "unknown").toString()
+    Map modelRec = day.byModel[modelKey] instanceof Map ? (Map)day.byModel[modelKey] : [inputTokens: 0, outputTokens: 0, costUsd: 0G]
+    modelRec.inputTokens = safeInt(modelRec.inputTokens, 0) + promptTokens
+    modelRec.outputTokens = safeInt(modelRec.outputTokens, 0) + outputTokens
+    modelRec.costUsd = ((modelRec.costUsd ?: 0G) as BigDecimal) + tokenCost
+    day.byModel[modelKey] = modelRec
+
+    state.geminiCostHistory[dayKey] = day
+  } catch(e) {}
+}
+
+private Map getGeminiCostSummary() {
+  pruneGeminiCostHistory()
+  Map hist = (state.geminiCostHistory instanceof Map) ? (Map)state.geminiCostHistory : [:]
+  String todayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+  String monthKey = new Date().format("yyyyMM", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+  Map today = hist[todayKey] instanceof Map ? (Map)hist[todayKey] : [:]
+  Map todayByModel = (today.byModel instanceof Map) ? (Map)today.byModel : [:]
+  BigDecimal monthCost = 0G
+  BigDecimal monthTokenCost = 0G
+  BigDecimal monthGroundingCost = 0G
+  int monthInputTokens = 0
+  int monthOutputTokens = 0
+  int monthGroundedPrompts = 0
+  Map monthByModel = [:]
+  hist.each { k, v ->
+    if((k ?: "").toString().startsWith(monthKey) && v instanceof Map) {
+      monthCost += ((v.totalCostUsd ?: 0G) as BigDecimal)
+      monthTokenCost += ((v.tokenCostUsd ?: 0G) as BigDecimal)
+      monthGroundingCost += ((v.groundingCostUsd ?: 0G) as BigDecimal)
+      monthInputTokens += safeInt(v.inputTokens, 0) ?: 0
+      monthOutputTokens += safeInt(v.outputTokens, 0) ?: 0
+      monthGroundedPrompts += safeInt(v.groundedPrompts, 0) ?: 0
+      if(v.byModel instanceof Map) {
+        ((Map)v.byModel).each { mk, mv ->
+          String modelKey = (mk ?: "unknown").toString()
+          Map existing = monthByModel[modelKey] instanceof Map ? (Map)monthByModel[modelKey] : [inputTokens: 0, outputTokens: 0, costUsd: 0G]
+          existing.inputTokens = safeInt(existing.inputTokens, 0) + (safeInt(mv?.inputTokens, 0) ?: 0)
+          existing.outputTokens = safeInt(existing.outputTokens, 0) + (safeInt(mv?.outputTokens, 0) ?: 0)
+          existing.costUsd = ((existing.costUsd ?: 0G) as BigDecimal) + ((mv?.costUsd ?: 0G) as BigDecimal)
+          monthByModel[modelKey] = existing
+        }
+      }
+    }
+  }
+  return [
+    todayCostUsd: (today.totalCostUsd ?: 0G) as BigDecimal,
+    todayTokenCostUsd: (today.tokenCostUsd ?: 0G) as BigDecimal,
+    todayGroundingCostUsd: (today.groundingCostUsd ?: 0G) as BigDecimal,
+    todayInputTokens: safeInt(today.inputTokens, 0) ?: 0,
+    todayOutputTokens: safeInt(today.outputTokens, 0) ?: 0,
+    todayGroundedPrompts: safeInt(today.groundedPrompts, 0) ?: 0,
+    todayByModel: todayByModel,
+    monthCostUsd: monthCost,
+    monthTokenCostUsd: monthTokenCost,
+    monthGroundingCostUsd: monthGroundingCost,
+    monthInputTokens: monthInputTokens,
+    monthOutputTokens: monthOutputTokens,
+    monthGroundedPrompts: monthGroundedPrompts,
+    monthByModel: monthByModel
+  ]
+}
+
+private String geminiModelShortLabel(String modelName) {
+  String mk = (modelName ?: "").toString().toLowerCase()
+  if(mk.contains("pro")) return "Pro"
+  if(mk.contains("flash")) return "Flash"
+  return (modelName ?: "Unknown").toString()
+}
+
+private String formatGeminiCostBreakdown(Map byModel) {
+  if(!(byModel instanceof Map) || byModel.isEmpty()) return "none"
+  List<String> keys = ((Map)byModel).keySet().collect { it?.toString() ?: "unknown" }.sort { a, b ->
+    BigDecimal av = ((((Map)byModel)[a]?.costUsd ?: 0G) as BigDecimal)
+    BigDecimal bv = ((((Map)byModel)[b]?.costUsd ?: 0G) as BigDecimal)
+    return bv <=> av
+  }
+  return keys.collect { modelKey ->
+    Map rec = ((Map)byModel)[modelKey] instanceof Map ? (Map)((Map)byModel)[modelKey] : [:]
+    "${geminiModelShortLabel(modelKey)} ${fmtUsd((rec.costUsd ?: 0G) as BigDecimal)} (${safeInt(rec.inputTokens, 0) ?: 0}/${safeInt(rec.outputTokens, 0) ?: 0})"
+  }.join(" | ")
+}
+
+private Integer clearGeminiCostCurrentMonth() {
+  try {
+    if(!(state.geminiCostHistory instanceof Map)) {
+      state.geminiCostHistory = [:]
+      return 0
+    }
+    String monthKey = new Date().format("yyyyMM", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map cleaned = [:]
+    int removed = 0
+    ((Map)state.geminiCostHistory).each { k, v ->
+      if((k ?: "").toString().startsWith(monthKey)) {
+        removed++
+      } else {
+        cleaned[k] = v
+      }
+    }
+    state.geminiCostHistory = cleaned
+    state.lastGeminiCostResetAt = now()
+    state.lastGeminiCostResetScope = "month"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
+private Integer clearGeminiCostToday() {
+  try {
+    if(!(state.geminiCostHistory instanceof Map)) {
+      state.geminiCostHistory = [:]
+      return 0
+    }
+    String todayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Integer removed = state.geminiCostHistory.containsKey(todayKey) ? 1 : 0
+    ((Map)state.geminiCostHistory).remove(todayKey)
+    state.lastGeminiCostResetAt = now()
+    state.lastGeminiCostResetScope = "today"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
+private Integer clearGeminiCostAllHistory() {
+  try {
+    if(!(state.geminiCostHistory instanceof Map)) {
+      state.geminiCostHistory = [:]
+      return 0
+    }
+    Integer removed = ((Map)state.geminiCostHistory).size()
+    state.geminiCostHistory = [:]
+    state.lastGeminiCostResetAt = now()
+    state.lastGeminiCostResetScope = "all"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
+private Map getOrInitStats() {
+  if(!(state.queryStats instanceof Map)) {
+    state.queryStats = [total: 0, bySource: [:], lastQueries: [], geminiUsage: [models: [:], attempts: [:], categories: [:]]]
+  }
+  if(!(state.queryStats.geminiUsage instanceof Map)) state.queryStats.geminiUsage = [models: [:], attempts: [:], categories: [:]]
+  return state.queryStats
+}
+
+private void trackQueryResult(String source, String query) {
+  Map stats = getOrInitStats()
+  stats.total = (stats.total ?: 0) + 1
+  if(!(stats.bySource instanceof Map)) stats.bySource = [:]
+  stats.bySource[source] = (stats.bySource[source] ?: 0) + 1
+  if(!(stats.lastQueries instanceof List)) stats.lastQueries = []
+  stats.lastQueries.push([ts: now(), query: query, source: source])
+  if(stats.lastQueries.size() > 50) stats.lastQueries = stats.lastQueries.drop(1)
+  state.queryStats = stats
+}
+
+private Map getQueryStats() {
+  Map stats = getOrInitStats()
+  return [
+    totalQueries: stats.total ?: 0,
+    bySource: stats.bySource ?: [:],
+    lastCount: stats.lastQueries?.size() ?: 0,
+    geminiModels: (stats.geminiUsage?.models instanceof Map) ? stats.geminiUsage.models : [:],
+    geminiAttempts: (stats.geminiUsage?.attempts instanceof Map) ? stats.geminiUsage.attempts : [:],
+    geminiCategories: (stats.geminiUsage?.categories instanceof Map) ? stats.geminiUsage.categories : [:]
+  ]
+}
+
+private void trackGeminiUsage(String modelName, String attemptLabel, String category) {
+  Map stats = getOrInitStats()
+  if(!(stats.geminiUsage instanceof Map)) stats.geminiUsage = [models: [:], attempts: [:], categories: [:]]
+  if(!(stats.geminiUsage.models instanceof Map)) stats.geminiUsage.models = [:]
+  if(!(stats.geminiUsage.attempts instanceof Map)) stats.geminiUsage.attempts = [:]
+  if(!(stats.geminiUsage.categories instanceof Map)) stats.geminiUsage.categories = [:]
+
+  String modelKey = (modelName ?: "unknown").toString()
+  String attemptKey = (attemptLabel ?: "unknown").toString()
+  String categoryKey = (category ?: "general").toString()
+  stats.geminiUsage.models[modelKey] = (stats.geminiUsage.models[modelKey] ?: 0) + 1
+  stats.geminiUsage.attempts[attemptKey] = (stats.geminiUsage.attempts[attemptKey] ?: 0) + 1
+  stats.geminiUsage.categories[categoryKey] = (stats.geminiUsage.categories[categoryKey] ?: 0) + 1
+  state.queryStats = stats
+}
+
+private void pruneSportsApiCache(Integer maxAgeSecs) {
+  try {
+    if(!(state.sportsApiCache instanceof Map)) {
+      state.sportsApiCache = [:]
+      return
+    }
+    long cutoff = now() - ((maxAgeSecs ?: 3600) as Long) * 1000L
+    Map cleaned = [:]
+    ((Map)state.sportsApiCache).each { k, v ->
+      if(v instanceof Map && v.ts instanceof Number && (v.ts as Long) >= cutoff) {
+        cleaned[k] = v
+      }
+    }
+    state.sportsApiCache = cleaned
+  } catch(e) {
+    // Best-effort cleanup only.
+  }
 }
 
 /* =========================
@@ -96,8 +453,8 @@ def mainPage() {
         section("<hr>") {}
         section("<b>Storage Limits</b>") {
             paragraph "To avoid excessive state growth when tracking many devices, the app caps the number of unique (device + attribute + value) keys kept in memory. Oldest keys are evicted first."
-            input "maxTrackedKeys", "number", title: "Max tracked keys in state (device+attr+value)", required: false, defaultValue: 5000, width:6
-            input "dbMaxEvents", "number", title: "DB query max events to scan per question (counts)", required: false, defaultValue: 2000, width:6
+            input "maxTrackedKeys", "number", title: "Max tracked keys in state (device+attr+value)", required: false, defaultValue: defaultMaxTrackedKeys(), width:6
+            input "dbMaxEvents", "number", title: "DB query max events to scan per question (counts)", required: false, defaultValue: defaultDbMaxEvents(), width:6
         }
 
         section("<hr>") {}
@@ -105,7 +462,42 @@ def mainPage() {
             input "weatherLocation", "text", title: "Weather location for generic weather questions (zip or city, optional)", required: false
             
             input "shortTts", "bool", title: "Short voice responses (TTS-friendly)", required: false, defaultValue: true
-            input "maxRequestsPerMinute", "number", title: "Rate limit: max /ask requests per minute (0 = disable)", required: false, defaultValue: 30
+            input "geminiFallbackEnabled", "bool", title: "Enable Gemini fallback when HubVoice cannot answer", required: false, defaultValue: false, submitOnChange: true
+            if(geminiFallbackEnabled) {
+                input "geminiAccountTier", "enum", title: "Gemini account tier", required: false, defaultValue: defaultGeminiAccountTier(), options: ["free_tier_1":"Free Tier 1", "tier_1":"Tier 1 (Paid)"]
+                input "geminiApiKey", "password", title: "Gemini API Key", required: false
+                input "geminiModel", "text", title: "Gemini model", required: false, defaultValue: defaultGeminiModel()
+              input "geminiLiveModel", "text", title: "Gemini model for live/news/sports questions (recommended: gemini-2.5-pro for Paid Tier 1)", required: false, defaultValue: defaultGeminiLiveModel()
+                input "sportsPreferredLeagues", "text", title: "Preferred sports leagues (optional, comma-separated: NFL,NBA,MLB,NHL,MLS,EPL,NCAAF,NCAAB)", required: false
+                input "sportsPreferredTeams", "text", title: "Preferred sports teams (optional, comma-separated)", required: false
+                input "sportsCacheSeconds", "number", title: "Sports response cache seconds", required: false, defaultValue: defaultSportsCacheSeconds()
+                Map stats = getQueryStats()
+                Map costSummary = getGeminiCostSummary()
+                String cacheSize = (state.sportsApiCache instanceof Map) ? "${state.sportsApiCache.size()} entries" : "0 entries"
+                String statsText = "Query Stats: ${stats.totalQueries} total | ESPN: ${stats.bySource?.espn_scoreboard ?: 0} | Gemini: ${stats.bySource?.gemini ?: 0} | Flash: ${stats.geminiModels?.'gemini-2.5-flash' ?: 0} | Pro: ${stats.geminiModels?.'gemini-2.5-pro' ?: 0} | Retries: ${stats.geminiAttempts?.retry_grounded ?: 0} | Cache: ${cacheSize}"
+                String costText = "Estimated Gemini cost: Today ${fmtUsd(costSummary.todayCostUsd as BigDecimal)} | Month ${fmtUsd(costSummary.monthCostUsd as BigDecimal)} | Today tokens in/out: ${costSummary.todayInputTokens ?: 0}/${costSummary.todayOutputTokens ?: 0} | Grounded today: ${costSummary.todayGroundedPrompts ?: 0}"
+                String todayBreakdownText = "Today by model: ${formatGeminiCostBreakdown(costSummary.todayByModel as Map)}"
+                String monthBreakdownText = "Month by model: ${formatGeminiCostBreakdown(costSummary.monthByModel as Map)}"
+                paragraph "<small>${statsText}</small>"
+                paragraph "<small>${costText}</small>"
+                paragraph "<small>${todayBreakdownText}</small>"
+                paragraph "<small>${monthBreakdownText}</small>"
+                input "confirmResetGeminiCostCounters", "bool", title: "I understand these Gemini cost reset actions are destructive", required: false, defaultValue: false, submitOnChange: true
+                if(settings?.confirmResetGeminiCostCounters == true) {
+                  paragraph "<small><b>Warning:</b> Choose whether to clear today only, the current month, or all recorded Gemini cost history.</small>"
+                  input "resetGeminiCostCountersToday", "button", title: "Reset Today Only"
+                  input "resetGeminiCostCountersMonth", "button", title: "Reset Current Month"
+                  input "resetGeminiCostCountersAll", "button", title: "Reset All History"
+                }
+                if(state?.lastGeminiCostResetAt) {
+                  String resetAt = new Date(state.lastGeminiCostResetAt as Long).format("yyyy-MM-dd HH:mm", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+                  String resetScope = (state.lastGeminiCostResetScope ?: "unknown").toString()
+                  paragraph "<small>Last Gemini cost reset: ${resetAt} (${resetScope})</small>"
+                }
+                paragraph "<small>Estimate uses Gemini 2.5 public pricing as of 3/22/26 and recorded token usage. Actual Google billing can differ slightly.</small>"
+                paragraph "Only used when HubVoice cannot answer a non-control question. Responses are limited to short 1-4 sentence replies. Sign up and create a key in Google AI Studio: <a href='https://aistudio.google.com/' target='_blank'>aistudio.google.com</a>"
+            }
+            input "maxRequestsPerMinute", "number", title: "Rate limit: max /ask requests per minute (0 = disable)", required: false, defaultValue: defaultMaxRequestsPerMinute()
             
             input "securityCode", "text", title:"Security code for risky actions (optional)", required:false
             
@@ -116,9 +508,9 @@ def mainPage() {
             
             input "bfEnabled", "bool", title: "Security: Brute-force protection for risky actions", required: false, defaultValue: true, submitOnChange:true
             if(bfEnabled) {
-            	input "bfMaxFails", "number", title: "Brute-force: Max failed code attempts", required: false, defaultValue: 5, width:4
-            	input "bfWindowMins", "number", title: "Brute-force: Failure window (minutes)", required: false, defaultValue: 10, width:4
-            	input "bfLockoutMins", "number", title: "Brute-force: Lockout duration (minutes)", required: false, defaultValue: 10, width:4
+            	input "bfMaxFails", "number", title: "Brute-force: Max failed code attempts", required: false, defaultValue: defaultBfMaxFails(), width:4
+            	input "bfWindowMins", "number", title: "Brute-force: Failure window (minutes)", required: false, defaultValue: defaultBfWindowMins(), width:4
+            	input "bfLockoutMins", "number", title: "Brute-force: Lockout duration (minutes)", required: false, defaultValue: defaultBfLockoutMins(), width:4
             }
 
             input "enforceRiskyLockAllowlist", "bool", title: "Security: Restrict risky lock actions to allowlist", required: false, defaultValue: false, submitOnChange:true
@@ -138,13 +530,13 @@ def mainPage() {
             }
             input "allowHsmDisarmVoice", "bool", title: "Allow voice HSM disarm", required: false, defaultValue: true
 
-            input "riskyAuditMax", "number", title: "Risky action audit entries to keep", required: false, defaultValue: 200
+            input "riskyAuditMax", "number", title: "Risky action audit entries to keep", required: false, defaultValue: defaultRiskyAuditMax()
             input "replayProtectionEnabled", "bool", title: "Security: Replay protection for risky actions", required: false, defaultValue: false
-            input "replayWindowSecs", "number", title: "Replay window (seconds)", required: false, defaultValue: 90
-            input "replayNonceTtlMins", "number", title: "Replay nonce retention (minutes)", required: false, defaultValue: 10
+            input "replayWindowSecs", "number", title: "Replay window (seconds)", required: false, defaultValue: defaultReplayWindowSecs()
+            input "replayNonceTtlMins", "number", title: "Replay nonce retention (minutes)", required: false, defaultValue: defaultReplayNonceTtlMins()
             
-            input "lowBatteryThreshold", "number", title: "Battery low threshold (%)", required: false, defaultValue: 25
-            input "offlineWindowHours", "number", title: "Default offline/stale window (hours)", required: false, defaultValue: 24
+            input "lowBatteryThreshold", "number", title: "Battery low threshold (%)", required: false, defaultValue: defaultLowBatteryThreshold()
+            input "offlineWindowHours", "number", title: "Default offline/stale window (hours)", required: false, defaultValue: defaultOfflineWindowHours()
         }
 
         section("<hr>") {}
@@ -480,7 +872,6 @@ def instructionPage() {
         }
         
         section("<b>Flashing the HA Voice Assistant PE for the First Time</b>") {
-            paragraph "Getting this all together now (final touches)... I'll let you know when the package is ready!"
             firstFlash =  "- Plug the Home Assistant Voice Preview Edition into your Windows PC with a USB data cable.<br>"
             firstFlash += "- Open releases/hubvoice-sat-xxxxx-release/open-usb-flash-page.bat, or go to https://web.esphome.io/.<br>"
             firstFlash += "- Click Connect.<br>"
@@ -519,8 +910,8 @@ def instructionPage() {
 /* ---------------- Helpers: Rate limiting + parsing ---------------- */
 
 private boolean rateLimitOk() {
-  Integer maxPerMin = safeInt(settings?.maxRequestsPerMinute, 30)
-  if(maxPerMin == null) maxPerMin = 30
+  Integer maxPerMin = safeInt(settings?.maxRequestsPerMinute, defaultMaxRequestsPerMinute())
+  if(maxPerMin == null) maxPerMin = defaultMaxRequestsPerMinute()
   if(maxPerMin <= 0) return true
   Long now = now()
   state.askTimes = (state.askTimes ?: []).findAll { t -> (t instanceof Number) && (now - (t as Long) < 60000L) }
@@ -632,6 +1023,28 @@ def updated() {
         i++
     }
     state.satellites = sats
+}
+
+def appButtonHandler(btn) {
+  if(["resetGeminiCostCountersToday", "resetGeminiCostCountersMonth", "resetGeminiCostCountersAll"].contains(btn)) {
+    if(settings?.confirmResetGeminiCostCounters != true) {
+      log.warn "Ignored Gemini cost reset request because confirmation was not enabled."
+      return
+    }
+    Integer removed = 0
+    String scopeLabel = ""
+    if(btn == "resetGeminiCostCountersToday") {
+      removed = clearGeminiCostToday()
+      scopeLabel = "today"
+    } else if(btn == "resetGeminiCostCountersMonth") {
+      removed = clearGeminiCostCurrentMonth()
+      scopeLabel = "current month"
+    } else if(btn == "resetGeminiCostCountersAll") {
+      removed = clearGeminiCostAllHistory()
+      scopeLabel = "all history"
+    }
+    log.info "Gemini cost counters reset for ${scopeLabel}. Removed ${removed} day entr${removed == 1 ? 'y' : 'ies'}."
+  }
 }
 
 def initialize() {
@@ -755,7 +1168,7 @@ private Integer getDbMaxEvents() {
 /* ---------------- Handlers ---------------- */
 
 def handlePing() {
-  log.warn "PING HIT!"
+  log.debug "PING HIT!"
   render contentType: "text/plain", data: "pong"
 }
 
@@ -813,7 +1226,7 @@ def handleSelfTest() {
 
     return respondAsk(ans, st, [mode:"selftest"] + (r ?: [:]))
   } catch(ex) {
-    log.warn "handleSelfTest error: ${ex}"
+    log.debug "handleSelfTest error: ${ex}"
     return respondAsk("Self-test failed.", 500, [ok:false, error:"selftest_error"])
   }
 }
@@ -920,7 +1333,7 @@ def respondText(String ans) {
 
 private def respondAsk(String ans, Integer status = 200, Map payload = [:]) {
   Integer st = status ?: 200
-  String out = (ans ?: "").toString()
+  String out = assistantStyleText((ans ?: "").toString())
 
   // Backward-compatible escape hatch: /ask?format=text
   String fmt = (params?.format ?: "").toString().trim().toLowerCase()
@@ -928,9 +1341,1009 @@ private def respondAsk(String ans, Integer status = 200, Map payload = [:]) {
     return render(contentType: "text/plain", data: out, status: st)
   }
 
-  Map body = [ok: (st >= 200 && st < 300), answer: out]
+  Map body = [ok: (st >= 200 && st < 300)]
   if(payload instanceof Map) body.putAll(payload)
+  body.answer = out
   return render(contentType: "application/json", data: JsonOutput.toJson(body), status: st)
+}
+
+private boolean geminiFallbackReady() {
+  try {
+    return !!settings?.geminiFallbackEnabled && !!((settings?.geminiApiKey ?: "").toString().trim())
+  } catch(e) {
+    return false
+  }
+}
+
+private String extractGeminiText(def data) {
+  try {
+    String direct = (data?.text ?: "").toString().trim()
+    if(direct) return direct
+  } catch(e) {}
+
+  try {
+    def cands = data?.candidates
+    if(cands instanceof List) {
+      for(def cand in cands) {
+        def content = cand?.content
+        def parts = content?.parts
+        if(parts instanceof List) {
+          List<String> txts = []
+          for(def p in parts) {
+            String txt = (p?.text ?: "").toString().trim()
+            if(txt) txts << txt
+          }
+          String joined = txts.join(" ").replaceAll(/\s+/, " ").trim()
+          if(joined) return joined
+        }
+      }
+    }
+  } catch(e) {}
+
+  return ""
+}
+
+private Map extractGeminiGroundingMetadata(def data) {
+  try {
+    def cands = data?.candidates
+    if(cands instanceof List && cands) {
+      def gm = cands[0]?.groundingMetadata
+      if(gm instanceof Map) return (Map)gm
+    }
+  } catch(e) {}
+  return [:]
+}
+
+private List<String> extractGeminiGroundingSources(Map groundingMetadata) {
+  List<String> out = []
+  try {
+    def chunks = groundingMetadata?.groundingChunks
+    if(chunks instanceof List) {
+      chunks.each { ch ->
+        String uri = (ch?.web?.uri ?: "").toString().trim()
+        if(uri) out << uri
+      }
+    }
+  } catch(e) {}
+  return out.unique()
+}
+
+private List<String> extractGeminiSearchQueries(Map groundingMetadata) {
+  List<String> out = []
+  try {
+    def qs = groundingMetadata?.webSearchQueries
+    if(qs instanceof List) {
+      qs.each { q ->
+        String s = (q ?: "").toString().trim()
+        if(s) out << s
+      }
+    }
+  } catch(e) {}
+  return out
+}
+
+private String extractGeminiFinishReason(def data) {
+  try {
+    def cands = data?.candidates
+    if(cands instanceof List && cands) {
+      String reason = (cands[0]?.finishReason ?: "").toString().trim()
+      if(reason) return reason
+    }
+  } catch(e) {}
+  return ""
+}
+
+private String formatScoreWithSsml(String score) {
+  if(!score || !score.matches(/^\d+-\d+$/)) return score
+  String[] parts = score.split(/-/)
+  if(parts.size() != 2) return score
+  String readAs = "${parts[0]} to ${parts[1]}"
+  return "<sub alias=\"${readAs}\">${score}</sub>"
+}
+
+private String numberToWordsUnder100(Integer n) {
+  List<String> ones = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"]
+  List<String> tens = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"]
+  if(n == null || n < 0 || n > 99) return "${n}"
+  if(n < 20) return ones[n]
+  int t = (int)(n / 10)
+  int o = n % 10
+  return o == 0 ? tens[t] : "${tens[t]}-${ones[o]}"
+}
+
+private String dayOrdinalWord(String dayStr) {
+  Map<String, String> dateMap = [
+    "1": "first", "21": "twenty-first", "22": "twenty-second", "23": "twenty-third",
+    "2": "second", "3": "third", "4": "fourth", "5": "fifth",
+    "6": "sixth", "7": "seventh", "8": "eighth", "9": "ninth", "10": "tenth",
+    "11": "eleventh", "12": "twelfth", "13": "thirteenth", "14": "fourteenth",
+    "15": "fifteenth", "16": "sixteenth", "17": "seventeenth", "18": "eighteenth",
+    "19": "nineteenth", "20": "twentieth", "24": "twenty-fourth", "25": "twenty-fifth",
+    "26": "twenty-sixth", "27": "twenty-seventh", "28": "twenty-eighth",
+    "29": "twenty-ninth", "30": "thirtieth", "31": "thirty-first"
+  ]
+  return dateMap[dayStr] ?: dayStr
+}
+
+private String spokenYear(String yearStr) {
+  if(!(yearStr ?: "").matches(/\d{4}/)) return yearStr
+  Integer y = safeInt(yearStr, null)
+  if(y == null) return yearStr
+  if(y >= 2000 && y <= 2099) {
+    Integer last = y % 100
+    if(last == 0) return "two thousand"
+    return "twenty ${numberToWordsUnder100(last)}"
+  }
+  return yearStr
+}
+
+private String formatDateWithSsml(String dateStr) {
+  if(!dateStr) return dateStr
+  String s = dateStr
+  s = s.replaceAll(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-3]?\d),\s*(\d{4})\b/) { all, month, day, year ->
+    String d = day.toString().replaceFirst(/^0/, "")
+    String dayAlias = dayOrdinalWord(d)
+    String yearAlias = spokenYear(year.toString())
+    return "${month} <sub alias=\"${dayAlias}\">${d}</sub>, <sub alias=\"${yearAlias}\">${year}</sub>"
+  }
+  s = s.replaceAll(/(?<!>)\b(20\d{2})\b(?!<\/sub>)/) { all, year ->
+    String yearAlias = spokenYear(year.toString())
+    return "<sub alias=\"${yearAlias}\">${year}</sub>"
+  }
+  return s
+}
+
+private String formatScoreLineWithSsml(String awayName, String awayScore, String homeName, String homeScore) {
+  if(!awayScore && !homeScore) return "${awayName} vs ${homeName}."
+  String sslmScore = awayScore && homeScore ? formatScoreWithSsml("${awayScore}-${homeScore}") : "${awayScore}${homeScore}"
+  String[] parts = sslmScore.split(/<sub[^>]*>/)
+  if(parts.size() >= 1 && sslmScore.contains("<sub")) {
+    def subMatch = sslmScore =~ /<sub[^>]*>(.*?)<\/sub>/
+    String scoreText = ""
+    if(subMatch) {
+      scoreText = subMatch[0][0]
+    }
+    return "${awayName} ${scoreText}, ${homeName}."
+  }
+  return "${awayName} ${awayScore}, ${homeName} ${homeScore}."
+}
+
+private String formatTimeWithSsml(String timeStr) {
+  if(!timeStr) return timeStr
+  def timeMatch = timeStr =~ /(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/
+  if(!timeMatch) return timeStr
+  def match = timeMatch[0]
+  String hour = match[1].toString().replaceAll("^0", "")
+  String min = match[2]
+  String ampm = match[3] ? " " + match[3].toUpperCase() : ""
+  String minWord = min == "00" ? "" : min.replaceAll("^0", "")
+  String readAs = minWord ? "${hour} ${minWord}" : hour
+  readAs += ampm
+  return "<sub alias=\"${readAs}\">${timeStr}</sub>"
+}
+
+private String formatPronouncedName(String displayName, String pronunciationHint) {
+  if(!displayName || !pronunciationHint) return displayName
+  return "<sub alias=\"${pronunciationHint}\">${displayName}</sub>"
+}
+
+private String applySpeechFriendlyFormatting(String text) {
+  String s = (text ?: "").toString()
+  if(!s) return s
+  s = formatDateWithSsml(s)
+  s = s.replaceAll(/\b(\d{1,3})-(\d{1,3})\b/) { all, a, b ->
+    return formatScoreWithSsml("${a}-${b}")
+  }
+  s = s.replaceAll(/\b(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\b/) { all, t ->
+    return formatTimeWithSsml(t.toString())
+  }
+  return s
+}
+
+private String stripSsmlTags(String text) {
+  if(!text) return text
+  return text.replaceAll(/<[^>]+>/, "").replaceAll(/\s+/, " ").trim()
+}
+
+private String compactGeminiAnswer(String text) {
+  String s = (text ?: "").toString().trim()
+  if(!s) return ""
+  s = s.replaceAll(/```[\s\S]*?```/, " ")
+  s = s.replaceAll(/`([^`]*)`/, '$1')
+  s = s.replaceAll(/\[(\d+)\]/, "")
+  s = s.replaceAll(/\((https?:\/\/[^\s)]+)\)/, "")
+  s = s.replaceAll(/https?:\/\/\S+/, "")
+  s = s.replaceAll(/\*\*|__|~~/, "")
+  s = s.replaceAll(/(?m)^\s*[-*]\s+/, "")
+  s = s.replaceAll(/\s+/, " ").trim()
+  s = s.replaceAll(/(?i)^as an ai( language model)?[, ]+/, "")
+  s = s.replaceAll(/(?i)^as a language model[, ]+/, "")
+  s = s.replaceAll(/(?i)^i (can(not|'t)|cannot) access (real[- ]?time|live) (data|information)[^.!?]*[.!?]?\s*/, "")
+  s = s.replaceAll(/(?i)^i do not have access to[^.!?]*[.!?]?\s*/, "")
+
+  try {
+    def parts = s.split(/(?<=[.!?])\s+/).findAll { it?.trim() }
+    if(parts && parts.size() > 4) {
+      s = parts.take(4).join(" ").trim()
+    }
+  } catch(e) {}
+
+  if(s.size() > 420) s = s.take(417).trim() + "..."
+  return s
+}
+
+private String assistantStyleText(String text) {
+  String s = (text ?: "").toString().trim()
+  if(!s) return ""
+
+  s = s.replaceAll(/\s+/, " ").trim()
+  s = s.replace(" · ", ", ")
+  s = s.replaceAll(/\s*\(\"[^\"]*\"\)\s*/, " ").replaceAll(/\s+/, " ").trim()
+
+  String low = s.toLowerCase()
+  if(low == "no answer." || low == "no answer") {
+    s = "Sorry, I couldn't find an answer."
+  } else if(low == "error processing request." || low == "error processing request") {
+    s = "Sorry, I ran into a problem."
+  } else if(low.contains("didn't understand that request") || low.contains("didn’t understand that request")) {
+    s = "Sorry, I didn't catch that. Please try again."
+  }
+
+  boolean shortMode = (settings?.shortTts != false)
+  if(shortMode) {
+    try {
+      def parts = s.split(/(?<=[.!?])\s+/).findAll { it?.trim() }
+      if(parts && parts.size() > 3) {
+        s = parts.take(3).join(" ").trim()
+      }
+    } catch(e) {}
+    if(s.size() > 260) s = s.take(257).trim() + "..."
+  }
+
+  return s
+}
+
+private boolean isLiveInfoQuery(String queryText) {
+  String q = normalize(queryText)
+  if(!q) return false
+  return (
+    q.contains("live") ||
+    q.contains("right now") ||
+    q.contains("currently") ||
+    q.contains("in progress") ||
+    q.contains("score right now") ||
+    q.contains("whats the score") ||
+    q.contains("what s the score") ||
+    q.contains("current score") ||
+    q.contains("game score now") ||
+    q.contains("playing right now") ||
+    q.contains("today s score") ||
+    q.contains("todays score") ||
+    q.contains("sports") ||
+    q.contains("sport") ||
+    q.contains("game") ||
+    q.contains("match") ||
+    q.contains("final") ||
+    q.contains("quarter") ||
+    q.contains("inning") ||
+    q.contains("period") ||
+    q.contains("halftime") ||
+    q.contains("standings") ||
+    q.contains("who won") ||
+    q.contains("wins") ||
+    q.contains("losses") ||
+    q.contains("record") ||
+    q.contains("mlb") ||
+    q.contains("nba") ||
+    q.contains("nfl") ||
+    q.contains("nhl") ||
+    q.contains("ncaa") ||
+    q.contains("soccer") ||
+    q.contains("football") ||
+    q.contains("baseball") ||
+    q.contains("basketball") ||
+    q.contains("hockey") ||
+    q.contains("tennis") ||
+    q.contains("golf")
+  )
+}
+
+private boolean isSportsLiveQuery(String queryText) {
+  String q = normalize(queryText)
+  if(!q) return false
+  return (
+    q.contains("score") ||
+    q.contains("game") ||
+    q.contains("match") ||
+    q.contains("standings") ||
+    q.contains("who won") ||
+    q.contains("playing") ||
+    q.contains("mlb") ||
+    q.contains("nba") ||
+    q.contains("nfl") ||
+    q.contains("nhl") ||
+    q.contains("ncaa") ||
+    q.contains("soccer") ||
+    q.contains("football") ||
+    q.contains("baseball") ||
+    q.contains("basketball") ||
+    q.contains("hockey") ||
+    q.contains("tennis") ||
+    q.contains("golf")
+  )
+}
+
+private boolean isNewsQuery(String queryText) {
+  String q = normalize(queryText)
+  if(!q) return false
+  return (
+    q.contains("breaking news") ||
+    q.contains("latest news") ||
+    q.contains("headline") ||
+    q.contains("headlines") ||
+    q.contains("news about") ||
+    q.contains("news on") ||
+    q.startsWith("what happened") ||
+    q.contains("what happened today") ||
+    q.contains("update on")
+  )
+}
+
+private boolean isReasoningHeavyQuery(String queryText) {
+  String q = normalize(queryText)
+  if(!q) return false
+  return (
+    q.startsWith("why ") ||
+    q.startsWith("how ") ||
+    q.startsWith("explain ") ||
+    q.contains("difference between") ||
+    q.contains("compare") ||
+    q.contains("better than") ||
+    q.contains("should i")
+  )
+}
+
+private String geminiQueryCategory(String queryText) {
+  if(isSportsLiveQuery(queryText)) return "sports"
+  if(isNewsQuery(queryText)) return "news"
+  if(isReasoningHeavyQuery(queryText)) return "reasoning"
+  if(isLiveInfoQuery(queryText)) return "live"
+  return "general"
+}
+
+private String chooseGeminiModel(String baseModel, String liveModel, Map quotaProfile, String category) {
+  boolean paidTier = ((quotaProfile?.isFreeTier ?: true) == false)
+  if(paidTier && (category in ["sports", "news", "reasoning", "live"])) {
+    return (liveModel ?: baseModel ?: "gemini-2.5-flash").toString()
+  }
+  return (baseModel ?: liveModel ?: "gemini-2.5-flash").toString()
+}
+
+private boolean shouldRetryPaidGrounding(Map first, boolean liveInfo, Map quotaProfile, String category) {
+  if(!liveInfo) return false
+  if((quotaProfile?.allowGroundedRetry == true) != true) return false
+  String firstAnswer = (first?.answer ?: "").toString().trim()
+  if(!firstAnswer) return true
+  if(first?.grounded == true) return false
+  if(category in ["sports", "news", "live"]) return true
+  if(category == "reasoning" && firstAnswer.size() < 120) return true
+  return false
+}
+
+private Map askGeminiFallback(String queryText) {
+  if(!geminiFallbackReady()) return null
+
+  String apiKey = (settings?.geminiApiKey ?: "").toString().trim()
+  String baseModel = (settings?.geminiModel ?: "gemini-2.5-flash").toString().trim()
+  if(!baseModel) baseModel = "gemini-2.5-flash"
+  String liveModel = (settings?.geminiLiveModel ?: "").toString().trim()
+  boolean liveInfo = isLiveInfoQuery(queryText)
+  boolean sportsLive = isSportsLiveQuery(queryText)
+  String queryCategory = geminiQueryCategory(queryText)
+  Map quotaProfile = geminiQuotaProfile()
+  Integer sportsCacheSecs = safeInt(settings?.sportsCacheSeconds, defaultSportsCacheSeconds())
+  if(sportsCacheSecs == null || sportsCacheSecs < 0) sportsCacheSecs = defaultSportsCacheSeconds()
+  Integer gemini429CooldownSecs = safeInt(settings?.gemini429CooldownSecs, (quotaProfile.cooldownSecs as Integer))
+  if(gemini429CooldownSecs == null || gemini429CooldownSecs < 15) gemini429CooldownSecs = defaultGemini429CooldownSecs()
+  String model = chooseGeminiModel(baseModel, liveModel, quotaProfile, queryCategory)
+  String sysPrompt = "You are the spoken response voice for a smart home assistant, matching Google Assistant on Google Home style. Reply naturally, concise, and conversational in 1 to 3 short sentences. Use plain text only: no markdown, no bullet lists, no labels, no citations, no URLs, and no emojis. Do not mention being an AI model. Give direct answers first, then one brief detail if helpful."
+  sysPrompt += " If the user asks about smart-home state you cannot verify from Hubitat, say that briefly and suggest checking the device in one short phrase."
+  if(liveInfo) {
+    sysPrompt += " This question asks for current information. Use Google Search grounding to find: breaking news, live events, scores, status, today's weather. Answer confidently with 'as of HH:MM time' when possible. If grounding fails, say briefly what info you cannot access and offer the best answer you can."
+  }
+  if(sportsLive) {
+    sysPrompt += " For sports questions: prioritize verified data from official sources. Include exact team names, final/live score (like '4 to 2'), game status, and elapsed time. If you find the game is live, mention inning/quarter/period. Be specific: say 'Final, 4-2' not just 'win'."
+  }
+
+  try {
+    def inferSportsLeagues = { String qNorm ->
+      List<Map> out = []
+      def addLeague = { String sport, String league, String label ->
+        if(!sport || !league) return
+        String key = "${sport}/${league}"
+        if(!out.find { "${it.sport}/${it.league}" == key }) {
+          out << [sport:sport, league:league, label:label]
+        }
+      }
+
+      if(qNorm.contains("nfl") || (qNorm.contains("football") && !qNorm.contains("college"))) addLeague("football", "nfl", "NFL")
+      if(qNorm.contains("ncaa") || qNorm.contains("college football") || qNorm.contains("ncaaf")) addLeague("football", "college-football", "College Football")
+      if(qNorm.contains("nba") || (qNorm.contains("basketball") && !qNorm.contains("college"))) addLeague("basketball", "nba", "NBA")
+      if(qNorm.contains("ncaa") || qNorm.contains("college basketball") || qNorm.contains("ncaab")) addLeague("basketball", "mens-college-basketball", "College Basketball")
+      if(qNorm.contains("mlb") || qNorm.contains("baseball")) addLeague("baseball", "mlb", "MLB")
+      if(qNorm.contains("nhl") || qNorm.contains("hockey")) addLeague("hockey", "nhl", "NHL")
+      if(qNorm.contains("soccer")) {
+        addLeague("soccer", "usa.1", "MLS")
+        addLeague("soccer", "eng.1", "Premier League")
+      }
+      if(qNorm.contains("pga") || qNorm.contains("golf")) addLeague("golf", "pga", "PGA Tour")
+      if(qNorm.contains("tennis") || qNorm.contains("atp") || qNorm.contains("wta")) {
+        addLeague("tennis", "atp", "ATP Tennis")
+        addLeague("tennis", "wta", "WTA Tennis")
+      }
+      if(qNorm.contains("ufc") || qNorm.contains("mma")) addLeague("mma", "ufc", "UFC")
+      if(qNorm.contains("cricket")) addLeague("cricket", "international", "Cricket")
+      if(qNorm.contains("rugby") || qNorm.contains("nrl")) {
+        addLeague("rugby-league", "nrl", "NRL")
+        addLeague("rugby-union", "international", "Rugby Union")
+      }
+
+      if(!out) {
+        String prefRaw = (settings?.sportsPreferredLeagues ?: "").toString().toUpperCase()
+        if(prefRaw) {
+          def prefList = prefRaw.split(/[,\s]+/).findAll { it }
+          prefList.each { code ->
+            if(code == "NFL") addLeague("football", "nfl", "NFL")
+            if(code == "NCAAF") addLeague("football", "college-football", "College Football")
+            if(code == "NBA") addLeague("basketball", "nba", "NBA")
+            if(code == "NCAAB") addLeague("basketball", "mens-college-basketball", "College Basketball")
+            if(code == "MLB") addLeague("baseball", "mlb", "MLB")
+            if(code == "NHL") addLeague("hockey", "nhl", "NHL")
+            if(code == "MLS") addLeague("soccer", "usa.1", "MLS")
+            if(code == "EPL") addLeague("soccer", "eng.1", "Premier League")
+          }
+        }
+      }
+
+      if(!out) {
+        addLeague("football", "nfl", "NFL")
+        addLeague("basketball", "nba", "NBA")
+        addLeague("baseball", "mlb", "MLB")
+        addLeague("hockey", "nhl", "NHL")
+      }
+
+      return out
+    }
+
+    def sportsTeamTokens = { String qNorm ->
+      List<String> stop = ["what","whats","whats","the","score","scores","game","games","match","today","tonight","now","right","live","sports","sport","who","won","is","are","in","on","for","of","vs","versus","current","latest","update","status","playing","play","at","and","a","an","my"]
+      List<String> base = (qNorm ?: "").split(/\s+/).findAll { t ->
+        String tok = (t ?: "").trim()
+        tok && tok.size() >= 3 && !(tok in stop)
+      }
+
+      String prefTeamsRaw = (settings?.sportsPreferredTeams ?: "").toString().toLowerCase()
+      if(prefTeamsRaw) {
+        base.addAll(prefTeamsRaw.split(/[,\s]+/).findAll { it && it.size() >= 3 && !(it in stop) })
+      }
+
+      Map<String, List<String>> aliasMap = [
+        // NFL
+        "niners": ["49ers","san","francisco"],
+        "chiefs": ["kansas","city"],
+        "pats": ["patriots","new","england"],
+        "pack": ["packers","green","bay"],
+        "cards": ["cardinals","arizona"],
+        "fins": ["dolphins","miami"],
+        "ravens": ["baltimore"],
+        "steelers": ["pittsburgh"],
+        "cowboys": ["dallas"],
+        "eagles": ["philadelphia"],
+        "giants": ["new","york"],
+        "broncos": ["denver"],
+        "chargers": ["los","angeles"],
+        "seahawks": ["seattle"],
+        "bucs": ["buccaneers","tampa"],
+        "titans": ["tennessee"],
+        "jaguars": ["jacksonville"],
+        "saints": ["new","orleans"],
+        "texans": ["houston"],
+        "colts": ["indianapolis"],
+        "vikings": ["minnesota"],
+        "lions": ["detroit"],
+        "bears": ["chicago"],
+        "falcons": ["atlanta"],
+        "bills": ["buffalo"],
+        // NBA
+        "lakers": ["los","angeles"],
+        "celtics": ["boston"],
+        "warriors": ["golden","state"],
+        "heat": ["miami"],
+        "sixers": ["philadelphia"],
+        "nets": ["brooklyn"],
+        "bucks": ["milwaukee"],
+        "raptors": ["toronto"],
+        "nuggets": ["denver"],
+        "suns": ["phoenix"],
+        "mavs": ["mavericks","dallas"],
+        "grizzlies": ["memphis"],
+        // MLB
+        "yanks": ["yankees","new","york"],
+        "mets": ["new","york"],
+        "dodgers": ["los","angeles"],
+        "giants": ["san","francisco"],
+        "sox": ["red","sox","white","sox"],
+        "cubbies": ["cubs","chicago"],
+        "pirates": ["pittsburgh"],
+        // NHL
+        "leafs": ["leaves","toronto"],
+        "habs": ["canadiens","montreal"],
+        "wings": ["red","wings","detroit"],
+        "bruins": ["boston"],
+        "avalanche": ["colorado"],
+        "rangers": ["new","york"],
+        // Soccer
+        "city": ["man","city","manchester"],
+        "united": ["manchester","united"],
+        "arsenal": ["london"],
+        "liverpool": ["pool"],
+        "spurs": ["tottenham"],
+        // Golf
+        "tiger": ["woods"],
+        // Tennis
+        "djokovic": ["novak"],
+        "nadal": ["rafa"],
+        "federer": ["roger"],
+        // MMA
+        "ufc": ["fighting"]
+      ]
+      String qx = (qNorm ?: "")
+      aliasMap.each { k, vals ->
+        if(qx.contains(k)) {
+          vals.each { v -> if(v) base << v.toString().toLowerCase() }
+        }
+      }
+
+      return base.unique()
+    }
+
+    def fetchEspnSportsFallback = { String rawQuery ->
+      String qNorm = normalize(rawQuery)
+      if(!qNorm) return null
+      String cacheKey = "sports::" + qNorm
+      try {
+        // Keep state size under control by pruning stale entries on read path.
+        pruneSportsApiCache(Math.max((sportsCacheSecs ?: defaultSportsCacheSeconds()) * 20, 3600))
+        state.sportsApiCache = (state.sportsApiCache instanceof Map) ? state.sportsApiCache : [:]
+        Map c = state.sportsApiCache[cacheKey] instanceof Map ? (Map)state.sportsApiCache[cacheKey] : null
+        if(c && c.ts instanceof Number && ((now() - (c.ts as Long)) <= (sportsCacheSecs as Long) * 1000L)) {
+          if(c.payload instanceof Map && c.payload.answer) {
+            Map cp = [:]
+            cp.putAll((Map)c.payload)
+            cp.finishReason = "sports_api_cache"
+            return cp
+          }
+        }
+      } catch(e) {}
+
+      List<Map> leagues = inferSportsLeagues(qNorm)
+      List<String> teamTokens = sportsTeamTokens(qNorm)
+
+      for(Map lg in leagues) {
+        String sport = (lg?.sport ?: "").toString()
+        String league = (lg?.league ?: "").toString()
+        if(!sport || !league) continue
+
+        String uri = "https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard"
+        Map data = null
+        String errorType = null
+        try {
+          httpGet(uri: uri, contentType: "application/json", timeout: 8) { resp ->
+            if(resp?.status == 200) {
+              def body = resp?.data
+              if(body instanceof Map) data = (Map)body
+            } else if(resp?.status == 503 || resp?.status == 502) {
+              errorType = "sports_api_unavailable"
+            }
+          }
+        } catch(e) {
+          if(e.message?.contains("Read timed out")) {
+            errorType = "sports_api_timeout"
+          } else if(e.message?.contains("refused") || e.message?.contains("unreachable")) {
+            errorType = "network_unavailable"
+          }
+          data = null
+        }
+        if(errorType == "network_unavailable" && !leagues.any { it != lg }) {
+          return [answer: "Sorry, I can't reach that right now.", grounded: false, finishReason: "network_error"]
+        }
+        if(!(data instanceof Map)) continue
+
+        List events = (data?.events instanceof List) ? (List)data.events : []
+        if(!events) continue
+
+        def bestEvt = null
+        if(teamTokens) {
+          for(def ev in events) {
+            try {
+              def comp = ev?.competitions instanceof List && ev.competitions ? ev.competitions[0] : null
+              def cops = (comp?.competitors instanceof List) ? (List)comp.competitors : []
+              String blob = cops.collect { c ->
+                def t = c?.team
+                return [t?.displayName, t?.shortDisplayName, t?.abbreviation].findAll { it }.join(" ")
+              }.join(" ").toLowerCase()
+              if(teamTokens.any { tok -> blob.contains(tok) }) {
+                bestEvt = ev
+                break
+              }
+            } catch(e) {}
+          }
+        }
+        if(!bestEvt) bestEvt = events[0]
+        if(!bestEvt) continue
+
+        try {
+          def comp = bestEvt?.competitions instanceof List && bestEvt.competitions ? bestEvt.competitions[0] : null
+          def cops = (comp?.competitors instanceof List) ? (List)comp.competitors : []
+          def home = cops.find { it?.homeAway?.toString() == "home" } ?: (cops ? cops[0] : null)
+          def away = cops.find { it?.homeAway?.toString() == "away" } ?: (cops?.size() > 1 ? cops[1] : null)
+
+          String homeName = (home?.team?.shortDisplayName ?: home?.team?.displayName ?: "Home").toString()
+          String awayName = (away?.team?.shortDisplayName ?: away?.team?.displayName ?: "Away").toString()
+          String homeScore = (home?.score != null) ? home.score.toString() : ""
+          String awayScore = (away?.score != null) ? away.score.toString() : ""
+          String status = (comp?.status?.type?.shortDetail ?: comp?.status?.type?.detail ?: bestEvt?.status?.type?.shortDetail ?: "").toString()
+
+          String gameLine
+          if(homeScore && awayScore) {
+            String sslmScore = formatScoreWithSsml("${awayScore}-${homeScore}")
+            gameLine = "${awayName} ${sslmScore}, ${homeName}."
+          } else if(homeScore || awayScore) {
+            gameLine = "${awayName} ${awayScore}, ${homeName} ${homeScore}."
+          } else {
+            gameLine = "${awayName} vs ${homeName}."
+          }
+
+          String asOf = new Date().format("h:mm a", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+          String ans = "${gameLine} ${status ?: 'Status unavailable'}. As of ${asOf}."
+
+          Map result = [
+            answer: compactGeminiAnswer(ans),
+            grounded: true,
+            searchQueries: [rawQuery],
+            sourceUrls: [uri],
+            groundingMetadata: [source:"espn_scoreboard", league: (lg?.label ?: "")],
+            finishReason: "sports_api_fallback",
+            model: "espn-scoreboard",
+            fallbackSource: "espn",
+            sports_source: "espn_scoreboard",
+            sports_league: (lg?.label ?: "")
+          ]
+          try {
+            state.sportsApiCache = (state.sportsApiCache instanceof Map) ? state.sportsApiCache : [:]
+            state.sportsApiCache[cacheKey] = [ts: now(), payload: result]
+          } catch(ignore2) {}
+          trackQueryResult("espn_scoreboard", rawQuery)
+          return result
+        } catch(e) {
+          continue
+        }
+      }
+      return null
+    }
+
+    long cooldownUntil = 0L
+    try { cooldownUntil = (state?.gemini429CooldownUntil ?: 0L) as Long } catch(ignore) { cooldownUntil = 0L }
+    if(cooldownUntil > now()) {
+      if(sportsLive) {
+        Map sportsApi = fetchEspnSportsFallback(queryText)
+        if(sportsApi?.answer) {
+          return sportsApi
+        }
+      }
+      return [
+        answer: "Google is busy right now. Please try again in a minute.",
+        grounded: false,
+        searchQueries: [],
+        sourceUrls: [],
+        groundingMetadata: [:],
+        finishReason: "quota_cooldown",
+        model: model,
+        fallbackSource: "none",
+        sports_source: "none",
+        sports_league: ""
+      ]
+    }
+
+    def callGemini = { String askText, String modelName, BigDecimal temp, Integer tokenLimit, String attemptLabel ->
+      def resultText = ""
+      Map groundingMetadata = [:]
+      Map usageMetadata = [promptTokens: 0, outputTokens: 0, totalTokens: 0]
+      List<String> sourceUrls = []
+      List<String> searchQueries = []
+      String finishReason = ""
+
+      trackGeminiUsage(modelName, attemptLabel, queryCategory)
+
+      if(!tryConsumeGeminiQuotaSlot((quotaProfile.maxCallsPerMin as Integer), (quotaProfile.maxCallsPerDay as Integer))) {
+        finishReason = "local_quota_guard"
+        log.debug "Gemini local quota guard blocked request. attempt=${attemptLabel}, tier=${quotaProfile.tier}, perMin=${quotaProfile.maxCallsPerMin}, perDay=${quotaProfile.maxCallsPerDay}"
+        return [
+          answer: "",
+          grounded: false,
+          searchQueries: [],
+          sourceUrls: [],
+          groundingMetadata: [:],
+          finishReason: finishReason,
+          model: modelName,
+          fallbackSource: "gemini",
+          sports_source: (sportsLive ? "gemini_search" : ""),
+          sports_league: ""
+        ]
+      }
+
+      Map reqBody = [
+        system_instruction: [
+          parts: [[text: sysPrompt]]
+        ],
+        contents: [
+          [parts: [[text: askText]]]
+        ],
+        tools: [
+          [google_search: [:]]
+        ],
+        generationConfig: [
+          maxOutputTokens: tokenLimit,
+          temperature: temp
+        ]
+      ]
+
+      Map params = [
+        uri: "https://generativelanguage.googleapis.com/v1beta/models/${java.net.URLEncoder.encode(modelName, 'UTF-8')}:generateContent",
+        headers: [
+          "x-goog-api-key": apiKey
+        ],
+        contentType: "application/json",
+        requestContentType: "application/json",
+        body: reqBody
+      ]
+
+      log.debug "Gemini fallback request starting. attempt=${attemptLabel}, model=${modelName}, liveInfo=${liveInfo}, sportsLive=${sportsLive}, query=${askText}"
+
+      try {
+        httpPostJson(params) { resp ->
+          if(resp?.status in [200, 201]) {
+            def data = resp?.data
+            if(!(data instanceof Map)) {
+              try {
+                data = new JsonSlurper().parseText(resp?.data?.toString() ?: "")
+              } catch(ignore) {}
+            }
+            resultText = extractGeminiText(data)
+            groundingMetadata = extractGeminiGroundingMetadata(data)
+            sourceUrls = extractGeminiGroundingSources(groundingMetadata)
+            searchQueries = extractGeminiSearchQueries(groundingMetadata)
+            finishReason = extractGeminiFinishReason(data)
+            usageMetadata = extractGeminiUsageMetadata(data)
+            trackGeminiCost(modelName, usageMetadata, (sourceUrls ? true : false))
+            log.debug "Gemini fallback response ok. attempt=${attemptLabel}, grounded=${sourceUrls ? true : false}, searches=${searchQueries?.size() ?: 0}, sources=${sourceUrls?.size() ?: 0}, finishReason=${finishReason ?: 'unknown'}, rawLen=${resultText?.size() ?: 0}"
+            log.debug "Gemini usage (${attemptLabel}): prompt=${usageMetadata.promptTokens ?: 0}, output=${usageMetadata.outputTokens ?: 0}, total=${usageMetadata.totalTokens ?: 0}"
+            if(resultText) log.debug "Gemini raw answer (${attemptLabel}): ${resultText}"
+            if(searchQueries) log.debug "Gemini search queries (${attemptLabel}): ${searchQueries}"
+            if(sourceUrls) log.debug "Gemini grounding sources (${attemptLabel}): ${sourceUrls}"
+          } else {
+            log.debug "Gemini fallback returned status ${resp?.status} on attempt=${attemptLabel}"
+            if((resp?.status as Integer) == 429) {
+              finishReason = "quota_429"
+              try { state.gemini429CooldownUntil = now() + ((gemini429CooldownSecs as Long) * 1000L) } catch(ignore) {}
+            }
+          }
+        }
+      } catch(e) {
+        String em = (e?.toString() ?: "").toLowerCase()
+        if(em.contains("status code: 429") || em.contains("too many requests") || em.contains("resourceexhausted")) {
+          finishReason = "quota_429"
+          try { state.gemini429CooldownUntil = now() + ((gemini429CooldownSecs as Long) * 1000L) } catch(ignore) {}
+          log.debug "Gemini fallback rate-limited on attempt=${attemptLabel}; will use local fallback if available"
+        } else {
+          log.debug "Gemini fallback request failed on attempt=${attemptLabel}: ${e}"
+        }
+      }
+
+      return [
+        answer: compactGeminiAnswer(resultText),
+        grounded: (sourceUrls ? true : false),
+        searchQueries: searchQueries,
+        sourceUrls: sourceUrls,
+        groundingMetadata: groundingMetadata,
+        usageMetadata: usageMetadata,
+        finishReason: finishReason,
+        model: modelName,
+        fallbackSource: "gemini",
+        sports_source: (sportsLive ? "gemini_search" : ""),
+        sports_league: ""
+      ]
+    }
+
+    BigDecimal firstTemp = liveInfo ? 0.25G : 0.5G
+    Integer firstTokens = liveInfo ? (quotaProfile.liveFirstTokens as Integer) : (quotaProfile.firstTokens as Integer)
+    Map first = callGemini(queryText, model, firstTemp, firstTokens, "first")
+    Map chosen = first
+    boolean geminiRateLimited = (["quota_429", "local_quota_guard"].contains((first?.finishReason ?: "").toString()))
+
+    if(shouldRetryPaidGrounding(first, liveInfo, quotaProfile, queryCategory) && !geminiRateLimited) {
+      def tz = location?.timeZone ?: TimeZone.getTimeZone("UTC")
+      String nowStamp = new Date().format("yyyy-MM-dd HH:mm z", tz)
+      String retryQuery = "${queryText}. Use live web results. Current time is ${nowStamp}."
+      if(sportsLive) {
+        retryQuery += " Focus on latest sports result with teams, score, game status, and update time."
+      }
+      String retryModel = chooseGeminiModel(baseModel, liveModel, quotaProfile, queryCategory)
+      Map second = callGemini(retryQuery, retryModel, 0.2G, (quotaProfile.retryTokens as Integer), "retry_grounded")
+      if(second?.answer) {
+        boolean preferSecond = (second?.grounded == true) || !(first?.answer)
+        if(preferSecond) chosen = second
+      }
+      geminiRateLimited = geminiRateLimited || (["quota_429", "local_quota_guard"].contains((second?.finishReason ?: "").toString()))
+    }
+
+    if(sportsLive && (chosen?.grounded != true || !(chosen?.answer))) {
+      Map sportsApi = fetchEspnSportsFallback(queryText)
+      if(sportsApi?.answer) {
+        chosen = sportsApi
+      }
+    }
+
+    if(sportsLive && !(chosen?.answer)) {
+      return [
+        answer: "Sorry, I can't get live sports right now. Please try again in a minute.",
+        grounded: false,
+        searchQueries: [],
+        sourceUrls: [],
+        groundingMetadata: [:],
+        finishReason: "sports_unavailable",
+        model: (chosen?.model ?: model),
+        fallbackSource: "none",
+        sports_source: "none",
+        sports_league: ""
+      ]
+    }
+
+    if(!(chosen?.answer) && geminiRateLimited) {
+      return [
+        answer: "Google is busy right now. Please try again in a minute.",
+        grounded: false,
+        searchQueries: [],
+        sourceUrls: [],
+        groundingMetadata: [:],
+        finishReason: "quota_429",
+        model: (chosen?.model ?: model),
+        fallbackSource: "none",
+        sports_source: "none",
+        sports_league: ""
+      ]
+    }
+
+    String resultText = (chosen?.answer ?: "").toString()
+    if(resultText && liveInfo && chosen?.grounded != true && !resultText.toLowerCase().startsWith("last available update says")) {
+      resultText = "Last available update says ${resultText}"
+    }
+    if(resultText && chosen?.finishReason == "sports_api_cache" && !resultText.toLowerCase().startsWith("last update says")) {
+      resultText = "Last update says ${resultText}"
+    }
+    if(resultText) {
+      log.debug "Gemini final answer (${resultText.size()} chars): ${resultText}"
+      state.lastGeminiAnswer = resultText
+      state.lastGeminiAt = now()
+      state.lastGeminiGrounded = (chosen?.grounded == true)
+      state.lastGeminiQueries = (chosen?.searchQueries instanceof List) ? chosen.searchQueries : []
+      state.lastGeminiSources = (chosen?.sourceUrls instanceof List) ? chosen.sourceUrls : []
+      state.lastGeminiFinishReason = (chosen?.finishReason ?: "")
+      state.lastGeminiAnswerLen = resultText.size()
+      String trackSource = (chosen?.fallbackSource ?: "gemini")
+      if(chosen?.sports_source) trackSource = chosen.sports_source
+      trackQueryResult(trackSource, queryText)
+      return [
+        answer: resultText,
+        grounded: (chosen?.grounded == true),
+        searchQueries: (chosen?.searchQueries instanceof List) ? chosen.searchQueries : [],
+        sourceUrls: (chosen?.sourceUrls instanceof List) ? chosen.sourceUrls : [],
+        groundingMetadata: (chosen?.groundingMetadata instanceof Map) ? chosen.groundingMetadata : [:],
+        finishReason: (chosen?.finishReason ?: ""),
+        model: (chosen?.model ?: model),
+        fallbackSource: (chosen?.fallbackSource ?: "gemini"),
+        sports_source: (chosen?.sports_source ?: ""),
+        sports_league: (chosen?.sports_league ?: "")
+      ]
+    }
+  } catch(e) {
+    log.debug "Gemini fallback error: ${e}"
+    state.lastGeminiError = e?.toString()
+    try {
+      if(isSportsLiveQuery(queryText)) {
+        pruneSportsApiCache(Math.max((sportsCacheSecs ?: defaultSportsCacheSeconds()) * 20, 3600))
+      }
+    } catch(ignore) {}
+  }
+
+  return null
+}
+
+private boolean shouldUseGeminiFallback(Map resultMap, String answerText, String queryText, Map intent=null) {
+  if(!geminiFallbackReady()) return false
+  if(!(queryText ?: "").toString().trim()) return false
+
+  String mode = ((intent?.mode ?: resultMap?.mode ?: "") as String).toLowerCase()
+  if(mode == "command") return false
+
+  String err = ((resultMap?.error ?: "") as String).toLowerCase()
+  if(err in [
+    "no_device",
+    "unknown_intent",
+    "no_current_value",
+    "no_history",
+    "no_activity",
+    "weather_unavailable",
+    "weather_error",
+    "no_candidates"
+  ]) return true
+
+  String low = (answerText ?: "").toString().toLowerCase()
+  if(!low) return true
+  if(low == "no answer.") return true
+  if(low.contains("didn't understand")) return true
+  if(low.contains("did not understand")) return true
+  if(low.contains("couldn't get the weather")) return true
+  if(low.contains("i can’t read")) return true
+  if(low.contains("i couldn't find")) return true
+
+  return false
+}
+
+private Map maybeUseGeminiFallback(String queryText, String answerText, Map resultMap=[:], Map intent=null) {
+  if(!shouldUseGeminiFallback(resultMap, answerText, queryText, intent)) {
+    return [answer: answerText, payload: (resultMap ?: [:]), used: false]
+  }
+
+  Map fallback = askGeminiFallback(queryText)
+  if(!(fallback instanceof Map) || !fallback?.answer) {
+    return [answer: answerText, payload: (resultMap ?: [:]), used: false]
+  }
+
+  Map merged = [:]
+  if(resultMap instanceof Map) merged.putAll(resultMap)
+  merged.ok = true
+  merged.answer = fallback.answer
+  merged.gemini_used = true
+  merged.fallback_source = (fallback.fallbackSource ?: "gemini")
+  merged.gemini_grounded = (fallback.grounded == true)
+  merged.gemini_model = (fallback.model ?: "")
+  if(fallback.sports_source) merged.sports_source = fallback.sports_source
+  if(fallback.sports_league) merged.sports_league = fallback.sports_league
+  if(fallback.searchQueries instanceof List) merged.gemini_search_queries = fallback.searchQueries
+  if(fallback.sourceUrls instanceof List) merged.gemini_sources = fallback.sourceUrls
+  try {
+    dbgPut('geminiUsed', true)
+    dbgPut('geminiGrounded', (fallback.grounded == true))
+    dbgPut('geminiQueries', (fallback.searchQueries instanceof List) ? fallback.searchQueries : [])
+    dbgPut('geminiSources', (fallback.sourceUrls instanceof List) ? fallback.sourceUrls : [])
+    dbgPut('geminiFinishReason', (fallback.finishReason ?: '').toString())
+    dbgPut('geminiAnswerLen', safeInt(fallback?.answer?.size(), 0))
+    dbgPut('fallbackSource', (fallback?.fallbackSource ?: 'gemini').toString())
+    dbgPut('sportsSource', (fallback?.sports_source ?: '').toString())
+    dbgPut('sportsLeague', (fallback?.sports_league ?: '').toString())
+    state.lastDebug = state.lastDebug ?: [:]
+    state.lastDebug.geminiUsed = true
+    state.lastDebug.geminiGrounded = (fallback.grounded == true)
+    state.lastDebug.geminiQueries = (fallback.searchQueries instanceof List) ? fallback.searchQueries : []
+    state.lastDebug.geminiSources = (fallback.sourceUrls instanceof List) ? fallback.sourceUrls : []
+    state.lastDebug.geminiFinishReason = (fallback.finishReason ?: '').toString()
+    state.lastDebug.geminiAnswerLen = safeInt(fallback?.answer?.size(), 0)
+    state.lastDebug.fallbackSource = (fallback?.fallbackSource ?: 'gemini').toString()
+    state.lastDebug.sportsSource = (fallback?.sports_source ?: '').toString()
+    state.lastDebug.sportsLeague = (fallback?.sports_league ?: '').toString()
+  } catch(e) {}
+  return [answer: fallback.answer, payload: merged, used: true]
 }
 
 /* =========================================================
@@ -1008,7 +2421,7 @@ private List bulkFindLocks(List<String> scopeTokens, List<String> mustHaveAnyNam
   return out
 }
 private String bulkDoSwitches(String action, List devs) {
-  if(!devs) return "No matching devices found."
+  if(!devs) return "I couldn't find matching devices for that request."
   int ok=0; def failed=[]
   devs.each{ d ->
     try {
@@ -1016,12 +2429,12 @@ private String bulkDoSwitches(String action, List devs) {
       ok++
     } catch(e) { failed << (d?.displayName ?: d?.name ?: "Unknown") }
   }
-  String verb = (action=="on" ? "Turned on" : "Turned off")
-  if(!failed) return "${verb} ${ok} device${ok==1?'':'s'}."
-  return "${verb} ${ok} device${ok==1?'':'s'}. Failed: ${failed.join(', ')}"
+  String phrase = (action=="on" ? "turning on" : "turning off")
+  if(!failed) return "Sure. ${phrase.capitalize()} ${ok} device${ok==1?'':'s'}."
+  return "Sure. ${phrase.capitalize()} ${ok} device${ok==1?'':'s'}. I wasn't able to update: ${failed.join(', ')}."
 }
 private String bulkDoLocks(String action, List devs) {
-  if(!devs) return "No matching locks found."
+  if(!devs) return "I couldn't find matching locks for that request."
   int ok=0; def failed=[]
   devs.each{ d ->
     try {
@@ -1029,9 +2442,9 @@ private String bulkDoLocks(String action, List devs) {
       ok++
     } catch(e) { failed << (d?.displayName ?: d?.name ?: "Unknown") }
   }
-  String verb = (action=="unlock" ? "Unlocked" : "Locked")
-  if(!failed) return "${verb} ${ok} lock${ok==1?'':'s'}."
-  return "${verb} ${ok} lock${ok==1?'':'s'}. Failed: ${failed.join(', ')}"
+  String phrase = (action=="unlock" ? "unlocking" : "locking")
+  if(!failed) return "Sure. ${phrase.capitalize()} ${ok} lock${ok==1?'':'s'}."
+  return "Sure. ${phrase.capitalize()} ${ok} lock${ok==1?'':'s'}. I wasn't able to update: ${failed.join(', ')}."
 }
 
 /* =========================================================
@@ -1158,7 +2571,7 @@ private List bulkFindLightsByName(String scopePhrase) {
   return devs
 }
 private String bulkDoLights(String action, List devs) {
-  if(!devs) return "No matching lights found."
+  if(!devs) return "I couldn't find matching lights for that request."
   int ok=0
   def failed=[]
   devs.each { d ->
@@ -1169,9 +2582,9 @@ private String bulkDoLights(String action, List devs) {
       failed << (d?.displayName ?: d?.name ?: "Unknown")
     }
   }
-  String verb = (action=="on" ? "Turned on" : "Turned off")
-  if(!failed) return "${verb} ${ok} light${ok==1?'':'s'}."
-  return "${verb} ${ok} light${ok==1?'':'s'}. Failed: ${failed.join(', ')}"
+  String phrase = (action=="on" ? "turning on" : "turning off")
+  if(!failed) return "Sure. ${phrase.capitalize()} ${ok} light${ok==1?'':'s'}."
+  return "Sure. ${phrase.capitalize()} ${ok} light${ok==1?'':'s'}. I wasn't able to update: ${failed.join(', ')}."
 }
 private Map parseBulkLightCommand(String raw) {
   String s = bcNorm(safeStripSecurityCodePhrase(raw))
@@ -1280,7 +2693,7 @@ if(bulkCmd) {
   def targets = bulkFindLightsByName(scope)
   try { state.lastDebug.bulk.targetsCount = targets?.size() ?: 0; state.lastDebug.bulk.targets = (targets ?: []).collect{ it?.displayName ?: it?.name ?: '?' } } catch(e) {}
   dbgRoute('bulk_lights_match')
-  log.warn "BULK LIGHTS (${action}) scope='${scope}' targets=${targets?.size() ?: 0} -> " + (targets ? targets.collect{ it?.displayName ?: it?.name ?: "?" }.join(", ") : "")
+  log.debug "BULK LIGHTS (${action}) scope='${scope}' targets=${targets?.size() ?: 0} -> " + (targets ? targets.collect{ it?.displayName ?: it?.name ?: "?" }.join(", ") : "")
   ans = bulkDoLights(action, targets)
   sendMessage(ans)
   return respondText(ans)
@@ -1333,7 +2746,7 @@ if(mLkScoped || mLkGlobal) {
   else if(kind.startsWith("lock")) mustAny = ["lock","door"]
 
   def providedCode = extractSecurityCode(q)
-  log.warn "SECURITY CODE PARSED (bulk lock): ${providedCode ?: '(none)'}"
+  log.debug "SECURITY CODE PARSED (bulk lock): ${providedCode ?: '(none)'}"
   def gate = authorizeRiskyAction(null, providedCode)
   if(gate?.ok != true) {
     ans = (gate?.msg ?: "Unable to complete request.")
@@ -1353,7 +2766,7 @@ if(mLkScoped || mLkGlobal) {
   def targets = bulkFindLocks(scopeTokens, mustAny)
   targets = filterRiskyLockTargets(targets)
   if(!targets) {
-    ans = "No matching allowed locks found."
+    ans = "I couldn't find any allowed locks that match that request."
     riskyAudit("lock_bulk", act, (scope ?: kind ?: "all"), false, "allowlist_empty", q, (providedCode != null))
     sendMessage(ans)
     return respondText(ans)
@@ -1376,8 +2789,8 @@ if(mLkScoped || mLkGlobal) {
     state.lastQuestion = q
 
 
-    log.warn "PARAMS RAW: ${params}"
-    log.warn "Q VALUE: ${params.q}"
+    log.debug "PARAMS RAW: ${params}"
+    log.debug "Q VALUE: ${params.q}"
     // Optional: structured NLU (params.nlu) can short-circuit routing
     def nlu = parseNluParam()
     def nluIntent = nlu ? nluToInternalIntent(nlu) : null
@@ -1386,6 +2799,9 @@ if(mLkScoped || mLkGlobal) {
     if(nluIntent?.mode && ROUTE_GROUP().containsKey(nluIntent.mode)) {
       def gRes = routeGroup(query, nluIntent)
       String ans = (gRes?.answer ?: "No answer.").toString()
+      def fb = maybeUseGeminiFallback(q, ans, (gRes ?: [:]), nluIntent)
+      ans = (fb?.answer ?: ans).toString()
+      gRes = (fb?.payload instanceof Map) ? fb.payload : (gRes ?: [:])
       state.lastAnswer = ans
       state.lastIntent = "nlu-group:${nluIntent.mode}"
       sendMessage(ans)
@@ -1449,6 +2865,9 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
 }
       def gRes = answerForGroup(query, hp)
       String ans = (gRes?.answer ?: "No answer.").toString()
+      def fb = maybeUseGeminiFallback(q, ans, (gRes ?: [:]), hp)
+      ans = (fb?.answer ?: ans).toString()
+      gRes = (fb?.payload instanceof Map) ? fb.payload : (gRes ?: [:])
       state.lastAnswer = ans
       state.lastIntent = "group:${hp.mode}"
       sendMessage(ans)
@@ -1478,6 +2897,9 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
       if(gIntent) {
         def gRes = answerForGroup(query, gIntent)
         String ans = (gRes?.answer ?: "No answer.").toString()
+        def fb = maybeUseGeminiFallback(q, ans, (gRes ?: [:]), gIntent)
+        ans = (fb?.answer ?: ans).toString()
+        gRes = (fb?.payload instanceof Map) ? fb.payload : (gRes ?: [:])
         state.lastAnswer = ans
         state.lastIntent = "group:${gIntent?.mode ?: ''}"
         sendMessage(ans)
@@ -1491,11 +2913,14 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
         candNames = (dd?.candidates instanceof List) ? dd.candidates.collect{ it?.displayName ?: it?.name } : []
       } catch(e) { }
       String ans = clarifyIntent(q, candNames)
+      def fb = maybeUseGeminiFallback(q, ans, [ok:false, error:"no_device"], null)
+      ans = (fb?.answer ?: ans).toString()
+      def outPayload = (fb?.payload instanceof Map) ? fb.payload : [ok:false, error:"no_device"]
 
       state.lastAnswer = ans
       state.lastIntent = "no_device"
       sendMessage(ans)
-      return respondAsk(ans, 200, [ok:false, error:"no_device"])
+      return respondAsk(ans, 200, outPayload)
     }
 
     state.lastDeviceName = dev?.displayName ?: dev?.name
@@ -1511,7 +2936,7 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
     // - If Lock Code Manager has codes for the lock, we require a code and validate against LCM.
     // - Otherwise, if this app has a securityCode set, we require/validate against that.
     def codeProvided = extractSecurityCode(q)
-    if((q ?: "").toString().toLowerCase().contains("security code")) { log.warn "SECURITY CODE PARSED: ${codeProvided ?: '(none)'}" }
+    if((q ?: "").toString().toLowerCase().contains("security code")) { log.debug "SECURITY CODE PARSED: ${codeProvided ?: '(none)'}" }
     def appCodeSet = (settings?.securityCode ?: "").toString().trim()
     def lcmCodesExist = false
     try { lcmCodesExist = lcmHasAnyCodes(dev) } catch(e) { lcmCodesExist = false }
@@ -1572,6 +2997,9 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
 
 def resultMap = answerFor(dev, query, intent)
     String ans = (resultMap?.answer ?: "No answer.").toString()
+    def fb = maybeUseGeminiFallback(q, ans, (resultMap ?: [:]), intent)
+    ans = (fb?.answer ?: ans).toString()
+    resultMap = (fb?.payload instanceof Map) ? fb.payload : (resultMap ?: [:])
     state.lastAnswer = ans
     if(intent?.mode == "command" && intent?.risky && intent?.attr == "lock") {
       riskyAudit("lock_device", (intent?.cmd ?: ""), (dev?.displayName ?: dev?.name ?: ""), (resultMap?.ok == true), ((resultMap?.ok == true) ? "executed" : "command_failed"), q, (codeProvided != null))
@@ -1580,9 +3008,9 @@ def resultMap = answerFor(dev, query, intent)
     return respondAsk(ans, 200, (resultMap ?: [:]))
 
   } catch(ex) {
-    log.warn "handleAsk error: ${ex}"
+    log.debug "handleAsk error: ${ex}"
     state.lastError = ex?.toString()
-    return respondAsk("Error processing request.", 200, [ok:false, error:"handle_ask_error"])
+    return respondAsk("Sorry, I ran into a problem handling that request.", 200, [ok:false, error:"handle_ask_error"])
   }
 }
 
@@ -1817,13 +3245,13 @@ private void bruteForceRecordFail(def dev) {
 
     if(count >= maxFails) {
       rec.lockoutUntilMs = nowMs + (lockoutMins * 60_000L)
-      log.warn "Brute-force lockout triggered for ${k} (fails=${count}, lockoutMins=${lockoutMins})"
+      log.debug "Brute-force lockout triggered for ${k} (fails=${count}, lockoutMins=${lockoutMins})"
     }
 
     bf[k] = rec
     state.bruteforce = bf
   } catch(e) {
-    log.warn "bruteForceRecordFail error: ${e}"
+    log.debug "bruteForceRecordFail error: ${e}"
   }
 }
 
@@ -1865,7 +3293,7 @@ private void riskyAudit(String kind, String action, String target, boolean ok, S
     if(log.size() > keep) log = log.takeRight(keep)
     state.riskyAudit = log
   } catch(e) {
-    log.warn "riskyAudit error: ${e}"
+    log.debug "riskyAudit error: ${e}"
   }
 }
 
@@ -2147,7 +3575,7 @@ def bulkLockUnlock(String action, boolean doorsOnly) {
 
   if(!locks) return doorsOnly ? "No door locks found." : "No locks found."
 
-  log.warn "BULK ${action.toUpperCase()} targets (${locks.size()}): " + locks.collect{ it?.displayName ?: it?.name ?: "?" }.join(", ")
+  log.debug "BULK ${action.toUpperCase()} targets (${locks.size()}): " + locks.collect{ it?.displayName ?: it?.name ?: "?" }.join(", ")
 
   int ok = 0
   def failed = []
@@ -2158,13 +3586,13 @@ def bulkLockUnlock(String action, boolean doorsOnly) {
       ok++
     } catch(e) {
       failed << "${d?.displayName ?: d?.name ?: 'Unknown'} (${e?.class?.simpleName})"
-      log.warn "BULK ${action} failed for ${d?.displayName ?: d?.name}: ${e}"
+      log.debug "BULK ${action} failed for ${d?.displayName ?: d?.name}: ${e}"
     }
   }
 
-  String verb = (action=="lock" ? "Locked" : "Unlocked")
-  if(!failed) return "${verb} ${ok} lock${ok==1?'':'s'}."
-  return "${verb} ${ok} lock${ok==1?'':'s'}. Failed: ${failed.join(', ')}"
+  String phrase = (action=="lock" ? "locking" : "unlocking")
+  if(!failed) return "Sure. ${phrase.capitalize()} ${ok} lock${ok==1?'':'s'}."
+  return "Sure. ${phrase.capitalize()} ${ok} lock${ok==1?'':'s'}. I couldn't update: ${failed.join(', ')}."
 }
 
 def authorizeRiskyAction(def lockDevForLcm, String providedCode) {
@@ -2195,7 +3623,7 @@ def authorizeRiskyAction(def lockDevForLcm, String providedCode) {
     if(useGeneric) msg = genericMsg
     return [ok:false, msg:msg]
   } catch(e) {
-    log.warn "authorizeRiskyAction error: ${e}"
+    log.debug "authorizeRiskyAction error: ${e}"
     def msg = (settings?.genericDenyMsg ?: settings?.genericDenialMsg ?: "Unable to complete request.").toString()
     return [ok:false, msg:msg]
   }
@@ -2233,32 +3661,18 @@ def hasValidSecurityCode(dev, String raw) {
 
 
 def clarifyIntent(String rawQuery, List candNames = null) {
-  try {
-    String q = (rawQuery ?: "").toString().trim()
-    String base = "I didn’t understand that request." + (q ? " (\"${q}\")" : "")
-    if(candNames && candNames.size() > 0) {
-      def top = candNames.take(5).collect{ it?.toString() }.findAll{ it }
-      if(top) return base + " Did you mean: " + top.join(", ") + "?"
-    }
-    def tips = []
-    tips << "Try: 'house status'"
-    tips << "'security check'"
-    tips << "'<device> status'"
-    tips << "'which lights are on'"
-    tips << "'how long has <device> been open'"
-    return base + " " + tips.join(" · ")
-  } catch(e) {
-    return "I didn’t understand that request."
-  }
+  return "Sorry, I didn't catch that request."
 }
 
 def sendMessage(ans) {
     try {
-        String msg = (ans ?: "").toString()
+        String msg = assistantStyleText((ans ?: "").toString())
         String low = msg.toLowerCase()
         if(low.contains("understand that request")) {
             log.debug "In sendMessage - Something went wrong - didn't understand the question"
             ans = "Sorry, I didn't understand"
+        } else {
+            ans = msg
         }
     } catch(e) { }
     log.debug "In sendMessage - sdev: ${state.sdev}"
@@ -2267,8 +3681,14 @@ def sendMessage(ans) {
         sendAnswerToPc(ans)
     } else {
         if(speaker) {
-            log.debug "In sendMessage - sending to Speaker - ${ans}"
-          try { speaker*.speak(ans) } catch(e) { }
+            String speakText = applySpeechFriendlyFormatting(ans)
+            log.debug "In sendMessage - sending to Speaker - ${speakText}"
+            try {
+              speaker*.speak(speakText)
+            } catch(e) {
+              // Fallback when speaker rejects SSML markup.
+              try { speaker*.speak(stripSsmlTags(speakText)) } catch(ignore) {}
+            }
         }
         if(notificationDevice) {
             log.debug "In sendMessage - state.sdev: ${state.sdev} - ${ans}"
@@ -2293,7 +3713,7 @@ def deferredSpeak(evt) {
     def txt = evt?.text ?: evt?.data?.text
     if(txt) maybeSpeak(txt.toString())
   } catch(e) {
-    log.warn "deferredSpeak failed: ${e}"
+    log.debug "deferredSpeak failed: ${e}"
   }
 }
 
@@ -2313,7 +3733,7 @@ private Map answerFor(dev, String query, Map intent) {
     String deviceId = dev?.id?.toString()
     def e = findLastAction(deviceId, null, null)
     if(!e) {
-      def ans = "I can only explain actions triggered by this voice endpoint, and I don’t have a recent command logged for ${devName}."
+      def ans = "I can only explain actions from this voice endpoint, and I don't have a recent command logged for ${devName}."
       return [ok:false, error:"no_action_log", device:devName, answer: ans]
     }
     Long ts = (e.ts instanceof Number) ? ((Number)e.ts).longValue() : null
@@ -2442,20 +3862,20 @@ if(mode == "command") {
 if(mode == "compare") {
   def cur = safeCurrent(dev, attr)
   if(cur == null) {
-    def ans = "I can’t read ${attr} for ${devName}."
+    def ans = "Sorry, I can't read ${attr} for ${devName}."
     return [ok:false, error:"no_current_value", device:devName, attribute:attr, answer:ans]
   }
   BigDecimal curNum
   try { curNum = new BigDecimal(cur.toString()) } catch(e) { curNum = null }
   if(curNum == null) {
-    def ans = "I can’t interpret ${attr} for ${devName}."
+    def ans = "Sorry, I can't interpret ${attr} for ${devName}."
     return [ok:false, error:"bad_numeric_value", device:devName, attribute:attr, value:"${cur}", answer:ans]
   }
   String op = (intent?.op ?: "").toString()
   BigDecimal target = null
   try { target = new BigDecimal(intent?.target?.toString()) } catch(e) { target = null }
   if(target == null) {
-    def ans = "I didn’t catch the number to compare against."
+    def ans = "I didn't catch the number to compare against."
     return [ok:false, error:"missing_target", device:devName, attribute:attr, value:"${cur}", answer:ans]
   }
   boolean okCmp = evalCompare(curNum, op, target)
@@ -2464,8 +3884,8 @@ if(mode == "compare") {
   String tgtStr = fmtNumber(target)
   def opWords = compareWords(op)
   def ans = okCmp ?
-    "Yes. ${devName} is ${curStr}${unit ? " ${unit}" : ""}, which is ${opWords} ${tgtStr}${unit ? " ${unit}" : ""}." :
-    "No. ${devName} is ${curStr}${unit ? " ${unit}" : ""}, which is not ${opWords} ${tgtStr}${unit ? " ${unit}" : ""}."
+    "Yes, ${devName} is ${curStr}${unit ? " ${unit}" : ""}, which is ${opWords} ${tgtStr}${unit ? " ${unit}" : ""}." :
+    "No, ${devName} is ${curStr}${unit ? " ${unit}" : ""}, which is not ${opWords} ${tgtStr}${unit ? " ${unit}" : ""}."
   return [ok:true, device:devName, attribute:attr, value:curStr, target:tgtStr, op:op, answer:ans]
 }
 
@@ -2475,7 +3895,7 @@ if(mode == "compare") {
   if(mode == "current") {
     def currentVal = safeCurrent(dev, attr)
     if(currentVal == null) {
-      def ans = "I can’t read ${prettyAttr} for ${devName}."
+      def ans = "Sorry, I can't read ${prettyAttr} for ${devName}."
       return [ok:false, error:"no_current_value", device:devName, attribute:attr, answer:ans]
     }
     def ans = currentAnswer(devName, attr, currentVal)
@@ -2486,7 +3906,7 @@ if(mode == "compare") {
   if(mode == "duration") {
     def st = safeCurrentState(dev, attr)
     if(!st || st?.date == null) {
-      def ans = "I can’t determine how long ${devName} has been in that state."
+      def ans = "Sorry, I can't determine how long ${devName} has been in that state."
       return [ok:false, error:"no_state_time", device:devName, attribute:attr, answer:ans]
     }
     def curVal = (st?.value != null) ? st.value.toString() : null
@@ -2548,7 +3968,7 @@ if(mode == "compare") {
         return [ok:true, device:devName, attribute:attr, value:stVal, when:stTs, answer:ans]
       }
 
-      def ans2 = "I don't have a recorded time for ${devName} ${prettyAttr} ${wantValue ?: ''}. Make sure the device is selected in the app and has generated events since installing."
+      def ans2 = "I don't have a recorded time for ${devName} ${prettyAttr} ${wantValue ?: ''}. Make sure that device is selected in the app and has recent events."
       return [ok:false, error:"no_history", device:devName, attribute:attr, value:wantValue, answer:ans2]
     }
 def whenStr2 = fmtWhen(ts)
@@ -2557,7 +3977,7 @@ def whenStr2 = fmtWhen(ts)
     return [ok:true, device:devName, attribute:attr, value:wantValue, when:ts, answer:ans3]
   }
 
-  def ans4 = "I didn't understand what to do with that question for ${devName}."
+  def ans4 = "Sorry, I wasn't sure how to handle that for ${devName}."
   return [ok:false, error:"unknown_intent", device:devName, answer:ans4]
 }
 
@@ -3246,11 +4666,11 @@ if(intent?.mode == "time_now") {
 if(intent?.mode in ["weather_today","weather_tomorrow"]) {
   Integer dayIndex = (intent?.mode == "weather_tomorrow") ? 1 : 0
   def wx = getWeatherAnswer(dayIndex)
-  return wx ?: [ok:false, error:"weather_unavailable", answer:"I couldn't get the weather right now."]
+  return wx ?: [ok:false, error:"weather_unavailable", answer:"Sorry, I couldn't get the weather right now."]
 }
 
   if(!devices) {
-    return [ok:false, error:"no_devices", answer:"No devices are selected in the app."]
+    return [ok:false, error:"no_devices", answer:"No devices are selected in the app yet."]
   }
 
 
@@ -3272,15 +4692,15 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
     if(intent.mode == "hsm_disarm") value = "disarm"
     if(!value) {
       riskyAudit("hsm", (intent?.mode ?: ""), "hsm", false, "hsm_value_missing", query, null)
-      return [ok:false, error:"hsm_value_missing", answer:"Unable to set HSM."]
+      return [ok:false, error:"hsm_value_missing", answer:"Sorry, I couldn't set Hubitat Safety Monitor."]
     }
     sendLocationEvent(name: "hsmSetArm", value: value)
     riskyAudit("hsm", (intent?.mode ?: ""), "hsm", true, "executed", query, null)
-    return [ok:true, answer:"OK. HSM set to ${value}."]
+    return [ok:true, answer:"Sure. Security mode set to ${value}."]
   } catch(e) {
-    log.warn "HSM control error: ${e}"
+    log.debug "HSM control error: ${e}"
     riskyAudit("hsm", (intent?.mode ?: ""), "hsm", false, "hsm_error", query, null)
-    return [ok:false, error:"hsm_error", answer:"Unable to set HSM."]
+    return [ok:false, error:"hsm_error", answer:"Sorry, I couldn't set Hubitat Safety Monitor."]
   }
 }
 
@@ -3317,12 +4737,12 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
 
     String label = group ?: "devices"
     if(!matches) {
-      String okMsg = "No ${label} are ${want}."
+      String okMsg = "I don't see any ${label} that are ${want}."
       if(group=="locks" && want=="unlocked") okMsg = "All locks are locked."
       return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: okMsg]
     }
 
-    String ans = (matches.size() == 1) ? "${matches[0]} is ${want}." : "${matches.size()} ${label} are ${want}: " + matches.join(", ")
+    String ans = (matches.size() == 1) ? "Yes, ${matches[0]} is ${want}." : "Yes, ${matches.size()} ${label} are ${want}: " + matches.join(", ")
     return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: ans]
   }
 
@@ -3404,10 +4824,10 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
       if(wetSensors)   probs << "Water leak: " + wetSensors.join(", ")
 
       if(!probs) {
-        String ans = "All secure. Doors and windows are closed, doors are locked, and no leaks detected."
+        String ans = "Everything looks secure. Doors and windows are closed, locks are secure, and no leaks are detected."
         return [ok:true, answer: ans]
       } else {
-        String ans = probs.join(". ") + "."
+        String ans = "I found a few things: " + probs.join(". ") + "."
         return [ok:true, answer: ans]
       }
     }
@@ -3442,7 +4862,7 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
     }
 
     String ans
-    if(!parts) ans = "All clear. I don't see anything unusual right now."
+    if(!parts) ans = "Everything looks good right now."
     else ans = parts.join(". ") + "."
 
     return [ok:true, answer: ans]
@@ -3453,16 +4873,16 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
 if(intent?.mode == "hub_mode") {
   def mname = null
   try { mname = location?.mode } catch(e) { mname = null }
-  if(!mname) return [ok:false, error:"no_mode", answer:"I can’t read the current hub mode."]
-  return [ok:true, mode:mname.toString(), answer:"The house is in ${mname} mode."]
+  if(!mname) return [ok:false, error:"no_mode", answer:"Sorry, I can't read the current hub mode."]
+  return [ok:true, mode:mname.toString(), answer:"Your home is in ${mname} mode."]
 }
 
 // HSM status
 if(intent?.mode == "hsm_status") {
   def st = null
   try { st = location?.hsmStatus } catch(e) { st = null }
-  if(!st) return [ok:false, error:"no_hsm", answer:"I can’t read HSM status (is Hubitat Safety Monitor installed?)."]
-  return [ok:true, hsmStatus:st.toString(), answer:"HSM is ${st}."]
+  if(!st) return [ok:false, error:"no_hsm", answer:"Sorry, I can't read Hubitat Safety Monitor status right now."]
+  return [ok:true, hsmStatus:st.toString(), answer:"Hubitat Safety Monitor is ${st}."]
 }
 
 // Last activity across selected devices
@@ -3470,7 +4890,7 @@ if(intent?.mode == "last_activity") {
   def best = findLastActivity()
   if(!best) return [ok:false, error:"no_activity", answer:"I couldn’t find any recent activity."]
   def whenStr = fmtWhen(best.ts as Long)
-  return [ok:true, device:best.device, attribute:best.attr, value:best.val, when:best.ts, answer:"Last activity was ${best.device} (${best.attr} ${best.val}) ${whenStr}."]
+  return [ok:true, device:best.device, attribute:best.attr, value:best.val, when:best.ts, answer:"The latest activity was ${best.device}, ${best.attr} ${best.val}, ${whenStr}."]
 }
 
 // Stale/offline check
@@ -3478,10 +4898,10 @@ if(intent?.mode == "stale") {
   Long startMs = (intent?.startMs instanceof Long) ? (Long)intent.startMs : null
   if(!startMs) startMs = now() - (24L*60L*60L*1000L) // default 24h
   def stale = findStaleDevices(startMs)
-  if(!stale) return [ok:true, count:0, answer:"No stale devices found in the selected list."]
+  if(!stale) return [ok:true, count:0, answer:"All selected devices have reported recently."]
   def names = stale.collect{ it.name }.join(", ")
   def windowLabel = "in the last " + fmtDuration(Math.max(0L, now()-startMs))
-  return [ok:true, count:stale.size(), matches:names, answer:"These devices haven’t reported ${windowLabel}: ${names}."]
+  return [ok:true, count:stale.size(), matches:names, answer:"These devices haven't reported ${windowLabel}: ${names}."]
 }
 
 // Battery low
@@ -3497,9 +4917,9 @@ if(intent?.mode in ["battery_low","battery_report"]) {
       if(n < thr) low << [name:(d.displayName ?: "Device"), val:n]
     } catch(ignored) {}
   }
-  if(!low) return [ok:true, count:0, answer:"No low batteries (below ${fmtNumber(thr)}%)."]
+  if(!low) return [ok:true, count:0, answer:"Good news, no batteries are below ${fmtNumber(thr)}%." ]
   def list = low.sort{ it.val }.collect{ "${it.name} (${fmtNumber(it.val)}%)" }.join(", ")
-  return [ok:true, count:low.size(), matches:low.collect{it.name}, answer:"Low batteries (below ${fmtNumber(thr)}%): ${list}."]
+  return [ok:true, count:low.size(), matches:low.collect{it.name}, answer:"These batteries are below ${fmtNumber(thr)}%: ${list}."]
 }
 
 
@@ -3508,7 +4928,7 @@ if(intent?.mode in ["battery_low","battery_report"]) {
 
   def candidates = devices.findAll { d -> deviceSupportsAttr(d, attr) }
   if(!candidates) {
-    return [ok:false, error:"no_candidates", answer:"No selected devices support ${attr}."]
+    return [ok:false, error:"no_candidates", answer:"I couldn't find selected devices that support ${attr}."]
   }
 
   String grp = (intent?.group ?: "").toString()
@@ -3553,30 +4973,30 @@ if(intent?.mode in ["battery_low","battery_report"]) {
   if(matchNames) {
     String list = matchNames.join(", ")
     if(grp == "lights") {
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes. On: ${list}."]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes, these lights are on: ${list}."]
     }
     if(grp == "doors_unlocked" || grp == "locks") {
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes. Unlocked: ${list}."]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes, these locks are unlocked: ${list}."]
     }
     if(grp == "motion") {
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes. Active: ${list}."]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes, motion is active on: ${list}."]
     }
     if(grp == "presence") {
       def lbl = (want == "present") ? "Present" : "Away"
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes. ${lbl}: ${list}."]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:"Yes, ${lbl.toLowerCase()}: ${list}."]
     }
     if(grp == "windows") {
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "closed" ? "Yes. Closed: ${list}." : "Yes. Open: ${list}.")]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "closed" ? "Yes, these windows are closed: ${list}." : "Yes, these windows are open: ${list}.")]
     }
     if(grp == "water") {
-      return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "dry" ? "Yes. Dry: ${list}." : "Yes. Wet: ${list}.")]
+      return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "dry" ? "Yes, these sensors are dry: ${list}." : "Yes, these sensors are wet: ${list}.")]
     }
     // doors (default)
-    return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "closed" ? "Yes. Closed: ${list}." : "Yes. Open: ${list}.")]
+    return [ok:true, count:matchNames.size(), matches:matchNames, answer:(want == "closed" ? "Yes, these doors are closed: ${list}." : "Yes, these doors are open: ${list}.")]
   }
 
   if(grp == "windows") return [ok:true, count:0, matches:[], answer:(want == "closed" ? "No, all windows are open." : "No, all windows are closed.")]
-  if(grp == "water")   return [ok:true, count:0, matches:[], answer:(want == "dry" ? "No, none are dry." : "No, all water sensors are dry.")]
+  if(grp == "water")   return [ok:true, count:0, matches:[], answer:(want == "dry" ? "No, I don't see dry water sensors." : "No, all water sensors are dry.")]
   return [ok:true, count:0, matches:[], answer:(want == "closed" ? "No, all doors are open." : "No, all doors are closed.")]
 }
 
@@ -4019,7 +5439,13 @@ private void maybeSpeak(String text) {
     }
  
     if(text && speaker) {
-  		try { speaker.speak(text) } catch(e) { /* ignore */ }
+    String speakText = applySpeechFriendlyFormatting(text)
+    try {
+      speaker.speak(speakText)
+    } catch(e) {
+      // Fallback when speaker rejects SSML markup.
+      try { speaker.speak(stripSsmlTags(speakText)) } catch(ignore) { /* ignore */ }
+    }
 	}
 }
 
@@ -4129,10 +5555,10 @@ private Map getWeatherAnswer(Integer dayIndex) {
       }
       result = [ok:true, answer:ans]
     }
-    return result ?: [ok:false, error:"weather_unavailable", answer:"I couldn't get the weather right now."]
+    return result ?: [ok:false, error:"weather_unavailable", answer:"Sorry, I couldn't get the weather right now."]
   } catch(e) {
-    log.warn "Weather lookup failed: ${e}"
-    return [ok:false, error:"weather_error", answer:"I couldn't get the weather right now."]
+    log.debug "Weather lookup failed: ${e}"
+    return [ok:false, error:"weather_error", answer:"Sorry, I couldn't get the weather right now."]
   }
 }
 
@@ -4186,44 +5612,44 @@ private String fmtNumber(BigDecimal n) {
 
 private String commandAnswer(String devName, String attr, String cmd, def value=null) {
   if(attr == "switch") {
-    if(cmd == "on") return "OK. Turned on ${devName}."
-    if(cmd == "off") return "OK. Turned off ${devName}."
+    if(cmd == "on") return "Sure. Turning on ${devName}."
+    if(cmd == "off") return "Sure. Turning off ${devName}."
   }
   if(attr == "lock") {
-    if(cmd == "lock") return "OK. Locked ${devName}."
-    if(cmd == "unlock") return "OK. Unlocked ${devName}."
+    if(cmd == "lock") return "Sure. Locking ${devName}."
+    if(cmd == "unlock") return "Sure. Unlocking ${devName}."
   }
   if(attr == "level") {
     Integer lvl = (value instanceof Number) ? ((Number)value).intValue() : safeInt(value, null)
-    if(lvl != null) return "OK. Set ${devName} to ${lvl}%."
-    return "OK. Set ${devName} level."
+    if(lvl != null) return "Sure. Setting ${devName} to ${lvl}%."
+    return "Sure. Setting ${devName} level."
   }
   if(attr == "thermostat") {
     BigDecimal v = (value instanceof Number) ? new BigDecimal(value.toString()) : extractNumber(value?.toString())
     if(v != null) {
-      if(cmd == "setHeat") return "OK. Set heat on ${devName} to ${v}."
-      if(cmd == "setCool") return "OK. Set cooling on ${devName} to ${v}."
-      return "OK. Set ${devName} to ${v}."
+      if(cmd == "setHeat") return "Sure. Setting heat on ${devName} to ${v}."
+      if(cmd == "setCool") return "Sure. Setting cooling on ${devName} to ${v}."
+      return "Sure. Setting ${devName} to ${v}."
     }
-    return "OK. Updated ${devName}."
+    return "Sure. Updating ${devName}."
   }
 
   if(attr == "fan") {
-    if(cmd == "setSpeed") return "${devName} fan set to ${value}."
-    if(cmd == "on") return "${devName} fan turned on."
-    if(cmd == "off") return "${devName} fan turned off."
+    if(cmd == "setSpeed") return "Sure. Setting ${devName} fan to ${value}."
+    if(cmd == "on") return "Sure. Turning on ${devName} fan."
+    if(cmd == "off") return "Sure. Turning off ${devName} fan."
   }
   if(attr == "colorTemperature") {
-    return "${devName} set to ${value}K."
+    return "Sure. Setting ${devName} to ${value} kelvin."
   }
   if(attr == "color") {
-    return "${devName} color updated."
+    return "Sure. Updating ${devName} color."
   }
   if(attr == "scene") {
-    return "${devName} activated."
+    return "Sure. Activating ${devName}."
   }
 
-  return "OK."
+  return "Sure. Done."
 }
 
 
