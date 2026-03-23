@@ -24,7 +24,7 @@
 	],
     "drivers": [
 		{
-			"id" : "ac258b33-0bb1-4255-b8d8-a950655b3824,
+			"id" : "ac258b33-0bb1-4255-b8d8-a950655b3824",
 			"name": "HubVoice Satellite Driver",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/hubvoicesatellite-driver.groovy",
