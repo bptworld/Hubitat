@@ -25,7 +25,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-006"
+  return "beta-008"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -160,7 +160,7 @@ private void trackGeminiCost(String modelName, Map usage, boolean grounded=false
 
     pruneGeminiCostHistory()
     state.geminiCostHistory = (state.geminiCostHistory instanceof Map) ? state.geminiCostHistory : [:]
-    String dayKey = new Date().fookayrmat("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    String dayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
     Map day = state.geminiCostHistory[dayKey] instanceof Map ? (Map)state.geminiCostHistory[dayKey] : [
       inputTokens: 0, outputTokens: 0, groundedPrompts: 0,
       tokenCostUsd: 0G, groundingCostUsd: 0G, totalCostUsd: 0G, byModel: [:]
@@ -826,10 +826,6 @@ def diagPage() {
 
 def instructionPage() {
 	dynamicPage(name: "instructionPage", title: "Instructions", uninstall: false, install: false) {
-        section(){
-          paragraph "This is going to take a bit to finish.  Things are evolving fast!"
-        }
-        
         section("<hr>") {}
         section("<b>Testing</b>") {
             paragraph "Test, Test... Is this thing on?"
@@ -2788,6 +2784,11 @@ if(mLkScoped || mLkGlobal) {
     def query = normalize(qMatch)
     state.lastQuestion = q
 
+    // Ignore placeholder transcripts from STT silence/empty captures.
+    if(query in ["no answer", "no speech detected", "no speech", "empty query"]) {
+      log.debug "Ignoring placeholder transcript: ${query}"
+      return respondAsk("", 200, [ok:false, error:"empty_transcript"])
+    }
 
     log.debug "PARAMS RAW: ${params}"
     log.debug "Q VALUE: ${params.q}"
@@ -3666,6 +3667,12 @@ def clarifyIntent(String rawQuery, List candNames = null) {
 
 def sendMessage(ans) {
     try {
+        String raw = (ans ?: "").toString().trim().toLowerCase()
+        if(raw in ["no answer", "no answer.", "no query provided.", ""]) {
+            log.debug "In sendMessage - suppressing placeholder response: ${raw}"
+            return
+        }
+
         String msg = assistantStyleText((ans ?: "").toString())
         String low = msg.toLowerCase()
         if(low.contains("understand that request")) {
@@ -5023,15 +5030,15 @@ String __mode = (constraint?.mode ?: "").toString()
 
 
   def candidates = (qaDevices ?: []).findAll { d -> deviceMatchesConstraint(d, constraint) }
-  def roomCandidates = useRoomBias ? candidates.findAll { d -> deviceMatchesRoom(d, satRoom) } : []
-  if(roomCandidates && roomCandidates.size() > 0) {
-    candidates = roomCandidates
-  }
+  // Room bias is applied as a score bonus in step 3, NOT as a hard filter.
+  // Hard-filtering by room breaks explicit cross-room queries like "are the kitchen lights on"
+  // when the satellite is in a different room (e.g. living room).
+  log.debug "matchDeviceFromQuery: queryNorm='${queryNorm}' satRoom='${satRoom}' useRoomBias=${useRoomBias} candidates=${candidates.size()}"
   // 1) Alias contains match (strongest)
   def aliasIdx = aliasToDeviceIdIndex()
   if(aliasIdx && aliasIdx.size() > 0) {
     aliasIdx.each { String aliasNorm, String did ->
-      if(aliasNorm && query.contains(aliasNorm)) {
+      if(aliasNorm && queryNorm.contains(aliasNorm)) {
         if(aliasNorm.length() > bestLen) {
           def d = candidates.find { it?.id?.toString() == did?.toString() }
           if(d) {
@@ -5048,7 +5055,7 @@ String __mode = (constraint?.mode ?: "").toString()
     candidates.each { d ->
       def nameNorm = normalize(d.displayName)
       if(!nameNorm) return
-      if(query.contains(nameNorm)) {
+      if(queryNorm.contains(nameNorm)) {
         if(nameNorm.length() > bestLen) {
           bestLen = nameNorm.length()
           bestDev = d
@@ -5060,6 +5067,15 @@ String __mode = (constraint?.mode ?: "").toString()
   // 3) Token overlap fuzzy (device name + aliases)
   if(!bestDev) {
     def qTokens = queryNorm.split(/\s+/).findAll { it }
+    def qTokenSet = [] as Set
+    qTokens.each { t ->
+      if(!t) return
+      qTokenSet << t
+      // Basic singular/plural normalization: light <-> lights, door <-> doors
+      if(t.endsWith("s") && t.length() > 3) qTokenSet << t.substring(0, t.length() - 1)
+      else if(t.length() > 2) qTokenSet << (t + "s")
+    }
+
     def bestScore = 0.0
     candidates.each { d ->
       def dn = normalize(d.displayName)
@@ -5075,18 +5091,16 @@ String __mode = (constraint?.mode ?: "").toString()
       dTokens = dTokens.unique()
       if(!dTokens) return
 
-      def overlap = dTokens.count { t -> qTokens.contains(t) }
+      def overlap = dTokens.count { t -> qTokenSet.contains(t) }
       // Weighted score: overlap plus small bonus for longer names and same-room devices.
       def score = (overlap as Double) + (Math.min(dTokens.size(), 10) * 0.05)
       if(useRoomBias && deviceMatchesRoom(d, satRoom)) score += 1.5d
-      if(score > bestScore) {
+      // Only update bestDev when overlap threshold is met AND score is better.
+      // Do NOT clear bestDev on higher-scoring but overlap-failing devices.
+      int minOverlap = (dTokens.size() <= 2) ? 1 : 2
+      if(overlap >= minOverlap && score > bestScore) {
         bestScore = score
-        // Require at least 2 overlaps, or 1 overlap if it's an alias-backed match
-        if(overlap >= 2) {
-          bestDev = d
-        } else {
-          bestDev = null
-        }
+        bestDev = d
       }
     }
   }
@@ -5126,7 +5140,32 @@ private def safeCurrent(dev, String attr) {
 
 private boolean deviceSupportsAttr(dev, String attr) {
   try {
-    return (dev.supportedAttributes?.any { it?.name == attr }) ? true : false
+    if(!dev || !attr) return false
+    String a = attr.toString()
+
+    // Primary path: explicit supportedAttributes metadata.
+    if(dev.supportedAttributes?.any { it?.name == a }) return true
+
+    // Capability fallbacks for drivers that omit supportedAttributes.
+    if(dev.metaClass?.respondsTo(dev, "hasCapability", String)) {
+      if(a == "contact" && dev.hasCapability("Contact Sensor")) return true
+      if(a == "lock" && dev.hasCapability("Lock")) return true
+      if(a == "switch" && dev.hasCapability("Switch")) return true
+      if(a == "motion" && dev.hasCapability("Motion Sensor")) return true
+      if(a == "water" && dev.hasCapability("Water Sensor")) return true
+      if(a == "presence" && dev.hasCapability("Presence Sensor")) return true
+      if(a == "temperature" && dev.hasCapability("Temperature Measurement")) return true
+      if(a == "humidity" && dev.hasCapability("Relative Humidity Measurement")) return true
+      if(a == "battery" && dev.hasCapability("Battery")) return true
+    }
+
+    // Last fallback: if currentValue(attr) is readable at all, treat as supported.
+    try {
+      def v = dev.currentValue(a)
+      if(v != null) return true
+    } catch(ignored) {}
+
+    return false
   } catch(e) {
     return false
   }
@@ -5456,14 +5495,43 @@ private void renderJson(Map m) {
 }
 
 def sendAnswerToPc(String answer) {
-    if (!sat || !state.callbackUrl) return
+    if (!state.sat || !state.callbackUrl) return
 
     try {
         httpGet(uri: state.callbackUrl, query: [r: answer, d: state.sat]) { resp ->
             log.debug "Sent answer to PC for sat '${state.sat}', got ${resp.status}"
         }
     } catch (e) {
-        log.error "Failed to send answer to PC for sat '${d}': ${e}"
+        log.error "Failed to send answer to PC for sat '${state.sat}': ${e}"
+    }
+}
+
+/**
+ * Toggle a switch entity on a satellite via the HubVoice runtime.
+ *
+ * @param satId     Satellite ID (from satellites.csv), e.g. "sat-lr"
+ * @param entityId  ESPHome object_id of the switch, e.g. "whisper_mode"
+ * @param state     true = on, false = off
+ */
+def setSatelliteSwitch(String satId, String entityId, boolean state) {
+    if(!satId || !entityId) {
+        log.warn "setSatelliteSwitch: satId and entityId are required"
+        return
+    }
+    // Derive runtime base URL from the most recent callback URL (strips "/answer")
+    String base = (state?.callbackUrl ?: "").toString().replaceAll(/\/answer\??.*$/, "").trim()
+    if(!base) {
+        log.warn "setSatelliteSwitch: no callbackUrl in state - runtime base URL unknown"
+        return
+    }
+    String stateParam = state ? "on" : "off"
+    String url = "${base}/satellite-switch"
+    try {
+        httpGet(uri: url, query: [d: satId, entity: entityId, state: stateParam]) { resp ->
+            log.debug "setSatelliteSwitch ${satId}/${entityId}=${stateParam}: ${resp.status}"
+        }
+    } catch (e) {
+        log.error "setSatelliteSwitch failed for ${satId}/${entityId}: ${e}"
     }
 }
 
