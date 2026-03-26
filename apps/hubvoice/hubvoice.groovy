@@ -1,6 +1,7 @@
 /**
  * HubVoice
  * Local Voice Control for Hubitat
+ * Made with the help of Claude AI
  */
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
