@@ -1,7 +1,7 @@
 {
     "packageName": "HubVoice",
-    "version": "beta-007",
-    "releaseNotes": "Add hubvoicesatellite driver. Use your satellites to receive messages from Rule Machine, etc.",
+    "version": "beta-008",
+    "releaseNotes": "clean up, aisle 8",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
     "dateReleased": "2026-03-21",
