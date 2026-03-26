@@ -7,15 +7,17 @@ metadata {
         capability "Actuator"
         capability "Notification"
         capability "Refresh"
+        capability "Switch"
 
         attribute "lastMessage", "string"
         attribute "lastStatus", "string"
         attribute "targetSatellite", "string"
+        attribute "whisperMode", "string"
     }
 
     preferences {
         input name: "runtimeBaseUrl", type: "text", title: "HubVoice Runtime Base URL", description: "Example: http://192.168.1.50:8080", required: true
-        input name: "satelliteId", type: "text", title: "Satellite ID", description: "Example: sat-lr", required: true
+        input name: "satelliteId", type: "text", title: "Satellite ID", description: "Satellite ID or Alias (example: sat-lr or Living Room)", required: true
         input name: "requestTimeoutSeconds", type: "number", title: "HTTP timeout (seconds)", defaultValue: 10, required: false
         input name: "enableDebugLogging", type: "bool", title: "Enable debug logging", defaultValue: true, required: false
     }
@@ -33,6 +35,63 @@ def initialize() {
     sendEvent(name: "targetSatellite", value: sanitizeSatelliteId(settings?.satelliteId), isStateChange: true)
     if(device.currentValue("lastStatus") == null) {
         sendEvent(name: "lastStatus", value: "ready", isStateChange: true)
+    }
+    if(device.currentValue("switch") == null) {
+        sendEvent(name: "switch", value: "off", isStateChange: true)
+    }
+    if(device.currentValue("whisperMode") == null) {
+        sendEvent(name: "whisperMode", value: "off", isStateChange: true)
+    }
+}
+
+// Switch capability: on = whisper mode on, off = whisper mode off
+def on() {
+    sendEvent(name: "switch", value: "on", isStateChange: true)
+    sendEvent(name: "whisperMode", value: "on", isStateChange: true)
+    setWhisperMode(true)
+}
+
+def off() {
+    sendEvent(name: "switch", value: "off", isStateChange: true)
+    sendEvent(name: "whisperMode", value: "off", isStateChange: true)
+    setWhisperMode(false)
+}
+
+def setWhisperMode(boolean enable) {
+    String satId = sanitizeSatelliteId(settings?.satelliteId)
+    String baseUrl = sanitizeBaseUrl(settings?.runtimeBaseUrl)
+    Integer timeout = safeInt(settings?.requestTimeoutSeconds, 10)
+    String stateStr = enable ? "on" : "off"
+
+    debugLog("setWhisperMode: satId='${satId}', baseUrl='${baseUrl}', timeout=${timeout}, stateStr='${stateStr}'")
+
+    if(!baseUrl || !satId) {
+        log.warn "HubVoice Satellite TTS: runtimeBaseUrl or satelliteId not configured"
+        return
+    }
+
+    Map params = [
+        uri: "${baseUrl}/satellite-switch",
+        query: [d: satId, entity: "whisper_mode", state: stateStr],
+        timeout: timeout
+    ]
+
+    debugLog("Calling: ${baseUrl}/satellite-switch with query d=${satId}, entity=whisper_mode, state=${stateStr}")
+    try {
+        httpGet(params) { resp ->
+            Integer code = resp?.status as Integer
+            debugLog("Response status: ${code}")
+            if(code >= 200 && code < 300) {
+                sendEvent(name: "switch", value: stateStr, isStateChange: true)
+                sendEvent(name: "whisperMode", value: stateStr, isStateChange: true)
+                debugLog("Whisper mode set to ${stateStr} on '${satId}'")
+            } else {
+                log.warn "HubVoice Satellite TTS: satellite-switch returned status ${code}"
+            }
+        }
+    } catch(e) {
+        log.error "HubVoice Satellite TTS: failed to set whisper mode: ${e.message}"
+        debugLog("Exception details: ${e}")
     }
 }
 
