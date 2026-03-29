@@ -1,7 +1,7 @@
 /**
  * HubVoice
  * Local Voice Control for Hubitat
- * Made with the help of Claude AI
+ * Made with the help of CoPilot Pro AI
  */
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-008"
+  return "beta-009"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -855,36 +855,40 @@ def instructionPage() {
             paragraph mini
         }
         
-        section("<hr>") { paragraph "Now for the fun stuff. Turn a HA Voice Assistant PE in to a Voice Controller for Hubitat!"}
+        section("<hr>") { paragraph "Now for the fun stuff!"}
         section("<b>Requirements for Voice Control</b>") {
             req =  "- An always on Win PC running HubVoiceSat<br>"
-            req += "- At least one HA Voice Satellite Preview Edition (running custom HubVoiceSat firmware)"
+            req += "- At least one compatible Satellite speaker (running custom HubVoiceSat firmware):<br>"
+            req += "  -- HA Voice Satellite Preview Edition<br>"
+            req += "  -- Future Proof Homes Satellite-1"
             paragraph req
         }
         
         section("<b>How to Install HubVoiceSat on Win PC</b>") {
-            winPC =  "- Download HubVoiceSat.exe from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a> on the always on Win PC<br>"
-            winPC += "- Double click the HubVoiceSat.exe, first time might take a minute for it to setup."
+            winPC =  "- Download the lastest zip (hubvoiced-sat=2026.xx.xx.x=release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Win PC<br>"
+            winPC += "- Unzip the folder, then copy all of its contents to c:\\HubViewSat - This needs to be our working directory"
             paragraph winPC
         }
         
         section("<b>Flashing the HA Voice Assistant PE for the First Time</b>") {
             firstFlash =  "- Plug the Home Assistant Voice Preview Edition into your Windows PC with a USB data cable.<br>"
-            firstFlash += "- Open releases/hubvoice-sat-xxxxx-release/open-usb-flash-page.bat, or go to https://web.esphome.io/.<br>"
+            firstFlash += "- Open your c:\\HubVoiceSat and open-usb-flash-page.bat, or go to https://web.esphome.io/.<br>"
             firstFlash += "- Click Connect.<br>"
             firstFlash += "- Pick the HA PE serial/USB device from the browser prompt.<br>"
             firstFlash += "- If the page asks, allow USB access.<br>"
             firstFlash += "- Choose Install.<br>"
-            firstFlash += "- When it asks for a file, select releases/hubvoice-sat-xxxxx-release/hubvoice-sat-xxxxx-factory.bin.<br>"
+            firstFlash += "- When it asks for a file, be SURE to use the correct one:<br>"
+            firstFlash += "  -- HA Volice Satellite PE - select hubvoice-sat-xxxxx-factory.bin.<br>"
+            firstFlash += "  -- Future Proof Homes Satellite-1 - select hubvoice-sat-fph-xxxxx-factory.bin.<br>"
             firstFlash += "- Wait for the flash to finish and let the device reboot.<br><br>"
             firstFlash += "After it reboots:<br>"
-            firstFlash += "- Wait a minute or two for it to join Wi‑Fi.<br>"
+            firstFlash += "- Wait a minute or two for it to join Wi‑Fi. *<br>"
             firstFlash += "- Find the device on your network by checking your router’s client list.<br>"
             firstFlash += "- Open the device web page in your browser.<br>"
             firstFlash += "- Find the Satellite Name field.<br>"
             firstFlash += "- Enter a unique room name like sat-LR, sat-Kitchen, or sat-Office.<br>"
             firstFlash += "- Confirm that Effective Satellite Name shows the name you want.<br><br>"
-            firstFlash += "If it does not join Wi‑Fi:<br>"
+            firstFlash += "* If it does not join Wi‑Fi:<br>"
             firstFlash += "- Look for a Wi‑Fi network named HubVoiceSat Setup.<br>"
             firstFlash += "- Connect to it with password hubvoicesat123.<br>"
             firstFlash += "- Open the captive portal page and enter your Wi‑Fi details.<br>"
@@ -893,6 +897,13 @@ def instructionPage() {
             paragraph firstFlash
         }
         
+        section("<b>Ready to run</b>") {
+            runit =  "- In c:\\HubVoiceSat, double click on HubVoiceSat.exe<br>"
+            runit += "- Be patient, it can take a few seconds to open up<br>"
+            runit += "- At this point, you should see a webpage. Have fun!"
+            paragraph runit
+        }
+            
         section("<b>Future Updates</b>") {
             future =  "<b>Hubitat App Updates<<b> - Available through Hubitat Package Manager<br>"
             future += "<b>All EXE Updates</b> -  Available through downloads on <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>.<br>"
