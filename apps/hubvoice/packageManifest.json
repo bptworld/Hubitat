@@ -1,7 +1,7 @@
 {
     "packageName": "HubVoice",
-    "version": "beta-008",
-    "releaseNotes": "clean up, aisle 8",
+    "version": "beta-009",
+    "releaseNotes": "Minor changes",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
     "dateReleased": "2026-03-21",
