@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-010"
+  return "beta-009"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -879,7 +879,6 @@ def instructionPage() {
             firstFlash += "- Choose Install.<br>"
             firstFlash += "- When it asks for a file, be SURE to use the correct one:<br>"
             firstFlash += "  -- HA Volice Satellite PE - select hubvoice-sat-xxxxx-factory.bin.<br>"
-            firstFlash += "  -- Future Proof Homes Satellite-1 - select hubvoice-sat-fph-xxxxx-factory.bin.<br>"
             firstFlash += "- Wait for the flash to finish and let the device reboot.<br><br>"
             firstFlash += "After it reboots:<br>"
             firstFlash += "- Wait a minute or two for it to join Wi‑Fi. *<br>"
@@ -897,11 +896,35 @@ def instructionPage() {
             paragraph firstFlash
         }
         
+        section("<b>Setting up FPH Satellite-1 For the First Time</b>") {
+            fphFlash =  "- Plug in the satellite, be sure to use the adapter that came with the satellite<br>"
+            fphFlash += "- Visit the website: https://www.improv-wifi.com/<br>"
+            fphFlash += "- Look for 'Improv via BLE' and click the blue button 'Connect Device to Wi-Fi'<br>"
+            fphFlash += "- A list of devices will popup. Click the 'Satellite1-xxxx and click 'Pair'<br>"
+            fphFlash += "- It'll then start to spin, press the 'control' button (right button) on the Sat-1<br>"
+            fphFlash += "- Back on the screen, it'll ask you for your Wi-Fi credentials<br>"
+            fphFlash += "- Once entered, you should see a success message.<br><br>"
+            fphFlash += "You are now ready to flash your sat-1<br>"
+            fphFlash += "- Plug the sat-1 into your computers USB<br>"
+            fphFlash += "- Visit the website: https://web.esphome.io/<br>"
+            fphFlash += "- Be sure to flash the hubvoice-sat-fph-xxxxxx-factory.bin<br>"
+            fphFlash += "- Wait for it to finish rebooting. Then disconnect it form the computer.<br>"
+            fphFlash += "- Plug it back into the wall using the supplied adapter.<br>"
+			paragraph fphFlash
+        }
+        
         section("<b>Ready to run</b>") {
             runit =  "- In c:\\HubVoiceSat, double click on HubVoiceSat.exe<br>"
             runit += "- Be patient, it can take a few seconds to open up<br>"
             runit += "- At this point, you should see a webpage. Have fun!"
             paragraph runit
+        }
+        
+        section("<b>To add a Satellite to HubVoiceSat</b>") {
+            addIt =  "- Open HubVoiceSat<br>"
+            addIt += "- Scroll down to Satellites and enter in your new details<br>"
+            addIt += "- Click 'Save'"
+            paragraph addIt
         }
             
         section("<b>Future Updates</b>") {
