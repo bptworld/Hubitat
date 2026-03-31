@@ -32,6 +32,16 @@
 			"oauth": false,
 			"version": "1.0.0",
 			"primary": true
+		},
+		{
+			"id" : "49e297aa-d976-41f5-941d-b13982e0633d",
+			"name": "HubVoice Controller Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/hubvoicecontroller-driver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0",
+			"primary": true
 		}
     ]
 }
