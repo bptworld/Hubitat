@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-009"
+  return "beta-010"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -880,18 +880,12 @@ def instructionPage() {
             firstFlash += "- When it asks for a file, be SURE to use the correct one:<br>"
             firstFlash += "  -- HA Volice Satellite PE - select hubvoice-sat-xxxxx-factory.bin.<br>"
             firstFlash += "- Wait for the flash to finish and let the device reboot.<br><br>"
-            firstFlash += "After it reboots:<br>"
-            firstFlash += "- Wait a minute or two for it to join Wi‑Fi. *<br>"
-            firstFlash += "- Find the device on your network by checking your router’s client list.<br>"
-            firstFlash += "- Open the device web page in your browser.<br>"
-            firstFlash += "- Find the Satellite Name field.<br>"
-            firstFlash += "- Enter a unique room name like sat-LR, sat-Kitchen, or sat-Office.<br>"
-            firstFlash += "- Confirm that Effective Satellite Name shows the name you want.<br><br>"
-            firstFlash += "* If it does not join Wi‑Fi:<br>"
-            firstFlash += "- Look for a Wi‑Fi network named HubVoiceSat Setup.<br>"
-            firstFlash += "- Connect to it with password hubvoicesat123.<br>"
-            firstFlash += "- Open the captive portal page and enter your Wi‑Fi details.<br>"
-            firstFlash += "- Let it reboot and reconnect.<br><br>"
+            firstFlash += "- Now click the '3 vertical dots'<br>"
+            firstFlash += "- Select 'Configure Wi-Fi'"
+            firstFlash += "- Enter in your Wi-Fi credentials"
+            firstFlash += "- It'll spin and come back with 'Provisioned!'<br>"
+            firstFlash += "- Now click 'Visit Device' and enter in your WiFi Setup SSID/Password, to make sure that it's saved.<br>"
+            firstFlash += "- You can now close the esphome page.<br>"
             firstFlash += "For later updates, do not use the factory file again. Use a hubvoice-sat-xxxx-ota.bin with the device’s web page OTA upload option."
             paragraph firstFlash
         }
