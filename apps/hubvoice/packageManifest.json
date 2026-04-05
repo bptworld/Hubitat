@@ -1,7 +1,7 @@
 {
     "packageName": "HubVoice",
     "version": "beta-012",
-    "releaseNotes": "Instruction changes",
+    "releaseNotes": "Added chat-gpt as an AI option",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
     "dateReleased": "2026-03-21",
