@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-011"
+  return "beta-012"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -48,7 +48,14 @@ private Integer defaultReplayNonceTtlMins() { return 10 }
 private Integer defaultLowBatteryThreshold() { return 25 }
 private Integer defaultOfflineWindowHours() { return 24 }
 private Integer defaultSportsCacheSeconds() { return 45 }
+private String defaultFallbackProvider() { return "gemini" }
 private String defaultGeminiModel() { return "gemini-2.5-flash" }
+private String defaultChatGptModel() { return "gpt-4.1-mini" }
+private String defaultChatGptLiveModel() { return "gpt-4.1" }
+private BigDecimal defaultChatGptMiniInputUsdPer1M() { return 0.40G }
+private BigDecimal defaultChatGptMiniOutputUsdPer1M() { return 1.60G }
+private BigDecimal defaultChatGptStdInputUsdPer1M() { return 2.00G }
+private BigDecimal defaultChatGptStdOutputUsdPer1M() { return 8.00G }
 private BigDecimal defaultGeminiFlashInputUsdPer1M() { return 0.30G }
 private BigDecimal defaultGeminiFlashOutputUsdPer1M() { return 2.50G }
 private BigDecimal defaultGeminiProInputUsdPer1M() { return 1.25G }
@@ -323,11 +330,167 @@ private Integer clearGeminiCostAllHistory() {
   }
 }
 
+private Map chatGptModelPricing(String modelName) {
+  String mk = (modelName ?: "").toString().toLowerCase()
+  if(mk.contains("mini")) {
+    return [inputUsdPer1M: defaultChatGptMiniInputUsdPer1M(), outputUsdPer1M: defaultChatGptMiniOutputUsdPer1M()]
+  }
+  return [inputUsdPer1M: defaultChatGptStdInputUsdPer1M(), outputUsdPer1M: defaultChatGptStdOutputUsdPer1M()]
+}
+
+private void pruneChatGptCostHistory() {
+  try {
+    if(!(state.chatgptCostHistory instanceof Map)) {
+      state.chatgptCostHistory = [:]
+      return
+    }
+    String cutoff = new Date(now() - (90L * 24L * 60L * 60L * 1000L)).format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map cleaned = [:]
+    ((Map)state.chatgptCostHistory).each { k, v ->
+      if((k ?: "").toString() >= cutoff) cleaned[k] = v
+    }
+    state.chatgptCostHistory = cleaned
+  } catch(e) {}
+}
+
+private void trackChatGptCost(String modelName, Map usage, boolean grounded=false) {
+  try {
+    Map pricing = chatGptModelPricing(modelName)
+    int promptTokens = safeInt(usage?.promptTokens, 0) ?: 0
+    int outputTokens = safeInt(usage?.outputTokens, 0) ?: 0
+    if(promptTokens <= 0 && outputTokens <= 0) return
+
+    pruneChatGptCostHistory()
+    state.chatgptCostHistory = (state.chatgptCostHistory instanceof Map) ? state.chatgptCostHistory : [:]
+    String dayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map day = state.chatgptCostHistory[dayKey] instanceof Map ? (Map)state.chatgptCostHistory[dayKey] : [
+      inputTokens: 0, outputTokens: 0, groundedPrompts: 0,
+      tokenCostUsd: 0G, totalCostUsd: 0G, byModel: [:]
+    ]
+    day.inputTokens = safeInt(day.inputTokens, 0) + promptTokens
+    day.outputTokens = safeInt(day.outputTokens, 0) + outputTokens
+    if(grounded) day.groundedPrompts = (safeInt(day.groundedPrompts, 0) ?: 0) + 1
+
+    BigDecimal tokenCost = (((pricing.inputUsdPer1M as BigDecimal) * (promptTokens as BigDecimal)) + ((pricing.outputUsdPer1M as BigDecimal) * (outputTokens as BigDecimal))) / 1000000G
+    day.tokenCostUsd = ((day.tokenCostUsd ?: 0G) as BigDecimal) + tokenCost
+    day.totalCostUsd = ((day.tokenCostUsd ?: 0G) as BigDecimal)
+
+    if(!(day.byModel instanceof Map)) day.byModel = [:]
+    String modelKey = (modelName ?: "unknown").toString()
+    Map modelRec = day.byModel[modelKey] instanceof Map ? (Map)day.byModel[modelKey] : [inputTokens: 0, outputTokens: 0, costUsd: 0G]
+    modelRec.inputTokens = safeInt(modelRec.inputTokens, 0) + promptTokens
+    modelRec.outputTokens = safeInt(modelRec.outputTokens, 0) + outputTokens
+    modelRec.costUsd = ((modelRec.costUsd ?: 0G) as BigDecimal) + tokenCost
+    day.byModel[modelKey] = modelRec
+    state.chatgptCostHistory[dayKey] = day
+  } catch(e) {}
+}
+
+private Map getChatGptCostSummary() {
+  pruneChatGptCostHistory()
+  Map hist = (state.chatgptCostHistory instanceof Map) ? (Map)state.chatgptCostHistory : [:]
+  String todayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+  String monthKey = new Date().format("yyyyMM", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+  Map today = hist[todayKey] instanceof Map ? (Map)hist[todayKey] : [:]
+  Map todayByModel = (today.byModel instanceof Map) ? (Map)today.byModel : [:]
+  BigDecimal monthCost = 0G
+  int monthInputTokens = 0
+  int monthOutputTokens = 0
+  int monthGroundedPrompts = 0
+  Map monthByModel = [:]
+  hist.each { k, v ->
+    if((k ?: "").toString().startsWith(monthKey) && v instanceof Map) {
+      monthCost += ((v.totalCostUsd ?: 0G) as BigDecimal)
+      monthInputTokens += safeInt(v.inputTokens, 0) ?: 0
+      monthOutputTokens += safeInt(v.outputTokens, 0) ?: 0
+      monthGroundedPrompts += safeInt(v.groundedPrompts, 0) ?: 0
+      if(v.byModel instanceof Map) {
+        ((Map)v.byModel).each { mk, mv ->
+          String modelKey = (mk ?: "unknown").toString()
+          Map existing = monthByModel[modelKey] instanceof Map ? (Map)monthByModel[modelKey] : [inputTokens: 0, outputTokens: 0, costUsd: 0G]
+          existing.inputTokens = safeInt(existing.inputTokens, 0) + (safeInt(mv?.inputTokens, 0) ?: 0)
+          existing.outputTokens = safeInt(existing.outputTokens, 0) + (safeInt(mv?.outputTokens, 0) ?: 0)
+          existing.costUsd = ((existing.costUsd ?: 0G) as BigDecimal) + ((mv?.costUsd ?: 0G) as BigDecimal)
+          monthByModel[modelKey] = existing
+        }
+      }
+    }
+  }
+  return [
+    todayCostUsd: (today.totalCostUsd ?: 0G) as BigDecimal,
+    todayInputTokens: safeInt(today.inputTokens, 0) ?: 0,
+    todayOutputTokens: safeInt(today.outputTokens, 0) ?: 0,
+    todayGroundedPrompts: safeInt(today.groundedPrompts, 0) ?: 0,
+    todayByModel: todayByModel,
+    monthCostUsd: monthCost,
+    monthInputTokens: monthInputTokens,
+    monthOutputTokens: monthOutputTokens,
+    monthGroundedPrompts: monthGroundedPrompts,
+    monthByModel: monthByModel
+  ]
+}
+
+private Integer clearChatGptCostCurrentMonth() {
+  try {
+    if(!(state.chatgptCostHistory instanceof Map)) {
+      state.chatgptCostHistory = [:]
+      return 0
+    }
+    String monthKey = new Date().format("yyyyMM", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Map cleaned = [:]
+    int removed = 0
+    ((Map)state.chatgptCostHistory).each { k, v ->
+      if((k ?: "").toString().startsWith(monthKey)) removed++
+      else cleaned[k] = v
+    }
+    state.chatgptCostHistory = cleaned
+    state.lastChatGptCostResetAt = now()
+    state.lastChatGptCostResetScope = "month"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
+private Integer clearChatGptCostToday() {
+  try {
+    if(!(state.chatgptCostHistory instanceof Map)) {
+      state.chatgptCostHistory = [:]
+      return 0
+    }
+    String todayKey = new Date().format("yyyyMMdd", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+    Integer removed = state.chatgptCostHistory.containsKey(todayKey) ? 1 : 0
+    ((Map)state.chatgptCostHistory).remove(todayKey)
+    state.lastChatGptCostResetAt = now()
+    state.lastChatGptCostResetScope = "today"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
+private Integer clearChatGptCostAllHistory() {
+  try {
+    if(!(state.chatgptCostHistory instanceof Map)) {
+      state.chatgptCostHistory = [:]
+      return 0
+    }
+    Integer removed = ((Map)state.chatgptCostHistory).size()
+    state.chatgptCostHistory = [:]
+    state.lastChatGptCostResetAt = now()
+    state.lastChatGptCostResetScope = "all"
+    return removed
+  } catch(e) {
+    return 0
+  }
+}
+
 private Map getOrInitStats() {
   if(!(state.queryStats instanceof Map)) {
-    state.queryStats = [total: 0, bySource: [:], lastQueries: [], geminiUsage: [models: [:], attempts: [:], categories: [:]]]
+    state.queryStats = [total: 0, bySource: [:], lastQueries: [], geminiUsage: [models: [:], attempts: [:], categories: [:]], chatgptUsage: [models: [:], attempts: [:], categories: [:]]]
   }
   if(!(state.queryStats.geminiUsage instanceof Map)) state.queryStats.geminiUsage = [models: [:], attempts: [:], categories: [:]]
+  if(!(state.queryStats.chatgptUsage instanceof Map)) state.queryStats.chatgptUsage = [models: [:], attempts: [:], categories: [:]]
   return state.queryStats
 }
 
@@ -350,7 +513,10 @@ private Map getQueryStats() {
     lastCount: stats.lastQueries?.size() ?: 0,
     geminiModels: (stats.geminiUsage?.models instanceof Map) ? stats.geminiUsage.models : [:],
     geminiAttempts: (stats.geminiUsage?.attempts instanceof Map) ? stats.geminiUsage.attempts : [:],
-    geminiCategories: (stats.geminiUsage?.categories instanceof Map) ? stats.geminiUsage.categories : [:]
+    geminiCategories: (stats.geminiUsage?.categories instanceof Map) ? stats.geminiUsage.categories : [:],
+    chatgptModels: (stats.chatgptUsage?.models instanceof Map) ? stats.chatgptUsage.models : [:],
+    chatgptAttempts: (stats.chatgptUsage?.attempts instanceof Map) ? stats.chatgptUsage.attempts : [:],
+    chatgptCategories: (stats.chatgptUsage?.categories instanceof Map) ? stats.chatgptUsage.categories : [:]
   ]
 }
 
@@ -367,6 +533,22 @@ private void trackGeminiUsage(String modelName, String attemptLabel, String cate
   stats.geminiUsage.models[modelKey] = (stats.geminiUsage.models[modelKey] ?: 0) + 1
   stats.geminiUsage.attempts[attemptKey] = (stats.geminiUsage.attempts[attemptKey] ?: 0) + 1
   stats.geminiUsage.categories[categoryKey] = (stats.geminiUsage.categories[categoryKey] ?: 0) + 1
+  state.queryStats = stats
+}
+
+private void trackChatGptUsage(String modelName, String attemptLabel, String category) {
+  Map stats = getOrInitStats()
+  if(!(stats.chatgptUsage instanceof Map)) stats.chatgptUsage = [models: [:], attempts: [:], categories: [:]]
+  if(!(stats.chatgptUsage.models instanceof Map)) stats.chatgptUsage.models = [:]
+  if(!(stats.chatgptUsage.attempts instanceof Map)) stats.chatgptUsage.attempts = [:]
+  if(!(stats.chatgptUsage.categories instanceof Map)) stats.chatgptUsage.categories = [:]
+
+  String modelKey = (modelName ?: "unknown").toString()
+  String attemptKey = (attemptLabel ?: "unknown").toString()
+  String categoryKey = (category ?: "general").toString()
+  stats.chatgptUsage.models[modelKey] = (stats.chatgptUsage.models[modelKey] ?: 0) + 1
+  stats.chatgptUsage.attempts[attemptKey] = (stats.chatgptUsage.attempts[attemptKey] ?: 0) + 1
+  stats.chatgptUsage.categories[categoryKey] = (stats.chatgptUsage.categories[categoryKey] ?: 0) + 1
   state.queryStats = stats
 }
 
@@ -463,40 +645,78 @@ def mainPage() {
             input "weatherLocation", "text", title: "Weather location for generic weather questions (zip or city, optional)", required: false
             
             input "shortTts", "bool", title: "Short voice responses (TTS-friendly)", required: false, defaultValue: true
-            input "geminiFallbackEnabled", "bool", title: "Enable Gemini fallback when HubVoice cannot answer", required: false, defaultValue: false, submitOnChange: true
+            input "geminiFallbackEnabled", "bool", title: "Enable AI fallback when HubVoice cannot answer", required: false, defaultValue: false, submitOnChange: true
             if(geminiFallbackEnabled) {
-                input "geminiAccountTier", "enum", title: "Gemini account tier", required: false, defaultValue: defaultGeminiAccountTier(), options: ["free_tier_1":"Free Tier 1", "tier_1":"Tier 1 (Paid)"]
-                input "geminiApiKey", "password", title: "Gemini API Key", required: false
-                input "geminiModel", "text", title: "Gemini model", required: false, defaultValue: defaultGeminiModel()
-              input "geminiLiveModel", "text", title: "Gemini model for live/news/sports questions (recommended: gemini-2.5-pro for Paid Tier 1)", required: false, defaultValue: defaultGeminiLiveModel()
+                input "aiFallbackProvider", "enum", title: "AI fallback provider", required: false, defaultValue: defaultFallbackProvider(), submitOnChange: true, options: ["gemini":"Gemini", "chatgpt":"ChatGPT"]
+                String fallbackProvider = selectedFallbackProvider()
+                if(fallbackProvider == "gemini") {
+                  input "geminiAccountTier", "enum", title: "Gemini account tier", required: false, defaultValue: defaultGeminiAccountTier(), options: ["free_tier_1":"Free Tier 1", "tier_1":"Tier 1 (Paid)"]
+                  input "geminiApiKey", "password", title: "Gemini API Key", required: false
+                  input "geminiModel", "text", title: "Gemini model", required: false, defaultValue: defaultGeminiModel()
+                  input "geminiLiveModel", "text", title: "Gemini model for live/news/sports questions (recommended: gemini-2.5-pro for Paid Tier 1)", required: false, defaultValue: defaultGeminiLiveModel()
+                } else {
+                  input "chatgptApiKey", "password", title: "ChatGPT API Key", required: false
+                  input "chatgptModel", "text", title: "ChatGPT model", required: false, defaultValue: defaultChatGptModel()
+                  input "chatgptLiveModel", "text", title: "ChatGPT model for live/news/sports questions", required: false, defaultValue: defaultChatGptLiveModel()
+                }
                 input "sportsPreferredLeagues", "text", title: "Preferred sports leagues (optional, comma-separated: NFL,NBA,MLB,NHL,MLS,EPL,NCAAF,NCAAB)", required: false
                 input "sportsPreferredTeams", "text", title: "Preferred sports teams (optional, comma-separated)", required: false
                 input "sportsCacheSeconds", "number", title: "Sports response cache seconds", required: false, defaultValue: defaultSportsCacheSeconds()
-                Map stats = getQueryStats()
-                Map costSummary = getGeminiCostSummary()
-                String cacheSize = (state.sportsApiCache instanceof Map) ? "${state.sportsApiCache.size()} entries" : "0 entries"
-                String statsText = "Query Stats: ${stats.totalQueries} total | ESPN: ${stats.bySource?.espn_scoreboard ?: 0} | Gemini: ${stats.bySource?.gemini ?: 0} | Flash: ${stats.geminiModels?.'gemini-2.5-flash' ?: 0} | Pro: ${stats.geminiModels?.'gemini-2.5-pro' ?: 0} | Retries: ${stats.geminiAttempts?.retry_grounded ?: 0} | Cache: ${cacheSize}"
-                String costText = "Estimated Gemini cost: Today ${fmtUsd(costSummary.todayCostUsd as BigDecimal)} | Month ${fmtUsd(costSummary.monthCostUsd as BigDecimal)} | Today tokens in/out: ${costSummary.todayInputTokens ?: 0}/${costSummary.todayOutputTokens ?: 0} | Grounded today: ${costSummary.todayGroundedPrompts ?: 0}"
-                String todayBreakdownText = "Today by model: ${formatGeminiCostBreakdown(costSummary.todayByModel as Map)}"
-                String monthBreakdownText = "Month by model: ${formatGeminiCostBreakdown(costSummary.monthByModel as Map)}"
-                paragraph "<small>${statsText}</small>"
-                paragraph "<small>${costText}</small>"
-                paragraph "<small>${todayBreakdownText}</small>"
-                paragraph "<small>${monthBreakdownText}</small>"
-                input "confirmResetGeminiCostCounters", "bool", title: "I understand these Gemini cost reset actions are destructive", required: false, defaultValue: false, submitOnChange: true
-                if(settings?.confirmResetGeminiCostCounters == true) {
-                  paragraph "<small><b>Warning:</b> Choose whether to clear today only, the current month, or all recorded Gemini cost history.</small>"
-                  input "resetGeminiCostCountersToday", "button", title: "Reset Today Only"
-                  input "resetGeminiCostCountersMonth", "button", title: "Reset Current Month"
-                  input "resetGeminiCostCountersAll", "button", title: "Reset All History"
+                if(fallbackProvider == "gemini") {
+                  Map stats = getQueryStats()
+                  Map costSummary = getGeminiCostSummary()
+                  String cacheSize = (state.sportsApiCache instanceof Map) ? "${state.sportsApiCache.size()} entries" : "0 entries"
+                  String statsText = "Query Stats: ${stats.totalQueries} total | ESPN: ${stats.bySource?.espn_scoreboard ?: 0} | Gemini: ${stats.bySource?.gemini ?: 0} | Flash: ${stats.geminiModels?.'gemini-2.5-flash' ?: 0} | Pro: ${stats.geminiModels?.'gemini-2.5-pro' ?: 0} | Retries: ${stats.geminiAttempts?.retry_grounded ?: 0} | Cache: ${cacheSize}"
+                  String costText = "Estimated Gemini cost: Today ${fmtUsd(costSummary.todayCostUsd as BigDecimal)} | Month ${fmtUsd(costSummary.monthCostUsd as BigDecimal)} | Today tokens in/out: ${costSummary.todayInputTokens ?: 0}/${costSummary.todayOutputTokens ?: 0} | Grounded today: ${costSummary.todayGroundedPrompts ?: 0}"
+                  String todayBreakdownText = "Today by model: ${formatGeminiCostBreakdown(costSummary.todayByModel as Map)}"
+                  String monthBreakdownText = "Month by model: ${formatGeminiCostBreakdown(costSummary.monthByModel as Map)}"
+                  paragraph "<small>${statsText}</small>"
+                  paragraph "<small>${costText}</small>"
+                  paragraph "<small>${todayBreakdownText}</small>"
+                  paragraph "<small>${monthBreakdownText}</small>"
+                  input "confirmResetGeminiCostCounters", "bool", title: "I understand these Gemini cost reset actions are destructive", required: false, defaultValue: false, submitOnChange: true
+                  if(settings?.confirmResetGeminiCostCounters == true) {
+                    paragraph "<small><b>Warning:</b> Choose whether to clear today only, the current month, or all recorded Gemini cost history.</small>"
+                    input "resetGeminiCostCountersToday", "button", title: "Reset Today Only"
+                    input "resetGeminiCostCountersMonth", "button", title: "Reset Current Month"
+                    input "resetGeminiCostCountersAll", "button", title: "Reset All History"
+                  }
+                  if(state?.lastGeminiCostResetAt) {
+                    String resetAt = new Date(state.lastGeminiCostResetAt as Long).format("yyyy-MM-dd HH:mm", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+                    String resetScope = (state.lastGeminiCostResetScope ?: "unknown").toString()
+                    paragraph "<small>Last Gemini cost reset: ${resetAt} (${resetScope})</small>"
+                  }
+                  paragraph "<small>Estimate uses Gemini 2.5 public pricing as of 3/22/26 and recorded token usage. Actual Google billing can differ slightly.</small>"
+                  paragraph "Only used when HubVoice cannot answer a non-control question. Responses are limited to short 1-4 sentence replies. Sign up and create a key in Google AI Studio: <a href='https://aistudio.google.com/' target='_blank'>aistudio.google.com</a>"
+                } else {
+                  Map stats = getQueryStats()
+                  Map costSummary = getChatGptCostSummary()
+                  String cacheSize = (state.sportsApiCache instanceof Map) ? "${state.sportsApiCache.size()} entries" : "0 entries"
+                  String modelMini = defaultChatGptModel()
+                  String modelLive = defaultChatGptLiveModel()
+                  String statsText = "Query Stats: ${stats.totalQueries} total | ESPN: ${stats.bySource?.espn_scoreboard ?: 0} | ChatGPT: ${stats.bySource?.chatgpt ?: 0} | ${modelMini}: ${stats.chatgptModels?.get(modelMini) ?: 0} | ${modelLive}: ${stats.chatgptModels?.get(modelLive) ?: 0} | Retries: ${stats.chatgptAttempts?.retry_grounded ?: 0} | Cache: ${cacheSize}"
+                  String costText = "Estimated ChatGPT cost: Today ${fmtUsd(costSummary.todayCostUsd as BigDecimal)} | Month ${fmtUsd(costSummary.monthCostUsd as BigDecimal)} | Today tokens in/out: ${costSummary.todayInputTokens ?: 0}/${costSummary.todayOutputTokens ?: 0} | Grounded today: ${costSummary.todayGroundedPrompts ?: 0}"
+                  String todayBreakdownText = "Today by model: ${formatGeminiCostBreakdown(costSummary.todayByModel as Map)}"
+                  String monthBreakdownText = "Month by model: ${formatGeminiCostBreakdown(costSummary.monthByModel as Map)}"
+                  paragraph "<small>${statsText}</small>"
+                  paragraph "<small>${costText}</small>"
+                  paragraph "<small>${todayBreakdownText}</small>"
+                  paragraph "<small>${monthBreakdownText}</small>"
+                  input "confirmResetChatGptCostCounters", "bool", title: "I understand these ChatGPT cost reset actions are destructive", required: false, defaultValue: false, submitOnChange: true
+                  if(settings?.confirmResetChatGptCostCounters == true) {
+                    paragraph "<small><b>Warning:</b> Choose whether to clear today only, the current month, or all recorded ChatGPT cost history.</small>"
+                    input "resetChatGptCostCountersToday", "button", title: "Reset Today Only"
+                    input "resetChatGptCostCountersMonth", "button", title: "Reset Current Month"
+                    input "resetChatGptCostCountersAll", "button", title: "Reset All History"
+                  }
+                  if(state?.lastChatGptCostResetAt) {
+                    String resetAt = new Date(state.lastChatGptCostResetAt as Long).format("yyyy-MM-dd HH:mm", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
+                    String resetScope = (state.lastChatGptCostResetScope ?: "unknown").toString()
+                    paragraph "<small>Last ChatGPT cost reset: ${resetAt} (${resetScope})</small>"
+                  }
+                  paragraph "<small>Estimate uses OpenAI public pricing assumptions for GPT-4.1/GPT-4.1-mini and recorded token usage. Actual billing can differ slightly.</small>"
+                  paragraph "Only used when HubVoice cannot answer a non-control question. Responses are limited to short 1-4 sentence replies. Create an API key in OpenAI Platform: <a href='https://platform.openai.com/' target='_blank'>platform.openai.com</a>"
                 }
-                if(state?.lastGeminiCostResetAt) {
-                  String resetAt = new Date(state.lastGeminiCostResetAt as Long).format("yyyy-MM-dd HH:mm", location?.timeZone ?: TimeZone.getTimeZone("UTC"))
-                  String resetScope = (state.lastGeminiCostResetScope ?: "unknown").toString()
-                  paragraph "<small>Last Gemini cost reset: ${resetAt} (${resetScope})</small>"
-                }
-                paragraph "<small>Estimate uses Gemini 2.5 public pricing as of 3/22/26 and recorded token usage. Actual Google billing can differ slightly.</small>"
-                paragraph "Only used when HubVoice cannot answer a non-control question. Responses are limited to short 1-4 sentence replies. Sign up and create a key in Google AI Studio: <a href='https://aistudio.google.com/' target='_blank'>aistudio.google.com</a>"
             }
             input "maxRequestsPerMinute", "number", title: "Rate limit: max /ask requests per minute (0 = disable)", required: false, defaultValue: defaultMaxRequestsPerMinute()
             
@@ -779,11 +999,13 @@ def diagPage() {
       def keysCt = (state?.keyOrder ?: [])?.size() ?: 0
       def cacheCt = (state?.lastByDevAttrValue ?: [:])?.size() ?: 0
       def askCt = (state?.askTimes ?: [])?.size() ?: 0
+      String aiProvider = selectedFallbackProvider()
       paragraph "<b>Devices selected:</b> ${devCt}"
       paragraph "<b>Tracked keys (LRU list):</b> ${keysCt} / ${(settings?.maxTrackedKeys ?: 5000)}"
       paragraph "<b>lastByDevAttrValue device buckets:</b> ${cacheCt}"
       paragraph "<b>Requests in last minute (rate-limit window):</b> ${askCt} / ${(settings?.maxRequestsPerMinute ?: 30)}"
       paragraph "<b>Risky audit entries:</b> ${(state?.riskyAudit ?: [])?.size() ?: 0} / ${(settings?.riskyAuditMax ?: 200)}"
+      paragraph "<b>AI fallback provider:</b> ${htmlEscape(aiProvider)}"
       paragraph "<b>App revision:</b> ${appRev()}"
     }
     section("Last request") {
@@ -791,6 +1013,9 @@ def diagPage() {
       paragraph "<b>Last intent:</b> ${htmlEscape((state?.lastIntent ?: '') as String)}"
       paragraph "<b>Last device:</b> ${htmlEscape((state?.lastDeviceName ?: '') as String)}"
       paragraph "<b>Last answer:</b> ${htmlEscape((state?.lastAnswer ?: '') as String)}"
+      paragraph "<b>Last AI provider:</b> ${htmlEscape((state?.lastAiProvider ?: '') as String)}"
+      paragraph "<b>Last AI model:</b> ${htmlEscape((state?.lastGeminiModel ?: state?.lastAiModel ?: '') as String)}"
+      paragraph "<b>Last AI grounded:</b> ${state?.lastAiGrounded == true ? 'yes' : 'no'}"
       if(state?.lastError) paragraph "<b>Last error:</b> ${htmlEscape((state?.lastError ?: '') as String)}"
     }
     section("Risky audit (latest 10)") {
@@ -1069,6 +1294,27 @@ def appButtonHandler(btn) {
       scopeLabel = "all history"
     }
     log.info "Gemini cost counters reset for ${scopeLabel}. Removed ${removed} day entr${removed == 1 ? 'y' : 'ies'}."
+    return
+  }
+
+  if(["resetChatGptCostCountersToday", "resetChatGptCostCountersMonth", "resetChatGptCostCountersAll"].contains(btn)) {
+    if(settings?.confirmResetChatGptCostCounters != true) {
+      log.warn "Ignored ChatGPT cost reset request because confirmation was not enabled."
+      return
+    }
+    Integer removed = 0
+    String scopeLabel = ""
+    if(btn == "resetChatGptCostCountersToday") {
+      removed = clearChatGptCostToday()
+      scopeLabel = "today"
+    } else if(btn == "resetChatGptCostCountersMonth") {
+      removed = clearChatGptCostCurrentMonth()
+      scopeLabel = "current month"
+    } else if(btn == "resetChatGptCostCountersAll") {
+      removed = clearChatGptCostAllHistory()
+      scopeLabel = "all history"
+    }
+    log.info "ChatGPT cost counters reset for ${scopeLabel}. Removed ${removed} day entr${removed == 1 ? 'y' : 'ies'}."
   }
 }
 
@@ -1378,6 +1624,314 @@ private boolean geminiFallbackReady() {
   } catch(e) {
     return false
   }
+}
+
+private String selectedFallbackProvider() {
+  try {
+    String p = (settings?.aiFallbackProvider ?: defaultFallbackProvider()).toString().trim().toLowerCase()
+    return (p == "chatgpt") ? "chatgpt" : "gemini"
+  } catch(e) {
+    return "gemini"
+  }
+}
+
+private boolean chatGptFallbackReady() {
+  try {
+    return !!settings?.geminiFallbackEnabled && selectedFallbackProvider() == "chatgpt" && !!((settings?.chatgptApiKey ?: "").toString().trim())
+  } catch(e) {
+    return false
+  }
+}
+
+private boolean aiFallbackReady() {
+  String p = selectedFallbackProvider()
+  if(p == "chatgpt") return chatGptFallbackReady()
+  return geminiFallbackReady()
+}
+
+private String extractChatGptText(def data) {
+  try {
+    String direct = (data?.output_text ?: "").toString().trim()
+    if(direct) return direct
+  } catch(e) {}
+
+  try {
+    def output = data?.output
+    if(output instanceof List) {
+      List<String> txts = []
+      output.each { item ->
+        if((item?.type ?: "").toString() == "message" && item?.content instanceof List) {
+          item.content.each { c ->
+            String t = ""
+            if((c?.type ?: "").toString() in ["output_text", "text"]) {
+              t = (c?.text ?: c?.value ?: "").toString().trim()
+            }
+            if(t) txts << t
+          }
+        }
+      }
+      String joined = txts.join(" ").replaceAll(/\s+/, " ").trim()
+      if(joined) return joined
+    }
+  } catch(e) {}
+
+  return ""
+}
+
+private List<String> extractChatGptSourceUrls(def data) {
+  List<String> out = []
+  try {
+    def output = data?.output
+    if(output instanceof List) {
+      output.each { item ->
+        if((item?.type ?: "").toString() == "message" && item?.content instanceof List) {
+          item.content.each { c ->
+            if(c?.annotations instanceof List) {
+              c.annotations.each { a ->
+                String u = (a?.url ?: "").toString().trim()
+                if(u) out << u
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {}
+  return out.unique()
+}
+
+private String extractChatGptFinishReason(def data) {
+  try {
+    String status = (data?.status ?: "").toString().trim()
+    if(status) return status
+  } catch(e) {}
+  return ""
+}
+
+private Map extractChatGptUsageMetadata(def data) {
+  try {
+    def usage = data?.usage
+    if(usage instanceof Map) {
+      return [
+        promptTokens: safeInt(usage.input_tokens, 0),
+        outputTokens: safeInt(usage.output_tokens, 0),
+        totalTokens: safeInt(usage.total_tokens, 0)
+      ]
+    }
+  } catch(e) {}
+  return [promptTokens: 0, outputTokens: 0, totalTokens: 0]
+}
+
+private String chooseChatGptModel(String baseModel, String liveModel, String category) {
+  if(category in ["sports", "news", "reasoning", "live"]) {
+    return (liveModel ?: baseModel ?: defaultChatGptModel()).toString()
+  }
+  return (baseModel ?: liveModel ?: defaultChatGptModel()).toString()
+}
+
+private Map askChatGptFallback(String queryText) {
+  if(!chatGptFallbackReady()) return null
+
+  String apiKey = (settings?.chatgptApiKey ?: "").toString().trim()
+  String baseModel = (settings?.chatgptModel ?: defaultChatGptModel()).toString().trim()
+  String liveModel = (settings?.chatgptLiveModel ?: defaultChatGptLiveModel()).toString().trim()
+  if(!baseModel) baseModel = defaultChatGptModel()
+  boolean liveInfo = isLiveInfoQuery(queryText)
+  boolean sportsLive = isSportsLiveQuery(queryText)
+  String queryCategory = geminiQueryCategory(queryText)
+  String model = chooseChatGptModel(baseModel, liveModel, queryCategory)
+
+  String sysPrompt = "You are the spoken response voice for a smart home assistant, matching Google Assistant on Google Home style. Reply naturally, concise, and conversational in 1 to 3 short sentences. Use plain text only: no markdown, no bullet lists, no labels, no citations, no URLs, and no emojis. Do not mention being an AI model. Give direct answers first, then one brief detail if helpful."
+  sysPrompt += " If the user asks about smart-home state you cannot verify from Hubitat, say that briefly and suggest checking the device in one short phrase."
+  if(liveInfo) {
+    sysPrompt += " This question asks for current information. Use live web search for breaking news, live events, scores, status, and today's weather. Answer confidently with 'as of HH:MM time' when possible. If web search fails, say briefly what info you cannot access and offer the best answer you can."
+  }
+  if(sportsLive) {
+    sysPrompt += " For sports questions: prioritize verified data from official sources. Include exact team names, final/live score (like '4 to 2'), game status, and elapsed time. If you find the game is live, mention inning/quarter/period. Be specific: say 'Final, 4-2' not just 'win'."
+  }
+
+  Integer chatgpt429CooldownSecs = safeInt(settings?.chatgpt429CooldownSecs, defaultGemini429CooldownSecs())
+  if(chatgpt429CooldownSecs == null || chatgpt429CooldownSecs < 15) chatgpt429CooldownSecs = defaultGemini429CooldownSecs()
+  long cooldownUntil = 0L
+  try { cooldownUntil = (state?.chatgpt429CooldownUntil ?: 0L) as Long } catch(ignore) { cooldownUntil = 0L }
+  if(cooldownUntil > now()) {
+    return [
+      answer: "ChatGPT is busy right now. Please try again in a minute.",
+      grounded: false,
+      searchQueries: [],
+      sourceUrls: [],
+      groundingMetadata: [:],
+      finishReason: "quota_cooldown",
+      model: model,
+      fallbackSource: "chatgpt",
+      sports_source: "none",
+      sports_league: "",
+      provider: "chatgpt"
+    ]
+  }
+
+  def callChatGpt = { String askText, String modelName, BigDecimal temp, Integer tokenLimit, String attemptLabel ->
+    String resultText = ""
+    List<String> sourceUrls = []
+    String finishReason = ""
+    Map usageMetadata = [promptTokens: 0, outputTokens: 0, totalTokens: 0]
+
+    trackChatGptUsage(modelName, attemptLabel, queryCategory)
+
+    Map reqBody = [
+      model: modelName,
+      input: [
+        [role: "system", content: [[type: "input_text", text: sysPrompt]]],
+        [role: "user", content: [[type: "input_text", text: askText]]]
+      ],
+      tools: [[type: "web_search_preview"]],
+      temperature: temp,
+      max_output_tokens: tokenLimit
+    ]
+
+    Map params = [
+      uri: "https://api.openai.com/v1/responses",
+      headers: [
+        "Authorization": "Bearer ${apiKey}"
+      ],
+      contentType: "application/json",
+      requestContentType: "application/json",
+      body: reqBody
+    ]
+
+    try {
+      httpPostJson(params) { resp ->
+        if(resp?.status in [200, 201]) {
+          def data = resp?.data
+          if(!(data instanceof Map)) {
+            try {
+              data = new JsonSlurper().parseText(resp?.data?.toString() ?: "")
+            } catch(ignore) {}
+          }
+          resultText = extractChatGptText(data)
+          sourceUrls = extractChatGptSourceUrls(data)
+          finishReason = extractChatGptFinishReason(data)
+          usageMetadata = extractChatGptUsageMetadata(data)
+          trackChatGptCost(modelName, usageMetadata, (sourceUrls ? true : false))
+          log.debug "ChatGPT fallback response ok. attempt=${attemptLabel}, grounded=${sourceUrls ? true : false}, sources=${sourceUrls?.size() ?: 0}, finishReason=${finishReason ?: 'unknown'}, rawLen=${resultText?.size() ?: 0}"
+          log.debug "ChatGPT usage (${attemptLabel}): prompt=${usageMetadata.promptTokens ?: 0}, output=${usageMetadata.outputTokens ?: 0}, total=${usageMetadata.totalTokens ?: 0}"
+        } else if((resp?.status as Integer) == 429) {
+          finishReason = "quota_429"
+          try { state.chatgpt429CooldownUntil = now() + ((chatgpt429CooldownSecs as Long) * 1000L) } catch(ignore) {}
+        }
+      }
+    } catch(e) {
+      String em = (e?.toString() ?: "").toLowerCase()
+      if(em.contains("status code: 429") || em.contains("too many requests") || em.contains("rate limit")) {
+        finishReason = "quota_429"
+        try { state.chatgpt429CooldownUntil = now() + ((chatgpt429CooldownSecs as Long) * 1000L) } catch(ignore) {}
+      } else {
+        log.debug "ChatGPT fallback request failed on attempt=${attemptLabel}: ${e}"
+      }
+    }
+
+    return [
+      answer: compactGeminiAnswer(resultText),
+      grounded: (sourceUrls ? true : false),
+      searchQueries: [],
+      sourceUrls: sourceUrls,
+      groundingMetadata: [:],
+      usageMetadata: usageMetadata,
+      finishReason: finishReason,
+      model: modelName,
+      fallbackSource: "chatgpt",
+      sports_source: (sportsLive ? (sourceUrls ? "chatgpt_search" : "") : ""),
+      sports_league: "",
+      provider: "chatgpt"
+    ]
+  }
+
+  Map first = callChatGpt(queryText, model, (liveInfo ? 0.25G : 0.5G), (liveInfo ? 320 : 220), "first")
+  Map chosen = first
+  boolean chatgptRateLimited = (["quota_429"].contains((first?.finishReason ?: "").toString()))
+
+  if(liveInfo && !chatgptRateLimited && (first?.grounded != true || !(first?.answer))) {
+    def tz = location?.timeZone ?: TimeZone.getTimeZone("UTC")
+    String nowStamp = new Date().format("yyyy-MM-dd HH:mm z", tz)
+    String retryQuery = "${queryText}. Use live web results. Current time is ${nowStamp}."
+    if(sportsLive) retryQuery += " Focus on latest sports result with teams, score, game status, and update time."
+    String retryModel = chooseChatGptModel(baseModel, liveModel, queryCategory)
+    Map second = callChatGpt(retryQuery, retryModel, 0.2G, 380, "retry_grounded")
+    if(second?.answer && ((second?.grounded == true) || !(first?.answer))) {
+      chosen = second
+    }
+    chatgptRateLimited = chatgptRateLimited || (["quota_429"].contains((second?.finishReason ?: "").toString()))
+  }
+
+  if(sportsLive && !(chosen?.answer)) {
+    return [
+      answer: "Sorry, I can't get live sports right now. Please try again in a minute.",
+      grounded: false,
+      searchQueries: [],
+      sourceUrls: [],
+      groundingMetadata: [:],
+      finishReason: "sports_unavailable",
+      model: (chosen?.model ?: model),
+      fallbackSource: "chatgpt",
+      sports_source: "none",
+      sports_league: "",
+      provider: "chatgpt"
+    ]
+  }
+
+  if(!(chosen?.answer) && chatgptRateLimited) {
+    return [
+      answer: "ChatGPT is busy right now. Please try again in a minute.",
+      grounded: false,
+      searchQueries: [],
+      sourceUrls: [],
+      groundingMetadata: [:],
+      finishReason: "quota_429",
+      model: (chosen?.model ?: model),
+      fallbackSource: "chatgpt",
+      sports_source: "none",
+      sports_league: "",
+      provider: "chatgpt"
+    ]
+  }
+
+  String resultText = (chosen?.answer ?: "").toString()
+  if(resultText && liveInfo && chosen?.grounded != true && !resultText.toLowerCase().startsWith("last available update says")) {
+    resultText = "Last available update says ${resultText}"
+  }
+  if(resultText) {
+    state.lastAiAnswer = resultText
+    state.lastAiAt = now()
+    state.lastAiProvider = "chatgpt"
+    state.lastAiModel = (chosen?.model ?: model)
+    state.lastAiGrounded = (chosen?.grounded == true)
+    state.lastAiSources = (chosen?.sourceUrls instanceof List) ? chosen.sourceUrls : []
+    state.lastAiFinishReason = (chosen?.finishReason ?: "")
+    String trackSource = (chosen?.fallbackSource ?: "chatgpt")
+    if(chosen?.sports_source) trackSource = chosen.sports_source
+    trackQueryResult(trackSource, queryText)
+    return [
+      answer: resultText,
+      grounded: (chosen?.grounded == true),
+      searchQueries: (chosen?.searchQueries instanceof List) ? chosen.searchQueries : [],
+      sourceUrls: (chosen?.sourceUrls instanceof List) ? chosen.sourceUrls : [],
+      groundingMetadata: [:],
+      finishReason: (chosen?.finishReason ?: ""),
+      model: (chosen?.model ?: model),
+      fallbackSource: (chosen?.fallbackSource ?: "chatgpt"),
+      sports_source: (chosen?.sports_source ?: ""),
+      sports_league: (chosen?.sports_league ?: ""),
+      provider: "chatgpt"
+    ]
+  }
+
+  return null
+}
+
+private Map askSelectedFallback(String queryText) {
+  String p = selectedFallbackProvider()
+  if(p == "chatgpt") return askChatGptFallback(queryText)
+  return askGeminiFallback(queryText)
 }
 
 private String extractGeminiText(def data) {
@@ -2260,11 +2814,15 @@ private Map askGeminiFallback(String queryText) {
       log.debug "Gemini final answer (${resultText.size()} chars): ${resultText}"
       state.lastGeminiAnswer = resultText
       state.lastGeminiAt = now()
+      state.lastGeminiModel = (chosen?.model ?: model)
       state.lastGeminiGrounded = (chosen?.grounded == true)
       state.lastGeminiQueries = (chosen?.searchQueries instanceof List) ? chosen.searchQueries : []
       state.lastGeminiSources = (chosen?.sourceUrls instanceof List) ? chosen.sourceUrls : []
       state.lastGeminiFinishReason = (chosen?.finishReason ?: "")
       state.lastGeminiAnswerLen = resultText.size()
+      state.lastAiProvider = "gemini"
+      state.lastAiModel = (chosen?.model ?: model)
+      state.lastAiGrounded = (chosen?.grounded == true)
       String trackSource = (chosen?.fallbackSource ?: "gemini")
       if(chosen?.sports_source) trackSource = chosen.sports_source
       trackQueryResult(trackSource, queryText)
@@ -2295,7 +2853,7 @@ private Map askGeminiFallback(String queryText) {
 }
 
 private boolean shouldUseGeminiFallback(Map resultMap, String answerText, String queryText, Map intent=null) {
-  if(!geminiFallbackReady()) return false
+  if(!aiFallbackReady()) return false
   if(!(queryText ?: "").toString().trim()) return false
 
   String mode = ((intent?.mode ?: resultMap?.mode ?: "") as String).toLowerCase()
@@ -2330,17 +2888,21 @@ private Map maybeUseGeminiFallback(String queryText, String answerText, Map resu
     return [answer: answerText, payload: (resultMap ?: [:]), used: false]
   }
 
-  Map fallback = askGeminiFallback(queryText)
+  Map fallback = askSelectedFallback(queryText)
   if(!(fallback instanceof Map) || !fallback?.answer) {
     return [answer: answerText, payload: (resultMap ?: [:]), used: false]
   }
+
+  String provider = (fallback?.provider ?: selectedFallbackProvider()).toString()
 
   Map merged = [:]
   if(resultMap instanceof Map) merged.putAll(resultMap)
   merged.ok = true
   merged.answer = fallback.answer
   merged.gemini_used = true
-  merged.fallback_source = (fallback.fallbackSource ?: "gemini")
+  merged.fallback_source = (fallback.fallbackSource ?: provider)
+  merged.ai_provider = provider
+  merged.ai_model = (fallback.model ?: "")
   merged.gemini_grounded = (fallback.grounded == true)
   merged.gemini_model = (fallback.model ?: "")
   if(fallback.sports_source) merged.sports_source = fallback.sports_source
@@ -2354,7 +2916,9 @@ private Map maybeUseGeminiFallback(String queryText, String answerText, Map resu
     dbgPut('geminiSources', (fallback.sourceUrls instanceof List) ? fallback.sourceUrls : [])
     dbgPut('geminiFinishReason', (fallback.finishReason ?: '').toString())
     dbgPut('geminiAnswerLen', safeInt(fallback?.answer?.size(), 0))
-    dbgPut('fallbackSource', (fallback?.fallbackSource ?: 'gemini').toString())
+    dbgPut('fallbackSource', (fallback?.fallbackSource ?: provider).toString())
+    dbgPut('aiProvider', provider)
+    dbgPut('aiModel', (fallback?.model ?: '').toString())
     dbgPut('sportsSource', (fallback?.sports_source ?: '').toString())
     dbgPut('sportsLeague', (fallback?.sports_league ?: '').toString())
     state.lastDebug = state.lastDebug ?: [:]
@@ -2364,7 +2928,9 @@ private Map maybeUseGeminiFallback(String queryText, String answerText, Map resu
     state.lastDebug.geminiSources = (fallback.sourceUrls instanceof List) ? fallback.sourceUrls : []
     state.lastDebug.geminiFinishReason = (fallback.finishReason ?: '').toString()
     state.lastDebug.geminiAnswerLen = safeInt(fallback?.answer?.size(), 0)
-    state.lastDebug.fallbackSource = (fallback?.fallbackSource ?: 'gemini').toString()
+    state.lastDebug.fallbackSource = (fallback?.fallbackSource ?: provider).toString()
+    state.lastDebug.aiProvider = provider
+    state.lastDebug.aiModel = (fallback?.model ?: '').toString()
     state.lastDebug.sportsSource = (fallback?.sports_source ?: '').toString()
     state.lastDebug.sportsLeague = (fallback?.sports_league ?: '').toString()
   } catch(e) {}
