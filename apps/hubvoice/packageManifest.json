@@ -1,6 +1,6 @@
 {
     "packageName": "HubVoice",
-    "version": "beta-012",
+    "version": "beta-013",
     "releaseNotes": "Added a version for Ubuntu, also added other speakers for music playback",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
