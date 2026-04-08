@@ -1082,7 +1082,7 @@ def instructionPage() {
         
         section("<hr>") { paragraph "Now for the fun stuff!"}
         section("<b>Requirements for Voice Control</b>") {
-            req =  "- An always on Win PC running HubVoiceSat<br>"
+            req =  "- An always on Win PC or an Ubuntu machine running HubVoiceSat<br>"
             req += "- At least one compatible Satellite speaker (running custom HubVoiceSat firmware):<br>"
             req += "  -- HA Voice Satellite Preview Edition<br>"
             req += "  -- Future Proof Homes Satellite-1"
@@ -1090,8 +1090,14 @@ def instructionPage() {
         }
         
         section("<b>How to Install HubVoiceSat on Win PC</b>") {
-            winPC =  "- Download the lastest zip (hubvoiced-sat=2026.xx.xx.x=release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Win PC<br>"
-            winPC += "- Unzip the folder, then copy all of its contents to c:\\HubViewSat - This needs to be our working directory"
+            winPC =  "- Download the lastest zip (hubvoice-sat-2026.xx.xx.x-release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Win PC<br>"
+            winPC += "- Unzip the folder, then copy all of its contents to c:\\HubViewSat - This needs to be the working directory"
+            paragraph winPC
+        }
+        
+        section("<b>How to Install HubVoiceSat on Ubuntu</b>") {
+            winPC =  "- Download the lastest zip (hubvoice-sat-2026.xx.xx.-ubuntu-release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Ubuntu machine.<br>"
+            winPC += "- Unzip the folder, then copy all of its contents to HubViewSat - This needs to be the working directory"
             paragraph winPC
         }
         
