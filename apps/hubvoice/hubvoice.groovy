@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-014"
+  return "beta-016"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -2941,7 +2941,10 @@ private Map maybeUseGeminiFallback(String queryText, String answerText, Map resu
    Bulk helpers (ALL commands)
    ========================================================= */
 private List<String> hvStopwords() {
-  return ["the","a","an","to","please","could","would","can","you","me","my","all","every","of","in","on","at","for","with","and"]
+  return ["the","a","an","to","please","could","would","can","you","me","my","all","every","of","in","on","at","for","with","and",
+          "are","is","was","were","be","been","have","has","had","do","does","did",
+          "any","some","which","what","there","turn","switched","turned",
+          "or","nor","but","if","so","yet","also","just","now","up","go"]
 }
 private String hvNorm(String s) {
   return (s ?: "").toString().toLowerCase()
@@ -3214,7 +3217,7 @@ private void dbgInit(String q, String mode=null) {
     state.lastDebug = state.lastDebug ?: [:]
     state.lastDebug.ts = now()
     state.lastDebug.q = (q ?: "").toString()
-    state.lastDebug.sDev = (d ?: "").toString().toLowerCase()
+    state.lastDebug.sDev = (state?.sdev ?: "").toString().toLowerCase()
     state.lastDebug.qNorm = (q ?: "").toString().toLowerCase()
     if(mode != null) state.lastDebug.mode = (mode ?: "").toString()
     state.lastDebug.route = []
@@ -3245,7 +3248,7 @@ private void dbgPut(String k, v) {
 }
 
 def handleAsk() {
-  log.debug "--------------------  In handleAsk  --------------------"
+  log.debug "--------------------------------------------------------"
 
   try {
     if(!isAuthorizedRequest()) {
@@ -3261,9 +3264,55 @@ def handleAsk() {
     }
 
     def q = (params.q ?: params.text ?: "").toString().trim()
+    // Restore detailed debug logging, but redact access_token
+    def paramsRedacted = params instanceof Map ? params.collect { k,v -> k == 'access_token' ? 'access_token:[REDACTED]' : "${k}:${v}" }.join(", ") : params
+    log.debug "-------------------- In handleAsk --------------------"
+    log.debug "PARAMS RAW: [${paramsRedacted}]"
+    log.debug "Q VALUE: ${q}"
     state.sdev = (params.d ?: "").toString().trim()
     state.callbackUrl = (params.callbackUrl ?: "").toString().trim()
-  	String mode = hvModeForQuery(q)
+
+    // Extract satRoom from query if present (e.g., 'are the bathroom lights on' -> satRoom = 'bathroom')
+    String satRoom = null
+    def roomMatch = (q =~ /\b(the|in|of)?\s*([a-zA-Z0-9 ]+?)\s+(lights?|lamps?)\b/)
+    if(roomMatch && roomMatch.find()) {
+      satRoom = roomMatch.group(2)?.trim()?.toLowerCase()
+    }
+    // Store for debugging
+    state.satRoom = satRoom
+
+    // Only force group status mode for light/lamp questions (not control commands)
+    def groupWords = ["light","lights","lamp","lamps"]
+    def qNorm = q.toLowerCase()
+    boolean hasGroupWord = groupWords.any { qNorm.contains(it) }
+    boolean isQuestion = (qNorm.contains("are ") || qNorm.contains("which") || qNorm.contains("what") || qNorm.contains("?") )
+    if(hasGroupWord && isQuestion) {
+      // Before forcing group routing, check if a specific named device appears in the query.
+      // Use exact-match only (not token overlap) so "Kitchen Ceiling Lights" is recognised as
+      // a device while generic phrases like "kitchen lights" or "any lights" are not.
+      boolean namedDeviceInQuery = false
+      try {
+        def devIdx = (state?.devIndex ?: buildDeviceIndex()) ?: [:]
+        String qNormFull = normalize(q)
+        devIdx.each { nameNorm, did ->
+          if(!namedDeviceInQuery && nameNorm && nameNorm.size() > 4 && qNormFull.contains(nameNorm)) {
+            namedDeviceInQuery = true
+          }
+        }
+      } catch(e) { log.debug "earlyGroupCheck err: ${e}" }
+
+      if(!namedDeviceInQuery) {
+        // No specific device name found – treat as a group question
+        def wantValue = "on"
+        if(qNorm.contains("off") || qNorm.contains("are off") || qNorm.contains("turned off")) wantValue = "off"
+        def groupIntent = [mode:"device_group_status", group:"lights", attr:"switch", wantValue:wantValue, _forced:true, _satRoom:satRoom]
+        def gRes = routeGroup(q, groupIntent)
+        String ans = (gRes?.answer ?: "No answer.").toString()
+        sendMessage(ans)
+        return respondText(ans)
+      }
+      // Named device found – fall through to normal device routing below
+    }
 
 // =========================================================
 // CONTROL: BULK lights by name tokens
@@ -3290,8 +3339,7 @@ if(bulkCmd) {
   return respondText(ans)
 }
 
-  log.debug "MODE: ${mode}"
-  dbgInit(q, mode)
+  dbgInit(q)
   dbgRoute('handleAsk_start')
 
 // =========================================================
@@ -3385,8 +3433,6 @@ if(mLkScoped || mLkGlobal) {
       return respondAsk("", 200, [ok:false, error:"empty_transcript"])
     }
 
-    log.debug "PARAMS RAW: ${params}"
-    log.debug "Q VALUE: ${params.q}"
     // Optional: structured NLU (params.nlu) can short-circuit routing
     def nlu = parseNluParam()
     def nluIntent = nlu ? nluToInternalIntent(nlu) : null
@@ -5307,11 +5353,19 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
   }
 }
 
+
   // Device group status (list matching devices) / any_open / any_state
   if(intent?.mode in ["device_group_status","any_open","any_state"]) {
     String attr = (intent?.attr ?: "").toString()
     String want = (intent?.wantValue ?: "").toString()
     String group = (intent?.group ?: "").toString()
+
+    // Try to extract a scope/room from the query (e.g., 'kitchen', 'living room')
+    // We'll use the same tokenization as bulkFindSwitches
+    List<String> queryTokens = hvTokens(query)
+    // Remove group words from tokens
+    List<String> groupWords = ["light","lights","lamp","lamps","ceiling","sconce","door","doors","window","windows","lock","locks","motion","motions","water"]
+    List<String> scopeTokens = queryTokens.findAll { !(it in groupWords) && it.size() >= 3 }
 
     def matches = []
 
@@ -5329,6 +5383,13 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
         else if(group == "motion") groupOk = deviceSupportsAttr(d,"motion")
         else if(group == "water") groupOk = deviceSupportsAttr(d,"water")
 
+        // Scope filtering: require all scope tokens to be present in device name
+        if(groupOk && scopeTokens && scopeTokens.size() > 0) {
+          for(String tok in scopeTokens) {
+            if(!dnl.contains(tok)) { groupOk = false; break }
+          }
+        }
+
         if(!groupOk) return
 
         if(attr && deviceSupportsAttr(d, attr)) {
@@ -5339,13 +5400,18 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
     }
 
     String label = group ?: "devices"
-    if(!matches) {
-      String okMsg = "I don't see any ${label} that are ${want}."
+    if(!matches || matches.size() == 0) {
+      String okMsg = "All ${label} are off."
       if(group=="locks" && want=="unlocked") okMsg = "All locks are locked."
       return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: okMsg]
     }
 
-    String ans = (matches.size() == 1) ? "Yes, ${matches[0]} is ${want}." : "Yes, ${matches.size()} ${label} are ${want}: " + matches.join(", ")
+    String ans
+    if(matches.size() == 1) {
+      ans = "Yes, ${matches[0]} is ${want}."
+    } else {
+      ans = "Yes, the following ${label} are ${want}: " + matches.join(", ") + "."
+    }
     return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: ans]
   }
 
@@ -5626,33 +5692,45 @@ String __mode = (constraint?.mode ?: "").toString()
 
 
   def candidates = (qaDevices ?: []).findAll { d -> deviceMatchesConstraint(d, constraint) }
-  // Room bias is applied as a score bonus in step 3, NOT as a hard filter.
-  // Hard-filtering by room breaks explicit cross-room queries like "are the kitchen lights on"
-  // when the satellite is in a different room (e.g. living room).
   log.debug "matchDeviceFromQuery: queryNorm='${queryNorm}' satRoom='${satRoom}' useRoomBias=${useRoomBias} candidates=${candidates.size()}"
-  // 1) Alias contains match (strongest)
+
+  // When the satellite has a known room and the query doesn't already name a room,
+  // build augmented query variants with the room prepended so that e.g.
+  // "ceiling light" from Livingroom1 matches "Livingroom Ceiling Light".
+  // We try both the spaced form ("living room ceiling light") and the compact
+  // form ("livingroom ceiling light") because device names use either convention.
+  List<String> queryVariants = [queryNorm]
+  String roomCompact = null
+  if(useRoomBias && satRoom) {
+    String roomSpaced = normalize(satRoom)          // e.g. "living room"
+    roomCompact = roomSpaced.replace(" ", "")       // e.g. "livingroom"
+    queryVariants << "${roomSpaced} ${queryNorm}".toString()
+    if(roomCompact != roomSpaced) queryVariants << "${roomCompact} ${queryNorm}".toString()
+  }
+
   def aliasIdx = aliasToDeviceIdIndex()
-  if(aliasIdx && aliasIdx.size() > 0) {
-    aliasIdx.each { String aliasNorm, String did ->
-      if(aliasNorm && queryNorm.contains(aliasNorm)) {
-        if(aliasNorm.length() > bestLen) {
+
+  // 1) Alias contains match (strongest) — room-augmented variants tried first
+  queryVariants.each { qv ->
+    if(bestDev) return
+    if(aliasIdx && aliasIdx.size() > 0) {
+      aliasIdx.each { String aliasNorm, String did ->
+        if(aliasNorm && qv.contains(aliasNorm) && aliasNorm.length() > bestLen) {
           def d = candidates.find { it?.id?.toString() == did?.toString() }
-          if(d) {
-            bestLen = aliasNorm.length()
-            bestDev = d
-          }
+          if(d) { bestLen = aliasNorm.length(); bestDev = d }
         }
       }
     }
   }
 
-  // 2) Direct contains match on device displayName
+  // 2) Direct contains match on device displayName — room-augmented variants tried first
   if(!bestDev) {
-    candidates.each { d ->
-      def nameNorm = normalize(d.displayName)
-      if(!nameNorm) return
-      if(queryNorm.contains(nameNorm)) {
-        if(nameNorm.length() > bestLen) {
+    queryVariants.each { qv ->
+      if(bestDev) return
+      candidates.each { d ->
+        def nameNorm = normalize(d.displayName)
+        if(!nameNorm) return
+        if(qv.contains(nameNorm) && nameNorm.length() > bestLen) {
           bestLen = nameNorm.length()
           bestDev = d
         }
@@ -5671,6 +5749,9 @@ String __mode = (constraint?.mode ?: "").toString()
       if(t.endsWith("s") && t.length() > 3) qTokenSet << t.substring(0, t.length() - 1)
       else if(t.length() > 2) qTokenSet << (t + "s")
     }
+    // Add compact room token so that a device named "Livingroom Ceiling Light"
+    // (single token "livingroom") scores a hit when the satellite room is "living room".
+    if(roomCompact) qTokenSet << roomCompact
 
     def bestScore = 0.0
     candidates.each { d ->
@@ -5692,7 +5773,6 @@ String __mode = (constraint?.mode ?: "").toString()
       def score = (overlap as Double) + (Math.min(dTokens.size(), 10) * 0.05)
       if(useRoomBias && deviceMatchesRoom(d, satRoom)) score += 1.5d
       // Only update bestDev when overlap threshold is met AND score is better.
-      // Do NOT clear bestDev on higher-scoring but overlap-failing devices.
       int minOverlap = (dTokens.size() <= 2) ? 1 : 2
       if(overlap >= minOverlap && score > bestScore) {
         bestScore = score
