@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-013"
+  return "beta-014"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -1082,7 +1082,7 @@ def instructionPage() {
         
         section("<hr>") { paragraph "Now for the fun stuff!"}
         section("<b>Requirements for Voice Control</b>") {
-            req =  "- An always on Win PC or an Ubuntu machine running HubVoiceSat<br>"
+            req =  "- An always on Win PC running HubVoiceSat<br>"
             req += "- At least one compatible Satellite speaker (running custom HubVoiceSat firmware):<br>"
             req += "  -- HA Voice Satellite Preview Edition<br>"
             req += "  -- Future Proof Homes Satellite-1"
@@ -1090,14 +1090,8 @@ def instructionPage() {
         }
         
         section("<b>How to Install HubVoiceSat on Win PC</b>") {
-            winPC =  "- Download the lastest zip (hubvoice-sat-2026.xx.xx.x-release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Win PC<br>"
-            winPC += "- Unzip the folder, then copy all of its contents to c:\\HubViewSat - This needs to be the working directory"
-            paragraph winPC
-        }
-        
-        section("<b>How to Install HubVoiceSat on Ubuntu</b>") {
-            winPC =  "- Download the lastest zip (hubvoice-sat-2026.xx.xx.-ubuntu-release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Ubuntu machine.<br>"
-            winPC += "- Unzip the folder, then copy all of its contents to HubViewSat - This needs to be the working directory"
+            winPC =  "- Download the lastest zip (hubvoiced-sat=2026.xx.xx.x=release.zip) from <a href='https://www.dropbox.com/scl/fo/aga0cmmfaad55ycbkqztg/AApwFgaRanzVyaxL6fvbA9c?rlkey=cwiyrfi7bp1jnxb6m4eoxop9m&st=liank6au&dl=0' target='_blank'>Dropbox</a>, using the always on Win PC<br>"
+            winPC += "- Unzip the folder, then copy all of its contents to c:\\HubViewSat - This needs to be our working directory"
             paragraph winPC
         }
         
@@ -3267,8 +3261,8 @@ def handleAsk() {
     }
 
     def q = (params.q ?: params.text ?: "").toString().trim()
-    state.sdev = (params.d ?: params.text ?: "").toString().trim()
-    state.callbackUrl = (params.callbackUrl ?: params.text ?: "").toString().trim()
+    state.sdev = (params.d ?: "").toString().trim()
+    state.callbackUrl = (params.callbackUrl ?: "").toString().trim()
   	String mode = hvModeForQuery(q)
 
 // =========================================================
@@ -4284,8 +4278,9 @@ def sendMessage(ans) {
         }
     } catch(e) { }
     log.debug "In sendMessage - sdev: ${state.sdev}"
-    if(state.sdev.contains("sat")) {
-        log.debug "In sendMessage - sending to ${state.sdev} - ${ans}"
+    String _sdev = (state?.sdev ?: "").toString().trim()
+    if(_sdev && _sdev != "mini") {
+        log.debug "In sendMessage - sending to ${_sdev} - ${ans}"
         sendAnswerToPc(ans)
     } else {
         if(speaker) {
@@ -6096,14 +6091,15 @@ private void renderJson(Map m) {
 }
 
 def sendAnswerToPc(String answer) {
-    if (!state.sat || !state.callbackUrl) return
+    String _sdev = (state?.sdev ?: "").toString().trim()
+    if (!_sdev || !state.callbackUrl) return
 
     try {
-        httpGet(uri: state.callbackUrl, query: [r: answer, d: state.sat]) { resp ->
-            log.debug "Sent answer to PC for sat '${state.sat}', got ${resp.status}"
+        httpGet(uri: state.callbackUrl, query: [r: answer, d: _sdev]) { resp ->
+            log.debug "Sent answer to PC for sat '${_sdev}', got ${resp.status}"
         }
     } catch (e) {
-        log.error "Failed to send answer to PC for sat '${state.sat}': ${e}"
+        log.error "Failed to send answer to PC for sat '${_sdev}': ${e}"
     }
 }
 
