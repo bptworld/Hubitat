@@ -34,6 +34,16 @@
 			"primary": true
 		},
 		{
+			"id" : "5e11cbcc-3086-43fd-9403-1101235b2d4f",
+			"name": "HubVoice Satellite LD2410 Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/hubvoicesatellite-ld2410-driver.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0",
+			"primary": true
+		},
+		{
 			"id" : "49e297aa-d976-41f5-941d-b13982e0633d",
 			"name": "HubVoice Controller Driver",
 			"namespace": "BPTWorld",
