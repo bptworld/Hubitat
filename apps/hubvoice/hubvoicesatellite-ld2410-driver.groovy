@@ -45,7 +45,7 @@ metadata {
               defaultValue: true, required: false
         input name: "syncIntervalSeconds",   type: "enum",   title: "Sync interval",
               options: ["15":"Every 15 seconds", "30":"Every 30 seconds",
-                        "60":"Every 1 minute", "120":"Every 2 minutes", "300":"Every 5 minutes"],
+                        "60":"Every 1 minute", "300":"Every 5 minutes"],
               defaultValue: "30", required: false
         input name: "enableDebugLogging",    type: "bool",   title: "Enable debug logging",
               defaultValue: true, required: false
@@ -263,10 +263,9 @@ private void scheduleSync() {
         return
     }
     Integer seconds = safeInt(settings?.syncIntervalSeconds, 30)
-    if      (seconds <= 15)  runEvery15Seconds("refreshRadarState")
-    else if (seconds <= 30)  runEvery30Seconds("refreshRadarState")
+    if      (seconds <= 15)  schedule("0/15 * * * * ? *", refreshRadarState)
+    else if (seconds <= 30)  schedule("0/30 * * * * ? *", refreshRadarState)
     else if (seconds <= 60)  runEvery1Minute("refreshRadarState")
-    else if (seconds <= 120) runEvery2Minutes("refreshRadarState")
     else                     runEvery5Minutes("refreshRadarState")
 }
 
