@@ -1,6 +1,6 @@
 {
     "packageName": "HubVoice",
-    "version": "beta-015",
+    "version": "beta-017",
     "releaseNotes": "Did some reworking of the group commands/questions",
     "minimumHEVersion": "2.3.8.117",
     "author": "Bryan Turcotte (@bptworld)",
