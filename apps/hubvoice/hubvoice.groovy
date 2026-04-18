@@ -1,7 +1,7 @@
 /**
  * HubVoice
  * Local Voice Control for Hubitat
- * Made with the help of CoPilot Pro AI
+ * Made with the help of Codex AI
  */
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
