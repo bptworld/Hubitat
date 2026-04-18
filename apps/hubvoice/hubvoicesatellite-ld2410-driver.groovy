@@ -19,8 +19,9 @@ metadata {
         attribute "radarTimeout",     "number"   // seconds
         attribute "engineeringMode",  "string"   // "on" / "off"
         attribute "bluetooth",        "string"   // "on" / "off"
-        attribute "lastSync",         "string"
-        attribute "syncStatus",       "string"
+        attribute "lastSync",             "string"
+        attribute "lastPresenceChange",   "string"
+        attribute "syncStatus",           "string"
 
         command "setMovingGate",   [[name: "Gate*",    type: "NUMBER", description: "2–8"]]
         command "setStillGate",    [[name: "Gate*",    type: "NUMBER", description: "2–8"]]
@@ -71,7 +72,8 @@ def initialize() {
     if (device.currentValue("stillTarget")     == null) sendEvent(name: "stillTarget",     value: "inactive",    isStateChange: true)
     if (device.currentValue("engineeringMode") == null) sendEvent(name: "engineeringMode", value: "off",         isStateChange: true)
     if (device.currentValue("bluetooth")       == null) sendEvent(name: "bluetooth",       value: "off",         isStateChange: true)
-    if (device.currentValue("syncStatus")      == null) sendEvent(name: "syncStatus",      value: "idle",        isStateChange: true)
+    if (device.currentValue("syncStatus")         == null) sendEvent(name: "syncStatus",         value: "idle", isStateChange: true)
+    if (device.currentValue("lastPresenceChange") == null) sendEvent(name: "lastPresenceChange", value: "unknown", isStateChange: true)
     scheduleSync()
     refreshRadarState()
 }
@@ -86,7 +88,7 @@ def refresh()  { refreshRadarState() }
 def syncNow()  { refreshRadarState() }
 
 def querySensors() {
-    espPressButton("ld2410_update_sensors")
+    espPressButton("LD2410 Update Sensors")
     debugLog("LD2410 sensor query triggered")
     runIn(2, "refreshRadarState")
 }
@@ -97,7 +99,7 @@ def querySensors() {
 
 def setMovingGate(level) {
     Integer gate = clampToInt(level, 2, 8, 6)
-    if (espSetNumber("ld2410_max_moving_distance_gate", gate)) {
+    if (espSetNumber("LD2410 Max Moving Distance Gate", gate)) {
         sendEvent(name: "movingGate", value: gate, isStateChange: true)
         debugLog("Moving gate → ${gate}")
         runIn(1, "refreshRadarState")
@@ -106,7 +108,7 @@ def setMovingGate(level) {
 
 def setStillGate(level) {
     Integer gate = clampToInt(level, 2, 8, 6)
-    if (espSetNumber("ld2410_max_still_distance_gate", gate)) {
+    if (espSetNumber("LD2410 Max Still Distance Gate", gate)) {
         sendEvent(name: "stillGate", value: gate, isStateChange: true)
         debugLog("Still gate → ${gate}")
         runIn(1, "refreshRadarState")
@@ -115,7 +117,7 @@ def setStillGate(level) {
 
 def setRadarTimeout(seconds) {
     Integer t = clampToInt(seconds, 0, 65535, 15)
-    if (espSetNumber("ld2410_timeout", t)) {
+    if (espSetNumber("LD2410 Timeout", t)) {
         sendEvent(name: "radarTimeout", value: t, isStateChange: true)
         debugLog("Radar timeout → ${t}s")
         runIn(1, "refreshRadarState")
@@ -127,28 +129,28 @@ def setRadarTimeout(seconds) {
 // ============================================================================
 
 def enableEngineering() {
-    if (espSetSwitch("ld2410_engineering_mode", true)) {
+    if (espSetSwitch("LD2410 Engineering Mode", true)) {
         sendEvent(name: "engineeringMode", value: "on", isStateChange: true)
         debugLog("Engineering mode on")
     }
 }
 
 def disableEngineering() {
-    if (espSetSwitch("ld2410_engineering_mode", false)) {
+    if (espSetSwitch("LD2410 Engineering Mode", false)) {
         sendEvent(name: "engineeringMode", value: "off", isStateChange: true)
         debugLog("Engineering mode off")
     }
 }
 
 def enableBluetooth() {
-    if (espSetSwitch("ld2410_bluetooth", true)) {
+    if (espSetSwitch("LD2410 Bluetooth", true)) {
         sendEvent(name: "bluetooth", value: "on", isStateChange: true)
         debugLog("LD2410 Bluetooth on")
     }
 }
 
 def disableBluetooth() {
-    if (espSetSwitch("ld2410_bluetooth", false)) {
+    if (espSetSwitch("LD2410 Bluetooth", false)) {
         sendEvent(name: "bluetooth", value: "off", isStateChange: true)
         debugLog("LD2410 Bluetooth off")
     }
@@ -159,12 +161,12 @@ def disableBluetooth() {
 // ============================================================================
 
 def factoryReset() {
-    espPressButton("ld2410_factory_reset")
+    espPressButton("LD2410 Factory Reset")
     debugLog("LD2410 factory reset triggered")
 }
 
 def restartRadar() {
-    espPressButton("ld2410_restart")
+    espPressButton("LD2410 Restart")
     debugLog("LD2410 restart triggered")
 }
 
@@ -204,18 +206,22 @@ private void refreshRadarState() {
     sendEvent(name: "syncStatus", value: "syncing", isStateChange: true)
 
     // --- Binary sensors ---
-    Map presenceResult = espGet(baseUrl, "binary_sensor", "presence")
-    Map movingResult   = espGet(baseUrl, "binary_sensor", "moving_target")
-    Map stillResult    = espGet(baseUrl, "binary_sensor", "still_target")
+    Map presenceResult = espGet(baseUrl, "binary_sensor", "Presence")
+    Map movingResult   = espGet(baseUrl, "binary_sensor", "Moving Target")
+    Map stillResult    = espGet(baseUrl, "binary_sensor", "Still Target")
 
     if (!presenceResult?.ok) {
         sendEvent(name: "syncStatus", value: "unreachable", isStateChange: true)
-        log.warn "HubVoice LD2410: could not reach ${baseUrl}/binary_sensor/presence"
+        log.warn "HubVoice LD2410: could not reach ${baseUrl}/binary_sensor/Presence"
         return
     }
 
-    sendEvent(name: "presence",    value: asBool(presenceResult.value) ? "present" : "not present", isStateChange: true)
-    sendEvent(name: "stillTarget", value: asBool(stillResult?.value)   ? "active"  : "inactive",    isStateChange: true)
+    String newPresence = asBool(presenceResult.value) ? "present" : "not present"
+    if (device.currentValue("presence") != newPresence) {
+        sendEvent(name: "lastPresenceChange", value: new Date().format("yyyy-MM-dd HH:mm:ss", location?.timeZone ?: TimeZone.getTimeZone("UTC")), isStateChange: true)
+    }
+    sendEvent(name: "presence",    value: newPresence,                                              isStateChange: true)
+    sendEvent(name: "stillTarget", value: asBool(stillResult?.value) ? "active" : "inactive",       isStateChange: true)
 
     // Moving target with 5s cooldown — avoids spamming active/inactive on brief gaps.
     if (asBool(movingResult?.value)) {
@@ -226,10 +232,10 @@ private void refreshRadarState() {
     }
 
     // --- Distance / energy sensors ---
-    Map movDistResult  = espGet(baseUrl, "sensor", "ld2410_moving_distance")
-    Map stDistResult   = espGet(baseUrl, "sensor", "ld2410_still_distance")
-    Map movEngResult   = espGet(baseUrl, "sensor", "ld2410_moving_energy")
-    Map stEngResult    = espGet(baseUrl, "sensor", "ld2410_still_energy")
+    Map movDistResult  = espGet(baseUrl, "sensor", "LD2410 Moving Distance")
+    Map stDistResult   = espGet(baseUrl, "sensor", "LD2410 Still Distance")
+    Map movEngResult   = espGet(baseUrl, "sensor", "LD2410 Moving Energy")
+    Map stEngResult    = espGet(baseUrl, "sensor", "LD2410 Still Energy")
 
     if (movDistResult?.ok)  sendEvent(name: "movingDistance", value: safeDouble(movDistResult.value,  0.0), unit: "cm", isStateChange: true)
     if (stDistResult?.ok)   sendEvent(name: "stillDistance",  value: safeDouble(stDistResult.value,   0.0), unit: "cm", isStateChange: true)
@@ -237,17 +243,17 @@ private void refreshRadarState() {
     if (stEngResult?.ok)    sendEvent(name: "stillEnergy",    value: safeDouble(stEngResult.value,    0.0), unit: "%",  isStateChange: true)
 
     // --- Number entities (config) ---
-    Map movGateResult  = espGet(baseUrl, "number", "ld2410_max_moving_distance_gate")
-    Map stGateResult   = espGet(baseUrl, "number", "ld2410_max_still_distance_gate")
-    Map timeoutResult  = espGet(baseUrl, "number", "ld2410_timeout")
+    Map movGateResult  = espGet(baseUrl, "number", "LD2410 Max Moving Distance Gate")
+    Map stGateResult   = espGet(baseUrl, "number", "LD2410 Max Still Distance Gate")
+    Map timeoutResult  = espGet(baseUrl, "number", "LD2410 Timeout")
 
     if (movGateResult?.ok)  sendEvent(name: "movingGate",   value: safeInt(movGateResult.value,  6),  isStateChange: true)
     if (stGateResult?.ok)   sendEvent(name: "stillGate",    value: safeInt(stGateResult.value,   6),  isStateChange: true)
     if (timeoutResult?.ok)  sendEvent(name: "radarTimeout", value: safeInt(timeoutResult.value,  15), isStateChange: true)
 
     // --- Switch entities ---
-    Map engResult = espGet(baseUrl, "switch", "ld2410_engineering_mode")
-    Map btResult  = espGet(baseUrl, "switch", "ld2410_bluetooth")
+    Map engResult = espGet(baseUrl, "switch", "LD2410 Engineering Mode")
+    Map btResult  = espGet(baseUrl, "switch", "LD2410 Bluetooth")
 
     if (engResult?.ok) sendEvent(name: "engineeringMode", value: asBool(engResult.value) ? "on" : "off", isStateChange: true)
     if (btResult?.ok)  sendEvent(name: "bluetooth",       value: asBool(btResult.value)  ? "on" : "off", isStateChange: true)
@@ -275,9 +281,10 @@ private void scheduleSync() {
 
 private Map espGet(String baseUrl, String domain, String objectId) {
     Integer timeout = safeInt(settings?.requestTimeoutSeconds, 10)
+    String encodedId = objectId.replaceAll(" ", "%20")
     try {
         Map output = [ok: false]
-        httpGet([uri: "${baseUrl}/${domain}/${objectId}", timeout: timeout]) { resp ->
+        httpGet([uri: "${baseUrl}/${domain}/${encodedId}", timeout: timeout]) { resp ->
             Integer code = resp?.status as Integer
             if (code >= 200 && code < 300) {
                 Map data = (resp?.data instanceof Map) ? (Map) resp.data : [:]
@@ -295,10 +302,11 @@ private Map espGet(String baseUrl, String domain, String objectId) {
 private boolean espSetNumber(String objectId, Number value) {
     String baseUrl = sanitizeBaseUrl(settings?.esphomeBaseUrl)
     Integer timeout = safeInt(settings?.requestTimeoutSeconds, 10)
+    String encodedId = objectId.replaceAll(" ", "%20")
     try {
         boolean ok = false
         httpPost([
-            uri:                "${baseUrl}/number/${objectId}/set",
+            uri:                "${baseUrl}/number/${encodedId}/set",
             requestContentType: "application/x-www-form-urlencoded",
             body:               "value=${value}",
             timeout:            timeout
@@ -316,11 +324,12 @@ private boolean espSetNumber(String objectId, Number value) {
 private boolean espSetSwitch(String objectId, boolean on) {
     String baseUrl = sanitizeBaseUrl(settings?.esphomeBaseUrl)
     Integer timeout = safeInt(settings?.requestTimeoutSeconds, 10)
+    String encodedId = objectId.replaceAll(" ", "%20")
     String action = on ? "turn_on" : "turn_off"
     try {
         boolean ok = false
         httpPost([
-            uri:                "${baseUrl}/switch/${objectId}/${action}",
+            uri:                "${baseUrl}/switch/${encodedId}/${action}",
             requestContentType: "application/x-www-form-urlencoded",
             body:               "",
             timeout:            timeout
@@ -338,9 +347,10 @@ private boolean espSetSwitch(String objectId, boolean on) {
 private void espPressButton(String objectId) {
     String baseUrl = sanitizeBaseUrl(settings?.esphomeBaseUrl)
     Integer timeout = safeInt(settings?.requestTimeoutSeconds, 10)
+    String encodedId = objectId.replaceAll(" ", "%20")
     try {
         httpPost([
-            uri:                "${baseUrl}/button/${objectId}/press",
+            uri:                "${baseUrl}/button/${encodedId}/press",
             requestContentType: "application/x-www-form-urlencoded",
             body:               "",
             timeout:            timeout
