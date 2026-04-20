@@ -1,7 +1,7 @@
 /**
  * HubVoice
  * Local Voice Control for Hubitat
- * Made with the help of Codex AI
+ * Made with the help of CoPilot Pro AI
  */
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-017"
+  return "beta-018"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -2944,7 +2944,11 @@ private List<String> hvStopwords() {
   return ["the","a","an","to","please","could","would","can","you","me","my","all","every","of","in","on","at","for","with","and",
           "are","is","was","were","be","been","have","has","had","do","does","did",
           "any","some","which","what","there","turn","switched","turned",
-          "or","nor","but","if","so","yet","also","just","now","up","go"]
+          "or","nor","but","if","so","yet","also","just","now","up","go",
+          // state/value words that must not bleed into scope/room tokens
+          "off","not","no","yes","open","closed","locked","unlocked",
+          // common filler words that occasionally survive the base list
+          "right","tell","show","give","put","get","let","use","see","hey","ok","okay","hi"]
 }
 private String hvNorm(String s) {
   return (s ?: "").toString().toLowerCase()
@@ -3274,38 +3278,54 @@ def handleAsk() {
 
     // Extract satRoom from query if present (e.g., 'are the bathroom lights on' -> satRoom = 'bathroom')
     String satRoom = null
-    def roomMatch = (q =~ /\b(the|in|of)?\s*([a-zA-Z0-9 ]+?)\s+(lights?|lamps?)\b/)
+    def roomMatch = (q =~ /\b(the|in|of)?\s*([a-zA-Z0-9 ]+?)\s+(lights?|lamps?|fans?|switches?)\b/)
     if(roomMatch && roomMatch.find()) {
       satRoom = roomMatch.group(2)?.trim()?.toLowerCase()
     }
     // Store for debugging
     state.satRoom = satRoom
 
-    // Only force group status mode for light/lamp questions (not control commands)
-    def groupWords = ["light","lights","lamp","lamps"]
+    // Only force group status mode for light/lamp/fan questions (not control commands)
+    def earlyGroupWords = ["light","lights","lamp","lamps","fan","fans"]
     def qNorm = q.toLowerCase()
-    boolean hasGroupWord = groupWords.any { qNorm.contains(it) }
+    boolean hasGroupWord = earlyGroupWords.any { qNorm.contains(it) }
     boolean isQuestion = (qNorm.contains("are ") || qNorm.contains("which") || qNorm.contains("what") || qNorm.contains("?") )
     if(hasGroupWord && isQuestion) {
       // Before forcing group routing, check if a specific named device appears in the query.
-      // Use exact-match only (not token overlap) so "Kitchen Ceiling Lights" is recognised as
-      // a device while generic phrases like "kitchen lights" or "any lights" are not.
+      // A genuine device name must:
+      //   (a) be a substring of the normalised query, AND
+      //   (b) contain at least one token that is NOT just a room word or a group/type word
+      //       (prevents "Bathroom Lights" scene name from hijacking "bathroom lights" group queries)
+      List<String> pureGroupWords = ["light","lights","lamp","lamps","fan","fans","ceiling","sconce",
+                                     "switch","switches","outlet","outlets","plug","plugs"]
       boolean namedDeviceInQuery = false
       try {
         def devIdx = (state?.devIndex ?: buildDeviceIndex()) ?: [:]
         String qNormFull = normalize(q)
+        List<String> roomTokens = satRoom ? satRoom.tokenize(" ").collect{ it.trim().toLowerCase() }.findAll{ it } : []
         devIdx.each { nameNorm, did ->
-          if(!namedDeviceInQuery && nameNorm && nameNorm.size() > 4 && qNormFull.contains(nameNorm)) {
-            namedDeviceInQuery = true
-          }
+          if(namedDeviceInQuery) return
+          if(!nameNorm || nameNorm.size() <= 4) return
+          if(!qNormFull.contains(nameNorm)) return
+          // Require at least one token in the device name that isn't the room name or a pure group word
+          List<String> nameToks = nameNorm.tokenize(" ").findAll{ it.size() >= 3 }
+          boolean hasDistinctToken = nameToks.any { tok -> !(tok in pureGroupWords) && !(tok in roomTokens) }
+          if(hasDistinctToken) namedDeviceInQuery = true
         }
       } catch(e) { log.debug "earlyGroupCheck err: ${e}" }
 
       if(!namedDeviceInQuery) {
         // No specific device name found – treat as a group question
         def wantValue = "on"
-        if(qNorm.contains("off") || qNorm.contains("are off") || qNorm.contains("turned off")) wantValue = "off"
-        def groupIntent = [mode:"device_group_status", group:"lights", attr:"switch", wantValue:wantValue, _forced:true, _satRoom:satRoom]
+        if(qNorm.contains(" off") || qNorm.contains("are off") || qNorm.contains("turned off")) wantValue = "off"
+        // Determine group type from query (lights vs fans)
+        String earlyGroup = "lights"
+        String earlyAttr  = "switch"
+        if((qNorm.contains("fan") || qNorm.contains("fans")) &&
+           !(qNorm.contains("light") || qNorm.contains("lamp"))) {
+          earlyGroup = "fans"
+        }
+        def groupIntent = [mode:"device_group_status", group:earlyGroup, attr:earlyAttr, wantValue:wantValue, _forced:true, _satRoom:satRoom]
         def gRes = routeGroup(q, groupIntent)
         String ans = (gRes?.answer ?: "No answer.").toString()
         sendMessage(ans)
@@ -3573,7 +3593,11 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
     } else {
       intent = detectIntent(query, dev)
     }
-    state.lastIntent = intent?.mode ?: "unknown"
+    String resolvedMode = intent?.mode ?: "unknown"
+    state.lastIntent = resolvedMode
+    if(resolvedMode == "unknown") {
+      log.warn "UNMATCHED_QUERY: q=${q} | normalised=${query} | device=${dev?.displayName ?: 'none'}"
+    }
     // Risky command security gate (security code only)
     // - If Lock Code Manager has codes for the lock, we require a code and validate against LCM.
     // - Otherwise, if this app has a securityCode set, we require/validate against that.
@@ -5001,21 +5025,32 @@ private Map detectGroupIntent(String query) {
 
   
   // Device group status (list matching devices)
-  // Examples: "which lights are on", "what lights are on", "which doors are open", "which locks are unlocked"
-  if((has("which") || has("what")) && (has("light") || has("lights") || has("lamp") || has("lamps")) && (has(" on") || has("are on") || has("turned on"))) {
-    return [mode:"device_group_status", group:"lights", attr:"switch", wantValue:"on"]
+  // Examples: "which lights are on", "what lights are off", "which doors are open", "which locks are unlocked"
+  boolean askingOff = has(" off") || has("are off") || has("turned off") || has("not on")
+  boolean askingOn  = has(" on")  || has("are on")  || has("turned on")  || has("is on")
+  if((has("which") || has("what")) && (has("light") || has("lights") || has("lamp") || has("lamps"))) {
+    String wv = askingOff ? "off" : "on"
+    return [mode:"device_group_status", group:"lights", attr:"switch", wantValue:wv]
   }
-  if((has("which") || has("what")) && (has("door") || has("doors")) && (has("open") || has("opened") || has("are open"))) {
-    return [mode:"device_group_status", group:"doors", attr:"contact", wantValue:"open"]
+  if((has("which") || has("what")) && (has("fan") || has("fans"))) {
+    String wv = askingOff ? "off" : "on"
+    return [mode:"device_group_status", group:"fans", attr:"switch", wantValue:wv]
   }
-  if((has("which") || has("what")) && (has("window") || has("windows")) && (has("open") || has("opened") || has("are open"))) {
-    return [mode:"device_group_status", group:"windows", attr:"contact", wantValue:"open"]
+  if((has("which") || has("what")) && (has("door") || has("doors"))) {
+    String wv = (has("closed") || has("shut")) ? "closed" : "open"
+    return [mode:"device_group_status", group:"doors", attr:"contact", wantValue:wv]
   }
-  if((has("which") || has("what")) && (has("lock") || has("locks")) && (has("unlocked") || (has("not") && has("locked")))) {
-    return [mode:"device_group_status", group:"locks", attr:"lock", wantValue:"unlocked"]
+  if((has("which") || has("what")) && (has("window") || has("windows"))) {
+    String wv = (has("closed") || has("shut")) ? "closed" : "open"
+    return [mode:"device_group_status", group:"windows", attr:"contact", wantValue:wv]
   }
-  if((has("which") || has("what")) && (has("motion")) && (has("active") || has("are active"))) {
-    return [mode:"device_group_status", group:"motion", attr:"motion", wantValue:"active"]
+  if((has("which") || has("what")) && (has("lock") || has("locks"))) {
+    String wv = (has("locked") && !has("unlocked")) ? "locked" : "unlocked"
+    return [mode:"device_group_status", group:"locks", attr:"lock", wantValue:wv]
+  }
+  if((has("which") || has("what")) && has("motion")) {
+    String wv = (has("inactive") || has("no motion")) ? "inactive" : "active"
+    return [mode:"device_group_status", group:"motion", attr:"motion", wantValue:wv]
   }
   if((has("which") || has("what")) && (has("leak") || has("leaks") || has("water") || has("wet"))) {
     return [mode:"device_group_status", group:"water", attr:"water", wantValue:"wet"]
@@ -5051,9 +5086,16 @@ if((has("arm") || has("set hsm")) && (has("home") || has("night") || has("stay")
     return [mode:"stale", startMs: start]
   }
 
-  // Lights on
-  if((has("light") || has("lights")) && (has("on")) && anyish) {
-    return [mode:"any_state", group:"lights", attr:"switch", wantValue:"on"]
+  // Lights on/off
+  if((has("light") || has("lights") || has("lamp") || has("lamps")) && anyish) {
+    String wv = (has(" off") || has("are off") || has("turned off")) ? "off" : "on"
+    return [mode:"any_state", group:"lights", attr:"switch", wantValue:wv]
+  }
+
+  // Fans on/off
+  if((has("fan") || has("fans")) && anyish) {
+    String wv = (has(" off") || has("are off") || has("turned off")) ? "off" : "on"
+    return [mode:"any_state", group:"fans", attr:"switch", wantValue:wv]
   }
 
 
@@ -5356,34 +5398,72 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
 
   // Device group status (list matching devices) / any_open / any_state
   if(intent?.mode in ["device_group_status","any_open","any_state"]) {
-    String attr = (intent?.attr ?: "").toString()
-    String want = (intent?.wantValue ?: "").toString()
-    String group = (intent?.group ?: "").toString()
+    String attr  = (intent?.attr       ?: "").toString()
+    String want  = (intent?.wantValue  ?: "").toString()
+    String group = (intent?.group      ?: "").toString()
+    String satRoom = (intent?._satRoom ?: "").toString().trim().toLowerCase()
+
+    // Room alias map: spoken shorthand → canonical token that appears in device names
+    Map<String,String> roomAliases = [
+      "bath":"bathroom", "baths":"bathroom",
+      "bdrm":"bedroom",  "bed":"bedroom",
+      "liv":"living",    "lvng":"living",
+      "kit":"kitchen",
+      "fam":"family",
+      "din":"dining",
+      "gar":"garage",
+      "mstr":"master",   "mast":"master",
+      "util":"utility",
+      "laun":"laundry",
+      "off":"office",    // "office" itself is fine; "off" is now a stopword so won't reach here
+    ]
 
     // Try to extract a scope/room from the query (e.g., 'kitchen', 'living room')
-    // We'll use the same tokenization as bulkFindSwitches
     List<String> queryTokens = hvTokens(query)
-    // Remove group words from tokens
-    List<String> groupWords = ["light","lights","lamp","lamps","ceiling","sconce","door","doors","window","windows","lock","locks","motion","motions","water"]
-    List<String> scopeTokens = queryTokens.findAll { !(it in groupWords) && it.size() >= 3 }
+    // groupWords: device-type words that should never be treated as room/scope tokens
+    // stateWords: state/value words that survive hvStopwords() but must not pollute scope
+    List<String> groupWords  = ["light","lights","lamp","lamps","ceiling","sconce","fan","fans",
+                                "door","doors","window","windows","lock","locks",
+                                "motion","motions","water"]
+    List<String> stateWords  = ["off","not","yes","open","closed","locked","unlocked",
+                                "active","inactive","wet","dry","hot","cold","dim","bright"]
+    List<String> scopeTokens = queryTokens
+      .findAll { !(it in groupWords) && !(it in stateWords) && it.size() >= 3 }
+      .collect { roomAliases.containsKey(it) ? roomAliases[it] : it }  // expand aliases
+    // Fall back to _satRoom from the intent when the query tokeniser found nothing useful
+    if((!scopeTokens || scopeTokens.isEmpty()) && satRoom) {
+      scopeTokens = satRoom.tokenize(" ")
+        .findAll { it.size() >= 3 }
+        .collect { roomAliases.containsKey(it) ? roomAliases[it] : it }
+    }
 
-    def matches = []
+    // Build a human-readable room prefix ("bathroom ", "kitchen ", or "")
+    String roomPrefix = scopeTokens ? scopeTokens.join(" ") + " " : ""
+
+    def matches    = []   // devices currently in the wanted state
+    def notMatches = []   // devices in scope but NOT in the wanted state
 
     devices.each { d ->
       try {
-        String dn = (d?.displayName ?: d?.name ?: "").toString()
-        String dnl = dn.toLowerCase()
+        String dn  = (d?.displayName ?: d?.name ?: "").toString()
+        // Use hvNorm so special chars (slashes, hyphens) are stripped consistently
+        // with the tokens derived from the query via hvNorm/hvTokens
+        String dnl = hvNorm(dn)
 
-        // group filtering
+        // Group filtering: does this device belong to the requested group?
         boolean groupOk = true
-        if(group == "doors") groupOk = (dnl.contains("door") || dnl.contains("garage"))
+        if(group == "doors")   groupOk = (dnl.contains("door") || dnl.contains("garage"))
         else if(group == "windows") groupOk = dnl.contains("window")
-        else if(group == "lights") groupOk = (dnl.contains("light") || dnl.contains("lamp") || dnl.contains("ceiling") || dnl.contains("sconce") || deviceSupportsAttr(d,"level"))
-        else if(group == "locks") groupOk = deviceSupportsAttr(d,"lock")
+        else if(group == "lights")  groupOk = (dnl.contains("light") || dnl.contains("lamp") ||
+                                               dnl.contains("ceiling") || dnl.contains("sconce") ||
+                                               deviceSupportsAttr(d,"level"))
+        else if(group == "fans")   groupOk = (dnl.contains("fan") || dnl.contains("vent") ||
+                                              dnl.contains("exhaust") || dnl.contains("blower"))
+        else if(group == "locks")  groupOk = deviceSupportsAttr(d,"lock")
         else if(group == "motion") groupOk = deviceSupportsAttr(d,"motion")
-        else if(group == "water") groupOk = deviceSupportsAttr(d,"water")
+        else if(group == "water")  groupOk = deviceSupportsAttr(d,"water")
 
-        // Scope filtering: require all scope tokens to be present in device name
+        // Scope filtering: ALL scope tokens must appear somewhere in the normalised device name
         if(groupOk && scopeTokens && scopeTokens.size() > 0) {
           for(String tok in scopeTokens) {
             if(!dnl.contains(tok)) { groupOk = false; break }
@@ -5392,25 +5472,69 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
 
         if(!groupOk) return
 
+        // Track which state each in-scope device is in
         if(attr && deviceSupportsAttr(d, attr)) {
           def v = safeCurrent(d, attr)?.toString()
           if(v == want) matches << dn
+          else          notMatches << dn
         }
       } catch(e) { }
     }
 
     String label = group ?: "devices"
-    if(!matches || matches.size() == 0) {
-      String okMsg = "All ${label} are off."
-      if(group=="locks" && want=="unlocked") okMsg = "All locks are locked."
-      return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: okMsg]
+
+    // Maps a state value to its natural opposite for readable responses
+    Map<String,String> oppositeOf = [
+      "on":"off",           "off":"on",
+      "open":"closed",      "closed":"open",
+      "locked":"unlocked",  "unlocked":"locked",
+      "active":"inactive",  "inactive":"active",
+      "wet":"dry",          "dry":"wet",
+      "present":"away",     "away":"present",
+    ]
+    String notState = oppositeOf.get(want, "not ${want}")
+
+    // Closure: returns "is" for a single item, "are" for multiple
+    def isAre = { List l -> l.size() == 1 ? "is" : "are" }
+
+    // No in-scope devices found at all
+    if(matches.isEmpty() && notMatches.isEmpty()) {
+      String msg = roomPrefix ? "I don't see any ${roomPrefix}${label}." : "No ${label} found."
+      return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: msg]
     }
 
+    // Special-case: lock "all locked" phrasing
+    if(group == "locks" && want == "unlocked" && matches.isEmpty()) {
+      return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want,
+              answer: "All ${roomPrefix}locks are locked."]
+    }
+
+    // None are in the wanted state — tell the user what state they ARE in
+    if(matches.isEmpty()) {
+      String ans
+      if(notMatches.size() == 1) {
+        ans = "No, the ${notMatches[0]} is ${notState}."
+      } else {
+        ans = "No, all the ${roomPrefix}${label} are ${notState}."
+      }
+      return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: ans]
+    }
+
+    // At least some devices ARE in the wanted state
     String ans
-    if(matches.size() == 1) {
-      ans = "Yes, ${matches[0]} is ${want}."
+    if(matches.size() == 1 && notMatches.isEmpty()) {
+      // Exactly one device, and it's the only one in scope
+      ans = "Yes, the ${matches[0]} is ${want}."
+    } else if(notMatches.isEmpty()) {
+      // All in-scope devices are in the wanted state
+      ans = "Yes, all the ${roomPrefix}${label} are ${want}."
+    } else if(matches.size() == 1) {
+      // One matches, the rest don't — name both sides explicitly
+      ans = "Yes, the ${matches[0]} is ${want}, but the ${notMatches.join(", ")} ${isAre(notMatches)} ${notState}."
     } else {
-      ans = "Yes, the following ${label} are ${want}: " + matches.join(", ") + "."
+      // Multiple match; some don't — list both sides
+      ans = "Yes, the following ${roomPrefix}${label} are ${want}: " + matches.join(", ") + "."
+      ans += " The ${notMatches.join(", ")} ${isAre(notMatches)} ${notState}."
     }
     return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: ans]
   }
