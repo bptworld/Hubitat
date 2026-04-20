@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-20"
+  return "beta-21"
 }
 
 private Integer maxDebugRouteSteps() {
