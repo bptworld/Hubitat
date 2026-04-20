@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-018"
+  return "beta-019"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -6047,7 +6047,8 @@ private String rollingWindowLabel(String query) {
   try {
     String q = (query ?: "").toString().toLowerCase()
     def m = (q =~ /(?:in\s+(?:the\s+)?)?(?:last|past|previous)\s+(\d+)\s*(hours?|hrs?|hr|minutes?|mins?|min|days?|weeks?)\b/)
-    if(!m || !m.find()) return null
+    if(m == null) return null
+    if(!m.find()) return null
     String n = m.group(1)
     String unit = m.group(2)
     // Normalize unit phrasing a bit
