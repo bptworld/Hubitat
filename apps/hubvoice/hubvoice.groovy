@@ -26,7 +26,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-019"
+  return "beta-20"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -6378,6 +6378,18 @@ private String weatherLocationQuery() {
   return null
 }
 
+private String hubTemperatureScale() {
+  try {
+    String scale = (location?.temperatureScale ?: "").toString().trim().toUpperCase()
+    if(scale in ["F", "C"]) return scale
+  } catch(e) {}
+  try {
+    String scale = (getTemperatureScale() ?: "").toString().trim().toUpperCase()
+    if(scale in ["F", "C"]) return scale
+  } catch(e) {}
+  return "F"
+}
+
 private Map getWeatherAnswer(Integer dayIndex) {
   Integer idx = (dayIndex == null || dayIndex < 0) ? 0 : dayIndex
   String loc = weatherLocationQuery()
@@ -6399,6 +6411,7 @@ private Map getWeatherAnswer(Integer dayIndex) {
       def cur = data.current_condition instanceof List && data.current_condition ? data.current_condition[0] : [:]
 
       String label = (idx == 0) ? "Today" : "Tomorrow"
+      String unit = hubTemperatureScale()
       String cond = null
       if(day?.hourly instanceof List && day.hourly) {
         def mid = day.hourly.find { it instanceof Map && (it.time?.toString() in ["1200","900","1500"]) }
@@ -6409,18 +6422,18 @@ private Map getWeatherAnswer(Integer dayIndex) {
       if(!cond) {
         try { cond = cur?.weatherDesc?.getAt(0)?.value?.toString() } catch(e) {}
       }
-      String hi = (day?.maxtempF ?: day?.maxtempC ?: "").toString()
-      String lo = (day?.mintempF ?: day?.mintempC ?: "").toString()
-      String current = (cur?.temp_F ?: cur?.temp_C ?: "").toString()
+      String hi = (unit == "C" ? (day?.maxtempC ?: day?.maxtempF) : (day?.maxtempF ?: day?.maxtempC) ?: "").toString()
+      String lo = (unit == "C" ? (day?.mintempC ?: day?.mintempF) : (day?.mintempF ?: day?.mintempC) ?: "").toString()
+      String current = (unit == "C" ? (cur?.temp_C ?: cur?.temp_F) : (cur?.temp_F ?: cur?.temp_C) ?: "").toString()
 
       String ans
       if(idx == 0 && current) {
-        ans = "${label}'s weather is ${cond ?: 'unavailable'} with a current temperature of ${current} degrees"
-        if(hi || lo) ans += ", and a high of ${hi} and low of ${lo}"
+        ans = "${label}'s weather is ${cond ?: 'unavailable'} with a current temperature of ${current} degrees ${unit}"
+        if(hi || lo) ans += ", and a high of ${hi} and low of ${lo} degrees ${unit}"
         ans += "."
       } else {
         ans = "${label}'s weather looks ${cond ?: 'unavailable'}"
-        if(hi || lo) ans += " with a high of ${hi} and low of ${lo}"
+        if(hi || lo) ans += " with a high of ${hi} and low of ${lo} degrees ${unit}"
         ans += "."
       }
       result = [ok:true, answer:ans]
