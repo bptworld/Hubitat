@@ -20,17 +20,22 @@ definition(
 
 preferences {
   page(name: "mainPage")
+  page(name: "specialPhrasePage")
   page(name: "testPage")
   page(name: "diagPage")
   page(name: "instructionPage")
 }
 
 private String appRev() {
-  return "beta-21"
+  return "beta-22"
 }
 
 private Integer maxDebugRouteSteps() {
   return 60
+}
+
+private Integer maxSpecialPhraseRows() {
+  return 12
 }
 
 /* =========================
@@ -599,6 +604,147 @@ private String safeName(def obj) {
   return obj?.toString()
 }
 
+private boolean isHvRoutineDevice(def dev) {
+  if(!dev) return false
+  try {
+    return (dev.typeName ?: "").toString().trim().toLowerCase() == "hubvoice routine device"
+  } catch(e) {
+    return false
+  }
+}
+
+private Map specialPhraseDeviceOptions() {
+  Map out = [:]
+  try {
+    List devs = (settings?.qaDevices ?: []).findAll { d ->
+      try { isHvRoutineDevice(d) } catch(e) { false }
+    }
+    devs = devs.sort { a, b -> safeName(a)?.toLowerCase() <=> safeName(b)?.toLowerCase() }
+    devs.each { d ->
+      String did = safeId(d)
+      String name = safeName(d)
+      if(did && name) out[did] = name
+    }
+  } catch(e) {}
+  return out
+}
+
+private String specialPhraseDeviceIdForSetting(def settingVal) {
+  try {
+    if(settingVal == null) return ""
+    if(settingVal instanceof Collection) {
+      def first = (settingVal as List).find { it }
+      if(first == null) return ""
+      if(first?.metaClass?.hasProperty(first, "id")) return (first.id ?: "").toString().trim()
+      return first.toString().trim()
+    }
+    if(settingVal?.metaClass?.hasProperty(settingVal, "id")) return (settingVal.id ?: "").toString().trim()
+    return settingVal.toString().trim()
+  } catch(e) {
+    return ""
+  }
+}
+
+private boolean specialPhraseRowComplete(Integer rowNum) {
+  if(rowNum == null || rowNum <= 0) return false
+  String devId = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${rowNum}")
+  String phrase = (settings?."specialPhraseText_${rowNum}" ?: "").toString().trim()
+  String response = (settings?."specialPhraseResponse_${rowNum}" ?: "").toString().trim()
+  return !!devId && !!phrase && !!response
+}
+
+private def specialPhraseDeviceById(String deviceId) {
+  if(!deviceId) return null
+  try {
+    return (settings?.qaDevices ?: []).find { it?.id?.toString() == deviceId.toString() }
+  } catch(e) {
+    return null
+  }
+}
+
+private List<Map> configuredSpecialPhraseRoutines() {
+  List<Map> out = []
+  Integer maxRows = maxSpecialPhraseRows()
+  for(int i = 1; i <= maxRows; i++) {
+    String devId = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${i}")
+    String phrase = (settings?."specialPhraseText_${i}" ?: "").toString().trim()
+    String response = (settings?."specialPhraseResponse_${i}" ?: "").toString().trim()
+    String action = (settings?."specialPhraseAction_${i}" ?: "on").toString().trim()
+    if(!devId || !phrase || !response) continue
+    List<String> phraseNorms = phrase.split(";").collect { normalize(it.trim()) }.findAll { it }
+    if(!phraseNorms) continue
+    out << [
+      row: i,
+      deviceId: devId,
+      phrase: phrase,
+      phraseNorms: phraseNorms,
+      response: response,
+      action: action
+    ]
+  }
+  return out
+}
+
+private Map matchSpecialPhraseRoutine(String queryText) {
+  String qNorm = normalize(queryText)
+  if(!qNorm) return null
+  return configuredSpecialPhraseRoutines().find { rec -> (rec?.phraseNorms ?: []).contains(qNorm) }
+}
+
+private Map executeSpecialPhraseRoutine(Map routine) {
+  List<String> responses = (routine?.response ?: routine?.phrase ?: "Okay.").toString().split(";").collect { it.trim() }.findAll { it }
+  String response = responses ? responses[new Random().nextInt(responses.size())] : "Okay."
+  def dev = specialPhraseDeviceById((routine?.deviceId ?: "").toString())
+  if(!dev) {
+    return [ok:false, error:"special_phrase_device_missing", answer:response]
+  }
+
+  try {
+    String action = (routine?.action ?: "on").toString().toLowerCase()
+    // Trigger the routine device with the configured action (on/off).
+    if(action == "off") {
+      if(hasDeviceCommand(dev, "off")) {
+        dev.off()
+      } else {
+        throw new RuntimeException("Routine device has no 'off' command")
+      }
+    } else {
+      // Default: on (or push as fallback)
+      if(hasDeviceCommand(dev, "on")) {
+        dev.on()
+      } else if(hasDeviceCommand(dev, "push")) {
+        dev.push()
+      } else {
+        throw new RuntimeException("Routine device has no 'on' or 'push' command")
+      }
+    }
+
+    return [
+      ok: true,
+      mode: "special_phrase",
+      answer: response,
+      phrase: (routine?.phrase ?: "").toString(),
+      responseText: response,
+      device: safeName(dev),
+      deviceId: safeId(dev),
+      routine_triggered: true
+    ]
+  } catch(e) {
+    log.debug "special phrase routine failed for ${safeName(dev)}: ${e}"
+    return [
+      ok: false,
+      mode: "special_phrase",
+      error: "special_phrase_failed",
+      answer: "Sorry, I couldn't run ${safeName(dev)}.",
+      phrase: (routine?.phrase ?: "").toString(),
+      responseText: response,
+      device: safeName(dev),
+      deviceId: safeId(dev),
+      routine_triggered: false
+    ]
+  }
+}
+
 def mainPage() {
     dynamicPage(name: "mainPage", title: "Hubitat Voice - ${appRev()}", install: true, uninstall: true) {
         section() {
@@ -623,6 +769,10 @@ def mainPage() {
         section("<b>Satellite Rooms (optional)</b>") {
             paragraph "Map each satellite name to its room so generic requests like 'turn on ceiling light' prefer devices in that room. One per line: satellite-name = room name"
             input "satelliteRooms", "textarea", title: "Satellite to Room Map", required: false
+        }
+
+        section("<b>Special Phrase Routines</b>") {
+            href name: "goSpecialPhrasePage", title: "Open Special Phrase Routines", description: "Match one exact phrase to one HubVoice Routine Device and spoken response", page: "specialPhrasePage"
         }
 
         section("<b>Notify Options</b> (used for Tasker)") {
@@ -828,6 +978,62 @@ def mainPage() {
         	paragraph bMes
         }
 	}
+}
+
+def specialPhrasePage() {
+  dynamicPage(name: "specialPhrasePage", title: "Special Phrase Routines", uninstall: false, install: false) {
+    Map deviceOptions = specialPhraseDeviceOptions()
+
+    section("How It Works") {
+      paragraph "Use this page for exact phrase shortcuts like 'goodnight'. HubVoice will say your response and trigger the selected HubVoice Routine Device in the background."
+      paragraph "You can enter multiple trigger phrases or multiple spoken responses by separating them with a semicolon (e.g. 'goodnight; good night; night night'). Any matching phrase will trigger the routine, and a random response will be spoken each time."
+      paragraph "Each row needs all fields filled before the next row appears."
+    }
+
+    if(!deviceOptions) {
+      section("Devices") {
+        paragraph "No HubVoice Routine Devices found. Make sure you have:\n1. Installed the 'HubVoice Routine Device' driver on this hub.\n2. Created at least one virtual device using that driver.\n3. Added it to the Master List on the main page (the 'Choose Devices' input)."
+      }
+      return
+    }
+
+    boolean showNext = true
+    Integer maxRows = maxSpecialPhraseRows()
+    for(int i = 1; i <= maxRows; i++) {
+      if(!showNext) break
+
+      section("Routine ${i}") {
+        input "specialPhraseDevice_${i}", "enum",
+          title: "Routine Device",
+          required: false,
+          submitOnChange: true,
+          width: 3,
+          options: deviceOptions
+
+        input "specialPhraseAction_${i}", "enum",
+          title: "Action",
+          required: false,
+          submitOnChange: true,
+          width: 2,
+          options: ["on": "On", "off": "Off"],
+          defaultValue: "on"
+
+        input "specialPhraseText_${i}", "text",
+          title: "Special Phrase",
+          required: false,
+          submitOnChange: true,
+          width: 4
+
+        input "specialPhraseResponse_${i}", "text",
+          title: "Spoken Response",
+          required: false,
+          submitOnChange: true,
+          width: 3
+      }
+
+      showNext = specialPhraseRowComplete(i)
+    }
+  }
 }
 
 def testPage() {
@@ -2016,8 +2222,7 @@ private String formatScoreWithSsml(String score) {
   if(!score || !score.matches(/^\d+-\d+$/)) return score
   String[] parts = score.split(/-/)
   if(parts.size() != 2) return score
-  String readAs = "${parts[0]} to ${parts[1]}"
-  return "<sub alias=\"${readAs}\">${score}</sub>"
+  return "${parts[0]} to ${parts[1]}"
 }
 
 private String numberToWordsUnder100(Integer n) {
@@ -2063,27 +2268,19 @@ private String formatDateWithSsml(String dateStr) {
     String d = day.toString().replaceFirst(/^0/, "")
     String dayAlias = dayOrdinalWord(d)
     String yearAlias = spokenYear(year.toString())
-    return "${month} <sub alias=\"${dayAlias}\">${d}</sub>, <sub alias=\"${yearAlias}\">${year}</sub>"
+    return "${month} ${dayAlias}, ${yearAlias}"
   }
-  s = s.replaceAll(/(?<!>)\b(20\d{2})\b(?!<\/sub>)/) { all, year ->
+  s = s.replaceAll(/\b(20\d{2})\b/) { all, year ->
     String yearAlias = spokenYear(year.toString())
-    return "<sub alias=\"${yearAlias}\">${year}</sub>"
+    return yearAlias
   }
   return s
 }
 
 private String formatScoreLineWithSsml(String awayName, String awayScore, String homeName, String homeScore) {
   if(!awayScore && !homeScore) return "${awayName} vs ${homeName}."
-  String sslmScore = awayScore && homeScore ? formatScoreWithSsml("${awayScore}-${homeScore}") : "${awayScore}${homeScore}"
-  String[] parts = sslmScore.split(/<sub[^>]*>/)
-  if(parts.size() >= 1 && sslmScore.contains("<sub")) {
-    def subMatch = sslmScore =~ /<sub[^>]*>(.*?)<\/sub>/
-    String scoreText = ""
-    if(subMatch) {
-      scoreText = subMatch[0][0]
-    }
-    return "${awayName} ${scoreText}, ${homeName}."
-  }
+  String scoreText = awayScore && homeScore ? formatScoreWithSsml("${awayScore}-${homeScore}") : "${awayScore}${homeScore}"
+  if(scoreText) return "${awayName} ${scoreText}, ${homeName}."
   return "${awayName} ${awayScore}, ${homeName} ${homeScore}."
 }
 
@@ -2098,12 +2295,12 @@ private String formatTimeWithSsml(String timeStr) {
   String minWord = min == "00" ? "" : min.replaceAll("^0", "")
   String readAs = minWord ? "${hour} ${minWord}" : hour
   readAs += ampm
-  return "<sub alias=\"${readAs}\">${timeStr}</sub>"
+  return readAs
 }
 
 private String formatPronouncedName(String displayName, String pronunciationHint) {
   if(!displayName || !pronunciationHint) return displayName
-  return "<sub alias=\"${pronunciationHint}\">${displayName}</sub>"
+  return pronunciationHint
 }
 
 private String applySpeechFriendlyFormatting(String text) {
@@ -2121,7 +2318,11 @@ private String applySpeechFriendlyFormatting(String text) {
 
 private String stripSsmlTags(String text) {
   if(!text) return text
-  return text.replaceAll(/<[^>]+>/, "").replaceAll(/\s+/, " ").trim()
+  String s = text.toString()
+  s = s.replaceAll(/<sub\s+alias=["']([^"']+)["']\s*>.*?<\/sub>/) { all, alias ->
+    return (alias ?: "").toString()
+  }
+  return s.replaceAll(/<[^>]+>/, "").replaceAll(/\s+/, " ").trim()
 }
 
 private String compactGeminiAnswer(String text) {
@@ -2155,6 +2356,7 @@ private String assistantStyleText(String text) {
   String s = (text ?: "").toString().trim()
   if(!s) return ""
 
+  s = stripSsmlTags(s)
   s = s.replaceAll(/\s+/, " ").trim()
   s = s.replace(" · ", ", ")
   s = s.replaceAll(/\s*\(\"[^\"]*\"\)\s*/, " ").replaceAll(/\s+/, " ").trim()
@@ -3290,6 +3492,40 @@ def handleAsk() {
     def qNorm = q.toLowerCase()
     boolean hasGroupWord = earlyGroupWords.any { qNorm.contains(it) }
     boolean isQuestion = (qNorm.contains("are ") || qNorm.contains("which") || qNorm.contains("what") || qNorm.contains("?") )
+    boolean isHowMany  = qNorm.contains("how many")
+    if(hasGroupWord && isHowMany) {
+      // "how many bathroom lights" — count query, not a state query
+      boolean namedDeviceInQueryHM = false
+      try {
+        def devIdx = (state?.devIndex ?: buildDeviceIndex()) ?: [:]
+        String qNormFull = normalize(q)
+        List<String> roomTokensHM = satRoom ? satRoom.tokenize(" ").collect{ it.trim().toLowerCase() }.findAll{ it } : []
+        List<String> pureGroupWordsHM = ["light","lights","lamp","lamps","fan","fans","ceiling","sconce","switch","switches","outlet","outlets","plug","plugs"]
+        devIdx.each { nameNorm, did ->
+          if(namedDeviceInQueryHM) return
+          if(!nameNorm || nameNorm.size() <= 4) return
+          if(!qNormFull.contains(nameNorm)) return
+          List<String> nameToks = nameNorm.tokenize(" ").findAll{ it.size() >= 3 }
+          boolean hasDistinctToken = nameToks.any { tok -> !(tok in pureGroupWordsHM) && !(tok in roomTokensHM) }
+          if(hasDistinctToken) namedDeviceInQueryHM = true
+        }
+      } catch(e) { log.debug "earlyCountCheck err: ${e}" }
+
+      if(!namedDeviceInQueryHM) {
+        String earlyGroup = "lights"
+        String earlyAttr  = "switch"
+        if((qNorm.contains("fan") || qNorm.contains("fans")) && !(qNorm.contains("light") || qNorm.contains("lamp"))) {
+          earlyGroup = "fans"; earlyAttr = "switch"
+        } else if(qNorm.contains("door") || qNorm.contains("doors")) {
+          earlyGroup = "doors"; earlyAttr = "contact"
+        }
+        def groupIntent = [mode:"device_group_count", group:earlyGroup, attr:earlyAttr, _forced:true, _satRoom:satRoom]
+        def gRes = routeGroup(q, groupIntent)
+        String ans = (gRes?.answer ?: "No answer.").toString()
+        sendMessage(ans)
+        return respondText(ans)
+      }
+    }
     if(hasGroupWord && isQuestion) {
       // Before forcing group routing, check if a specific named device appears in the query.
       // A genuine device name must:
@@ -3453,6 +3689,24 @@ if(mLkScoped || mLkGlobal) {
       return respondAsk("", 200, [ok:false, error:"empty_transcript"])
     }
 
+    Map specialPhraseRoutine = matchSpecialPhraseRoutine(query)
+    if(specialPhraseRoutine) {
+      dbgRoute("special_phrase")
+      Map specialPhraseResult = executeSpecialPhraseRoutine(specialPhraseRoutine)
+      String ans = (specialPhraseResult?.answer ?: "No answer.").toString()
+      state.lastAnswer = ans
+      state.lastIntent = "special_phrase"
+      state.lastDeviceName = (specialPhraseResult?.device ?: "").toString()
+      try {
+        state.lastDebug = state.lastDebug ?: [:]
+        state.lastDebug.mode = "special_phrase"
+        state.lastDebug.intent = specialPhraseRoutine.toString()
+        state.lastDebug.dev = (specialPhraseResult?.device ?: "").toString()
+      } catch(e) {}
+      sendMessage(ans)
+      return respondAsk(ans, 200, (specialPhraseResult ?: [:]))
+    }
+
     // Optional: structured NLU (params.nlu) can short-circuit routing
     def nlu = parseNluParam()
     def nluIntent = nlu ? nluToInternalIntent(nlu) : null
@@ -3473,7 +3727,7 @@ if(mLkScoped || mLkGlobal) {
 
     // High-priority whole-house intents (run before device matching)
     def hp = detectGroupIntent(query)
-    if(hp?.mode in ["house_summary","secure_check","battery_report","last_activity","device_group_status","any_open","any_state","hsm_arm_home","hsm_arm_away","hsm_disarm","hub_mode","hsm_status","time_now","weather_today","weather_tomorrow"]) {
+    if(hp?.mode in ["house_summary","secure_check","battery_report","last_activity","device_group_status","device_group_count","any_open","any_state","hsm_arm_home","hsm_arm_away","hsm_disarm","hub_mode","hsm_status","time_now","weather_today","weather_tomorrow"]) {
 
 // Risky group actions (HSM arm/disarm) require security code
 if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
@@ -4350,8 +4604,9 @@ def sendMessage(ans) {
     log.debug "In sendMessage - sdev: ${state.sdev}"
     String _sdev = (state?.sdev ?: "").toString().trim()
     if(_sdev && _sdev != "mini") {
-        log.debug "In sendMessage - sending to ${_sdev} - ${ans}"
-        sendAnswerToPc(ans)
+        String speakText = applySpeechFriendlyFormatting(ans)
+        log.debug "In sendMessage - sending to ${_sdev} - ${speakText}"
+        sendAnswerToPc(speakText)
     } else {
         if(speaker) {
             String speakText = applySpeechFriendlyFormatting(ans)
@@ -5024,6 +5279,23 @@ private Map detectGroupIntent(String query) {
 
 
   
+  // Device group count — "how many bathroom lights", "how many lights are on"
+  if(has("how many") && (has("light") || has("lights") || has("lamp") || has("lamps"))) {
+    return [mode:"device_group_count", group:"lights", attr:"switch"]
+  }
+  if(has("how many") && (has("fan") || has("fans"))) {
+    return [mode:"device_group_count", group:"fans", attr:"switch"]
+  }
+  if(has("how many") && (has("door") || has("doors"))) {
+    return [mode:"device_group_count", group:"doors", attr:"contact"]
+  }
+  if(has("how many") && (has("window") || has("windows"))) {
+    return [mode:"device_group_count", group:"windows", attr:"contact"]
+  }
+  if(has("how many") && (has("lock") || has("locks"))) {
+    return [mode:"device_group_count", group:"locks", attr:"lock"]
+  }
+
   // Device group status (list matching devices)
   // Examples: "which lights are on", "what lights are off", "which doors are open", "which locks are unlocked"
   boolean askingOff = has(" off") || has("are off") || has("turned off") || has("not on")
@@ -5099,19 +5371,25 @@ if((has("arm") || has("set hsm")) && (has("home") || has("night") || has("stay")
   }
 
 
-  // Battery report (alias to low battery scan)
-  if((has("battery report") || has("battery status") || has("batteries report") || has("low battery report") || has("low batteries report")) &&
-     (anyish || has("show") || has("list") || has("any") || has("are there") || has("do we have"))) {
+  // Battery report — broad detection covering explicit thresholds and low-battery scans
+  boolean hasBattery      = has("battery") || has("batteries")
+  boolean hasThresholdCmp = has("under") || has("below") || has("less than") || has("lower than") || has("beneath")
+  boolean hasFindList     = has("find") || has("list") || has("show") || has("report") || has("which") || has("what") || has("all devices") || has("status")
+  if(hasBattery && (
+      // Explicit threshold: "batteries under 30%", "battery below 20", "find me devices with battery under 50%"
+      hasThresholdCmp ||
+      // Named report phrases
+      has("battery report") || has("battery status") || has("batteries report") ||
+      has("low battery report") || has("low batteries report") ||
+      // Find/list style: "find me all devices that report batteries", "show me low battery devices"
+      (hasFindList && (has("low") || hasThresholdCmp)) ||
+      // General low-battery questions
+      has("low battery") || has("batteries low") || has("low batteries") ||
+      anyish
+  )) {
     def thr = extractNumber(query)
-    if(thr == null) thr = 25
+    if(thr == null) thr = (settings?.lowBatteryThreshold ?: defaultLowBatteryThreshold()) as Integer
     return [mode:"battery_report", threshold:thr]
-  }
-
-  // Batteries low
-  if(has("battery") && (anyish || has("low battery") || has("batteries low"))) {
-    def thr = extractNumber(query)
-    if(thr == null) thr = 25
-    return [mode:"battery_low", threshold:thr]
   }
 
   // Doors unlocked
@@ -5325,6 +5603,7 @@ def ROUTE_GROUP() {
     "hsm_disarm"    : "answerForGroup",
     "battery_report": "answerForGroup",
     "device_group_status": "answerForGroup",
+    "device_group_count":  "answerForGroup",
     "any_open": "answerForGroup",
     "any_state": "answerForGroup",
     "last_activity": "answerForGroup",
@@ -5395,6 +5674,87 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
   }
 }
 
+
+  // Device group count — "how many bathroom lights", "how many lights are on"
+  if(intent?.mode == "device_group_count") {
+    String attr    = (intent?.attr    ?: "switch").toString()
+    String group   = (intent?.group   ?: "lights").toString()
+    String satRoom = (intent?._satRoom ?: "").toString().trim().toLowerCase()
+
+    Map<String,String> roomAliases = [
+      "bath":"bathroom","baths":"bathroom","bdrm":"bedroom","bed":"bedroom",
+      "liv":"living","lvng":"living","kit":"kitchen","fam":"family",
+      "din":"dining","gar":"garage","mstr":"master","mast":"master",
+      "util":"utility","laun":"laundry","off":"office"
+    ]
+    List<String> groupWords = ["light","lights","lamp","lamps","ceiling","sconce","fan","fans",
+                               "door","doors","window","windows","lock","locks","motion","water",
+                               "how","many","are","on","off","the","in","is"]
+    List<String> queryTokens = hvTokens(query)
+    List<String> scopeTokens = queryTokens
+      .findAll { !(it in groupWords) && it.size() >= 3 }
+      .collect { roomAliases.containsKey(it) ? roomAliases[it] : it }
+    if((!scopeTokens || scopeTokens.isEmpty()) && satRoom) {
+      scopeTokens = satRoom.tokenize(" ").findAll { it.size() >= 3 }
+        .collect { roomAliases.containsKey(it) ? roomAliases[it] : it }
+    }
+
+    String roomPrefix = scopeTokens ? scopeTokens.join(" ") + " " : ""
+    String label = group ?: "devices"
+
+    List<String> onDevices  = []
+    List<String> offDevices = []
+
+    devices.each { d ->
+      try {
+        String dn  = (d?.displayName ?: d?.name ?: "").toString()
+        String dnl = hvNorm(dn)
+
+        boolean groupOk = true
+        if(group == "lights")  groupOk = (dnl.contains("light") || dnl.contains("lamp") || dnl.contains("ceiling") || dnl.contains("sconce") || deviceSupportsAttr(d,"level"))
+        else if(group == "fans")    groupOk = (dnl.contains("fan") || dnl.contains("vent") || dnl.contains("exhaust"))
+        else if(group == "doors")   groupOk = (dnl.contains("door") || dnl.contains("garage"))
+        else if(group == "windows") groupOk = dnl.contains("window")
+        else if(group == "locks")   groupOk = deviceSupportsAttr(d,"lock")
+
+        if(groupOk && scopeTokens) {
+          for(String tok in scopeTokens) { if(!dnl.contains(tok)) { groupOk = false; break } }
+        }
+        if(!groupOk) return
+
+        if(deviceSupportsAttr(d, attr)) {
+          def v = safeCurrent(d, attr)?.toString()
+          if(v == "on" || v == "open" || v == "unlocked" || v == "active" || v == "wet") onDevices  << dn
+          else                                                                             offDevices << dn
+        }
+      } catch(e) { }
+    }
+
+    int total = onDevices.size() + offDevices.size()
+    int onCt  = onDevices.size()
+    int offCt = offDevices.size()
+
+    if(total == 0) {
+      String msg = roomPrefix ? "I don't see any ${roomPrefix}${label}." : "No ${label} found."
+      return [ok:true, mode:intent.mode, answer:msg]
+    }
+
+    String deviceWord = total == 1 ? label.replaceAll(/s$/, "") : label
+    String ans
+    if(total == 1) {
+      String state = onCt == 1 ? "on" : "off"
+      ans = "There is 1 ${roomPrefix}${deviceWord} and it is ${state}."
+    } else if(onCt == 0) {
+      ans = "There are ${total} ${roomPrefix}${label} and they are all off."
+    } else if(offCt == 0) {
+      ans = "There are ${total} ${roomPrefix}${label} and they are all on."
+    } else if(onCt == 1) {
+      ans = "There are ${total} ${roomPrefix}${label}. ${onCt} is on and ${offCt} ${offCt == 1 ? "is" : "are"} off."
+    } else {
+      ans = "There are ${total} ${roomPrefix}${label}. ${onCt} are on and ${offCt} ${offCt == 1 ? "is" : "are"} off."
+    }
+    return [ok:true, mode:intent.mode, group:group, answer:ans]
+  }
 
   // Device group status (list matching devices) / any_open / any_state
   if(intent?.mode in ["device_group_status","any_open","any_state"]) {
@@ -5513,7 +5873,8 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
     if(matches.isEmpty()) {
       String ans
       if(notMatches.size() == 1) {
-        ans = "No, the ${notMatches[0]} is ${notState}."
+        // Single device: name it specifically and state what it actually is
+        ans = "The ${notMatches[0]} is ${notState}."
       } else {
         ans = "No, all the ${roomPrefix}${label} are ${notState}."
       }
@@ -5522,18 +5883,29 @@ if(intent?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"]) {
 
     // At least some devices ARE in the wanted state
     String ans
-    if(matches.size() == 1 && notMatches.isEmpty()) {
-      // Exactly one device, and it's the only one in scope
-      ans = "Yes, the ${matches[0]} is ${want}."
-    } else if(notMatches.isEmpty()) {
-      // All in-scope devices are in the wanted state
-      ans = "Yes, all the ${roomPrefix}${label} are ${want}."
+    if(notMatches.isEmpty()) {
+      // ALL in-scope devices are in the wanted state
+      if(roomPrefix) {
+        // Room-scoped query: always respond at the group level, even if only one device found
+        ans = "Yes, all the ${roomPrefix}${label} are ${want}."
+      } else if(matches.size() == 1) {
+        // No room scope, single device — name it specifically
+        ans = "Yes, the ${matches[0]} is ${want}."
+      } else {
+        ans = "Yes, all the ${label} are ${want}."
+      }
+    } else if(matches.size() == 1 && notMatches.size() == 1) {
+      // One on each side — name both devices explicitly
+      ans = "The ${matches[0]} is ${want}, but the ${notMatches[0]} is ${notState}."
     } else if(matches.size() == 1) {
-      // One matches, the rest don't — name both sides explicitly
-      ans = "Yes, the ${matches[0]} is ${want}, but the ${notMatches.join(", ")} ${isAre(notMatches)} ${notState}."
+      // One in wanted state, multiple not — name the match and summarise the rest
+      ans = "The ${matches[0]} is ${want}, but the ${notMatches.join(", ")} ${isAre(notMatches)} ${notState}."
+    } else if(notMatches.size() == 1) {
+      // Most are in wanted state, one outlier — call it out
+      ans = "Most ${roomPrefix}${label} are ${want}, but the ${notMatches[0]} is ${notState}."
     } else {
-      // Multiple match; some don't — list both sides
-      ans = "Yes, the following ${roomPrefix}${label} are ${want}: " + matches.join(", ") + "."
+      // Multiple on both sides — list them
+      ans = "The following ${roomPrefix}${label} are ${want}: " + matches.join(", ") + "."
       ans += " The ${notMatches.join(", ")} ${isAre(notMatches)} ${notState}."
     }
     return [ok:true, mode:intent.mode, group:group, attr:attr, wantValue:want, answer: ans]
@@ -6551,9 +6923,24 @@ private Integer safeInt(def x, Integer fallback=null) {
 private boolean hasDeviceCommand(dev, String cmdName) {
   try {
     if(dev == null || !cmdName) return false
+    String want = cmdName.toString().trim().toLowerCase()
+    if(!want) return false
     // DeviceWrapper typically supports hasCommand(), but be defensive
     if(dev.metaClass?.respondsTo(dev, "hasCommand", String)) {
-      return (dev.hasCommand(cmdName) == true)
+      try {
+        if(dev.hasCommand(cmdName) == true) return true
+      } catch(ignore) {}
+    }
+    // Many Hubitat wrappers expose commands through supportedCommands rather than hasCommand().
+    def supported = null
+    try { supported = dev?.supportedCommands } catch(ignore) { supported = null }
+    if(supported instanceof Collection) {
+      boolean found = supported.any { sc ->
+        String name = ""
+        try { name = (sc?.name ?: sc?.getName?.call() ?: "").toString().trim().toLowerCase() } catch(ignore2) { name = "" }
+        return name == want
+      }
+      if(found) return true
     }
     // Fallback: try respondTo method name
     return (dev.metaClass?.respondsTo(dev, cmdName)?.size() ?: 0) > 0
@@ -6688,8 +7075,6 @@ private Map parseColorSet(String q) {
   }
   return null
 }
-
-
 
 private BigDecimal extractNumber(String query) {
   try {
