@@ -55,7 +55,7 @@
 		},
 		{
 			"id" : "d56c8978-08bc-4ffc-be0a-ab670dc7e22f",
-			"name": "HubVoice Controller Driver",
+			"name": "HubVoice Routine Driver",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/hubvoice-routine-device.groovy",
 			"required": true,
