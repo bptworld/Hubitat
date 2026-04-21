@@ -27,7 +27,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-22"
+  return "beta-23"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -647,10 +647,28 @@ private String specialPhraseDeviceIdForSetting(def settingVal) {
 
 private boolean specialPhraseRowComplete(Integer rowNum) {
   if(rowNum == null || rowNum <= 0) return false
-  String devId = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${rowNum}")
-  String phrase = (settings?."specialPhraseText_${rowNum}" ?: "").toString().trim()
+  String type   = (settings?."specialPhraseType_${rowNum}" ?: "device").toString()
+  String phrase  = (settings?."specialPhraseText_${rowNum}" ?: "").toString().trim()
   String response = (settings?."specialPhraseResponse_${rowNum}" ?: "").toString().trim()
-  return !!devId && !!phrase && !!response
+  if(!phrase || !response) return false
+  if(type == "rule") {
+    def ruleVal = settings?."specialPhraseRule_${rowNum}"
+    return ruleVal != null && ruleVal.toString().trim()
+  }
+  String devId = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${rowNum}")
+  return !!devId
+}
+
+private void runRmRule(String ruleName, String action) {
+  String act = (action ?: "runRuleAct").toString().trim()
+  log.debug "HubVoice runRmRule: calling sendAction '${act}' for rule '${ruleName}'"
+  try {
+    hubitat.helper.RMUtils.sendAction([ruleName], act, app.label, '5.0')
+    log.debug "HubVoice runRmRule: sendAction completed OK"
+  } catch(ex) {
+    log.error "HubVoice runRmRule: sendAction FAILED - ${ex}"
+    throw ex
+  }
 }
 
 private def specialPhraseDeviceById(String deviceId) {
@@ -666,34 +684,87 @@ private List<Map> configuredSpecialPhraseRoutines() {
   List<Map> out = []
   Integer maxRows = maxSpecialPhraseRows()
   for(int i = 1; i <= maxRows; i++) {
-    String devId = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${i}")
-    String phrase = (settings?."specialPhraseText_${i}" ?: "").toString().trim()
+    String type     = (settings?."specialPhraseType_${i}" ?: "device").toString().trim()
+    String phrase   = (settings?."specialPhraseText_${i}" ?: "").toString().trim()
     String response = (settings?."specialPhraseResponse_${i}" ?: "").toString().trim()
-    String action = (settings?."specialPhraseAction_${i}" ?: "on").toString().trim()
-    if(!devId || !phrase || !response) continue
+    if(!phrase || !response) continue
     List<String> phraseNorms = phrase.split(";").collect { normalize(it.trim()) }.findAll { it }
     if(!phraseNorms) continue
-    out << [
-      row: i,
-      deviceId: devId,
-      phrase: phrase,
-      phraseNorms: phraseNorms,
-      response: response,
-      action: action
-    ]
+    if(type == "rule") {
+      String ruleVal       = (settings?."specialPhraseRule_${i}"       ?: "").toString().trim()
+      String ruleActionVal = (settings?."specialPhraseRuleAction_${i}" ?: "runRuleAct").toString().trim()
+      if(!ruleVal) continue
+      out << [row: i, type: "rule", ruleId: ruleVal, ruleAction: ruleActionVal, phrase: phrase, phraseNorms: phraseNorms, response: response]
+    } else {
+      String devId  = specialPhraseDeviceIdForSetting(settings?."specialPhraseDevice_${i}")
+      String action = (settings?."specialPhraseAction_${i}" ?: "on").toString().trim()
+      if(!devId) continue
+      out << [row: i, type: "device", deviceId: devId, phrase: phrase, phraseNorms: phraseNorms, response: response, action: action]
+    }
   }
   return out
+}
+
+/** Strip trailing "s" from each word — handles common STT pluralization drift. */
+private String stemPhrase(String s) {
+  if(!s) return ""
+  return s.split("\\s+").collect { w ->
+    (w.length() > 2 && w.endsWith("s")) ? w[0..-2] : w
+  }.join(" ")
 }
 
 private Map matchSpecialPhraseRoutine(String queryText) {
   String qNorm = normalize(queryText)
   if(!qNorm) return null
-  return configuredSpecialPhraseRoutines().find { rec -> (rec?.phraseNorms ?: []).contains(qNorm) }
+  List<Map> routines = configuredSpecialPhraseRoutines()
+  // 1. Exact normalized match (preferred)
+  Map exact = routines.find { rec -> (rec?.phraseNorms ?: []).contains(qNorm) }
+  if(exact) return exact
+  // 2. Stem-normalized fallback — handles STT pluralizing the last word ("rule" -> "rules")
+  String qStemmed = stemPhrase(qNorm)
+  return routines.find { rec ->
+    (rec?.phraseNorms ?: []).any { pNorm -> stemPhrase(pNorm) == qStemmed }
+  }
 }
 
 private Map executeSpecialPhraseRoutine(Map routine) {
   List<String> responses = (routine?.response ?: routine?.phrase ?: "Okay.").toString().split(";").collect { it.trim() }.findAll { it }
   String response = responses ? responses[new Random().nextInt(responses.size())] : "Okay."
+  String type = (routine?.type ?: "device").toString()
+
+  // ── Rule Machine ──────────────────────────────────────────────────────────
+  if(type == "rule") {
+    String ruleId = (routine?.ruleId ?: "").toString().trim()
+    if(!ruleId) {
+      return [ok:false, error:"special_phrase_rule_missing", answer:response]
+    }
+    try {
+      runRmRule(ruleId, (routine?.ruleAction ?: "runRuleAct").toString())
+      return [
+        ok: true,
+        mode: "special_phrase",
+        answer: response,
+        phrase: (routine?.phrase ?: "").toString(),
+        responseText: response,
+        ruleId: ruleId,
+        routine_triggered: true
+      ]
+    } catch(e) {
+      log.debug "special phrase rule execution failed (${ruleId}): ${e}"
+      return [
+        ok: false,
+        mode: "special_phrase",
+        error: "special_phrase_rule_failed",
+        answer: "Sorry, I couldn't run that rule.",
+        phrase: (routine?.phrase ?: "").toString(),
+        responseText: response,
+        ruleId: ruleId,
+        routine_triggered: false
+      ]
+    }
+  }
+
+  // ── Device ────────────────────────────────────────────────────────────────
   def dev = specialPhraseDeviceById((routine?.deviceId ?: "").toString())
   if(!dev) {
     return [ok:false, error:"special_phrase_device_missing", answer:response]
@@ -701,7 +772,6 @@ private Map executeSpecialPhraseRoutine(Map routine) {
 
   try {
     String action = (routine?.action ?: "on").toString().toLowerCase()
-    // Trigger the routine device with the configured action (on/off).
     if(action == "off") {
       if(hasDeviceCommand(dev, "off")) {
         dev.off()
@@ -709,7 +779,6 @@ private Map executeSpecialPhraseRoutine(Map routine) {
         throw new RuntimeException("Routine device has no 'off' command")
       }
     } else {
-      // Default: on (or push as fallback)
       if(hasDeviceCommand(dev, "on")) {
         dev.on()
       } else if(hasDeviceCommand(dev, "push")) {
@@ -718,7 +787,6 @@ private Map executeSpecialPhraseRoutine(Map routine) {
         throw new RuntimeException("Routine device has no 'on' or 'push' command")
       }
     }
-
     return [
       ok: true,
       mode: "special_phrase",
@@ -772,7 +840,7 @@ def mainPage() {
         }
 
         section("<b>Special Phrase Routines</b>") {
-            href name: "goSpecialPhrasePage", title: "Open Special Phrase Routines", description: "Match one exact phrase to one HubVoice Routine Device and spoken response", page: "specialPhrasePage"
+            href name: "goSpecialPhrasePage", title: "Open Special Phrase Routines", description: "Match one exact phrase to a Device action or Rule Machine rule, plus a spoken response", page: "specialPhrasePage"
         }
 
         section("<b>Notify Options</b> (used for Tasker)") {
@@ -981,20 +1049,18 @@ def mainPage() {
 }
 
 def specialPhrasePage() {
+  // Clear the cached rule list so every page open fetches a fresh copy from Rule Machine.
+  state.remove("rmRuleCache")
+  def rules50 = hubitat.helper.RMUtils.getRuleList('5.0')
+  state.rmRuleCache = rules50
+
   dynamicPage(name: "specialPhrasePage", title: "Special Phrase Routines", uninstall: false, install: false) {
     Map deviceOptions = specialPhraseDeviceOptions()
 
     section("How It Works") {
-      paragraph "Use this page for exact phrase shortcuts like 'goodnight'. HubVoice will say your response and trigger the selected HubVoice Routine Device in the background."
+      paragraph "Use this page for exact phrase shortcuts like 'goodnight'. Choose a Type, then HubVoice will say your response and trigger the selected action in the background."
       paragraph "You can enter multiple trigger phrases or multiple spoken responses by separating them with a semicolon (e.g. 'goodnight; good night; night night'). Any matching phrase will trigger the routine, and a random response will be spoken each time."
       paragraph "Each row needs all fields filled before the next row appears."
-    }
-
-    if(!deviceOptions) {
-      section("Devices") {
-        paragraph "No HubVoice Routine Devices found. Make sure you have:\n1. Installed the 'HubVoice Routine Device' driver on this hub.\n2. Created at least one virtual device using that driver.\n3. Added it to the Master List on the main page (the 'Choose Devices' input)."
-      }
-      return
     }
 
     boolean showNext = true
@@ -1002,21 +1068,64 @@ def specialPhrasePage() {
     for(int i = 1; i <= maxRows; i++) {
       if(!showNext) break
 
-      section("Routine ${i}") {
-        input "specialPhraseDevice_${i}", "enum",
-          title: "Routine Device",
-          required: false,
-          submitOnChange: true,
-          width: 3,
-          options: deviceOptions
+      String type = (settings?."specialPhraseType_${i}" ?: "device").toString()
 
-        input "specialPhraseAction_${i}", "enum",
-          title: "Action",
+      section("Routine ${i}") {
+        input "specialPhraseType_${i}", "enum",
+          title: "Type",
           required: false,
           submitOnChange: true,
           width: 2,
-          options: ["on": "On", "off": "Off"],
-          defaultValue: "on"
+          options: ["device": "Device", "rule": "Rule Machine"],
+          defaultValue: "device"
+
+        if(type == "rule") {
+          if(rules50) {
+            input "specialPhraseRule_${i}", "enum",
+              title: "Rule Machine Rule",
+              required: false,
+              submitOnChange: true,
+              width: 4,
+              options: rules50
+
+            input "specialPhraseRuleAction_${i}", "enum",
+              title: "Action",
+              required: false,
+              submitOnChange: true,
+              width: 3,
+              options: [
+                ["runRuleAct"          : "Run"],
+                ["stopRuleAct"         : "Stop"],
+                ["pauseRule"           : "Pause"],
+                ["resumeRule"          : "Resume"],
+                ["runRule"             : "Evaluate"],
+                ["setRuleBooleanTrue"  : "Set Boolean True"],
+                ["setRuleBooleanFalse" : "Set Boolean False"]
+              ],
+              defaultValue: "runRuleAct"
+          } else {
+            paragraph "No active Rule 5.x found."
+          }
+        } else {
+          if(!deviceOptions) {
+            paragraph "No HubVoice Routine Devices found. Add a device using the 'HubVoice Routine Device' driver to the Master List."
+          } else {
+            input "specialPhraseDevice_${i}", "enum",
+              title: "Routine Device",
+              required: false,
+              submitOnChange: true,
+              width: 3,
+              options: deviceOptions
+
+            input "specialPhraseAction_${i}", "enum",
+              title: "Action",
+              required: false,
+              submitOnChange: true,
+              width: 2,
+              options: ["on": "On", "off": "Off"],
+              defaultValue: "on"
+          }
+        }
 
         input "specialPhraseText_${i}", "text",
           title: "Special Phrase",
