@@ -1,7 +1,7 @@
 /**
  * HubVoice
  * Local Voice Control for Hubitat
- * Made with the help of CoPilot Pro AI
+ * Made with the help of AI
  */
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -27,7 +27,7 @@ preferences {
 }
 
 private String appRev() {
-  return "beta-23"
+  return "beta-27"
 }
 
 private Integer maxDebugRouteSteps() {
@@ -3411,6 +3411,95 @@ private def matchDeviceForStatus(String q, Map constraint=[:]) {
   return matchDeviceFromQuery(q, c)
 }
 
+private boolean isFastLocalCommandCandidate(String raw, String queryNorm) {
+  String q = (raw ?: "").toString().toLowerCase()
+  String n = (queryNorm ?: "").toString().toLowerCase()
+  if(!q?.trim() || !n?.trim()) return false
+  if(!hvIsControlQuery(q)) return false
+  if(hvIsStatusQuery(q)) return false
+  if((n =~ /\b(all|every|each)\b/).find()) return false
+  if((n =~ /\b(lock|unlock|locked|unlocked|arm|disarm|garage|open|close|closed|shut)\b/).find()) return false
+  if((n =~ /\b(security code|pin|code)\b/).find()) return false
+  return true
+}
+
+private Map fastCommandConstraint(String queryNorm) {
+  String q = (queryNorm ?: "").toString().toLowerCase()
+  def lvl = parseSetLevel(q)
+  if(lvl != null) return [attrs:["level"]]
+  if(parseColorSet(q) != null) return [:]
+  if(parseFanSet(q) != null) return [:]
+  return inferDeviceConstraint(q, null)
+}
+
+private Map tryFastLocalDeviceCommand(String raw, String queryNorm) {
+  Long startMs = now()
+  try {
+    if(!isFastLocalCommandCandidate(raw, queryNorm)) return null
+
+    Long constraintStart = now()
+    Map constraint = fastCommandConstraint(queryNorm)
+    Long constraintMs = now() - constraintStart
+    Long matchStart = now()
+    def dev = matchDeviceForControl(queryNorm, constraint)
+    Long matchMs = now() - matchStart
+    if(!dev) return null
+
+    Long intentStart = now()
+    Map intent = detectIntent(queryNorm, dev)
+    Long intentMs = now() - intentStart
+    if(!(intent instanceof Map)) return null
+    if(intent?.mode != "command") return null
+    if(intent?.risky == true) return null
+
+    Long commandStart = now()
+    Map resultMap = answerFor(dev, queryNorm, intent)
+    Long commandMs = now() - commandStart
+    String ans = (resultMap?.answer ?: "Done.").toString()
+    Long totalMs = now() - startMs
+    try {
+      dbgRoute("fast_local_command")
+      dbgPut("fastLocalMs", totalMs)
+      dbgPut("fastLocalConstraintMs", constraintMs)
+      dbgPut("fastLocalMatchMs", matchMs)
+      dbgPut("fastLocalIntentMs", intentMs)
+      dbgPut("fastLocalCommandMs", commandMs)
+      dbgPut("fastLocalDevice", (dev?.displayName ?: dev?.name ?: "").toString())
+      dbgPut("fastLocalIntent", intent.toString())
+      state.lastDebug = state.lastDebug ?: [:]
+      state.lastDebug.mode = "fast_local_command"
+      state.lastDebug.fastLocalTimings = [
+        totalMs: totalMs,
+        constraintMs: constraintMs,
+        matchMs: matchMs,
+        intentMs: intentMs,
+        commandMs: commandMs
+      ]
+    } catch(ignore) {}
+
+    Map payload = (resultMap instanceof Map) ? resultMap : [:]
+    payload.fast_local = true
+    payload.intent = intent
+    payload.timings = [
+      totalMs: totalMs,
+      constraintMs: constraintMs,
+      matchMs: matchMs,
+      intentMs: intentMs,
+      commandMs: commandMs
+    ]
+    return [
+      ok:true,
+      answer:ans,
+      device:(dev?.displayName ?: dev?.name ?: "").toString(),
+      intent:intent,
+      payload:payload
+    ]
+  } catch(e) {
+    log.debug "tryFastLocalDeviceCommand failed: ${e}"
+    return null
+  }
+}
+
 /* =========================================================
    BULK CONTROL HELPERS (Switches/Lights)
    ========================================================= */
@@ -3586,6 +3675,68 @@ def handleAsk() {
     log.debug "Q VALUE: ${q}"
     state.sdev = (params.d ?: "").toString().trim()
     state.callbackUrl = (params.callbackUrl ?: "").toString().trim()
+    dbgInit(q)
+    dbgRoute('handleAsk_start')
+
+    if(!q) {
+      ans = "No query provided."
+      sendMessage(ans)
+      return respondAsk(ans, 200, [ok:false, error:"no_query"])
+    }
+
+    def qMatch = safeStripSecurityCodePhrase(q)
+    def query = normalize(qMatch)
+    state.lastQuestion = q
+
+    // Ignore placeholder transcripts from STT silence/empty captures.
+    if(query in ["no answer", "no speech detected", "no speech", "empty query"]) {
+      log.debug "Ignoring placeholder transcript: ${query}"
+      return respondAsk("", 200, [ok:false, error:"empty_transcript"])
+    }
+
+    Map maIntent = parseMusicAssistantIntent(q)
+    if(maIntent) {
+      dbgRoute("music_assistant_intent")
+      Map maResult = forwardMusicAssistantIntent(maIntent)
+      String ans = (maResult?.answer ?: "").toString().trim()
+      if(!ans) {
+        ans = (maResult?.ok == true)
+          ? ((maIntent.action == "stop") ? "Stopped music." : "Playing music.")
+          : "Music Assistant failed."
+      }
+      state.lastAnswer = ans
+      state.lastIntent = "music_assistant:${maIntent.action ?: ''}"
+      sendMessage(ans)
+      return respondAsk(ans, 200, maResult ?: [ok:false, error:"music_assistant_failed"])
+    }
+
+    Map specialPhraseRoutine = matchSpecialPhraseRoutine(query)
+    if(specialPhraseRoutine) {
+      dbgRoute("special_phrase")
+      Map specialPhraseResult = executeSpecialPhraseRoutine(specialPhraseRoutine)
+      String ans = (specialPhraseResult?.answer ?: "No answer.").toString()
+      state.lastAnswer = ans
+      state.lastIntent = "special_phrase"
+      state.lastDeviceName = (specialPhraseResult?.device ?: "").toString()
+      try {
+        state.lastDebug = state.lastDebug ?: [:]
+        state.lastDebug.mode = "special_phrase"
+        state.lastDebug.intent = specialPhraseRoutine.toString()
+        state.lastDebug.dev = (specialPhraseResult?.device ?: "").toString()
+      } catch(e) {}
+      sendMessage(ans)
+      return respondAsk(ans, 200, (specialPhraseResult ?: [:]))
+    }
+
+    Map fastCommand = tryFastLocalDeviceCommand(q, query)
+    if(fastCommand) {
+      String ans = (fastCommand?.answer ?: "Done.").toString()
+      state.lastAnswer = ans
+      state.lastIntent = "fast-command:${fastCommand?.intent?.cmd ?: ''}"
+      state.lastDeviceName = (fastCommand?.device ?: "").toString()
+      sendMessageNoWait(ans)
+      return respondAsk(ans, 200, (fastCommand?.payload instanceof Map) ? fastCommand.payload : [ok:true, answer:ans])
+    }
 
     // Extract satRoom from query if present (e.g., 'are the bathroom lights on' -> satRoom = 'bathroom')
     String satRoom = null
@@ -3703,10 +3854,6 @@ if(bulkCmd) {
   sendMessage(ans)
   return respondText(ans)
 }
-
-  dbgInit(q)
-  dbgRoute('handleAsk_start')
-
 // =========================================================
 // BULK "ALL" COMMANDS (no single device needed)
 // =========================================================
@@ -3781,41 +3928,6 @@ if(mLkScoped || mLkGlobal) {
   sendMessage(ans)
   return respondText(ans)
 }
-
-
-      if(!q) {
-          ans = "No query provided."
-		  sendMessage(ans)
-          return respondAsk(ans, 200, [ok:false, error:"no_query"])
-      }
-    def qMatch = safeStripSecurityCodePhrase(q)
-    def query = normalize(qMatch)
-    state.lastQuestion = q
-
-    // Ignore placeholder transcripts from STT silence/empty captures.
-    if(query in ["no answer", "no speech detected", "no speech", "empty query"]) {
-      log.debug "Ignoring placeholder transcript: ${query}"
-      return respondAsk("", 200, [ok:false, error:"empty_transcript"])
-    }
-
-    Map specialPhraseRoutine = matchSpecialPhraseRoutine(query)
-    if(specialPhraseRoutine) {
-      dbgRoute("special_phrase")
-      Map specialPhraseResult = executeSpecialPhraseRoutine(specialPhraseRoutine)
-      String ans = (specialPhraseResult?.answer ?: "No answer.").toString()
-      state.lastAnswer = ans
-      state.lastIntent = "special_phrase"
-      state.lastDeviceName = (specialPhraseResult?.device ?: "").toString()
-      try {
-        state.lastDebug = state.lastDebug ?: [:]
-        state.lastDebug.mode = "special_phrase"
-        state.lastDebug.intent = specialPhraseRoutine.toString()
-        state.lastDebug.dev = (specialPhraseResult?.device ?: "").toString()
-      } catch(e) {}
-      sendMessage(ans)
-      return respondAsk(ans, 200, (specialPhraseResult ?: [:]))
-    }
-
     // Optional: structured NLU (params.nlu) can short-circuit routing
     def nlu = parseNluParam()
     def nluIntent = nlu ? nluToInternalIntent(nlu) : null
@@ -3900,6 +4012,7 @@ if(hp?.risky || (hp?.mode in ["hsm_arm_home","hsm_arm_away","hsm_disarm"])) {
     }
 
     // Device resolution: prefer NLU device slots, else fall back to query text matching
+    String mode = hvModeForQuery(query)
     def constraint = inferDeviceConstraint(query, nluIntent)
     def dev = null
     if(nlu && nluIntent?.mode) {
@@ -4735,6 +4848,26 @@ def sendMessage(ans) {
                 try { notificationDevice*.deviceNotification(ans) } catch(e) { }
             }
         }
+    }
+}
+
+def sendMessageNoWait(ans) {
+    try {
+        String raw = (ans ?: "").toString().trim().toLowerCase()
+        if(raw in ["no answer", "no answer.", "no query provided.", ""]) return
+
+        String msg = assistantStyleText((ans ?: "").toString())
+        if(msg.toLowerCase().contains("understand that request")) msg = "Sorry, I didn't understand"
+
+        String _sdev = (state?.sdev ?: "").toString().trim()
+        if(_sdev && _sdev != "mini") {
+            sendAnswerToPcNoWait(applySpeechFriendlyFormatting(msg))
+        } else if(speaker) {
+            String speakText = applySpeechFriendlyFormatting(msg)
+            try { speaker*.speak(speakText) } catch(e) { try { speaker*.speak(stripSsmlTags(speakText)) } catch(ignore) {} }
+        }
+    } catch(e) {
+        log.debug "sendMessageNoWait failed: ${e}"
     }
 }
 
@@ -6781,12 +6914,125 @@ def sendAnswerToPc(String answer) {
     if (!_sdev || !state.callbackUrl) return
 
     try {
-        httpGet(uri: state.callbackUrl, query: [r: answer, d: _sdev]) { resp ->
-            log.debug "Sent answer to PC for sat '${_sdev}', got ${resp.status}"
+        Map req = [
+            uri: state.callbackUrl,
+            query: [r: answer, d: _sdev],
+            timeout: 3
+        ]
+        try {
+            asynchttpGet("sendAnswerToPcHandler", req, [sat:_sdev])
+        } catch(asyncErr) {
+            log.debug "asynchttpGet unavailable, falling back to sync callback: ${asyncErr}"
+            httpGet(req) { resp ->
+                log.debug "Sent answer to PC for sat '${_sdev}', got ${resp.status}"
+            }
         }
     } catch (e) {
         log.error "Failed to send answer to PC for sat '${_sdev}': ${e}"
     }
+}
+
+def sendAnswerToPcNoWait(String answer) {
+    String _sdev = (state?.sdev ?: "").toString().trim()
+    if (!_sdev || !state.callbackUrl) return
+
+    try {
+        Map req = [
+            uri: state.callbackUrl,
+            query: [r: answer, d: _sdev],
+            timeout: 2
+        ]
+        asynchttpGet("sendAnswerToPcHandler", req, [sat:_sdev, noWait:true])
+    } catch (e) {
+        log.warn "Skipped blocking answer callback for sat '${_sdev}' because async callback failed to schedule: ${e}"
+    }
+}
+
+def sendAnswerToPcHandler(resp, data) {
+    try {
+        log.debug "Sent answer to PC for sat '${data?.sat ?: ''}', got ${resp?.status}"
+    } catch(e) {
+        log.debug "sendAnswerToPcHandler error: ${e}"
+    }
+}
+
+private Map parseMusicAssistantIntent(String rawQuery) {
+  String cleaned = (rawQuery ?: "").toString().trim().replaceAll(/\s+/, " ")
+  if(!cleaned) return null
+
+  if(cleaned ==~ /(?i)^\s*(?:please\s+)?(?:stop|pause)\s*$/) {
+    return [action: "stop", target: "", transcript: cleaned]
+  }
+
+  def stopMatch = cleaned =~ /(?i)^\s*(?:please\s+)?(?:stop|pause)\s+(?:the\s+)?(?:music|audio|playback)(?:\s+(?:on|in|to)\s+(.+?))?\s*$/
+  if(stopMatch && stopMatch.find()) {
+    String target = (stopMatch.group(1) ?: "").toString().trim()
+    return [action: "stop", target: target, transcript: cleaned]
+  }
+
+  def stopTargetMatch = cleaned =~ /(?i)^\s*(?:please\s+)?(?:stop|pause)\s+(.+?\b(?:speaker|speakers|player|stereo|radio))\s*$/
+  if(stopTargetMatch && stopTargetMatch.find()) {
+    String target = (stopTargetMatch.group(1) ?: "").toString().trim()
+    if(target) return [action: "stop", target: target, transcript: cleaned]
+  }
+
+  def playMatch = cleaned =~ /(?i)^\s*(?:please\s+)?play\s+(.+?)(?:\s+(?:on|in|to)\s+(.+?))?\s*$/
+  if(playMatch && playMatch.find()) {
+    String query = (playMatch.group(1) ?: "").toString().trim()
+    String target = (playMatch.group(2) ?: "").toString().trim()
+    if(query) return [action: "play", query: query, target: target, transcript: cleaned]
+  }
+
+  return null
+}
+
+private String runtimeBaseFromCallback() {
+  String cb = (state?.callbackUrl ?: "").toString().trim()
+  if(!cb) cb = (params?.callbackUrl ?: "").toString().trim()
+  return cb.replaceAll(/\/answer(?:\?.*)?$/, "").trim()
+}
+
+private Map forwardMusicAssistantIntent(Map intent) {
+  String base = runtimeBaseFromCallback()
+  if(!base) {
+    return [ok:false, error:"missing_runtime_callback", answer:"Music Assistant is not connected to the runtime yet."]
+  }
+
+  Map body = [
+    action: (intent?.action ?: "").toString(),
+    transcript: (intent?.transcript ?: "").toString(),
+    target: (intent?.target ?: "").toString(),
+    satellite: (state?.sdev ?: "").toString()
+  ]
+  if(intent?.query) body.query = (intent.query ?: "").toString()
+
+  try {
+    Map req = [
+      uri: "${base}/music-assistant",
+      contentType: "application/json",
+      requestContentType: "application/json",
+      body: body,
+      timeout: 20
+    ]
+    Map out = [ok:false, error:"empty_music_assistant_response"]
+    httpPostJson(req) { resp ->
+      def data = resp?.data
+      if(data instanceof Map) out = (Map)data
+      else out = [ok:(resp?.status == 200), status:resp?.status, raw:(data ?: "").toString()]
+    }
+    if(out.answer) return out
+    if(out.ok == true) {
+      out.answer = (body.action == "stop")
+        ? "Stopped music on ${(body.target ?: "that speaker")}."
+        : "Playing ${(body.query ?: "music")} on ${(body.target ?: "that speaker")}."
+    } else {
+      out.answer = "Music Assistant failed: ${(out.error ?: out.raw ?: "unknown error").toString()}"
+    }
+    return out
+  } catch(e) {
+    log.warn "Music Assistant runtime forward failed: ${e}"
+    return [ok:false, error:"music_assistant_runtime_error", message:e?.toString(), answer:"Music Assistant failed: ${e?.toString()}"]
+  }
 }
 
 /**
@@ -7062,6 +7308,9 @@ private boolean hasDeviceCommand(dev, String cmdName) {
 private Integer parseSetLevel(String q) {
   if(!q) return null
   String s = q.toLowerCase()
+
+  List<String> colorWords = ["color","colour","red","orange","yellow","green","cyan","blue","purple","pink","white","warm white","soft white","cool white","daylight"]
+  if(colorWords.any { cw -> s.contains(cw) } || (s =~ /\b\d{3,4}\s*k\b/).find()) return null
 
   // Require a control-ish verb to avoid accidental matches
   boolean okVerb = (s.contains("set ") || s.contains("dim ") || s.contains("brightness") || s.contains("level"))
