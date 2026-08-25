@@ -3,33 +3,5 @@
    "gitHubUrl": "https://github.com/bptworld/Hubitat",
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
-      {
-   		"name": "Device Watchdog",
-   		"category": "Utilities",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/devicewatchdog/packageManifest.json",
-   		"description": "Keep an eye on your devices and see how long it's been since they checked in.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Flow Engine One",
-   		"category": "Utilities",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/FlowEngine/packageManifest.json",
-   		"description": "Visual drag and drop rules engine.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "HubVoice",
-   		"category": "Utilities",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/hubvoice/packageManifest.json",
-   		"description": "Local Voice Control for Hubitat!  Requires an always on win PC.",
-         "tags": [ "Tools & Utilities" ]
-   	},
-      {
-   		"name": "The Flasher",
-   		"category": "Utilities",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/apps/TheFlasher/packageManifest.json",
-   		"description": "Flash your lights based on several triggers!",
-         "tags": [ "Tools & Utilities" ]
-   	}
    ]
 }
