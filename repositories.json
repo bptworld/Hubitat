@@ -3,5 +3,12 @@
    "gitHubUrl": "https://github.com/bptworld/Hubitat",
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
+      {
+   		"name": "Pixora Locator Driver",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/PixoraLocator/packageManifest.json",
+   		"description": "Hubitat driver for the Pixora Locator app",
+         "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
+   	}
    ]
 }
