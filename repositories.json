@@ -8,7 +8,7 @@
    		"category": "Presence and Location",
    		"location": "https://raw.githubusercontent.com/bptworld/PixoraLocator/master/hubitat/packageManifest.json",
    		"description": "Hubitat App and Drivers for the Pixora Locator app",
-         "tags": [ "Location", "Monitoring", "Safety & Security", "Tools & Utilities" ]
+         "tags": [ "Location", "Safety & Security", "Tools & Utilities" ]
    	}
    ]
 }
